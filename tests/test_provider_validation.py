@@ -2,6 +2,7 @@
 
 import copy
 import math
+from typing import Any
 
 import httpx
 import pytest
@@ -72,7 +73,7 @@ def test_route_geometry_must_be_valid(geometry):
     ["null", "array", "trip", "leg", "negative", "boolean", "coordinate"],
 )
 async def test_invalid_routing_responses_never_enter_cache(store, failure):
-    payload = copy.deepcopy(ROUTE)
+    payload: Any = copy.deepcopy(ROUTE)
     if failure == "null":
         payload = None
     elif failure == "array":

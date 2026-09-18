@@ -10,6 +10,7 @@ class Geocoder(Protocol):
 
     async def geocode(self, address: str) -> tuple[float, float, str]:
         """Resolve one textual address."""
+        ...
 
 
 class TruckRouter(Protocol):
@@ -23,6 +24,7 @@ class TruckRouter(Protocol):
         destination_lon: float,
     ) -> RouteResult:
         """Route one truck trip."""
+        ...
 
 
 class VehicleCatalogue(Protocol):
@@ -30,3 +32,4 @@ class VehicleCatalogue(Protocol):
 
     def list_models(self) -> tuple[VehicleModel, ...]:
         """Return offers sorted by game price and stable model ID."""
+        ...

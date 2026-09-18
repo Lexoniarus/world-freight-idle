@@ -28,3 +28,11 @@ files = ["app", "main.py", "scripts/update_test_profile.py"]
 check_untyped_defs = true
 disallow_untyped_defs = true
 warn_unused_ignores = true
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"
+include = ["app", "tests", "main.py", "scripts"]
+exclude = [".venv", "node_modules", "data", "artifacts", "static/dist"]
+venvPath = "."
+venv = ".venv"

@@ -1,5 +1,26 @@
 # Quality Report – Standards-Reparatur und Gesamt-Review
 
+## Nachtrag: Pylance-Abgleich, 18.09.2026
+
+Die globale VS-Code-Einstellung `strict` wich von der dokumentierten
+Nicht-Strict-Grenze ab. Der richtige Projektinterpreter war bereits ausgewählt.
+Pyright reproduzierte im Standardmodus 19 Diagnosen; Protokolldeklarationen,
+LogRecord-Erweiterungen und Testannahmen wurden korrigiert. Keine pauschalen
+Fehlerunterdrückungen. `[tool.pyright]` legt Standardmodus, Python-Version und
+Prüfumfang für Pylance und CLI fest. Strict-Konformität wird nicht behauptet.
+
+Erneut ausgeführt: gesamtes Quality Gate einschließlich Pyright 1.1.414
+(72 Dateien, 0 Fehler/0 Warnungen), 172 Python-Tests, 1.255 Core-Statements bei
+100 % Coverage, 36 Frontendtests, alle Lint-/Format-/Typprüfungen und Build.
+Nachweis: `artifacts/pylance-quality.txt`. Pylance hat die Konfiguration laut
+lokalem Language-Server-Protokoll neu geladen; die Problems-Ansicht wurde nicht
+per UI ausgelesen. Der zuvor ausgeführte Browserlauf bleibt unten historisch
+beschrieben; die neue Branch-Abnahme verwendet zusätzlich GitHub Actions.
+
+Architekturreview dieser Änderung: unveränderte Modulgrenzen und DI; explizite
+Protokoll-Stubs, gleiche strukturierte Logging-Ausgabe, präzisere Testannahmen.
+Keine Änderungen an Profilen, HTTP-Verträgen oder Spielregeln.
+
 Stand: 18.09.2026, Windows, Python 3.11.9, Node 24, Microsoft Edge.
 Dieser Bericht ersetzt die vorherige Reparaturabnahme. Er unterscheidet
 Werkzeugprüfungen, Architekturreview und tatsächliche Geräteabnahme.

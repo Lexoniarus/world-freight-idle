@@ -5,7 +5,8 @@
 `./.venv/Scripts/python.exe scripts/quality.py` (Windows) oder `make quality` (Linux).
 Installieren über `requirements-dev.txt` und `npm ci`. Node 24 für Build und Tests.
 
-Ruff-Lint + Formatcheck, mypy für `app` und `main.py`,
+Ruff-Lint + Formatcheck, mypy für Core, main.py und Profilpflege-CLI,
+Pyright im Standardmodus für alle 72 Python-Dateien einschließlich Tests,
 pytest mit 100 % Statement-Coverage für `app`,
 Function-Test-Manifest, Architekturtests, ESLint, Stylelint, Prettier,
 JSDoc/checkJs, Node-/DOM-Verhaltenstests, Vite-Build und Python-Kompilierung.
@@ -164,3 +165,15 @@ Profilpflege das Fahrzeug und setzt Routing fort. Der Start muss den aktuellen
 Kostensatz verwenden oder bei anschließend zu geringem Guthaben ohne Abbuchung
 abbrechen. Neue Core-Funktionen sind im Manifest und Coverage-Gate enthalten.
 Aktuelle Zahlen und tatsächlich ausgeführte Browserprüfung: QUALITY_REPORT.md.
+
+## Pylance und reproduzierbare Python-Typprüfung
+
+`npm run typecheck:python` verwendet die fest versionierte Pyright-CLI und
+`[tool.pyright]` aus pyproject.toml. Lokal wird `.venv` aufgelöst; das gemeinsame
+Gate übergibt seinen tatsächlichen Python-Interpreter mit `--pythonpath`, sodass
+auch CI ohne lokale `.venv` dieselben installierten Pakete prüft.
+
+Pylance verwendet dieselbe Projektkonfiguration und den in VS Code ausgewählten
+Interpreter. Der Standardmodus ist eine bewusste Projektgrenze, kein Nachweis
+vollständiger Strict-Typisierung. Globale Benutzereinstellungen bleiben erhalten.
+Neue Meldungen in diesem Modus müssen vor Integration behoben werden.

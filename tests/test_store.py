@@ -24,6 +24,7 @@ def test_store_geocode_cache_roundtrip(store: SqliteStore):
     assert store.get_geocode("a") is None
     store.put_geocode("a", 1.2, 3.4, "display")
     cached = store.get_geocode("a")
+    assert cached is not None
     assert cached["lat"] == 1.2
     assert cached["display_name"] == "display"
 

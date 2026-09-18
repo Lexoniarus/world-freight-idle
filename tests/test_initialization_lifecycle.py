@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from fastapi import FastAPI
 
 from app.domain.errors import CatalogueError
 from app.main import lifespan
@@ -86,13 +87,10 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
         SimpleNamespace(aclose=AsyncMock()),
         SimpleNamespace(aclose=AsyncMock()),
     ]
-    app = SimpleNamespace(
-        state=SimpleNamespace(
-            settings=SimpleNamespace(request_timeout_seconds=1)
-        )
-    )
+    app = FastAPI()
+    app.state.settings = SimpleNamespace(request_timeout_seconds=1)
     error = RuntimeError("injected failure")
-    creation = [clients[0], clients[1]]
+    creation: list[SimpleNamespace | RuntimeError] = list(clients)
     if failure == "first-client":
         creation[0] = error
     if failure == "second-client":

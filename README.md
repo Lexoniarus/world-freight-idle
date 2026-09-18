@@ -115,7 +115,7 @@ npm run test:e2e
 
 Ohne Aktivierung unter Windows den Python-Befehl durch
 `./.venv/Scripts/python.exe scripts/quality.py` ersetzen. Das Gate umfasst Ruff,
-Formatierung, mypy, Python-Tests, Function-Test-Manifest, **100 % Core-Statement-
+Formatierung, mypy, Pyright, Python-Tests, Function-Test-Manifest, **100 % Core-Statement-
 Coverage**, Frontendtests, ESLint, Stylelint, Prettier, checkJs und Produktionsbuild.
 Browserprüfung verwendet lokal Microsoft Edge. Alternativ Chromium installieren
 und PLAYWRIGHT_CHANNEL=chromium setzen; CI verwendet Chromium.
@@ -124,6 +124,16 @@ Browsertests starten einen isolierten Server auf Port 8011 mit temporären Daten
 und simulierten externen Medien/Providern. Aktuelle ausgeführte Ergebnisse,
 Architekturreview und Abnahmegrenzen: [QUALITY_REPORT](QUALITY_REPORT.md).
 Die vollständige reale iPad-/Safari-Abnahme bleibt offen.
+
+## VS Code und Pylance
+
+Den Repositoryordner mit pyproject.toml öffnen und über **Python: Select
+Interpreter** die lokale `.venv` auswählen. Pylance übernimmt den festgelegten
+`standard`-Modus aus `[tool.pyright]`; globale Strict-Einstellungen werden nur für
+dieses Projekt überschrieben. Python-Typprüfung separat: `npm run typecheck:python`.
+Falls alte Meldungen stehen bleiben: **Developer: Reload Window** ausführen.
+Die Projektkonfiguration schaltet die Typprüfung nicht ab; Pyright und mypy sind
+beide Teil des Quality Gates.
 
 ## Docker und Betrieb
 

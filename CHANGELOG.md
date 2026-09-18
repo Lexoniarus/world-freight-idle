@@ -1,5 +1,11 @@
 # Changelog
 
+## Pylance-Abgleich
+
+- Gemeinsamer Pylance-/Pyright-Standardmodus für Anwendung, Tests und Skripte.
+- Pyright 1.1.414 in Lockfile und Quality Gate; 19 bisherige Standard-Diagnosen behoben.
+- Explizite Protokolldeklarationen, dynamische Log-Felder und präzisere Testannahmen.
+
 ## GitHub-Anbindung
 
 - Privates Repository Lexoniarus/world-freight-idle als origin eingerichtet.
