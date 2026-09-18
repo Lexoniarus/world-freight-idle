@@ -21,9 +21,9 @@ class JsonFormatter(logging.Formatter):
             "trace_id": get_trace_id(),
         }
         if hasattr(record, "event"):
-            payload["event"] = record.event
+            payload["event"] = getattr(record, "event")
         if hasattr(record, "data"):
-            payload["data"] = record.data
+            payload["data"] = getattr(record, "data")
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
         return json.dumps(payload, ensure_ascii=False, default=str)

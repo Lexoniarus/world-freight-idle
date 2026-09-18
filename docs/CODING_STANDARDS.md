@@ -19,6 +19,11 @@
 - mypy prüft Core und Einstiegspunkt, verlangt annotierte Funktionen und
   prüft auch Funktionskörper. Vollständig typisierte statt dynamischer
   JSON-Spielzustände sind eine spätere Verbesserung; kein Strict-Mode-Anspruch.
+- Pylance und Pyright verwenden verbindlich `[tool.pyright]` in pyproject.toml:
+  `standard`, Python 3.11, Prüfung aller app-/tests-/scripts-Dateien und main.py.
+  Das überschreibt einen globalen Editor-Strict-Modus nur für dieses Projekt.
+  Echte Typfehler werden behoben; keine pauschalen Diagnostic-Suppressions.
+  Pyright ist zusätzlich zu mypy im gemeinsamen Quality Gate fest versioniert.
 - Eine Funktion erfüllt eine zusammenhängende Aufgabe. Orchestratoren setzen
   benannte Schritte zusammen; sie implementieren deren Details nicht selbst.
   Zeilenzahl allein ist kein Kriterium für Single Responsibility.

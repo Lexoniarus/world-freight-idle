@@ -4,6 +4,8 @@ import httpx
 
 from app.bootstrap import build_game_service
 from app.config import Settings
+from app.providers.geocoding import NominatimGeocoder
+from app.providers.routing import ValhallaTruckRouter
 
 
 def test_build_game_service_wires_real_provider_adapters(tmp_path: Path):
@@ -27,6 +29,8 @@ def test_build_game_service_wires_real_provider_adapters(tmp_path: Path):
         routing_client,
         rng_seed=1,
     )
+    assert isinstance(game.geocoder, NominatimGeocoder)
+    assert isinstance(game.router, ValhallaTruckRouter)
     assert game.geocoder.base_url == "https://n.test"
     assert game.router.base_url == "https://v.test"
     assert game.store.path == settings.db_path

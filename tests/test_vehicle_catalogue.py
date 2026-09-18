@@ -252,6 +252,7 @@ def test_packaged_catalogue_works_outside_project_directory(
     settings = make_settings(tmp_path)
     bundled = tmp_path / "data" / "world_freight_vehicle_catalog.sqlite3"
     bundled.parent.mkdir()
+    assert settings.vehicle_catalogue_path is not None
     shutil.copyfile(settings.vehicle_catalogue_path, bundled)
     settings = replace(
         settings,
@@ -327,10 +328,10 @@ def test_missing_catalogue_keeps_login_available_and_new_state_retryable(
         assert client.get("/api/v1/fleet").status_code == 503
         import shutil
 
-        shutil.copyfile(
-            make_settings(tmp_path).vehicle_catalogue_path,
-            settings.vehicle_catalogue_path,
-        )
+        source = make_settings(tmp_path).vehicle_catalogue_path
+        assert source is not None
+        assert settings.vehicle_catalogue_path is not None
+        shutil.copyfile(source, settings.vehicle_catalogue_path)
         response = client.get("/api/v1/fleet")
         assert response.status_code == 200
         vehicle = response.json()["vehicles"][0]

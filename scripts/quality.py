@@ -38,6 +38,12 @@ COMMANDS = (
         "scripts/update_test_profile.py",
     ),
     (
+        "node",
+        "node_modules/pyright/index.js",
+        "--pythonpath",
+        sys.executable,
+    ),
+    (
         sys.executable,
         "-m",
         "pytest",
