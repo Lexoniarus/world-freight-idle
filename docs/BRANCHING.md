@@ -66,12 +66,22 @@ Merge-Commits direkt auf main und kein Zurücksetzen von main.
 
 ## Remote und tatsächlicher Schutzstatus
 
-Aktuell ist kein Remote eingerichtet. GitHub-Actions-Workflow und PR-Vorlage
-sind vorbereitet, laufen aber erst nach Einrichtung eines entsprechenden Remotes.
-Dann für main einen Ruleset/Branchschutz konfigurieren: PR erforderlich,
-Statuschecks `quality` und `branch-policy` erforderlich, Branch aktuell,
-Force-Push und Löschen untersagt. Bei mehreren Mitwirkenden eine fremde Review-
-Freigabe erzwingen. Diese serverseitigen Einstellungen sind noch nicht aktiviert.
+`origin` verweist auf das private Repository
+[Lexoniarus/world-freight-idle](https://github.com/Lexoniarus/world-freight-idle).
+GitHub Actions und PR-Vorlage sind eingerichtet. Nur Squash-Merge ist freigegeben;
+GitHub löscht gemergte Arbeitsbranches automatisch.
+
+**Serverseitiger Branchschutz ist nicht aktiv.** GitHub lehnt Schutzregeln für
+dieses private Repository mit HTTP 403 ab und verlangt ein Pro-Upgrade oder eine
+öffentliche Sichtbarkeit. Das Repository bleibt privat; die Sichtbarkeit wird
+nicht als Umgehung geändert. Lokale Hooks, CI und die verpflichtende PR-Prüfung
+sind vorhanden, können serverseitige Zugriffsbeschränkungen aber nicht ersetzen.
+
+Sobald der GitHub-Tarif es erlaubt, für main einen Ruleset/Branchschutz aktivieren:
+PR erforderlich, Statuschecks `quality` und `branch-policy` erforderlich, Branch
+aktuell, Force-Push und Löschen untersagt. Bei mehreren Mitwirkenden eine fremde
+Review-Freigabe erzwingen. Bis dahin müssen auch Administratoren den dokumentierten
+PR-Workflow ohne direkte main-Pushes einhalten.
 
 Der CI-Branchcheck prüft PR-Quellnamen und das Ziel main sowie Namen gepushter
 Arbeitsbranches. Ein main-Push ist nur das erwartete Ergebnis der Integration;

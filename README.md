@@ -1,5 +1,8 @@
 # World Freight Idle
 
+[GitHub-Repository](https://github.com/Lexoniarus/world-freight-idle) ·
+[Quality CI](https://github.com/Lexoniarus/world-freight-idle/actions/workflows/quality.yml)
+
 Browserbasierter Multiplayer-Logistik-Idler mit Python/FastAPI, SQLite und einer
 MapLibre-/OpenStreetMap-Weltkarte. **UI First: spielbare Grundlage, M1 noch in
 Arbeit.** Die aktuelle Basis ist lokal und automatisiert geprüft; sie ist kein
@@ -132,7 +135,12 @@ den Referenzkatalog ebenfalls mitliefern.
 Aktuell: ein Prozess, SQLite und gemeinsame Provider-Limiter. HTTPS, kontrollierter
 Reverse Proxy, Betriebsbackups, geeignete Provider und weitere Konten-/Betriebs-
 funktionen sind vor öffentlichem Betrieb zu ergänzen: [SECURITY](docs/SECURITY.md).
-Git-Remotes und serverseitiger Branchschutz sind bislang nicht eingerichtet.
+Das private GitHub-Repository ist als `origin` eingerichtet. GitHub Actions prüft
+Pushes und Pull Requests. Squash-Merge und automatisches Löschen gemergter
+Arbeitsbranches sind konfiguriert. Serverseitiger Branchschutz ist noch nicht
+aktiv: GitHub verlangt dafür beim privaten Repository ein Pro-Upgrade. Lokale
+Hooks und verbindliche Reviewregeln gelten weiterhin; sie ersetzen diesen Schutz
+nicht. Details: [BRANCHING](docs/BRANCHING.md).
 
 ## Dokumentation
 
