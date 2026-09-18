@@ -1,5 +1,11 @@
 # Changelog
 
+## GitHub-Anbindung
+
+- Privates Repository Lexoniarus/world-freight-idle als origin eingerichtet.
+- Quality CI und PR-Workflow aktiviert; nur Squash-Merge mit automatischer Branch-Bereinigung.
+- Fehlenden serverseitigen Branchschutz wegen GitHub-Tarifgrenze ausdrücklich dokumentiert.
+
 ## Standards-Bereinigung – 18.09.2026
 
 - Kleine Frontend-Composition-Root; getrennte Aktionen, Views, Router und Synchronisierung.
