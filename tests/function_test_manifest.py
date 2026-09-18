@@ -1,0 +1,183 @@
+FUNCTION_TESTS = {
+    "app.api.v1.map.list_map_hubs": "test_map_endpoint_requires_session_and_uses_game_provider",
+    "app.services.map_locations.MapLocationService.list_hubs": "test_map_hubs_resolve_and_preserve_partial_failures",
+    "app.api.v1.contracts.accept_contract": "test_v1_resource_endpoints_and_error_mapping",
+    "app.api.v1.contracts.get_contract": "test_v1_resource_endpoints_and_error_mapping",
+    "app.api.v1.contracts.list_contracts": "test_v1_resource_endpoints_and_error_mapping",
+    "app.api.v1.contracts.quote_contract": "test_v1_resource_endpoints_and_error_mapping",
+    "app.api.v1.contracts.refresh_contracts": "test_v1_resource_endpoints_and_error_mapping",
+    "app.api.v1.dashboard.get_dashboard": "test_v1_resource_endpoints_and_error_mapping",
+    "app.api.v1.dependencies.get_game_service": "test_auth_api_and_private_game_resources",
+    "app.api.v1.fleet.get_vehicle": "test_v1_resource_endpoints_and_error_mapping",
+    "app.api.v1.fleet.list_fleet": "test_v1_resource_endpoints_and_error_mapping",
+    "app.api.v1.router.build_v1_router": "test_v1_resource_endpoints_and_error_mapping",
+    "app.api.v1.system.get_health": "test_v1_resource_endpoints_and_error_mapping",
+    "app.api.v1.transports.get_transport": "test_v1_resource_endpoints_and_error_mapping",
+    "app.api.v1.transports.list_transports": "test_v1_resource_endpoints_and_error_mapping",
+    "app.bootstrap.build_game_service": "test_build_game_service_wires_real_provider_adapters",
+    "app.config.Settings.from_env": "test_settings_from_env",
+    "app.domain.models.Contract.to_dict": "test_contract_to_dict",
+    "app.domain.models.Hub.to_dict": "test_hub_to_dict",
+    "app.domain.models.PriceQuote.to_dict": "test_price_quote_to_dict",
+    "app.domain.models.RouteResult.to_dict": "test_route_result_to_dict",
+    "app.logging_config.JsonFormatter.format": "test_json_formatter_includes_structured_fields",
+    "app.logging_config.configure_logging": "test_configure_logging_replaces_root_handler",
+    "app.main.create_app": "test_v1_resource_endpoints_and_error_mapping",
+    "app.main.lifespan": "test_v1_resource_endpoints_and_error_mapping",
+    "app.providers.geocoding.NominatimGeocoder._respect_rate_limit": "test_respect_rate_limit_sleeps_remaining_time",
+    "app.providers.geocoding.NominatimGeocoder.geocode": "test_geocode_calls_nominatim_and_caches",
+    "app.providers.routing.ValhallaTruckRouter._build_cache_key": "test_build_cache_key_is_stable",
+    "app.providers.routing.ValhallaTruckRouter._extract_route": "test_extract_route_supports_geojson_and_rejects_empty",
+    "app.providers.routing.ValhallaTruckRouter.route": "test_route_calls_valhalla_and_caches",
+    "app.providers.routing.decode_polyline6": "test_decode_polyline6_and_invalid_input",
+    "app.repositories.sqlite_store.SqliteStore.connect": "test_store_connect_and_initialize",
+    "app.repositories.sqlite_store.SqliteStore.delete_state_keys": "test_store_json_roundtrip_and_delete",
+    "app.repositories.sqlite_store.SqliteStore.get_geocode": "test_store_geocode_cache_roundtrip",
+    "app.repositories.sqlite_store.SqliteStore.get_json": "test_store_json_roundtrip_and_delete",
+    "app.repositories.sqlite_store.SqliteStore.get_route": "test_store_route_cache_roundtrip",
+    "app.repositories.sqlite_store.SqliteStore.initialize": "test_store_connect_and_initialize",
+    "app.repositories.sqlite_store.SqliteStore.put_geocode": "test_store_geocode_cache_roundtrip",
+    "app.repositories.sqlite_store.SqliteStore.put_route": "test_store_route_cache_roundtrip",
+    "app.repositories.sqlite_store.SqliteStore.set_json": "test_store_json_roundtrip_and_delete",
+    "app.services.game.GameService._build_trip": "test_build_trip_contains_tracking_timestamps",
+    "app.services.game.GameService._expand_contract": "test_expand_contract_attaches_hubs",
+    "app.services.game.GameService._expand_vehicle": "test_list_get_and_expand_vehicles",
+    "app.services.game.GameService._find_contract": "test_find_contract_returns_match_and_raises",
+    "app.services.game.GameService._find_vehicle": "test_find_vehicle_returns_match_and_raises",
+    "app.services.game.GameService._geocode_hub": "test_geocode_hub_merges_real_address",
+    "app.services.game.GameService._validate_dispatch": "test_validate_dispatch_checks_location_capacity_mode_and_status",
+    "app.services.game.GameService.dashboard": "test_dashboard_returns_product_projection",
+    "app.services.game.GameService.dispatch": "test_dispatch_builds_persisted_trip_and_debits_cost",
+    "app.services.game.GameService.ensure_initial_state": "test_ensure_initial_state_is_idempotent",
+    "app.services.game.GameService.get_contract": "test_list_and_get_contracts_return_real_addresses",
+    "app.services.game.GameService.get_transport": "test_list_and_get_transports",
+    "app.services.game.GameService.get_vehicle": "test_list_get_and_expand_vehicles",
+    "app.services.game.GameService.list_contracts": "test_list_and_get_contracts_return_real_addresses",
+    "app.services.game.GameService.list_transports": "test_list_and_get_transports",
+    "app.services.game.GameService.list_vehicles": "test_list_get_and_expand_vehicles",
+    "app.services.game.GameService.now": "test_now_returns_wall_clock",
+    "app.services.game.GameService.quote_contract": "test_quote_contract_geocodes_routes_and_prices",
+    "app.services.game.GameService.reconcile_arrival": "test_reconcile_arrival_moves_vehicle_and_pays",
+    "app.services.game.GameService.refresh_market": "test_refresh_market_reuses_fresh_market_and_can_force",
+    "app.services.game.GameService.reset": "test_reset_restores_playable_state",
+    "app.services.game.GameService.state": "test_state_expands_contract_addresses",
+    "app.services.market.MarketGenerator._build_contract": "test_build_contract_has_expiry_and_valid_cargo",
+    "app.services.market.MarketGenerator.generate": "test_market_generate_guarantees_origin_and_real_addresses_are_external",
+    "app.services.pricing.PricingService.quote": "test_pricing_quote_uses_distance_and_cargo_rate",
+    "app.tracing.TraceIdMiddleware.dispatch": "test_trace_id_middleware_propagates_header_and_context",
+    "app.tracing.get_trace_id": "test_get_trace_id_default",
+    "app.tracing.new_trace_id": "test_new_trace_id_is_unique_hex",
+    "app.web._application_path": "test_product_pages_are_distinct_routes",
+    "app.web.contract_detail_page": "test_product_pages_are_distinct_routes",
+    "app.web.contracts_page": "test_product_pages_are_distinct_routes",
+    "app.web.dashboard_page": "test_product_pages_are_distinct_routes",
+    "app.web.fleet_page": "test_product_pages_are_distinct_routes",
+    "app.web.transport_detail_page": "test_product_pages_are_distinct_routes",
+    "app.web.transports_page": "test_product_pages_are_distinct_routes",
+}
+
+FUNCTION_TESTS.update(
+    {
+        "app.api.v1.auth.check_attempt": "test_auth_api_and_private_game_resources",
+        "app.api.v1.auth.current_user": "test_auth_api_and_private_game_resources",
+        "app.api.v1.auth.login": "test_auth_api_and_private_game_resources",
+        "app.api.v1.auth.logout": "test_auth_api_and_private_game_resources",
+        "app.api.v1.auth.register": "test_auth_api_and_private_game_resources",
+        "app.api.v1.auth.set_session": "test_auth_api_and_private_game_resources",
+        "app.api.v1.dependencies.get_auth_service": "test_auth_api_and_private_game_resources",
+        "app.api.v1.dependencies.get_current_user": "test_auth_api_and_private_game_resources",
+        "app.api.v1.dependencies.require_same_origin": "test_auth_api_and_private_game_resources",
+        "app.api.v1.fleet.get_catalogue": "test_auth_api_and_private_game_resources",
+        "app.api.v1.fleet.purchase_vehicle": "test_auth_api_and_private_game_resources",
+        "app.api.v1.leaderboard.get_leaderboard": "test_auth_api_and_private_game_resources",
+        "app.bootstrap.build_player_service": "test_player_service_isolation_and_atomic_purchases",
+        "app.repositories.accounts.AccountRepository.allow_attempt": "test_auth_sessions_expire_revoke_and_throttle",
+        "app.repositories.accounts.AccountRepository.create_user": "test_auth_sessions_expire_revoke_and_throttle",
+        "app.repositories.accounts.AccountRepository.find_user": "test_auth_sessions_expire_revoke_and_throttle",
+        "app.repositories.accounts.AccountRepository.revoke_session": "test_auth_sessions_expire_revoke_and_throttle",
+        "app.repositories.accounts.AccountRepository.save_session": "test_auth_sessions_expire_revoke_and_throttle",
+        "app.repositories.accounts.AccountRepository.session_user": "test_auth_sessions_expire_revoke_and_throttle",
+        "app.repositories.accounts.AccountRepository.leaderboard": "test_leaderboard_counts_offline_arrivals_without_double_counting",
+        "app.repositories.sqlite_store.SqliteStore.transaction": "test_transaction_rolls_back_and_namespaces_isolate",
+        "app.services.auth.AuthService.authenticate": "test_auth_sessions_expire_revoke_and_throttle",
+        "app.services.auth.AuthService.issue_session": "test_auth_sessions_expire_revoke_and_throttle",
+        "app.services.auth.AuthService.register": "test_auth_sessions_expire_revoke_and_throttle",
+        "app.services.auth.PasswordHasher.hash_password": "test_password_hashes_are_salted_and_verified",
+        "app.services.auth.PasswordHasher.verify_password": "test_password_hashes_are_salted_and_verified",
+        "app.services.fleet.FleetService.purchase": "test_player_service_isolation_and_atomic_purchases",
+        "app.services.game.GameService._commit_dispatch": "test_simultaneous_dispatch_revalidates_after_routing",
+        "app.services.game.GameService._complete_trip": "test_parallel_transports_and_offline_settlement",
+        "app.services.game.GameService._refresh_market": "test_refresh_market_reuses_fresh_market_and_can_force",
+        "app.web.leaderboard_page": "test_product_pages_are_distinct_routes",
+        "app.web.login_page": "test_product_pages_are_distinct_routes",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.bootstrap.build_fleet_service": "test_auth_api_and_private_game_resources",
+        "app.bootstrap.build_map_service": "test_map_endpoint_requires_session_and_uses_game_provider",
+        "app.api.v1.dependencies.get_fleet_service": "test_auth_api_and_private_game_resources",
+        "app.api.v1.dependencies.get_map_service": "test_map_endpoint_requires_session_and_uses_game_provider",
+        "app.providers.geocoding.NominatimGeocoder._resolve_address": "test_geocode_calls_nominatim_and_caches",
+        "app.providers.routing.ValhallaTruckRouter._resolve_route": "test_route_calls_valhalla_and_caches",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.models.VehicleModel.to_dict": "test_catalogue_projects_all_offers_without_writing",
+        "app.providers.geocoding.NominatimGeocoder.__init__": "test_geocode_calls_nominatim_and_caches",
+        "app.providers.routing.ValhallaTruckRouter.__init__": "test_route_calls_valhalla_and_caches",
+        "app.providers.validation.parse_coordinates": "test_coordinate_validation_rejects_invalid_values",
+        "app.providers.validation.validate_route": "test_route_metrics_must_be_finite_and_positive",
+        "app.repositories.accounts.AccountRepository.__init__": "test_auth_sessions_expire_revoke_and_throttle",
+        "app.repositories.sqlite_store.SqliteStore.__init__": "test_transaction_rolls_back_and_namespaces_isolate",
+        "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue.__init__": "test_catalogue_projects_all_offers_without_writing",
+        "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue._read_model": "test_catalogue_failures_are_explicit",
+        "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue.list_models": "test_catalogue_projects_all_offers_without_writing",
+        "app.services.auth.AuthService.__init__": "test_auth_sessions_expire_revoke_and_throttle",
+        "app.services.fleet.FleetService.__init__": "test_purchase_reputation_snapshots_and_rollback",
+        "app.services.fleet.FleetService.list_catalogue": "test_catalogue_api_errors_and_vehicle_quote_validation",
+        "app.services.game.GameService.__init__": "test_player_service_isolation_and_atomic_purchases",
+        "app.services.map_locations.MapLocationService.__init__": "test_map_hubs_resolve_and_preserve_partial_failures",
+        "app.services.pricing.PricingService.__init__": "test_pricing_quote_uses_distance_and_cargo_rate",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.bootstrap.build_vehicle_catalogue": "test_catalogue_builder_default_path",
+        "app.api.v1.dependencies.get_vehicle_catalogue": "test_auth_api_and_private_game_resources",
+        "app.domain.models.VehicleImage.to_dict": "test_images_preserve_provenance_and_never_change_gameplay",
+        "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue._read_image": "test_images_preserve_provenance_and_never_change_gameplay",
+        "app.services.vehicle_presentation.present_vehicles": "test_images_preserve_provenance_and_never_change_gameplay",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.services.fleet.build_vehicle_snapshot": "test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts",
+        "app.services.fleet.create_starter_vehicle": "test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.services.game.GameService._ensure_initial_state": "test_initialization_direct_failure_is_atomic",
+        "app.bootstrap.build_profile_maintenance_service": "test_profile_update_preserves_other_players_and_trip_snapshots",
+        "app.bootstrap.build_profile_maintenance_service.player_store_factory": "test_profile_update_preserves_other_players_and_trip_snapshots",
+        "app.repositories.database_backup.backup_database": "test_backup_reads_committed_wal_and_refuses_overwrite",
+        "app.services.profile_maintenance.ProfileMaintenanceService.__init__": "test_profile_update_preserves_other_players_and_trip_snapshots",
+        "app.services.profile_maintenance.ProfileMaintenanceService.update_profile": "test_maintenance_write_failure_rolls_back_and_retains_unselected",
+        "app.services.profile_maintenance.validate_assignments": "test_maintenance_validation_preserves_state",
+        "app.services.profile_maintenance.validate_active_load": "test_profile_update_preserves_other_players_and_trip_snapshots",
+        "app.services.profile_maintenance.apply_vehicle_model": "test_maintenance_write_failure_rolls_back_and_retains_unselected",
+        "app.services.game.GameService.ensure_initial_state": "test_initialization_direct_failure_is_atomic",
+        "app.main.lifespan": "test_lifespan_cleans_up_partial_start_and_shutdown",
+    }
+)
+
+FUNCTION_TESTS["app.services.game.GameService._commit_dispatch"] = (
+    "test_dispatch_reprices_after_concurrent_profile_maintenance"
+)

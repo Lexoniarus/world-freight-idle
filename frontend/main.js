@@ -1,0 +1,10 @@
+import "maplibre-gl/dist/maplibre-gl.css";
+import "@fontsource/barlow/latin-600.css";
+import "@fontsource/barlow/latin-700.css";
+import "@fontsource/inter/latin-400.css";
+import "@fontsource/inter/latin-500.css";
+import "@fontsource/inter/latin-600.css";
+import "./style.css";
+import { bootstrap } from "./bootstrap.js";
+
+void bootstrap();

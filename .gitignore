@@ -1,0 +1,54 @@
+# Local environments and dependencies
+.venv/
+venv/
+node_modules/
+
+# Python, test and tool caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage*
+coverage.xml
+htmlcov/
+
+# Runtime databases, backups and exports (catalogue is the only exception)
+data/*
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+!data/world_freight_vehicle_catalog.sqlite3
+backups/
+*.bak
+*.dump
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Generated output and diagnostics
+static/dist/
+artifacts/
+test-results/
+playwright-report/
+blob-report/
+*.log
+*.tsbuildinfo
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo

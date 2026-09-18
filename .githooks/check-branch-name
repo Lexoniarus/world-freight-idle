@@ -1,0 +1,11 @@
+#!/bin/sh
+# Shared by the commit hook and CI. main is only a merge target.
+branch=${1-}
+case "$branch" in
+    feature/*|fix/*|refactor/*|docs/*|chore/*|test/*|hotfix/*) ;;
+    *) echo "Use feature/, fix/, refactor/, docs/, chore/, test/ or hotfix/; no direct main commits." >&2; exit 1 ;;
+esac
+slug=${branch#*/}
+case "$slug" in
+    ""|*[!a-z0-9-]*|-*|*-|*--*) echo "Use a non-empty lowercase kebab-case branch description." >&2; exit 1 ;;
+esac

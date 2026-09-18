@@ -1,0 +1,13 @@
+#!/bin/sh
+# Lightweight guard; the full quality gate remains required before integration.
+branch=$(git symbolic-ref --quiet --short HEAD) || {
+    echo "Create a named work branch before committing." >&2
+    exit 1
+}
+root=$(git rev-parse --show-toplevel) || exit 1
+sh "$root/.githooks/check-branch-name" "$branch" || exit 1
+if git diff --cached --name-only --diff-filter=ACMR -z |
+    git check-ignore --no-index --stdin -z >/dev/null; then
+    echo "Commit blocked: staged files match .gitignore. Remove them from the index without deleting local data." >&2
+    exit 1
+fi

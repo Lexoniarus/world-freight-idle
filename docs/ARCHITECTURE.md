@@ -1,0 +1,205 @@
+# Architektur
+
+## UI-Zielarchitektur
+
+UI First: Eine permanente MapLibre-Karte ist die Hauptansicht; Management
+öffnet Kontextpanels. M1 verwendet OSM-Rastertiles. Ein BasemapProvider
+liefert Style, URLs, Attribution und Zoomgrenzen; Satelliten folgen später.
+Native ES-Module unter frontend/ trennen State, Darstellung, Karte und
+Panels. Vite bündelt Bibliotheken, Worker und Schriften nach static/dist/.
+FastAPI liefert denselben Einstieg für alle bestehenden Produkt-URLs.
+History API erhält Deep Links und Zurück/Vorwärts ohne Karten-Neustart.
+
+RefreshScheduler plant Polls alle 10 s nur bei sichtbarer Anwendung;
+GameState bündelt überlappende Reads. Nach Mutationen wird ein frischer
+Stand geladen. LatestRequest verhindert
+veraltete Panel-/Quote-Antworten. Aus Serverzeit wird ein Client-Zeitoffset
+ermittelt. Die gemeinsame Kartenanimation nutzt vorberechnete Routendistanzen
+und unwrapped Längengrade. Gutschriften bleiben ausschließlich serverseitig.
+Basiskarte und GeoJSON-Overlayquellen sind getrennt; leere Firmen-/Depot-
+Layer sind Erweiterungspunkte, keine erfundenen Besitztümer.
+
+GET /api/v1/map/hubs verwendet MapLocationService, bestehende Geocoder und
+Caches. Pro Standort werden Koordinaten oder ein unavailable-Status geliefert.
+Keine künstlichen Ersatzkoordinaten. Kartenabrufe gehen direkt vom Browser
+zum Tile-Anbieter, ohne Spiel-Header/Credentials. Referrer-Policy ist
+strict-origin-when-cross-origin. Öffentliche Attribution bleibt sichtbar.
+
+## Mehrspieler-Erweiterung
+
+`main.py` ist der ausführbare Einstiegspunkt; `app/main.py` ist die FastAPI-
+Composition-Root. `AuthService`/`PasswordHasher` und `AccountRepository`
+verwalten Konten/Sitzungen. `FleetService` kapselt den Fahrzeugkauf.
+`get_current_user` authentifiziert; `build_player_service` erzeugt den
+Spielservice mit eigenem KV-Namensraum und gemeinsamem Provider-Limiter.
+
+Transporte sind eine Liste `active_trips`. Abrechnung erfolgt bei Zugriff
+anhand serverseitiger Unix-Zeit; es ist kein dauerhaft laufender Timer nötig.
+Die Rangliste berücksichtigt fällige Offline-Transporte ohne Schreibzugriff.
+Transaktionsgrenzen und Migrationsentscheidung: ADR 0003.
+
+## Ziel
+
+Die Architektur trennt Produktoberfläche, HTTP-Contracts, Game-Orchestrierung, Domain-Logik, Persistenz und externe Provider. Kein Layer darf Abkürzungen durch einen anderen Layer nehmen.
+
+```text
+Browser Pages
+    │
+    ▼
+/api/v1/*
+    │
+    ▼
+GameService  ─────► MarketGenerator
+    │              PricingService
+    │
+    ├────► Geocoder Port ─────► NominatimGeocoder ─► Nominatim / OSM
+    │
+    ├────► TruckRouter Port ──► ValhallaTruckRouter ► Valhalla / OSM
+    │
+    └────► SqliteStore ───────► SQLite
+```
+
+## Modulgrenzen
+
+### `app/api/v1`
+
+Öffentliche HTTP-Schnittstelle. Verantwortlich für Request/Response, Statuscodes und Versionierung. Keine Game-Regeln.
+
+### `app/services`
+
+Anwendungslogik. `GameService` orchestriert, `MarketGenerator` generiert, `PricingService` kalkuliert. Providerdetails bleiben außerhalb.
+
+### `app/providers`
+
+Anti-Corruption-Layer zu externen Diensten. Providerantworten werden in interne Domainmodelle normalisiert.
+
+### `app/repositories`
+
+Persistenz und Caches. Keine Game-Regeln.
+
+### `app/domain`
+
+Provider- und Framework-unabhängige Datenmodelle.
+
+### `frontend/api.js`
+
+`GameApiClient` ist der einzige HTTP-Zugang zu Spielressourcen. Er setzt
+Same-Origin-Credentials und CSRF-Header, lehnt Weiterleitungen ab und bricht
+beim Beenden alle offenen Anfragen ab. MapLibre lädt Basiskarten separat.
+
+### Frontend-Komponenten
+
+`main.js` importiert Assets und startet `bootstrap.js`. Dort werden die
+Komponenten und ihre externen Abhängigkeiten verbunden. `GameApplication`
+koordiniert Start, Navigation, Logout und Aufräumen.
+
+- `BrowserRouter`: History API und interne Navigation.
+- `GameState`: vollständige Serversnapshots, Zeitoffset und Abfragebündelung.
+- `GameActions`: benannte Use Cases für Quote, Kauf, Dispatch und Marktwechsel.
+- `GameSync`/`RefreshScheduler`: HUD-Synchronisierung und sichtbarkeitsabhängige Timer.
+- `PanelController`: Auswahl, Zusatzdaten, veraltete Antworten und Fokus.
+- `views/`: eigenständige DOM-Darstellung je Spielfunktion, ohne HTTP-Zugriff.
+- `MobileSheet`, `InputController`, `Notifications`: klar begrenzte UI-Zustände.
+- `WorldMap`: Renderer-Lebenszyklus und Karteninteraktionen. `OverlayData`
+  bereitet GeoJSON auf, `layers.js` definiert Darstellung, `MapCamera` führt
+  die Kamera, `VehicleAnimator` besitzt genau eine Animationsschleife.
+
+Reine Geometrie-, Zeit- und Formatfunktionen bleiben funktional. Der alte
+D3-/Mehrseiten-Frontendbestand wurde entfernt; `static/` enthält nur die
+gebauten Dateien und einen Verzeichnisplatzhalter. Produkt-URLs bleiben erhalten.
+
+## Single Responsibility
+
+- API-Funktion: genau ein Endpoint
+- Provider-Methode: genau einen Providerprozess kapseln
+- Service-Methode: genau einen Use Case orchestrieren
+- Repository-Methode: genau eine Persistenzoperation
+- Format-/Template-Funktion: genau eine Darstellungsaufgabe
+
+## Abhängigkeiten
+
+Abhängigkeiten zeigen nach innen. Services kennen Ports, nicht HTTP-Implementierungen. Die konkrete Verdrahtung erfolgt ausschließlich in `bootstrap.py` und `main.py`.
+
+## Provider-Fehler und Verdrahtung
+
+Geocoder-/Router-Ports sowie deren Fehler liegen unter `app/domain`.
+Adapter normalisieren HTTP-, Verbindungs- und fehlerhafte Antwortdaten zu
+`GeocodingError`/`RoutingError`. Services importieren keine konkreten
+Provider und kein `httpx`. APIs übersetzen die Portfehler weiterhin nach 502.
+Die Standortprojektion erhält bei Teilfehlern ihren `unavailable`-Status.
+
+Fleet- und Map-Services werden über Builder in `app/bootstrap.py` erzeugt;
+FastAPI-Dependencies lösen sie auf. Spielregeln, Transaktionsgrenzen,
+Persistenzformat und öffentliche API-v1-Verträge bleiben unverändert.
+Der vorhandene GameService bleibt der Orchestrator des aktuellen Core;
+ein umfassender Backend-Domänenausbau ist keine Leistung dieser UI-Phase.
+
+## Fahrzeugkatalog und Kalkulation
+
+`VehicleCatalogue` ist ein Domain-Port; `SqliteVehicleCatalogue` liest die
+separate Referenzdatei mit `mode=ro` und `PRAGMA foreign_keys=ON`. Verbindungen
+werden pro Lesen geschlossen. Composition Roots injizieren den Katalog in
+FleetService; das Repository validiert Daten, der Service prüft Kaufregeln.
+Fehlerhafte Kataloge werden protokolliert und als HTTP 503 abgebildet.
+Die Katalogdatei wird gezielt mit ausgeliefert; Spielstände bleiben ausgeschlossen.
+
+Neue Fahrzeuge speichern Name, Modell-ID, Nutzlast und Kilometerkosten beim
+Kauf. PricingService berechnet `round(80 + distance_km * cost_per_km)`;
+Alt-/Startfahrzeuge ohne Kostensatz verwenden weiterhin 0,62 €/km. Die Erlösformel
+bleibt unverändert. Transport-Snapshots bleiben nach ihrem Start unverändert.
+Quotes können an eine Fahrzeug-ID gebunden sein; Dispatch kalkuliert selbst
+und validiert nach dem Provider-Await erneut innerhalb der Transaktion.
+
+Auch bei verlorenen Schreibantworten wartet die Synchronisierung ältere Polls
+ab und liest anschließend frisch. Routen werden als zusammenhängende Geometrie
+in die nächste Weltkopie verschoben; Flottenpunkte nutzen das kleinste kreisförmige
+Längengradintervall. Ungültige Provider-Cachewerte werden nicht verwendet;
+gültige neue Providerantworten können sie ersetzen. Es gibt keine erfundenen Routen.
+
+
+### Fahrzeugbilder und Startausstattung
+
+Der Composition Root injiziert den VehicleCatalogue-Port auch in GameService.
+Die gemeinsame Servicevorlage erzeugt keinen globalen Spielstand; erst der
+benutzerbezogene Aufbau initialisiert atomar die fehlenden Werte. Starter und
+Kauf verwenden denselben Snapshot-Builder. Ein Katalogfehler lässt keine halbe
+Startflotte zurück und wird beim authentifizierten Spielabruf als 503 übersetzt.
+Bereits vorhandene Fahrzeuge werden ohne Katalogzugriff initialisiert.
+
+SqliteVehicleCatalogue projiziert verifizierte Bild-/Quellen-/Lizenzdatensätze
+auf VehicleImage. present_vehicles ergänzt ausschließlich Präsentationsdaten;
+Spielwerte werden dadurch nicht verändert. Views binden DOM-Bildattribute,
+InputController behandelt Load/Error und räumt seine Listener auf. Browser-
+Bilderabrufe sind von GameApiClient getrennt; keine Backend-Header, Credentials
+oder Referrer an die Bildquelle. Fehlerhafte optionale Bilder sperren keine Käufe.
+
+Panelaktualisierungen gleichen den Inhalt optionaler Medien separat ab.
+Unveränderte Fotos behalten ihre DOM-Knoten und ihren Lade-/Fehlerzustand,
+auch wenn Status oder andere Panelinhalte wechseln. Neue URLs oder geänderte
+Bildnachweise erzeugen neue Knoten. Das verhindert Flackern durch Polling.
+
+
+### Reparatur der Standards-Grenzen (18.09.2026)
+
+GameService.ensure_initial_state öffnet die Transaktion selbst und delegiert
+an _ensure_initial_state. Der Spieler-Service-Builder verdrahtet und ruft die
+öffentliche Methode auf; er muss deren Atomarität nicht mehr herstellen.
+Reset umfasst Löschen und Neuinitialisierung weiterhin in einer Transaktion.
+
+Der FastAPI-Lifespan registriert beide HTTP-Clients unmittelbar nach Erstellung
+in einem AsyncExitStack. Client-/Service-/Accountaufbau und yield liegen innerhalb
+dieses Scopes. Fehler beim Aufbau oder Schließen lassen weitere registrierte
+Ressourcen nicht aus dem Cleanup fallen; Exceptions werden weitergegeben.
+
+ProfileMaintenanceService erhält VehicleCatalogue, AccountRepository und eine
+benutzerbezogene Store-Factory vom Composition Root. Er orchestriert Auswahl,
+Validierung und atomare Speicherung. Modellübernahme und Nutzlastprüfung sind
+separate Funktionen; sie verändern keine Fahrzeug-IDs, Standorte oder laufenden
+Transport-Snapshots. Das CLI enthält weder SQL noch Spielregeln. Der SQLite-
+Backupadapter gehört zu app/repositories und bewahrt auch committed WAL-Daten.
+
+Während einer Routenabfrage kann eine ausdrücklich angeforderte Profilpflege
+das Modell ändern. _commit_dispatch kalkuliert deshalb nach dem Await innerhalb
+der Transaktion mit dem dann gültigen Fahrzeugkostensatz neu. Guthabenprüfung,
+Abbuchung und neuer Transport verwenden dieselben Kosten. Bereits gestartete
+Transporte behalten ihre gespeicherten Werte.

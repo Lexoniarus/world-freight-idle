@@ -1,0 +1,72 @@
+"""Contract market endpoints."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.api.v1.dependencies import get_game_service
+from app.api.v1.schemas import DispatchRequest, QuoteRequest
+from app.domain.errors import GeocodingError, RoutingError
+from app.services.game import GameService
+
+router = APIRouter(prefix="/contracts", tags=["contracts"])
+
+
+@router.get("")
+def list_contracts(game: GameService = Depends(get_game_service)) -> dict:
+    """Return all currently available market contracts."""
+    return {"contracts": game.list_contracts()}
+
+
+@router.get("/{contract_id}")
+def get_contract(
+    contract_id: str,
+    game: GameService = Depends(get_game_service),
+) -> dict:
+    """Return one contract including real endpoint addresses."""
+    try:
+        return game.get_contract(contract_id)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.post("/{contract_id}/quote")
+async def quote_contract(
+    contract_id: str,
+    body: QuoteRequest | None = None,
+    game: GameService = Depends(get_game_service),
+) -> dict:
+    """Resolve addresses and return a provider-backed truck quote."""
+    try:
+        return await game.quote_contract(
+            contract_id, body.vehicle_id if body else None
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except KeyError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except (GeocodingError, RoutingError) as exc:
+        raise HTTPException(502, str(exc)) from exc
+
+
+@router.post("/{contract_id}/accept")
+async def accept_contract(
+    contract_id: str,
+    body: DispatchRequest,
+    game: GameService = Depends(get_game_service),
+) -> dict:
+    """Accept and dispatch one contract with a selected vehicle."""
+    try:
+        return await game.dispatch(contract_id, body.vehicle_id)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except (GeocodingError, RoutingError) as exc:
+        raise HTTPException(502, str(exc)) from exc
+
+
+@router.post("/refresh")
+def refresh_contracts(game: GameService = Depends(get_game_service)) -> dict:
+    """Force regeneration of the fictional contract market."""
+    return {"contracts": game.refresh_market(force=True)}

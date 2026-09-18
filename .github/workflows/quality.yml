@@ -1,0 +1,41 @@
+name: Quality
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  branch-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check work branch and PR target
+        env:
+          WORK_BRANCH: ${{ github.head_ref || github.ref_name }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          if [ "$REF_TYPE" = "tag" ]; then exit 0; fi
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            test "$BASE_BRANCH" = "main"
+          elif [ "$WORK_BRANCH" = "main" ]; then
+            exit 0
+          fi
+          sh .githooks/check-branch-name "$WORK_BRANCH"
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: pip install -r requirements-dev.txt
+      - run: npm ci
+      - run: make quality
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+        env:
+          PLAYWRIGHT_CHANNEL: chromium
+          PYTHON_EXECUTABLE: python

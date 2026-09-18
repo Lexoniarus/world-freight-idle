@@ -1,0 +1,30 @@
+[project]
+name = "world-freight-idle"
+version = "0.2.0"
+description = "Server-authoritative multiplayer freight idle game"
+requires-python = ">=3.11"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 79
+extend-exclude = [".venv", "data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["E501"]
+
+[tool.coverage.run]
+source = ["app"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+
+[tool.mypy]
+python_version = "3.11"
+files = ["app", "main.py", "scripts/update_test_profile.py"]
+check_untyped_defs = true
+disallow_untyped_defs = true
+warn_unused_ignores = true
