@@ -14,26 +14,40 @@ const VEHICLE_MAP_ASSETS = Object.freeze({
 export const DEFAULT_VEHICLE_COLOR = "#f6bc43";
 const SAFE_COLOR = /^#[0-9a-f]{6}$/i;
 
+/** Normalize untrusted map color input to one supported hex value.
+ * @param {string | undefined} color
+ * @returns {string}
+ */
+export function normalizeVehicleColor(color) {
+  return color && SAFE_COLOR.test(color) ? color.toLowerCase() : DEFAULT_VEHICLE_COLOR;
+}
+
 /** Resolve a database vehicle model to its shipped map asset.
  * @param {string | undefined} modelId
- * @returns {string | null} */
+ * @returns {string | null}
+ */
 export function vehicleAssetPath(modelId) {
   return modelId ? (VEHICLE_MAP_ASSETS[modelId] ?? null) : null;
 }
 
-/** Return the MapLibre image identifier for one supported vehicle model.
+/** Return the MapLibre image identifier for one model/player color pair.
  * @param {string | undefined} modelId
- * @returns {string} */
-export function vehicleIconId(modelId) {
-  return vehicleAssetPath(modelId) ? `vehicle-${modelId}` : "";
+ * @param {string | undefined} color
+ * @returns {string}
+ */
+export function vehicleIconId(modelId, color = DEFAULT_VEHICLE_COLOR) {
+  if (!vehicleAssetPath(modelId)) return "";
+  const suffix = normalizeVehicleColor(color).slice(1);
+  return `vehicle-${modelId}-${suffix}`;
 }
 
 /** Replace the generated SVG paint variable with a validated player color.
  * @param {string} svgText
  * @param {string} color
- * @returns {string} */
+ * @returns {string}
+ */
 export function colorizeVehicleSvg(svgText, color) {
-  const safeColor = SAFE_COLOR.test(color) ? color : DEFAULT_VEHICLE_COLOR;
+  const safeColor = normalizeVehicleColor(color);
   return svgText.replace(/--vehicle-color\s*:\s*#[0-9a-f]{6}/i, `--vehicle-color:${safeColor}`);
 }
 
@@ -41,7 +55,8 @@ export function colorizeVehicleSvg(svgText, color) {
  * Dependencies are injectable so the rendering boundary remains unit-testable.
  * @param {string} svgText
  * @param {{height?: number, imageFactory?: () => HTMLImageElement, canvasFactory?: () => HTMLCanvasElement, createObjectURL?: (blob: Blob) => string, revokeObjectURL?: (url: string) => void}} [options]
- * @returns {Promise<ImageData>} */
+ * @returns {Promise<ImageData>}
+ */
 export async function rasterizeVehicleSvg(svgText, options = {}) {
   const targetHeight = options.height ?? 128;
   const imageFactory = options.imageFactory ?? (() => new Image());
@@ -68,29 +83,79 @@ export async function rasterizeVehicleSvg(svgText, options = {}) {
   }
 }
 
-/** Register all shipped map sprites once and return the models that loaded successfully.
- * @param {import("maplibre-gl").Map} map
- * @param {(path: string) => Promise<string>} loadAsset
- * @param {{color?: string, rasterize?: typeof rasterizeVehicleSvg}} [options]
- * @returns {Promise<Set<string>>} */
-export async function registerVehicleIcons(map, loadAsset, options = {}) {
-  const color = options.color ?? DEFAULT_VEHICLE_COLOR;
-  const rasterize = options.rasterize ?? rasterizeVehicleSvg;
-  const registered = new Set();
-  for (const [modelId, path] of Object.entries(VEHICLE_MAP_ASSETS)) {
-    const imageId = vehicleIconId(modelId);
-    if (map.hasImage(imageId)) {
-      registered.add(modelId);
-      continue;
+/** Cache source SVGs and colored MapLibre images across polling updates. */
+export class VehicleIconRegistry {
+  /** @param {import("maplibre-gl").Map} map
+   * @param {(path: string) => Promise<string>} loadAsset
+   * @param {{rasterize?: typeof rasterizeVehicleSvg}} [options]
+   */
+  constructor(map, loadAsset, options = {}) {
+    this.map = map;
+    this.loadAsset = loadAsset;
+    this.rasterize = options.rasterize ?? rasterizeVehicleSvg;
+    /** @type {Map<string, Promise<string>>} */
+    this.sources = new Map();
+    /** @type {Map<string, Promise<void>>} */
+    this.pending = new Map();
+    this.registered = new Set();
+  }
+
+  /** Ensure every visible model/color combination exists in the sprite atlas.
+   * @param {import("../types.js").PublicTransport[]} transports
+   * @returns {Promise<Set<string>>}
+   */
+  async ensure(transports) {
+    const requests = new Map();
+    for (const transport of transports) {
+      const path = vehicleAssetPath(transport.model_id);
+      if (!path) continue;
+      const color = normalizeVehicleColor(transport.player_color);
+      requests.set(vehicleIconId(transport.model_id, color), {
+        modelId: transport.model_id,
+        color,
+        path,
+      });
     }
+    await Promise.all([...requests.values()].map((request) => this.register(request)));
+    return new Set(this.registered);
+  }
+
+  /** Register one unique vehicle model/color pair exactly once.
+   * @param {{modelId: string, color: string, path: string}} request
+   * @returns {Promise<void>}
+   */
+  async register(request) {
+    const imageId = vehicleIconId(request.modelId, request.color);
+    if (this.map.hasImage(imageId)) {
+      this.registered.add(imageId);
+      return;
+    }
+    const existing = this.pending.get(imageId);
+    if (existing) return existing;
+    const task = this.loadAndRegister(imageId, request).finally(() => {
+      this.pending.delete(imageId);
+    });
+    this.pending.set(imageId, task);
+    return task;
+  }
+
+  /** Fetch an SVG source once, recolor it, rasterize it and add it to MapLibre.
+   * @param {string} imageId
+   * @param {{modelId: string, color: string, path: string}} request
+   */
+  async loadAndRegister(imageId, request) {
     try {
-      const source = await loadAsset(path);
-      const image = await rasterize(colorizeVehicleSvg(source, color));
-      map.addImage(imageId, image, { pixelRatio: 2 });
-      registered.add(modelId);
+      let sourcePromise = this.sources.get(request.path);
+      if (!sourcePromise) {
+        sourcePromise = this.loadAsset(request.path);
+        this.sources.set(request.path, sourcePromise);
+      }
+      const source = await sourcePromise;
+      const image = await this.rasterize(colorizeVehicleSvg(source, request.color));
+      if (!this.map.hasImage(imageId)) this.map.addImage(imageId, image, { pixelRatio: 2 });
+      this.registered.add(imageId);
     } catch (error) {
-      console.warn(`Vehicle map asset unavailable: ${modelId}`, error);
+      console.warn(`Vehicle map asset unavailable: ${request.modelId} ${request.color}`, error);
     }
   }
-  return registered;
 }

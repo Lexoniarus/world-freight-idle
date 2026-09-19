@@ -2,9 +2,14 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.v1.dependencies import get_map_service
+from app.api.v1.dependencies import (
+    get_current_user,
+    get_map_service,
+    get_multiplayer_map_service,
+)
 from app.domain.world import FacilityQuery
 from app.services.map_locations import MapLocationService
+from app.services.multiplayer_map import MultiplayerMapService
 
 router = APIRouter(prefix="/map", tags=["map"])
 
@@ -28,3 +33,12 @@ def list_map_facilities(
     except ValueError as exc:
         raise HTTPException(422, "Ungültige Bounding Box.") from exc
     return service.list_facilities(query)
+
+
+@router.get("/traffic")
+def list_map_traffic(
+    user: dict = Depends(get_current_user),
+    service: MultiplayerMapService = Depends(get_multiplayer_map_service),
+) -> dict:
+    """Return the minimal live transport projection visible to all players."""
+    return {"transports": service.list_traffic(user["id"])}

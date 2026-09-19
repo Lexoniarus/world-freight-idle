@@ -32,15 +32,29 @@ export class GameState extends EventTarget {
   async loadSnapshot() {
     const started = Date.now() / 1000;
     // Dashboard reconciles arrivals before the dependent fleet and market reads.
-    const dashboard = await this.request("/dashboard", { signal: this.lifetime.signal });
+    const dashboard = await this.request("/dashboard", {
+      signal: this.lifetime.signal,
+    });
     this.offset = dashboard.server_time - (started + Date.now() / 1000) / 2;
-    const [fleet, contracts] = await Promise.all([
+    const trafficRequest = this.request("/map/traffic", {
+      signal: this.lifetime.signal,
+    }).catch((error) => {
+      if (error.name === "AbortError") throw error;
+      return { transports: this.data?.traffic ?? [] };
+    });
+    const [fleet, contracts, traffic] = await Promise.all([
       this.request("/fleet", { signal: this.lifetime.signal }),
       this.request("/contracts", { signal: this.lifetime.signal }),
+      trafficRequest,
     ]);
     if (this.disposed) return this.data;
     const previous = this.data;
-    this.data = { ...dashboard, vehicles: fleet.vehicles, contracts: contracts.contracts };
+    this.data = {
+      ...dashboard,
+      vehicles: fleet.vehicles,
+      contracts: contracts.contracts,
+      traffic: traffic.transports,
+    };
     this.dispatchEvent(new CustomEvent("change", { detail: { previous, current: this.data } }));
     return this.data;
   }
@@ -74,6 +88,9 @@ export class LatestRequest {
     this.controller?.abort();
     this.controller = new AbortController();
     const version = ++this.version;
-    return { signal: this.controller.signal, isCurrent: () => this.version === version };
+    return {
+      signal: this.controller.signal,
+      isCurrent: () => this.version === version,
+    };
   }
 }

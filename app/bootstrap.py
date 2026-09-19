@@ -10,6 +10,7 @@ import httpx
 from app.config import Settings
 from app.providers.routing import ValhallaTruckRouter
 from app.repositories.accounts import AccountRepository
+from app.repositories.multiplayer_map import MultiplayerMapRepository
 from app.repositories.sqlite_store import SqliteStore
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.repositories.world_catalogue import SqliteWorldCatalogue
@@ -21,6 +22,7 @@ from app.services.fleet import FleetService
 from app.services.game import GameService
 from app.services.map_locations import MapLocationService
 from app.services.market import MarketGenerator
+from app.services.multiplayer_map import MultiplayerMapService
 from app.services.pricing import PricingService
 from app.services.profile_maintenance import ProfileMaintenanceService
 from app.services.world_maintenance import WorldMaintenanceService
@@ -89,6 +91,11 @@ def build_fleet_service(game: GameService, settings: Settings) -> FleetService:
 def build_map_service(game: GameService) -> MapLocationService:
     """Project real catalogue locations without a network lookup."""
     return MapLocationService(game.world)
+
+
+def build_multiplayer_map_service(game: GameService) -> MultiplayerMapService:
+    """Build the read-only cross-player traffic projection."""
+    return MultiplayerMapService(MultiplayerMapRepository(game.store))
 
 
 def build_profile_maintenance_service(

@@ -5,7 +5,7 @@ import { OverlayData, previewFeatures, routeGeometry } from "./overlay-data.js";
 import { addOverlayLayers, updateHubLabel } from "./layers.js";
 import { MapCamera } from "./camera.js";
 import { VehicleAnimator } from "./vehicle-animator.js";
-import { DEFAULT_VEHICLE_COLOR, registerVehicleIcons } from "./vehicle-assets.js";
+import { VehicleIconRegistry } from "./vehicle-assets.js";
 
 const HIT_LAYERS = [
   "vehicles",
@@ -27,7 +27,6 @@ export class WorldMap {
     this.navigate = navigate;
     this.notify = notify;
     this.now = now;
-    this.loadAsset = loadAsset;
     this.reducedMotion = reducedMotion;
     this.overlays = new OverlayData();
     this.selected = "";
@@ -49,10 +48,11 @@ export class WorldMap {
       dragRotate: false,
       pitchWithRotate: false,
     });
+    this.vehicleIcons = new VehicleIconRegistry(this.map, loadAsset);
     this.camera = new MapCamera(this.map, reducedMotion, viewport);
     this.animator = new VehicleAnimator({
       draw: () => this.setSourceData("vehicles", this.overlays.vehicleFeatures(this.now())),
-      isActive: () => this.overlays.state.transports.length > 0,
+      isActive: () => (this.overlays.state.traffic ?? []).length > 0,
       isHidden,
       reducedMotion,
     });
@@ -71,13 +71,7 @@ export class WorldMap {
           "map",
         );
     });
-    this.map.on("load", () => {
-      void this.initializeOverlays().catch((error) => {
-        console.warn("Vehicle map assets:", error?.message);
-        if (!this.disposed)
-          this.notify("Fahrzeuggrafiken konnten nicht vollständig geladen werden.", "map");
-      });
-    });
+    this.map.on("load", () => this.initializeOverlays());
     this.map.on("click", (event) => {
       void this.selectFeature(event).catch(() => {
         if (!this.disposed) this.notify("Kartenobjekt konnte nicht ausgewählt werden.", "map");
@@ -93,13 +87,8 @@ export class WorldMap {
     });
   }
   /** Initialize sources after the basemap is ready and replay pending state. */
-  async initializeOverlays() {
+  initializeOverlays() {
     if (this.disposed) return;
-    const vehicleModels = await registerVehicleIcons(this.map, this.loadAsset, {
-      color: DEFAULT_VEHICLE_COLOR,
-    });
-    if (this.disposed) return;
-    this.overlays.setVehicleModels(vehicleModels);
     addOverlayLayers(this.map);
     this.ready = true;
     this.map.getContainer().setAttribute("aria-busy", "false");
@@ -134,6 +123,16 @@ export class WorldMap {
     );
     this.setSourceData("routes", this.overlays.routeFeatures());
     this.setSourceData("vehicles", this.overlays.vehicleFeatures(this.now()));
+    void this.syncVehicleIcons(state.traffic ?? []);
+  }
+  /** Ensure colored sprites exist for the latest public traffic snapshot.
+   * @param {import('../types.js').PublicTransport[]} traffic
+   */
+  async syncVehicleIcons(traffic) {
+    const imageIds = await this.vehicleIcons.ensure(traffic);
+    if (this.disposed) return;
+    this.overlays.setVehicleIcons(imageIds);
+    this.setSourceData("vehicles", this.overlays.vehicleFeatures(this.now()));
   }
   /** Update one registered GeoJSON source.
    * @param {string} name
@@ -160,9 +159,15 @@ export class WorldMap {
         zoom,
         duration: this.reducedMotion() ? 0 : 500,
       });
-    } else if (["vehicles", "vehicles-fallback"].includes(feature.layer.id))
-      this.navigate("/transports/" + encodeURIComponent(feature.properties.id));
-    else
+    } else if (["vehicles", "vehicles-fallback"].includes(feature.layer.id)) {
+      if (feature.properties.isOwn)
+        this.navigate("/transports/" + encodeURIComponent(feature.properties.id));
+      else
+        this.notify(
+          `Fahrzeug von ${feature.properties.username || "einem anderen Spieler"} ist unterwegs.`,
+          "map",
+        );
+    } else
       this.navigate(
         (feature.layer.id === "parked" ? "/fleet" : "/contracts") +
           "?hub=" +
@@ -196,7 +201,7 @@ export class WorldMap {
   focusRoute(route) {
     this.camera.fitRoute(unwrapRoute(routeGeometry(route).coordinates));
   }
-  /** Frame all known parked and moving vehicles. */
+  /** Frame the authenticated player's parked and moving vehicles. */
   focusFleet() {
     const points = this.overlays.fleetCoordinates(this.now());
     if (points.length) this.camera.fitCoordinates(points);

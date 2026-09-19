@@ -151,3 +151,12 @@ Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
 Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
 erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
 bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
+
+## Abnahme – gemeinsamer Live-Verkehr
+
+- [x] Aktive Transporte anderer angemeldeter Spieler sind auf derselben Karte sichtbar.
+- [x] Private Wirtschafts- und Vertragsdaten bleiben aus der öffentlichen Projektion ausgeschlossen.
+- [x] Spielerfarben sind stabil und unterscheiden Fahrzeughalter visuell.
+- [x] Brand-Free-Sprites werden pro Modell/Farbe wiederverwendet; fehlende Modelle behalten einen farbigen Fallback.
+- [x] Eigene Routenlinien bleiben privat; fremde Fahrzeugklicks öffnen keine privaten Transportdetails.
+- [x] Ausgeführte/abgelaufene Transporte werden nicht mehr als Live-Verkehr projiziert.

@@ -114,3 +114,11 @@ Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
 Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
 erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
 bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
+
+### Gemeinsamer Live-Verkehr
+
+Für M4 vorgezogen ist nun eine geteilte, read-only Verkehrssicht auf aktive
+Straßentransporte vorhanden. Die eigentlichen Spielstände bleiben pro Account
+isoliert. Spielerfarben werden deterministisch aus der Account-ID erzeugt; eine
+spätere frei wählbare Unternehmensfarbe kann dieselbe Darstellungsgrenze nutzen.
+Ein gemeinsamer knapper Auftragsmarkt und Marktanteilsmechaniken bleiben offen.

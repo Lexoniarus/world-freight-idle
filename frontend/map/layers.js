@@ -102,7 +102,7 @@ export function addOverlayLayers(map) {
     filter: ["==", ["get", "hasIcon"], false],
     paint: {
       "circle-radius": 9,
-      "circle-color": "#f6bc43",
+      "circle-color": ["coalesce", ["get", "playerColor"], "#f6bc43"],
       "circle-stroke-width": 3,
       "circle-stroke-color": "#102b3c",
     },

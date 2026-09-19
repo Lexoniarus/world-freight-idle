@@ -1,13 +1,16 @@
+import "./test-dom.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { GameApiClient } from "./api.js";
 import { bearingBetween, prepareRoute, routePose } from "./geometry.js";
+import { GameState } from "./state.js";
 import { OverlayData } from "./map/overlay-data.js";
 import {
   DEFAULT_VEHICLE_COLOR,
+  VehicleIconRegistry,
   colorizeVehicleSvg,
+  normalizeVehicleColor,
   rasterizeVehicleSvg,
-  registerVehicleIcons,
   vehicleAssetPath,
   vehicleIconId,
 } from "./map/vehicle-assets.js";
@@ -29,11 +32,12 @@ test("vehicle bearings follow compass orientation and route interpolation", () =
   assert.equal(routePose(prepareRoute([]), 0.5), null);
 });
 
-test("vehicle asset registry maps catalogue model ids and preserves a fallback", () => {
+test("vehicle asset registry maps model and player color to one image id", () => {
   assert.equal(vehicleAssetPath("iveco_sway_500"), "/assets/iveco_s_way_500_xc13_map.svg");
-  assert.equal(vehicleIconId("iveco_sway_500"), "vehicle-iveco_sway_500");
+  assert.equal(vehicleIconId("iveco_sway_500", "#E45756"), "vehicle-iveco_sway_500-e45756");
+  assert.equal(normalizeVehicleColor("red"), DEFAULT_VEHICLE_COLOR);
   assert.equal(vehicleAssetPath("iveco_daily_35s18"), null);
-  assert.equal(vehicleIconId("iveco_daily_35s18"), "");
+  assert.equal(vehicleIconId("iveco_daily_35s18", "#123456"), "");
 });
 
 test("vehicle svg color replacement validates the requested paint", () => {
@@ -51,7 +55,11 @@ test("vehicle svg rasterizer scales the atlas image and releases its blob url", 
     getContext: () => ({
       clearRect() {},
       drawImage() {},
-      getImageData: (_x, _y, width, height) => ({ width, height, data: new Uint8ClampedArray(4) }),
+      getImageData: (_x, _y, width, height) => ({
+        width,
+        height,
+        data: new Uint8ClampedArray(4),
+      }),
     }),
   };
   const result = await rasterizeVehicleSvg("<svg/>", {
@@ -69,29 +77,55 @@ test("vehicle svg rasterizer scales the atlas image and releases its blob url", 
   assert.equal(revoked, "blob:test");
 });
 
-test("vehicle icon registration records only successfully loaded map sprites", async () => {
+test("colored vehicle icon registry reuses one SVG source across player colors", async () => {
   const images = new Map();
+  let loads = 0;
   const map = {
     hasImage: (id) => images.has(id),
     addImage: (id, image) => images.set(id, image),
   };
-  const registered = await registerVehicleIcons(
+  const registry = new VehicleIconRegistry(
     map,
-    async (path) => {
-      if (path.includes("scania")) throw new Error("missing");
+    async () => {
+      loads++;
       return '<svg style="--vehicle-color:#ffffff"></svg>';
     },
-    { rasterize: async () => ({ width: 1, height: 1, data: new Uint8ClampedArray(4) }) },
+    {
+      rasterize: async () => ({
+        width: 1,
+        height: 1,
+        data: new Uint8ClampedArray(4),
+      }),
+    },
   );
-  assert.equal(registered.has("iveco_sway_500"), true);
-  assert.equal(registered.has("scania_r460_gas"), false);
-  assert.equal(images.has("vehicle-iveco_sway_500"), true);
+  const registered = await registry.ensure([
+    {
+      model_id: "iveco_sway_500",
+      player_color: "#e45756",
+    },
+    {
+      model_id: "iveco_sway_500",
+      player_color: "#4c78a8",
+    },
+    {
+      model_id: "iveco_daily_35s18",
+      player_color: "#123456",
+    },
+  ]);
+  assert.equal(loads, 1);
+  assert.equal(registered.size, 2);
+  assert.equal(images.has("vehicle-iveco_sway_500-e45756"), true);
+  assert.equal(images.has("vehicle-iveco_sway_500-4c78a8"), true);
 });
 
-test("moving transport features use the owned model sprite and heading or fallback", () => {
-  const trip = {
-    id: "trip",
-    vehicle_id: "truck",
+test("shared traffic projects both players while private route lines stay private", () => {
+  const ownTrip = {
+    id: "own",
+    vehicle_id: "own-truck",
+    model_id: "iveco_sway_500",
+    username: "Alice",
+    player_color: "#e45756",
+    is_own: true,
     departed_at: 0,
     arrives_at: 10,
     route_geojson: {
@@ -101,26 +135,107 @@ test("moving transport features use the owned model sprite and heading or fallba
         [1, 0],
       ],
     },
-    origin: {},
-    destination: {},
+  };
+  const otherTrip = {
+    ...ownTrip,
+    id: "other",
+    vehicle_id: "other-truck",
+    username: "Bob",
+    player_color: "#4c78a8",
+    is_own: false,
+    route_geojson: {
+      type: "LineString",
+      coordinates: [
+        [0, 1],
+        [1, 1],
+      ],
+    },
   };
   const overlays = new OverlayData();
-  overlays.setVehicleModels(new Set(["iveco_sway_500"]));
+  overlays.setVehicleIcons(
+    new Set(["vehicle-iveco_sway_500-e45756", "vehicle-iveco_sway_500-4c78a8"]),
+  );
   overlays.update({
-    vehicles: [{ id: "truck", model_id: "iveco_sway_500" }],
+    vehicles: [],
     contracts: [],
-    transports: [trip],
+    transports: [
+      {
+        ...ownTrip,
+        origin: {},
+        destination: {},
+      },
+    ],
+    traffic: [ownTrip, otherTrip],
+  });
+  const features = overlays.vehicleFeatures(5).features;
+  assert.equal(features.length, 2);
+  assert.equal(features[0].properties.username, "Alice");
+  assert.equal(features[1].properties.username, "Bob");
+  assert.equal(features[0].properties.playerColor, "#e45756");
+  assert.equal(features[1].properties.playerColor, "#4c78a8");
+  assert.equal(features[0].properties.hasIcon, true);
+  assert.equal(features[1].properties.hasIcon, true);
+  assert.equal(overlays.routeFeatures().features.length, 1);
+  assert.deepEqual(overlays.fleetCoordinates(5), [[0.5, 0]]);
+});
+
+test("unsupported public vehicle models keep the player-colored fallback", () => {
+  const overlays = new OverlayData();
+  overlays.update({
+    vehicles: [],
+    contracts: [],
+    transports: [],
+    traffic: [
+      {
+        id: "daily",
+        vehicle_id: "daily-truck",
+        model_id: "iveco_daily_35s18",
+        username: "Alice",
+        player_color: "#123456",
+        is_own: true,
+        departed_at: 0,
+        arrives_at: 10,
+        route_geojson: {
+          type: "LineString",
+          coordinates: [
+            [0, 0],
+            [1, 0],
+          ],
+        },
+      },
+    ],
   });
   const feature = overlays.vehicleFeatures(5).features[0];
-  assert.equal(feature.properties.hasIcon, true);
-  assert.equal(feature.properties.iconImage, "vehicle-iveco_sway_500");
-  assert.ok(Math.abs(feature.properties.bearing - 90) < 1e-6);
-  overlays.update({
-    vehicles: [{ id: "truck", model_id: "iveco_daily_35s18" }],
-    contracts: [],
-    transports: [trip],
+  assert.equal(feature.properties.hasIcon, false);
+  assert.equal(feature.properties.playerColor, "#123456");
+});
+
+test("game snapshots load shared traffic and preserve it on a map-only failure", async () => {
+  let trafficFails = false;
+  const requests = [];
+  const state = new GameState(async (path) => {
+    requests.push(path);
+    if (path === "/dashboard")
+      return {
+        server_time: Date.now() / 1000,
+        player: { cash: 1, completed: 0, reputation: 0 },
+        transports: [],
+      };
+    if (path === "/fleet") return { vehicles: [] };
+    if (path === "/contracts") return { contracts: [] };
+    if (path === "/map/traffic") {
+      if (trafficFails) throw new Error("map offline");
+      return { transports: [{ id: "public-trip" }] };
+    }
+    throw new Error(`unexpected ${path}`);
   });
-  assert.equal(overlays.vehicleFeatures(5).features[0].properties.hasIcon, false);
+  await state.refresh();
+  assert.deepEqual(state.data.traffic, [{ id: "public-trip" }]);
+  assert.equal(requests.includes("/map/traffic"), true);
+  trafficFails = true;
+  await state.refresh();
+  assert.deepEqual(state.data.traffic, [{ id: "public-trip" }]);
+  state.destroy();
 });
 
 test("asset requests remain same-origin and outside the versioned JSON API", async () => {
