@@ -7,16 +7,16 @@ Einzelne vorgezogene Funktionen bedeuten nicht, dass ein Meilenstein fertig ist.
 
 Vorhanden: Modulstruktur, OOP, PEP 8/Ruff, Tests, Function-Test-Manifest,
 Logging/Tracing, dokumentierte Provider-Ports, main.py und Quality Gate.
-CI-Konfiguration vorhanden; ein entfernter CI-Lauf ist noch nicht belegt.
+CI und PR-Workflow sind eingerichtet; konkrete Prüfläufe stehen im Qualitätsbericht.
 
 ## M1 – European Road Freight MVP (in Arbeit)
 
 Aktuelle Reihenfolge: **UI First**, danach Backend-Ausbau. Die Kartenphase
-verwendet den bestehenden spielbaren Kern. Firmen-/Depot-Domänenmodelle
+verwendet den bestehenden spielbaren Kern. Spielerunternehmen-/Depot-Domänenmodelle
 werden anschließend umgesetzt; die Gesamt-M1-Abnahme bleibt bis dahin offen.
 
 Vorhanden: Accounts und Sessions, getrennte Spielstände, Startkapital,
-Fahrzeuge und Kauf, reale Hub-Adressen, Nominatim/Valhalla-Truck-Routing,
+Fahrzeuge und Kauf, reale Facilities, gespeicherte Koordinaten und Valhalla-Truck-Routing,
 Aufträge, parallele Transporte, Tracking, Offline-Fortschritt und Reputation.
 
 Für vollständige Abnahme nach GOAL.md, Abschnitt 35, fehlen:
@@ -29,16 +29,17 @@ UI-Phase implementiert: MapLibre GL JS, OSM-Standardkarte, Pan/Zoom,
 World Wrapping, Kontextpanels, Fahrzeugshop, mehrere Transportmarker,
 mobile Sheets und Provider-Abstraktion. Satellitenbilder sind aus M1
 ausgenommen und folgen später als SatelliteTileProvider. Karten-POIs
-sind zunächst Basiskarteninhalt. Firmen und eigene Depots brauchen
+sind zunächst Basiskarteninhalt. Spielerunternehmen und eigene Depots brauchen
 weiterhin echte Spielzustände und werden nicht als vorhanden simuliert.
 
 Der aktuelle Hub ist ein öffentlicher Frachtstandort, kein gekauftes Depot.
 
 ## M2 – Real Economy Data
 
-Geplant: reale Unternehmensdaten, Branchen, Eurostat-Warenströme und
-regionale Wirtschaftsprofile. Firmen und Einzelaufträge bleiben bis dahin
-fiktiv. Später FAF und UN Comtrade für weitere Regionen.
+Vorgezogen: reale Referenzunternehmen, Facilities und dokumentierte Waren
+aus dem WorldCatalogue. Geplant bleiben Branchen-/Eurostat-Warenströme und
+regionale Wirtschaftsprofile. Geschäftsbeziehungen und Einzelaufträge bleiben
+simuliert. Später FAF und UN Comtrade für weitere Regionen.
 
 ## M3 – Fleet Management
 
@@ -102,3 +103,14 @@ Initialisierung atomar, HTTP-Clients über den gesamten Lifespan geschützt und
 Profilpflege in injizierten Services/Repositories. Die zusätzliche Race-Condition
 zwischen Profilpflege und Transportstart besitzt eine Regression. Dies ist
 Basisstabilisierung; es werden keine neuen Wirtschaftsmechaniken freigegeben.
+
+## WorldCatalogue-Integration
+
+Referenzdaten werden read-only ausgeliefert; UUIDs, Snapshots, explizite
+Bestandsmigration und Facility-API ersetzen Produktions-Seeds. Dies schließt
+M1 nicht ab. Details und verbleibende Datenlücken: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).
+
+Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
+Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
+erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
+bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).

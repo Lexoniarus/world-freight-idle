@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 
 from app.config import Settings
 from app.main import create_app, lifespan
-from tests.conftest import FakeGeocoder, FakeRouter
+from tests.conftest import FakeRouter
 
 temporary = TemporaryDirectory(prefix="world-freight-browser-")
 settings = replace(
@@ -21,7 +21,6 @@ app = create_app(settings)
 @asynccontextmanager
 async def browser_lifespan(application):
     async with lifespan(application):
-        application.state.game.geocoder = FakeGeocoder()
         application.state.game.router = FakeRouter()
         yield
     temporary.cleanup()

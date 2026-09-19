@@ -3,21 +3,19 @@
 from __future__ import annotations
 
 import random
+from pathlib import Path
 
 import httpx
 
 from app.config import Settings
-from app.providers.geocoding import NominatimGeocoder
 from app.providers.routing import ValhallaTruckRouter
 from app.repositories.accounts import AccountRepository
 from app.repositories.sqlite_store import SqliteStore
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
-from app.seed_data import (
-    CARGO_TYPES,
-    FICTIONAL_CONSIGNEES,
-    FICTIONAL_SHIPPERS,
-    HUB_BY_ID,
-    HUBS,
+from app.repositories.world_catalogue import SqliteWorldCatalogue
+from app.repositories.world_maintenance import WorldMaintenanceRepository
+from app.repositories.world_state_migration import (
+    WorldStateMigrationRepository,
 )
 from app.services.fleet import FleetService
 from app.services.game import GameService
@@ -25,45 +23,35 @@ from app.services.map_locations import MapLocationService
 from app.services.market import MarketGenerator
 from app.services.pricing import PricingService
 from app.services.profile_maintenance import ProfileMaintenanceService
+from app.services.world_maintenance import WorldMaintenanceService
+from app.services.world_state_migration import WorldStateMigrationService
+from app.simulation import LEGACY_CARGO_TYPES
 
 
 def build_game_service(
     settings: Settings,
-    geocoding_client: httpx.AsyncClient,
     routing_client: httpx.AsyncClient,
     rng_seed: int | None = None,
 ) -> GameService:
     """Assemble the application service graph from explicit dependencies."""
     store = SqliteStore(settings.db_path)
-    geocoder = NominatimGeocoder(
-        store=store,
-        client=geocoding_client,
-        base_url=settings.nominatim_url,
-        user_agent=settings.http_user_agent,
-    )
     router = ValhallaTruckRouter(
         store=store,
         client=routing_client,
         base_url=settings.valhalla_url,
         client_id=settings.valhalla_client_id,
     )
-    market = MarketGenerator(
-        hubs=HUBS,
-        cargo_types=CARGO_TYPES,
-        shipper_names=FICTIONAL_SHIPPERS,
-        consignee_names=FICTIONAL_CONSIGNEES,
-        rng=random.Random(rng_seed),
-    )
-    pricing = PricingService(CARGO_TYPES)
+    world = build_world_catalogue(settings)
+    catalogue = build_vehicle_catalogue(settings)
+    market = MarketGenerator(world, random.Random(rng_seed), catalogue)
+    pricing = PricingService(LEGACY_CARGO_TYPES)
     return GameService(
         store=store,
-        geocoder=geocoder,
+        world=world,
         router=router,
         market=market,
         pricing=pricing,
-        hubs_by_id=HUB_BY_ID,
-        hubs=HUBS,
-        catalogue=build_vehicle_catalogue(settings),
+        catalogue=catalogue,
         time_scale=settings.game_time_scale,
     )
 
@@ -72,12 +60,10 @@ def build_player_service(template: GameService, user_id: str) -> GameService:
     """Isolate game state while sharing rate-limited provider adapters."""
     game = GameService(
         store=SqliteStore(template.store.path, f"user:{user_id}:"),
-        geocoder=template.geocoder,
+        world=template.world,
         router=template.router,
         market=template.market,
         pricing=template.pricing,
-        hubs_by_id=template.hubs_by_id,
-        hubs=template.hubs,
         catalogue=template.catalogue,
         time_scale=template.time_scale,
     )
@@ -95,12 +81,14 @@ def build_vehicle_catalogue(settings: Settings) -> SqliteVehicleCatalogue:
 
 def build_fleet_service(game: GameService, settings: Settings) -> FleetService:
     """Assemble purchasing against the authenticated player's store."""
-    return FleetService(game.store, build_vehicle_catalogue(settings))
+    return FleetService(
+        game.store, build_vehicle_catalogue(settings), game.world
+    )
 
 
 def build_map_service(game: GameService) -> MapLocationService:
-    """Reuse the configured geocoder, cache and limiter for public hubs."""
-    return MapLocationService(game.geocoder, game.hubs)
+    """Project real catalogue locations without a network lookup."""
+    return MapLocationService(game.world)
 
 
 def build_profile_maintenance_service(
@@ -115,4 +103,29 @@ def build_profile_maintenance_service(
 
     return ProfileMaintenanceService(
         build_vehicle_catalogue(settings), accounts, player_store_factory
+    )
+
+
+def build_world_catalogue(settings: Settings) -> SqliteWorldCatalogue:
+    """Resolve the independent world reference database."""
+    return SqliteWorldCatalogue(
+        settings.world_catalogue_path
+        or settings.base_dir
+        / "data"
+        / "world_freight_company_facility_mvp.sqlite3"
+    )
+
+
+def build_world_maintenance_service(path: Path) -> WorldMaintenanceService:
+    """Assemble explicit offline maintenance, never from an endpoint."""
+    return WorldMaintenanceService(WorldMaintenanceRepository(path))
+
+
+def build_world_state_migration_service(
+    settings: Settings,
+) -> WorldStateMigrationService:
+    """Assemble the explicit offline profile migration."""
+    return WorldStateMigrationService(
+        build_world_catalogue(settings),
+        WorldStateMigrationRepository(settings.db_path),
     )

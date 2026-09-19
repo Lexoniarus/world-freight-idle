@@ -55,12 +55,12 @@ export class GameSync {
   /** Load real public-hub coordinates, preserving partial failures. */
   async loadHubs() {
     try {
-      const result = await this.request("/map/hubs");
+      const result = await this.request("/map/facilities");
       if (this.disposed) return;
-      this.map?.setHubs(result.hubs);
-      if (result.hubs.some((hub) => hub.resolution_status !== "resolved"))
+      this.map?.setHubs(result.facilities);
+      if (result.unavailable_count > 0)
         this.notify(
-          "Einige Frachtstandorte konnten nicht verortet werden. Listen und Aufträge bleiben verfügbar.",
+          `${result.unavailable_count} Frachtstandorte ohne geprüften Koordinatennachweis werden nicht angezeigt.`,
           "map",
         );
     } catch (error) {

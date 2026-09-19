@@ -137,3 +137,17 @@ Aufbau und Cleanup, und lokale Profilpflege besitzt getrennte CLI-/Service-/
 Repository-Grenzen. Auch Modellwechsel während Routing werden beim Transportstart
 wirtschaftlich erneut geprüft. Diese Reparatur verändert weder Produktumfang
 noch M1-Status. Werkzeug- und Reviewnachweise stehen im Qualitätsbericht.
+
+## WorldCatalogue-Teilumfang
+
+Implementiert: separater read-only Referenzkatalog, dauerhafte UUIDs,
+43 verifizierte routbare Facilities mit Aufträgen; 24 mit dokumentierten
+Standardwaren, 19 mit ausdrücklich simulierter Standardfracht,
+Snapshots und explizite Backup-/Bestandsmigration sowie Facility-BBox-API.
+Spielerunternehmen und eigene Depots bleiben offen. Werkzeugprüfungen und
+Architektur-/Browserreview werden getrennt im QUALITY_REPORT.md ausgewiesen.
+
+Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
+Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
+erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
+bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).

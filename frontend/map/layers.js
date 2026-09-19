@@ -134,10 +134,11 @@ export function updateHubLabel(map, hub, data) {
   context.textAlign = "center";
   context.fillStyle = "#ffffff";
   context.font = "600 28px Inter, sans-serif";
-  context.fillText(hub.city, 200, 40);
+  const title = hub.label.length > 28 ? hub.label.slice(0, 27) + "…" : hub.label;
+  context.fillText(title, 200, 40, 376);
   context.font = "22px Inter, sans-serif";
   context.fillStyle = "#a9c1cf";
-  context.fillText(`${count} Lkw bereit · ${orders} Aufträge`, 200, 76);
+  context.fillText(`${hub.city} · ${count} Lkw · ${orders} Aufträge`, 200, 76, 376);
   const image = context.getImageData(0, 0, 400, 104);
   const id = "label-" + hub.id;
   if (map.hasImage(id)) map.updateImage(id, image);

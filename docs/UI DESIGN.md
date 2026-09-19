@@ -10,7 +10,8 @@
 > Implementiert: dunkelblauer/goldgelber Tycoon-HUD, lokale Barlow-/Inter-
 > Schriften, Kontextpanels, mobile Sheets, eigene Routen-/Fahrzeug-/
 > Standort-/Auftragslayer, Standort-Clustering und Registrierung/Login.
-> Firmen-/Depotquellen bleiben bis zu echten Backend-Daten leer.
+> Öffentliche Facilities stammen aus dem WorldCatalogue; Referenzunternehmen
+> sind keine Spielerunternehmen. Eigene Depot-/Besitzquellen bleiben leer.
 > OSM-POIs sind Karteninhalt, keine automatisch spielbaren Unternehmen.
 > Siehe [Kartenarchitektur](adr/0004-map-first-interface.md),
 > [Kartenprovider](MAP_PROVIDERS.md) und [Abnahme](TARGET.md).
@@ -718,3 +719,18 @@ Unternehmen und eigene Depots nach der Frontend-Abnahme bleiben verbindlich.
 
 Geladene Fahrzeugbilder bleiben bei Spielstands- und Statusaktualisierungen
 sichtbar. Der Polling-Zyklus darf sie nicht erneut in den Ladezustand versetzen.
+
+## Facility-Referenzen in der bestehenden Oberfläche
+
+Die Standortquelle verwendet /api/v1/map/facilities und stabile UUIDs;
+Legacy-Hub-Links werden über explizite Aliase erkannt. Clustering, World
+Wrapping, Kamera, Panels und Fokusverhalten bleiben erhalten. Auftragstexte
+unterscheiden reale Standorte/Referenzunternehmen von simulierten Beziehungen,
+Mengen und Einzelaufträgen. Fehlende Nachweise erzeugen einen Hinweis;
+Fahrzeug-/Transportsnapshots bleiben bei Katalogausfall darstellbar.
+Siehe [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).
+
+Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
+Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
+erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
+bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).

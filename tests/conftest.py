@@ -7,16 +7,14 @@ import pytest
 
 from app.domain.models import RouteResult
 from app.repositories.sqlite_store import SqliteStore
-from app.seed_data import (
-    CARGO_TYPES,
-    FICTIONAL_CONSIGNEES,
-    FICTIONAL_SHIPPERS,
-    HUB_BY_ID,
-    HUBS,
-)
+from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.services.game import GameService
 from app.services.market import MarketGenerator
 from app.services.pricing import PricingService
+from tests.seed_data import (
+    CARGO_TYPES,
+    HUBS,
+)
 
 
 class FakeGeocoder:
@@ -58,28 +56,41 @@ def store(tmp_path: Path) -> SqliteStore:
     return SqliteStore(tmp_path / "game.db")
 
 
+WORLD_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "data"
+    / "world_freight_company_facility_mvp.sqlite3"
+)
+BERLIN_UID = (
+    SqliteWorldCatalogue(WORLD_PATH)
+    .read()
+    .get_facility("berlin_westhafen")
+    .facility_uid
+)
+
+
 @pytest.fixture
-def game(store: SqliteStore, catalogue) -> GameService:
-    market = MarketGenerator(
-        hubs=HUBS,
-        cargo_types=CARGO_TYPES,
-        shipper_names=FICTIONAL_SHIPPERS,
-        consignee_names=FICTIONAL_CONSIGNEES,
-        rng=random.Random(7),
-    )
+def world_catalogue(tmp_path):
+    import shutil
+
+    path = tmp_path / "world.sqlite3"
+    shutil.copyfile(WORLD_PATH, path)
+    return SqliteWorldCatalogue(path)
+
+
+@pytest.fixture
+def game(store: SqliteStore, catalogue, world_catalogue) -> GameService:
+    market = MarketGenerator(world_catalogue, random.Random(7), catalogue)
     service = GameService(
         store=store,
-        geocoder=FakeGeocoder(),
+        world=world_catalogue,
         router=FakeRouter(),
         market=market,
         pricing=PricingService(CARGO_TYPES),
-        hubs_by_id=HUB_BY_ID,
-        hubs=HUBS,
         catalogue=catalogue,
         time_scale=1.0,
     )
-    with store.transaction():
-        service.ensure_initial_state()
+    service.ensure_initial_state()
     return service
 
 

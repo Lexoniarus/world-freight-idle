@@ -19,10 +19,14 @@ freigegebener öffentlicher Produktionsdienst.
   Gekaufte und vergebene Fahrzeugwerte sind gespeicherte Snapshots.
 - Permanente Karte, Kontextpanels, mobile Bedienung, Tastatur und Fehlerzustände.
 
-Offen: eigenständige Unternehmen, eigene Depots, gemeinsamer knapper Markt,
+Offen: eigenständige Spielerunternehmen, eigene Depots, gemeinsamer knapper Markt,
 Wartung/Energie/Reichweite und Satelliten. Öffentliche Frachtstandorte sind keine
-eigenen Depots. Reale Hub-Adressen und Straßenrouten kommen aus OSM/Nominatim/
-Valhalla; Firmen, konkrete Aufträge und Wirtschaftswerte sind Spielsimulation.
+eigenen Depots. Reale Referenzunternehmen, Facilities, dokumentierte Güter und
+Koordinaten kommen aus dem separaten read-only WorldCatalogue. 43 von 155
+Facilities sind routbar und erhalten Aufträge. 24 besitzen dokumentierte
+Standardwaren; an den übrigen wird Standardfracht ausdrücklich simuliert.
+Valhalla erhält gespeicherte Koordinaten; Geschäftsbeziehungen, Mengen,
+Einzelaufträge und Wirtschaftswerte bleiben simuliert.
 Es gibt keinen erfundenen Ersatz für ausgefallene Straßenrouten.
 
 ## Lokal starten
@@ -78,21 +82,38 @@ $env:HOST = "127.0.0.1"
 | HOST / PORT | 0.0.0.0 / 8000 |
 | DATA_DIR / DB_PATH | data/ bzw. data/game.db; private Spielstände |
 | VEHICLE_CATALOGUE_PATH | Mitgelieferter data/world_freight_vehicle_catalog.sqlite3 |
+| WORLD_CATALOGUE_PATH | Mitgelieferter data/world_freight_company_facility_mvp.sqlite3, Schema 3.0.0 |
 | GAME_TIME_SCALE | 1 = Echtzeit; Beschleunigung nur für lokale Tests |
 | COOKIE_SECURE | false für lokales HTTP; true bei HTTPS-Betrieb |
-| NOMINATIM_URL / VALHALLA_URL | Konfigurierbare Geocoding-/Routing-Endpunkte |
+| VALHALLA_URL | Routing gespeicherter Facility-Koordinaten |
+| NOMINATIM_URL | Ausschließlich Offline-Import/Enrichment, kein Spielserver-Lookup |
 | HTTP_USER_AGENT | Vor öffentlichen Providerabrufen mit passendem Kontakt setzen |
 
 Der Katalog wird nur lesend geöffnet und unabhängig vom Spielstandpfad gefunden.
 Fehlende/defekte Katalogdaten ergeben 503 bei Katalog/Kauf oder erster Startflotte;
 bestehende Fahrzeuge bleiben nutzbar. Spielstände und Backups gehören nicht ins Git.
-Nur die Referenz-Katalogdatei wird mitgeliefert. Lizenz-/Datenherkunft:
+Nur die beiden Referenz-Katalogdateien werden mitgeliefert. Lizenz-/Datenherkunft:
 [DATA_SOURCES](docs/DATA_SOURCES.md).
 
 Gezielte lokale Profilpflege: `python scripts/update_test_profile.py --username
 NAME --vehicle ID=MODELL` (als eine Befehlszeile). Sie erstellt zuerst ein SQLite-
 Backup. Ohne --cash bleibt Guthaben erhalten; IDs und Transport-Snapshots bleiben
 bestehen. Keine automatische Migration und kein öffentlicher Pflege-Endpunkt.
+
+## Bestehende Spielstände auf Facilities umstellen
+
+Vor dem ersten Start dieses Stands den bisherigen Server stoppen und die
+explizite Migration mit Backup ausführen (dieselbe DB_PATH verwenden):
+
+```sh
+python scripts/migrate_world_state.py --backup data/backups/game-before-world-v1.sqlite3
+python main.py
+```
+
+Neue leere Spielstände benötigen keine Migration. Das Werkzeug erhält Konten,
+Guthaben, Fahrzeug-IDs und laufende Transportwerte. Keine automatische
+Neuzuordnung beim Serverstart. Details, Quellen und Wiederholungsregeln:
+[WorldCatalogue](docs/WORLD_CATALOGUE.md).
 
 ## Entwicklung, Branches und Qualität
 
@@ -138,7 +159,7 @@ beide Teil des Quality Gates.
 ## Docker und Betrieb
 
 `docker compose up --build` baut das Frontend und liefert den Katalog mit aus;
-Compose bindet den Katalog zusätzlich separat nur lesend ein. Docker wurde in
+Compose bindet beide Kataloge zusätzlich separat nur lesend ein. Docker wurde in
 der aktuellen lokalen Abnahme nicht ausgeführt. Individuelle Deployments müssen
 den Referenzkatalog ebenfalls mitliefern.
 
@@ -160,3 +181,6 @@ nicht. Details: [BRANCHING](docs/BRANCHING.md).
 - [TESTING](docs/TESTING.md), [QUALITY_REPORT](QUALITY_REPORT.md): Prüfungen und Grenzen.
 - [MAP_PROVIDERS](docs/MAP_PROVIDERS.md), [DATA_SOURCES](docs/DATA_SOURCES.md): externe Daten.
 - [BRANCHING](docs/BRANCHING.md), [CHANGELOG](CHANGELOG.md): Zusammenarbeit und Änderungen.
+
+Jeder routbare Standort bietet passende Auftragsmengen für alle vorhandenen
+Fahrzeug-Nutzlastklassen; Details: [WorldCatalogue](docs/WORLD_CATALOGUE.md).

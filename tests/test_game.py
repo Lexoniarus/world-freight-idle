@@ -4,15 +4,16 @@ import time
 
 import pytest
 
-from app.seed_data import HUBS
 from app.services.game import GameService
+from tests.conftest import BERLIN_UID
+from tests.seed_data import HUBS
 
 
 def first_berlin_contract(game: GameService) -> dict:
     return next(
         contract
         for contract in game.store.get_json("contracts", [])
-        if contract["origin_hub_id"] == "berlin_westhafen"
+        if contract["origin_hub_id"] == BERLIN_UID
     )
 
 
@@ -36,17 +37,18 @@ def test_refresh_market_reuses_fresh_market_and_can_force(game: GameService):
     forced = game.refresh_market(force=True)
     assert second == first
     assert forced != first
-    assert any(
-        contract["origin_hub_id"] == "berlin_westhafen" for contract in forced
-    )
+    assert any(contract["origin_hub_id"] == BERLIN_UID for contract in forced)
 
 
 @pytest.mark.asyncio
 async def test_quote_contract_geocodes_routes_and_prices(game: GameService):
     contract = first_berlin_contract(game)
     quote = await game.quote_contract(contract["id"])
-    assert quote["origin"]["address"] == HUBS[0].address
-    assert quote["origin"]["geocoder"] == "Nominatim / OpenStreetMap"
+    assert (
+        quote["origin"]["address"]
+        == game.world.read().get_facility(BERLIN_UID).address
+    )
+    assert quote["origin"]["coordinate_evidence"]
     assert quote["distance_km"] == 400.0
     assert quote["route_geojson"]["type"] == "LineString"
     assert quote["profit_eur"] == (
@@ -62,7 +64,10 @@ async def test_dispatch_builds_persisted_trip_and_debits_cost(
     before_cash = game.store.get_json("player")["cash"]
     trip = await game.dispatch(contract["id"], "truck_01")
     after_cash = game.store.get_json("player")["cash"]
-    assert trip["origin"]["address"] == HUBS[0].address
+    assert (
+        trip["origin"]["address"]
+        == game.world.read().get_facility(BERLIN_UID).address
+    )
     assert trip["route_geojson"]["type"] == "LineString"
     assert after_cash == before_cash - trip["operating_cost_eur"]
     assert game.store.get_json("vehicles")[0]["status"] == "enroute"
@@ -101,7 +106,10 @@ def test_reconcile_arrival_moves_vehicle_and_pays(game: GameService):
 
 def test_state_expands_contract_addresses(game: GameService):
     state = game.state()
-    assert state["hubs"][0]["address"] == HUBS[0].address
+    assert (
+        state["hubs"][0]["address"]
+        == game.world.read().get_facility(BERLIN_UID).address
+    )
     assert "origin" in state["contracts"][0]
     assert "address" in state["contracts"][0]["origin"]
 
@@ -114,13 +122,6 @@ def test_reset_restores_playable_state(game: GameService):
     assert state["player"]["cash"] == 175000
     assert state["player"]["completed"] == 0
     assert len(state["vehicles"]) == 1
-
-
-@pytest.mark.asyncio
-async def test_geocode_hub_merges_real_address(game: GameService):
-    payload = await game._geocode_hub(HUBS[0])
-    assert payload["address"] == HUBS[0].address
-    assert payload["lat"] == pytest.approx(52.5367)
 
 
 def test_find_contract_returns_match_and_raises(game: GameService):
@@ -189,7 +190,10 @@ def test_build_trip_contains_tracking_timestamps(game: GameService):
 def test_expand_contract_attaches_hubs(game: GameService):
     contract = first_berlin_contract(game)
     expanded = game._expand_contract(contract)
-    assert expanded["origin"]["address"] == HUBS[0].address
+    assert (
+        expanded["origin"]["address"]
+        == game.world.read().get_facility(BERLIN_UID).address
+    )
     assert expanded["destination"]["address"]
 
 
@@ -198,7 +202,7 @@ def test_refresh_market_falls_back_when_no_vehicle_is_idle(game: GameService):
     vehicles[0]["status"] = "enroute"
     game.store.set_json("vehicles", vehicles)
     contracts = game.refresh_market(force=True)
-    assert contracts[0]["origin_hub_id"] == "berlin_westhafen"
+    assert contracts[0]["origin_hub_id"] == BERLIN_UID
 
 
 @pytest.mark.asyncio
@@ -229,11 +233,14 @@ def test_list_and_get_contracts_return_real_addresses(game: GameService):
 
 def test_list_get_and_expand_vehicles(game: GameService):
     vehicles = game.list_vehicles()
-    assert vehicles[0]["hub"]["address"] == HUBS[0].address
+    assert (
+        vehicles[0]["hub"]["address"]
+        == game.world.read().get_facility(BERLIN_UID).address
+    )
     assert game.get_vehicle("truck_01")["hub"]["city"] == HUBS[0].city
     assert (
         game._expand_vehicle(game.store.get_json("vehicles")[0])["hub"]["id"]
-        == HUBS[0].id
+        == BERLIN_UID
     )
     with pytest.raises(KeyError):
         game.get_vehicle("missing")

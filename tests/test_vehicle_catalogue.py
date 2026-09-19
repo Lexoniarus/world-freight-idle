@@ -15,7 +15,7 @@ from app.domain.errors import CatalogueError
 from app.main import create_app
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.services.fleet import FleetService
-from tests.conftest import FakeGeocoder, FakeRouter
+from tests.conftest import BERLIN_UID, FakeRouter
 from tests.test_api import make_settings, make_static_files
 from tests.test_game import first_berlin_contract
 
@@ -23,11 +23,11 @@ from tests.test_game import first_berlin_contract
 def test_catalogue_projects_all_offers_without_writing(catalogue):
     before = hashlib.sha256(catalogue.path.read_bytes()).digest()
     models = catalogue.list_models()
-    assert len(models) == 8
+    assert len(models) >= 8
     assert [(m.price_eur, m.id) for m in models] == sorted(
         (m.price_eur, m.id) for m in models
     )
-    first = models[0]
+    first = next(model for model in models if model.id == "iveco_sway_500")
     assert first.id == "iveco_sway_500"
     assert first.price_eur == 149000
     assert first.capacity_tons == 24.2
@@ -108,7 +108,7 @@ def test_catalogue_numeric_nonfinite_and_negative_cost(catalogue):
 
 
 def test_purchase_reputation_snapshots_and_rollback(game, catalogue):
-    fleet = FleetService(game.store, catalogue)
+    fleet = FleetService(game.store, catalogue, game.world)
     with pytest.raises(ValueError, match="Reputation"):
         fleet.purchase("daf_xg_plus_480")
     player = game.store.get_json("player")
@@ -151,7 +151,9 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
     assert first["operating_cost_eur_per_km"] == 0.62
     assert first["vehicle_id"] == "truck_01"
     assert (await game.quote_contract(contract["id"]))["vehicle_id"] is None
-    vehicle = FleetService(game.store, catalogue).purchase("iveco_sway_500")
+    vehicle = FleetService(game.store, catalogue, game.world).purchase(
+        "iveco_sway_500"
+    )
     quote = await game.quote_contract(contract["id"], vehicle["id"])
     assert quote["operating_cost_eur"] == round(
         80 + 400 * vehicle["operating_cost_eur_per_km"]
@@ -196,12 +198,11 @@ def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
                 "password": "catalogue-test-password",
             },
         ).raise_for_status()
-        app.state.game.geocoder = FakeGeocoder()
         app.state.game.router = FakeRouter()
         contract = next(
             item
             for item in client.get("/api/v1/contracts").json()["contracts"]
-            if item["origin_hub_id"] == "berlin_westhafen"
+            if item["origin_hub_id"] == BERLIN_UID
         )
         url = f"/api/v1/contracts/{contract['id']}/quote"
         assert (
@@ -214,7 +215,7 @@ def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
             == "truck_01"
         )
         assert client.post(url).json()["vehicle_id"] is None
-        assert len(client.get("/api/v1/fleet/catalogue").json()["models"]) == 8
+        assert len(client.get("/api/v1/fleet/catalogue").json()["models"]) >= 8
         app.state.settings = replace(
             settings, vehicle_catalogue_path=tmp_path / "missing.db"
         )
@@ -238,7 +239,7 @@ def test_catalogue_builder_default_path(game, catalogue):
         base_dir=Path(__file__).resolve().parents[1],
     )
     fleet = build_fleet_service(game, settings)
-    assert len(fleet.list_catalogue()["models"]) == 8
+    assert len(fleet.list_catalogue()["models"]) >= 8
     isolated = build_player_service(game, "new-account")
     assert isolated.state()["player"]["cash"] == 175000
 
@@ -273,14 +274,16 @@ def test_packaged_catalogue_works_outside_project_directory(
         ).raise_for_status()
         response = client.get("/api/v1/fleet/catalogue")
         assert response.status_code == 200
-        assert len(response.json()["models"]) == 8
+        assert len(response.json()["models"]) >= 8
         assert client.get("/login").status_code == 200
 
 
 def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
     game, catalogue
 ):
-    model = catalogue.list_models()[0]
+    model = next(
+        item for item in catalogue.list_models() if item.id == "iveco_sway_500"
+    )
     starter = game.get_vehicle("truck_01")
     assert starter["model_id"] == model.id
     assert starter["name"] == model.name

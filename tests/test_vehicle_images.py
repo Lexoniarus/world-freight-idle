@@ -10,7 +10,7 @@ from app.services.vehicle_presentation import present_vehicles
 def test_images_preserve_provenance_and_never_change_gameplay(catalogue):
     models = catalogue.list_models()
     assert all(model.image for model in models)
-    model = models[0]
+    model = next(item for item in models if item.id == "iveco_sway_500")
     vehicle = {
         "id": "owned",
         "model_id": model.id,
@@ -54,4 +54,8 @@ def test_image_selection_prefers_verified_primary(catalogue):
             SELECT vehicle_id,source_id,license_id,direct_image_url,'Selected photographer',
                 attribution_text,image_scope,verification_status,1 FROM vehicle_images
             WHERE vehicle_id='iveco_sway_500'""")
-    assert catalogue.list_models()[0].image.author == "Selected photographer"
+    selected = next(
+        item for item in catalogue.list_models() if item.id == "iveco_sway_500"
+    )
+    assert selected.image is not None
+    assert selected.image.author == "Selected photographer"

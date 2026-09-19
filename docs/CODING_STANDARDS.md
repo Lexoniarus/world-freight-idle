@@ -82,3 +82,10 @@ entbindet öffentliche Komponenten nicht von ihren Parameterverträgen.
 - Nach externen Await-Punkten werden auch veränderliche Fahrzeugkostensätze für
   den Start erneut gelesen und kalkuliert, bevor das Guthaben geprüft wird.
 - Das Profilpflege-CLI ist zusätzlich zu Core und Einstiegspunkt in mypy enthalten.
+
+WorldCatalogue-Regeln: Domain-Port und unveränderliche Referenzmodelle, SQL
+ausschließlich im Repository, konkrete Verdrahtung im Composition Root.
+Game-Core/MarketGenerator importieren weder SQL noch Katalogadapter oder
+Seed-Daten. UUIDs und vollständige Snapshots sichern historische Aufträge.
+Neue konkrete Core-Callables, einschließlich Pflege/Migration, unterliegen
+Manifest, explizitem Gegentest, Pyright/mypy und 100 % Statement-Coverage.

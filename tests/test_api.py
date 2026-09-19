@@ -74,7 +74,15 @@ def make_settings(tmp_path: Path) -> Settings:
         / "world_freight_vehicle_catalog.sqlite3",
         catalogue,
     )
+    world = tmp_path / "world.sqlite3"
+    shutil.copyfile(
+        Path(__file__).resolve().parents[1]
+        / "data"
+        / "world_freight_company_facility_mvp.sqlite3",
+        world,
+    )
     return Settings(
+        world_catalogue_path=world,
         vehicle_catalogue_path=catalogue,
         base_dir=tmp_path,
         data_dir=tmp_path / "data",

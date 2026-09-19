@@ -90,7 +90,8 @@ seine Autorisierung erzwingt später der serverseitige Branchschutz.
 ## Was versioniert wird
 
 Code, Tests, Dokumentation, Konfigurationsvorlagen, Lockfile und der geprüfte
-Referenzkatalog `data/world_freight_vehicle_catalog.sqlite3` gehören ins Git.
+Referenzkataloge `data/world_freight_vehicle_catalog.sqlite3` und
+`data/world_freight_company_facility_mvp.sqlite3` gehören ins Git.
 Spielstände, Konten, Backups, lokale .env-Dateien, Schlüssel, node_modules,
 virtuelle Umgebungen, generierte Builds und Prüfartefakte bleiben lokal.
 Katalogänderungen müssen Herkunft/Lizenz, Schema und Spielwerte im PR erläutern;

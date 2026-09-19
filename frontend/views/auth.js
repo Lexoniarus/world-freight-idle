@@ -63,8 +63,8 @@ export function renderAuth() {
         <div class="starter-note">
           ${icon("fleet", 26)}
           <p>
-            <strong>Große Pläne fangen klein an.</strong><br />Starte mit einem Lkw und 25.000 €
-            Kapital.
+            <strong>Große Pläne fangen klein an.</strong><br />Starte mit einem IVECO S-Way und
+            175.000 € Kapital.
           </p>
         </div>
         <p class="auth-footer">World Freight Idle <span>·</span> Deine Logistikwelt</p>

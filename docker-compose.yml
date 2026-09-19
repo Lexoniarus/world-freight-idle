@@ -5,12 +5,13 @@ services:
       - "8000:8000"
     environment:
       VEHICLE_CATALOGUE_PATH: "/app/catalogue/world_freight_vehicle_catalog.sqlite3"
+      WORLD_CATALOGUE_PATH: "/app/catalogue/world_freight_company_facility_mvp.sqlite3"
       GAME_TIME_SCALE: "1"
       LOG_LEVEL: "INFO"
-      NOMINATIM_URL: "https://nominatim.openstreetmap.org"
       VALHALLA_URL: "https://valhalla1.openstreetmap.de"
       VALHALLA_CLIENT_ID: "world-freight-idle-local"
       HTTP_USER_AGENT: "WorldFreightIdleMVP/0.4 (local-development)"
     volumes:
       - ./data:/app/data
       - ./data/world_freight_vehicle_catalog.sqlite3:/app/catalogue/world_freight_vehicle_catalog.sqlite3:ro
+      - ./data/world_freight_company_facility_mvp.sqlite3:/app/catalogue/world_freight_company_facility_mvp.sqlite3:ro

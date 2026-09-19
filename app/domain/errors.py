@@ -11,3 +11,7 @@ class CatalogueError(RuntimeError):
 
 class RoutingError(RuntimeError):
     """An external road route could not be produced."""
+
+
+class WorldCatalogueError(CatalogueError):
+    """World reference data is unavailable or incompatible."""

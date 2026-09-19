@@ -19,7 +19,7 @@
 ## Umsetzungsstand am 18.09.2026
 
 **Verbindliche Priorität: UI First.** Die Oberfläche wird auf dem bestehenden
-Backend fertiggestellt, bevor Unternehmen, eigene Depots und weitere
+Backend fertiggestellt, bevor Spielerunternehmen, eigene Depots und weitere
 Wirtschaftsmechaniken ausgebaut werden. [UI DESIGN.md](<UI DESIGN.md>) ergänzt
 die Vision um Abschnitte 42–63. Für M1 gilt die neuere Entscheidung:
 MapLibre GL JS mit OSM-Standardkarte, Pan/Zoom, World Wrapping und
@@ -38,14 +38,14 @@ dass sämtliche Funktionen bereits implementiert sind.
 | Eigenes Depot / Depotkauf | Offen; aktuell feste öffentliche Hubs und Start in Berlin |
 | Fahrzeuge kaufen, Standort und Kapazität | Implementiert; acht DB-Modelle mit Spiel-Nutzlast, Kaufpreis und Freigaben |
 | Reale Hersteller-/Modell-/Verbrauchsdaten | Acht Hersteller-Modellprofile integriert; Spiel-Kilometerkosten aktiv, Verbrauchssimulation offen |
-| Reale Adressen, Straßenroute, Distanz, ETA | Nominatim/OSM und Valhalla-Truck-Routing integriert |
+| Reale Adressen, Straßenroute, Distanz, ETA | WorldCatalogue mit geprüften Koordinaten und Valhalla-Truck-Routing; Nominatim nur offline |
 | Aufträge, parallele Transporte, Offline-Auszahlung | Implementiert und auf konkurrierende Zugriffe getestet |
 | Tracking | Alle aktiven Transporte als Layer, Serverzeit und gespeicherte Route |
 | Primäre Weltkarte mit Kontextpanels | MapLibre/OSM implementiert; Satelliten später |
 | Wettbewerb | Gemeinsame Lieferungsrangliste implementiert |
 | Gemeinsamer knapper Markt / dynamische Frachtraten | Offen; aktuell eigene generierte Märkte |
 | Transporthistorie und Geldbewegungsjournal | Offen; aktive Transporte und Summen werden gespeichert |
-| Reale Firmen / statistische Warenströme | Offen; Firmen und Einzelaufträge sind fiktiv |
+| Reale Firmen / statistische Warenströme | Referenzunternehmen/Facilities und dokumentierte Waren integriert; Beziehungen, Mengen und Einzelaufträge simuliert; statistische Wirtschaftsmechanik offen |
 | PostgreSQL, öffentlicher Betrieb, Account-Recovery | Offen; lokaler SQLite-MVP mit einem Prozess |
 
 **M1 gemäß Abschnitt 35 ist noch nicht vollständig abgeschlossen.**
@@ -1847,3 +1847,18 @@ nur auf ausdrücklichen Auftrag angepasst. Verifizierte Fahrzeugfotos sind nun
 mit Lizenz-/Quellenangaben und Modellfamilienhinweis sichtbar; Ladefehler haben
 eine Illustration als Ersatz. Die Regeln aus Abschnitten 21 und 27–29 bleiben
 verbindlich: injizierte Grenzen, klare Module und zusammenhängende Funktionen.
+
+## Verbindliche WorldCatalogue-Ergänzung (18.09.2026)
+
+Reale Facilities ergänzen die UI-First-Basis; keine Spielerunternehmen oder
+eigenen Depots. Stand, stabile Identitäten, Quellenprüfung und explizite
+Bestandsmigration: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md). Die umfassendere
+Wirtschaftsvision bleibt Zielbild. 43 verifizierte Standorte sind sichtbar,
+jeder erhält Aufträge. 24 besitzen dokumentierte Standardwaren; sonst wird
+Standardfracht ausdrücklich simuliert. Keine erfundenen Koordinaten oder
+Warenbelege.
+
+Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
+Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
+erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
+bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).

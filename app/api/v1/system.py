@@ -16,5 +16,7 @@ def get_health(request: Request) -> dict:
         "api_version": "v1",
         "routing_provider": settings.valhalla_url,
         "geocoding_provider": settings.nominatim_url,
+        "geocoding_usage": "offline_enrichment_only",
+        "location_provider": "world_catalogue",
         "routing_profile": "truck",
     }

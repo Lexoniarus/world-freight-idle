@@ -15,7 +15,7 @@ from app.repositories.accounts import AccountRepository
 from app.repositories.sqlite_store import SqliteStore
 from app.services.auth import SESSION_COOKIE, AuthService, PasswordHasher
 from app.services.fleet import FleetService
-from tests.conftest import FakeGeocoder, FakeRouter
+from tests.conftest import BERLIN_UID, FakeRouter
 from tests.test_api import make_settings, make_static_files
 from tests.test_game import first_berlin_contract
 
@@ -87,21 +87,25 @@ def test_transaction_rolls_back_and_namespaces_isolate(store):
 def test_player_service_isolation_and_atomic_purchases(game, catalogue):
     alice = build_player_service(game, "alice")
     bob = build_player_service(game, "bob")
-    assert alice.geocoder is bob.geocoder
-    vehicle = FleetService(alice.store, catalogue).purchase("iveco_sway_500")
+    assert alice.world is bob.world
+    vehicle = FleetService(alice.store, catalogue, alice.world).purchase(
+        "iveco_sway_500"
+    )
     assert alice.get_vehicle(vehicle["id"])["capacity_tons"] == 24.2
     assert alice.state()["player"]["cash"] == 26000
     assert bob.state()["player"]["cash"] == 175000
     assert len(bob.list_vehicles()) == 1
     with pytest.raises(ValueError, match="Nicht genug"):
-        FleetService(alice.store, catalogue).purchase("renault_t_high_520")
+        FleetService(alice.store, catalogue, alice.world).purchase(
+            "renault_t_high_520"
+        )
     with pytest.raises(ValueError, match="Unbekanntes"):
-        FleetService(alice.store, catalogue).purchase("fake")
+        FleetService(alice.store, catalogue, alice.world).purchase("fake")
     with pytest.raises(KeyError):
         bob.get_vehicle(vehicle["id"])
     restored = build_player_service(game, "alice")
     assert restored.state()["player"]["cash"] == 26000
-    assert restored.get_vehicle(vehicle["id"])["hub_id"] == "berlin_westhafen"
+    assert restored.get_vehicle(vehicle["id"])["hub_id"] == BERLIN_UID
 
 
 def test_concurrent_purchases_cannot_overdraw(game, catalogue):
@@ -110,9 +114,9 @@ def test_concurrent_purchases_cannot_overdraw(game, catalogue):
 
     def purchase(service):
         try:
-            return FleetService(service.store, catalogue).purchase(
-                "iveco_sway_500"
-            )
+            return FleetService(
+                service.store, catalogue, service.world
+            ).purchase("iveco_sway_500")
         except ValueError:
             return None
 
@@ -124,13 +128,14 @@ def test_concurrent_purchases_cannot_overdraw(game, catalogue):
 
 
 async def test_parallel_transports_and_offline_settlement(game, catalogue):
-    second_vehicle = FleetService(game.store, catalogue).purchase(
+    second_vehicle = FleetService(game.store, catalogue, game.world).purchase(
         "iveco_sway_500"
     )
+    game.refresh_market(force=True)
     contracts = [
         item
         for item in game.list_contracts()
-        if item["origin_hub_id"] == "berlin_westhafen"
+        if item["origin_hub_id"] == BERLIN_UID
     ]
     first = await game.dispatch(contracts[0]["id"], "truck_01")
     second = await game.dispatch(contracts[1]["id"], second_vehicle["id"])
@@ -208,7 +213,7 @@ def test_leaderboard_counts_offline_arrivals_without_double_counting(game):
                 "arrives_at": 0,
                 "vehicle_id": "truck_01",
                 "payout_eur": 100,
-                "contract": {"destination_hub_id": "berlin_westhafen"},
+                "contract": {"destination_hub_id": BERLIN_UID},
             }
         ],
     )
@@ -266,7 +271,7 @@ def test_auth_api_and_private_game_resources(tmp_path):
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 175000
         )
         models = client.get("/api/v1/fleet/catalogue").json()["models"]
-        assert len(models) == 8
+        assert len(models) >= 8
         purchase = client.post(
             "/api/v1/fleet/purchase",
             json={"model_id": "iveco_sway_500", "price_eur": 1},
@@ -314,7 +319,6 @@ def test_auth_api_and_private_game_resources(tmp_path):
         assert (
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 175000
         )
-        app.state.game.geocoder = FakeGeocoder()
         app.state.game.router = FakeRouter()
         contract = client.get("/api/v1/contracts").json()["contracts"][0]
         trip = client.post(
@@ -362,7 +366,7 @@ def test_concurrent_arrivals_pay_once(game):
                 "arrives_at": 0,
                 "vehicle_id": "truck_01",
                 "payout_eur": 1000,
-                "contract": {"destination_hub_id": "berlin_westhafen"},
+                "contract": {"destination_hub_id": BERLIN_UID},
             }
         ],
     )

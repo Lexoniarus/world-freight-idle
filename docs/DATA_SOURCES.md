@@ -6,17 +6,19 @@ aktuell noch kein Satellitenprovider integriert.
 
 | Daten | Aktuelle Quelle | Verwendung / Grenze |
 | --- | --- | --- |
-| Hub-Adressen | `app/seed_data.py` | kuratierte reale Adressen; vier Hubs |
-| Koordinaten | Nominatim / OpenStreetMap | adressbezogenes Geocoding, Cache |
+| Referenzunternehmen / Facilities / Adressen | `data/world_freight_company_facility_mvp.sqlite3`, Schema 3.0.0 | 83 Unternehmen, 155 Facilities; keine Spielerunternehmen |
+| Koordinaten | gespeicherte Quellen und `facility_geocoding_evidence` | 43 routbar; 19 ohne passenden Nachweis und 93 ohne Koordinaten ausgeschlossen |
 | Lkw-Straßenroute | Valhalla / OpenStreetMap | Geometrie, Kilometer und Fahrzeit |
 | Basiskarte | OpenStreetMap Standard via MapLibre GL JS | Rastertiles; Straßen, Orte, Gebäude und POIs; keine Routingquelle |
 | Fahrzeugmodelle | `data/world_freight_vehicle_catalog.sqlite3`, Schema 2.0.0 | acht Modelle, sieben Hersteller, technische Quellen in `sources`/`vehicle_sources` |
 | Fahrzeug-Spielwerte | `vehicle_balance` im Katalog | fiktive Preise, Nutzlast, Reputation und Kilometerkosten; keine realen Angebote |
-| Firmen und Aufträge | eigener Generator | vollständig fiktive Einzelereignisse |
+| Dokumentierte Waren | Katalogprofile und `facility_handled_goods` | Quellen bleiben erhalten; dokumentierte Standard-Ausgangs-/Umschlagwaren, sonst explizite Mock-Standardfracht ohne Warenbeleg |
+| Beziehungen, Mengen und Aufträge | MarketGenerator, `app/simulation.py` | simulierte Einzelereignisse; DB-nutzlastabhängige Mengen, 0,18 €/km/t |
 | Vergütung / Betriebskosten | PricingService | balanciertes Spielmodell |
 
 Eurostat, GLEIF, FAF, UN Comtrade, OurAirports und SeaRoute sind mögliche
-spätere Quellen aus GOAL.md; keine davon ist aktuell angebunden.
+spätere Live-Quellen aus GOAL.md. Quellenreferenzen der gelieferten Datenbank
+bleiben erhalten; ihre externen Live-APIs sind nicht angebunden.
 Vor einer Integration: Quelle, Nutzungsbedingungen, Datenstand, Lizenz,
 Aktualisierung, Fehlerverhalten und interne Normalisierung dokumentieren.
 
@@ -28,3 +30,31 @@ vorhanden. Verifizierte Fotos werden direkt von Wikimedia geladen. Quelle, Urheb
 und Bildbezug (z. B. Modellfamilie statt exakter Variante) bleiben sichtbar.
 Bei ungültigen Metadaten oder Ladefehlern bleibt die Illustration als Ersatz. Andere Datenquellen besitzen noch keine durchgängigen
 Herkunfts-/Lizenzmetadaten pro Datensatz.
+
+## WorldCatalogue: aufbereiteter Referenzstand
+
+Die gelieferte v2-Datei wurde nach SQLite-Backup auf v3 erweitert. UUIDs werden
+einmalig gespeichert. Originalreferenzen und Bildmetadaten bleiben erhalten;
+Facility-Fotos werden in dieser Phase nicht als UI-Funktion eingeführt.
+Nominatim dient ausschließlich Kandidatensuche beim Offline-Enrichment.
+Ein Treffer ersetzt weder Identitätsprüfung noch Koordinatennachweis.
+
+Die vier Legacy-Facilities sind mit offiziellen Standort-/Tätigkeitsquellen
+und gesonderten Koordinatennachweisen in
+[legacy-facilities.json](data/legacy-facilities.json) dokumentiert:
+
+| Facility | Koordinaten (Lat, Lon) | Geprüfter Nachweis |
+| --- | --- | --- |
+| Berlin Westhafen / BEHALA | 52.5374096, 13.3354466 | OSM way 137810028, Geländezentrum; offizieller BEHALA-Umschlaghinweis |
+| HHLA Container Terminal Altenwerder | 53.5046363, 9.9328091 | OSM relation 8448069, Geländezentrum; HHLA-Terminalangaben |
+| Duisburg D3T | 51.39595, 6.73296 | Koordinate aus offizieller D3T-Anfahrtsverlinkung |
+| APM Terminals Maasvlakte II | 51.9506799, 4.0041828 | OSM way 599016100, Europaweg 910; offizielle APM-Terminalangaben |
+
+OSM-Geometrien/-Koordinaten: © OpenStreetMap-Mitwirkende, ODbL;
+[Attribution und Lizenz](https://www.openstreetmap.org/copyright). Offizielle
+Webseiten belegen Fakten; deren Texte/Bilder werden dadurch nicht pauschal
+freigegeben. Quell-URLs und Prüfdatum 18.09.2026 sind in den Datensätzen erhalten.
+Der Datenstand ist eine kuratierte Referenz, kein Live-Nachweis aktueller
+Geschäftsbeziehungen oder Wareneingänge. Keine allgemeine Freigabe fremder
+Bilder/Marken und keine vollständige rechtliche Prüfung für öffentlichen Betrieb.
+Technische Regeln und Migration: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).

@@ -11,6 +11,7 @@ export const routeGeometry = (route) => (route.type === "Feature" ? route.geomet
 export class OverlayData {
   constructor() {
     this.hubs = [];
+    this.catalogueHubs = [];
     this.routes = new Map();
     this.state = { vehicles: [], contracts: [], transports: [] };
   }
@@ -18,18 +19,40 @@ export class OverlayData {
    * @param {import('../types.js').Hub[]} hubs
    */
   setHubs(hubs) {
-    this.hubs = hubs.filter(
+    this.catalogueHubs = hubs.filter(
       (hub) =>
         hub.resolution_status === "resolved" &&
         Number.isFinite(hub.lon) &&
         Number.isFinite(hub.lat),
     );
+    this.hubs = this.catalogueHubs;
   }
   /** Refresh the route cache for the authoritative active transport set.
    * @param {import('../types.js').MapState} state
    */
   update(state) {
     this.state = state;
+    const snapshots = [
+      ...state.transports.flatMap((trip) => [
+        trip.origin_snapshot ?? trip.origin,
+        trip.destination_snapshot ?? trip.destination,
+      ]),
+      ...state.vehicles.map((vehicle) => vehicle.location_snapshot ?? vehicle.hub),
+      ...state.contracts.flatMap((contract) => [contract.origin, contract.destination]),
+    ].filter(
+      (facility) =>
+        facility?.resolution_status === "resolved" &&
+        Number.isFinite(facility.lat) &&
+        Number.isFinite(facility.lon),
+    );
+    this.hubs = [
+      ...new Map(
+        [...this.catalogueHubs, ...snapshots].map((facility) => [
+          facility.facility_uid ?? facility.id,
+          facility,
+        ]),
+      ).values(),
+    ];
     const active = new Set(state.transports.map((trip) => trip.id));
     for (const id of this.routes.keys()) if (!active.has(id)) this.routes.delete(id);
     for (const trip of state.transports)

@@ -19,8 +19,9 @@ und unwrapped Längengrade. Gutschriften bleiben ausschließlich serverseitig.
 Basiskarte und GeoJSON-Overlayquellen sind getrennt; leere Firmen-/Depot-
 Layer sind Erweiterungspunkte, keine erfundenen Besitztümer.
 
-GET /api/v1/map/hubs verwendet MapLocationService, bestehende Geocoder und
-Caches. Pro Standort werden Koordinaten oder ein unavailable-Status geliefert.
+GET /api/v1/map/facilities verwendet MapLocationService und WorldCatalogue.
+Nur verifizierte Endpunkte mit passendem Nachweis sind routbar. /map/hubs
+bleibt eine Kompatibilitätsprojektion; beide Pfade benötigen keinen Geocoder.
 Keine künstlichen Ersatzkoordinaten. Kartenabrufe gehen direkt vom Browser
 zum Tile-Anbieter, ohne Spiel-Header/Credentials. Referrer-Policy ist
 strict-origin-when-cross-origin. Öffentliche Attribution bleibt sichtbar.
@@ -31,7 +32,7 @@ strict-origin-when-cross-origin. Öffentliche Attribution bleibt sichtbar.
 Composition-Root. `AuthService`/`PasswordHasher` und `AccountRepository`
 verwalten Konten/Sitzungen. `FleetService` kapselt den Fahrzeugkauf.
 `get_current_user` authentifiziert; `build_player_service` erzeugt den
-Spielservice mit eigenem KV-Namensraum und gemeinsamem Provider-Limiter.
+Spielservice mit eigenem KV-Namensraum und gemeinsamem Router und unveränderlichen Referenzkatalogen.
 
 Transporte sind eine Liste `active_trips`. Abrechnung erfolgt bei Zugriff
 anhand serverseitiger Unix-Zeit; es ist kein dauerhaft laufender Timer nötig.
@@ -52,7 +53,7 @@ Browser Pages
 GameService  ─────► MarketGenerator
     │              PricingService
     │
-    ├────► Geocoder Port ─────► NominatimGeocoder ─► Nominatim / OSM
+    ├────► WorldCatalogue Port ► SqliteWorldCatalogue (read-only)
     │
     ├────► TruckRouter Port ──► ValhallaTruckRouter ► Valhalla / OSM
     │
@@ -186,7 +187,7 @@ an _ensure_initial_state. Der Spieler-Service-Builder verdrahtet und ruft die
 öffentliche Methode auf; er muss deren Atomarität nicht mehr herstellen.
 Reset umfasst Löschen und Neuinitialisierung weiterhin in einer Transaktion.
 
-Der FastAPI-Lifespan registriert beide HTTP-Clients unmittelbar nach Erstellung
+Der FastAPI-Lifespan registriert den Routing-HTTP-Client unmittelbar nach Erstellung
 in einem AsyncExitStack. Client-/Service-/Accountaufbau und yield liegen innerhalb
 dieses Scopes. Fehler beim Aufbau oder Schließen lassen weitere registrierte
 Ressourcen nicht aus dem Cleanup fallen; Exceptions werden weitergegeben.
@@ -203,3 +204,21 @@ das Modell ändern. _commit_dispatch kalkuliert deshalb nach dem Await innerhalb
 der Transaktion mit dem dann gültigen Fahrzeugkostensatz neu. Guthabenprüfung,
 Abbuchung und neuer Transport verwenden dieselben Kosten. Bereits gestartete
 Transporte behalten ihre gespeicherten Werte.
+
+## WorldCatalogue und Bestandsmigration
+
+[WORLD_CATALOGUE.md](WORLD_CATALOGUE.md) ist die verbindliche Ergänzung:
+UUIDs statt SQLite-PKs, Domain-Referenzmodelle, dokumentierte Standardwaren,
+Simulationswerte getrennt in app/simulation.py, vollständige Endpunktsnapshots.
+Pflege- und Migrationsservices erhalten Ports; Repositories besitzen SQL,
+Composition Roots die konkreten Adapter. Backup geht der Mutation voraus.
+Auszahlung und anschließende Markterzeugung sind getrennte Transaktionen.
+Nominatim ist nur noch ein Offline-Enrichment-Adapter. Der FastAPI-Lifespan
+verwaltet ausschließlich den Routing-HTTP-Client über AsyncExitStack.
+Produktionsimporte von Seed-Daten sind entfernt; Legacy-Testdaten liegen
+unter tests/seed_data.py. Spielerunternehmen/eigene Depots bleiben offen.
+
+Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
+Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
+erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
+bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
