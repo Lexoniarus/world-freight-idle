@@ -13,7 +13,7 @@ __pycache__/
 coverage.xml
 htmlcov/
 
-# Runtime databases, backups and exports (catalogue is the only exception)
+# Runtime databases, backups and exports (only the two reference catalogues are exceptions)
 data/*
 *.db
 *.db-*
@@ -52,3 +52,6 @@ Thumbs.db
 Desktop.ini
 *.swp
 *.swo
+
+!data/world_freight_company_facility_mvp.sqlite3
+data/world_freight_company_facility_mvp.sqlite3

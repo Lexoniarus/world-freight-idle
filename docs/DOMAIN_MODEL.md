@@ -8,10 +8,10 @@ Abgleich mit [GOAL.md](GOAL.md), Stand 18.09.2026.
 | Sitzung | Token-Digest, Benutzer, Ablaufzeit | Tabelle `sessions` |
 | Spielerzustand | Kapital, Lieferungen, Reputation | KV `user:<id>:player` |
 | Fahrzeug | ID, Modell, Modus, Kapazität, Hub, Status, gespeicherter Kilometerkostensatz | KV `user:<id>:vehicles` |
-| Auftrag | Hub-Paar, Fracht, Gewicht, Ablaufzeit, fiktive Firmen | KV `user:<id>:contracts` |
+| Auftrag | Facility-Snapshots, dokumentierte Fracht, simulierte Menge/Beziehung, Ablaufzeit | KV `user:<id>:contracts` |
 | Transport | Fahrzeug, Auftragssnapshot, Route, Kosten, Zeitstempel | KV `user:<id>:active_trips` |
-| Hub | reale Adresse und Standort-ID | unveränderliche Seed-Daten |
-| Route / Geocode | normalisierte Providerdaten | gemeinsame Cache-Tabellen |
+| Referenzunternehmen / Facility | dauerhafte UUIDs, Adresse, Koordinaten, Waren und Quellen | separater read-only WorldCatalogue |
+| Route / Offline-Geocode | normalisierte Providerdaten | Cache-Tabellen; Geocoder außerhalb des Spielpfads |
 
 `Hub`, `CargoType`, `Contract`, `RouteResult`, `PriceQuote`, `VehicleImage` und `VehicleModel` sind typisierte
 Dataclasses. Dynamischer Spieler-/Flottenzustand ist derzeit JSON. Die SQL-
@@ -22,7 +22,7 @@ Standort, Transportmodus und Kapazität müssen passen; kein abgelaufener
 Auftrag; Kosten beim Start, Vergütung genau einmal nach Ankunft.
 Alle Beträge sind ganzzahlige Spiel-Euro. UTC-Unix-Zeit kommt vom Server.
 
-Noch fehlende Zielobjekte: `Company`, eigenes `Depot`, Transportarchiv,
+Noch fehlende Zielobjekte: Spielerunternehmen, eigenes `Depot`, Transportarchiv,
 Geldbewegungsjournal und normalisierte Wirtschaftsdaten. Reale Fahrzeugprofile
 sind als separater Referenzkatalog integriert; Energie- und Wartungsmodelle
 sind weiterhin offen.
@@ -36,3 +36,9 @@ als Snapshot. Alte Fahrzeuge ohne gespeicherten Kostensatz behalten 0,62 €/km.
 VehicleImage ist eine optionale Präsentationsprojektion, kein Bestandteil der
 Transportkosten. Laufende Transporte behalten ihre Kosten-/Auszahlungs-Snapshots,
 auch bei ausdrücklich beauftragter Testprofilpflege.
+
+`Company`, `Facility`, `DocumentedCargo`, `DocumentedGood`, `SourceReference`,
+`WorldSnapshot` und `FacilityQuery` sind eingefrorene Domain-Referenzmodelle.
+Öffentliche UIDs werden einmalig gespeichert, nicht aus Namen oder PKs abgeleitet.
+Contracts/Transporte/Fahrzeuge besitzen unabhängige Endpunkt-Snapshots.
+Die genauen Referenz-/Simulationsgrenzen stehen in [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).

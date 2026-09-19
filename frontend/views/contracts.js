@@ -3,7 +3,7 @@ import { icon } from "../ui/illustrations.js";
 import { actionButton, emptyState, hubFilter, metric, routeLink } from "../ui/components.js";
 import { money, number } from "../format.js";
 import { formatDuration } from "../time.js";
-import { eligibleVehicles } from "../geometry.js";
+import { eligibleVehicles, matchesFacility } from "../geometry.js";
 
 /** Render the contract market or the selected contract.
  * @param {import('../types.js').PanelView} view
@@ -19,14 +19,14 @@ export function renderContracts(view) {
   }
   const hubId = view.url.searchParams.get("hub");
   const contracts = view.state.contracts
-    .filter((item) => !hubId || item.origin_hub_id === hubId)
+    .filter((item) => matchesFacility(item.origin, hubId))
     .sort(
       (a, b) =>
         Number(eligibleVehicles(view.state.vehicles, b).length > 0) -
         Number(eligibleVehicles(view.state.vehicles, a).length > 0),
     );
   return html`<p class="panel-intro">
-      Die nächste Lieferung wartet.<br />Finde einen Auftrag für deine Flotte.
+      Reale Frachtstandorte, simulierte Aufträge.<br />Finde einen Auftrag für deine Flotte.
     </p>
     <div class="section-toolbar">
       <span>${contracts.length} verfügbare Aufträge</span
@@ -44,7 +44,7 @@ function renderContractCard(contract, vehicles) {
   return routeLink(
     "/contracts/" + contract.id,
     html`<div class="card-kicker">
-        <span>${contract.cargo} · ${number(contract.tons)} t</span
+        <span>${contract.cargo} · ${number(contract.tons, 2)} t</span
         ><span class="badge ${ready ? "green" : ""}"
           >${ready ? "Lkw bereit" : "Kein passender Lkw"}</span
         >
@@ -64,21 +64,24 @@ export function renderContractDetails(contract, view) {
   return html`${routeLink("/contracts", [icon("back", 16), " Alle Aufträge"], "back-link")}
     <div class="cargo-heading">
       ${icon("contracts", 28)}<span
-        >${contract.cargo}<small>${number(contract.tons)} Tonnen · Straßentransport</small></span
+        >${contract.cargo}<small>${number(contract.tons, 2)} Tonnen · Straßentransport</small></span
       >
     </div>
     <div class="itinerary">
       ${renderStop("ABHOLUNG", contract.origin, contract.shipper_name)}${renderStop("ZUSTELLUNG", contract.destination, contract.consignee_name)}
     </div>
-    <p class="footnote">Reale Frachtstandorte · simulierte Auftraggeber</p>
+    <p class="footnote">
+      Reale Standorte und Referenzunternehmen · Geschäftsbeziehung, Menge und Auftrag simuliert
+    </p>
+    ${contract.cargo_basis === "simulated" ? html`<p class="footnote">Simulierte Standardfracht: Für diesen Standort ist keine geeignete reale Ware belegt.</p>` : null}
     ${renderQuote(view)}${renderDispatchForm(contract, view)}`;
 }
 
-/** Render one real freight stop and its simulated customer. */
+/** Render a real public facility and its reference company. */
 function renderStop(label, hub, customer) {
   return html`<div>
     <i></i><span>${label}</span>
-    <h2>${hub.city}</h2>
+    <h2>${hub.label}</h2>
     <p>${hub.address}</p>
     <small>${customer}</small>
   </div>`;
@@ -105,7 +108,7 @@ function renderDispatchForm(contract, view) {
     <label for="vehicle-choice">Fahrzeug disponieren</label> ${
       vehicles.length
         ? html`<select id="vehicle-choice" disabled="${view.mutating}">
-            ${vehicles.map((vehicle) => html`<option value="${vehicle.id}" selected="${view.selectedVehicle === vehicle.id}">${vehicle.name} · ${number(vehicle.capacity_tons)} t</option>`)}
+            ${vehicles.map((vehicle) => html`<option value="${vehicle.id}" selected="${view.selectedVehicle === vehicle.id}">${vehicle.name} · ${number(vehicle.capacity_tons, 2)} t</option>`)}
           </select>`
         : html`<p class="inline-notice">
             Kein passender Lkw am Abholort. Standort, Nutzlast und Verfügbarkeit müssen passen.

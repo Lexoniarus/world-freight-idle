@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.v1.dependencies import get_game_service
 from app.api.v1.schemas import DispatchRequest, QuoteRequest
-from app.domain.errors import GeocodingError, RoutingError
+from app.domain.errors import RoutingError
 from app.services.game import GameService
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
@@ -36,7 +36,7 @@ async def quote_contract(
     body: QuoteRequest | None = None,
     game: GameService = Depends(get_game_service),
 ) -> dict:
-    """Resolve addresses and return a provider-backed truck quote."""
+    """Route saved coordinates and return a provider-backed truck quote."""
     try:
         return await game.quote_contract(
             contract_id, body.vehicle_id if body else None
@@ -45,7 +45,7 @@ async def quote_contract(
         raise HTTPException(400, str(exc)) from exc
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from exc
-    except (GeocodingError, RoutingError) as exc:
+    except RoutingError as exc:
         raise HTTPException(502, str(exc)) from exc
 
 
@@ -62,7 +62,7 @@ async def accept_contract(
         raise HTTPException(404, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    except (GeocodingError, RoutingError) as exc:
+    except RoutingError as exc:
         raise HTTPException(502, str(exc)) from exc
 
 

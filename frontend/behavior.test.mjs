@@ -630,3 +630,99 @@ test("catalogue reputations gate offers independently of funds", () => {
   view.state.player.reputation = 5;
   assert.equal(renderPanel(view).querySelector('[data-action="buy"]').disabled, false);
 });
+test("facility snapshots preserve map locations during catalogue outage and legacy links resolve", async () => {
+  const { matchesFacility, eligibleVehicles } = await import("./geometry.js");
+  const facility = {
+    ...hub,
+    id: "facility-uuid",
+    facility_uid: "facility-uuid",
+    aliases: ["berlin"],
+  };
+  assert.equal(matchesFacility(facility, "berlin"), true);
+  assert.equal(matchesFacility(facility, facility.facility_uid), true);
+  assert.equal(matchesFacility(facility, "unknown"), false);
+  const owned = {
+    ...vehicle,
+    facility_uid: facility.facility_uid,
+    hub_id: facility.id,
+    hub: facility,
+    location_snapshot: facility,
+  };
+  const job = {
+    ...contract,
+    origin_facility_uid: facility.facility_uid,
+    origin_hub_id: facility.id,
+    origin: facility,
+  };
+  assert.equal(eligibleVehicles([owned], job).length, 1);
+  const overlays = new OverlayData();
+  overlays.setHubs([]);
+  overlays.update({ vehicles: [owned], contracts: [job], transports: [] });
+  assert.deepEqual(overlays.fleetCoordinates(0), [[13, 52]]);
+  assert.equal(overlays.hubFeatures().features.length, 2);
+  const view = createView("/contracts?hub=berlin");
+  view.state.contracts = [job];
+  const container = document.createElement("div");
+  container.append(renderPanel(view));
+  assert.equal(container.querySelectorAll(".job-card").length, 1);
+  view.url = new URL("http://test/contracts?hub=unknown");
+  container.replaceChildren(renderPanel(view));
+  assert.equal(container.querySelectorAll(".job-card").length, 0);
+});
+
+test("facility API late results are ignored after disposal and errors preserve saved overlays", async () => {
+  const { GameSync } = await import("./controllers/game-sync.js");
+  let resolve;
+  const updates = [];
+  const notices = [];
+  const sync = new GameSync({
+    state: new EventTarget(),
+    panel: {},
+    map: { setHubs: (hubs) => updates.push(hubs) },
+    request: () =>
+      new Promise((done) => {
+        resolve = done;
+      }),
+    notify: (message) => notices.push(message),
+  });
+  const pending = sync.loadHubs();
+  sync.destroy();
+  resolve({ facilities: [hub], unavailable_count: 0 });
+  await pending;
+  assert.deepEqual(updates, []);
+  const live = new GameSync({
+    state: new EventTarget(),
+    panel: {},
+    map: { setHubs: (hubs) => updates.push(hubs) },
+    request: async () => {
+      throw new Error("503");
+    },
+    notify: (message) => notices.push(message),
+  });
+  await live.loadHubs();
+  assert.deepEqual(updates, []);
+  assert.match(notices[0], /konnten nicht geladen/);
+  live.destroy();
+});
+
+test("simulated standard freight is explicit and does not claim a documented good", () => {
+  const view = createView();
+  view.state.contracts = [
+    { ...contract, cargo: "Standardfracht (Simulation)", cargo_basis: "simulated" },
+  ];
+  const container = document.createElement("div");
+  container.append(renderPanel(view));
+  assert.match(container.textContent, /keine geeignete reale Ware belegt/);
+  view.state.contracts = [{ ...contract, cargo_basis: "documented" }];
+  container.replaceChildren(renderPanel(view));
+  assert.doesNotMatch(container.textContent, /keine geeignete reale Ware belegt/);
+});
+
+test("shipment quantities preserve hundredths for light vehicle selection", () => {
+  const view = createView();
+  view.state.contracts = [{ ...contract, tons: 1.15 }];
+  const container = document.createElement("div");
+  container.append(renderPanel(view));
+  assert.match(container.textContent, /1,15 Tonnen/);
+  assert.doesNotMatch(container.textContent, /1,2 Tonnen/);
+});

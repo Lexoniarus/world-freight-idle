@@ -5,7 +5,7 @@ UI First: Die OSM-Karte mit MapLibre ist die primäre Oberfläche, Management
 erfolgt über Kontextpanels. Die folgenden URLs sind direkt aufrufbare
 Ansichten innerhalb derselben Kartenanwendung. Aufträge, Shop, Flotte,
 Tracking und Rangliste nutzen das vorhandene Backend. Satellitenbilder,
-eigene Depots und Unternehmen folgen nach der Frontend-Abnahme.
+eigene Depots und Spielerunternehmen folgen nach der Frontend-Abnahme.
 
 ## Produktidee
 
@@ -18,7 +18,7 @@ Der MVP muss einen vollständigen Road-Freight-Loop liefern:
 1. Spieler meldet sich an und öffnet die Weltkarte.
 2. Spieler wechselt auf den Auftragsmarkt.
 3. Spieler öffnet einen Auftrag mit **realer Von-Adresse und realer Zu-Adresse**.
-4. Das System geocodiert beide Adressen über Nominatim/OpenStreetMap.
+4. Das System liest die bei Auftragserzeugung gespeicherten Facility-Koordinaten.
 5. Das System berechnet eine echte Truck-Route über Valhalla/OpenStreetMap.
 6. Distanz, Routing-Zeit, Kosten, Vergütung und Marge werden angezeigt.
 7. Spieler weist ein passendes Fahrzeug am Startort zu.
@@ -42,7 +42,8 @@ Der MVP muss einen vollständigen Road-Freight-Loop liefern:
 
 **Real:**
 - Von-/Zu-Adressen
-- Geocoding
+- Verifizierte Koordinaten mit Quellen
+- Referenzunternehmen, Facilities und dokumentierte Waren
 - Straßennetz
 - Truck-Routengeometrie
 - Routing-Distanz
@@ -50,8 +51,8 @@ Der MVP muss einen vollständigen Road-Freight-Loop liefern:
 - Echtzeit-Timestamps
 
 **Simuliert:**
-- Firmennamen
-- Cargo-Inhalt
+- Konkrete Geschäftsbeziehung
+- Tonnage und konkrete Lieferung
 - Auftragsentstehung
 - Preis-/Kostenmodell
 
@@ -88,3 +89,10 @@ Lebenszyklen. Ergänzt sind Katalogkauf und fahrzeugbezogene Kilometerkosten;
 die UI-First-Reihenfolge bleibt bestehen. Wartung, Energiehalte, Reichweite
 und Zuverlässigkeit sind noch keine aktiven Mechaniken. Öffentliche Frachtstandorte bleiben von eigenen
 Depots unterschieden.
+
+Der WorldCatalogue ergänzt reale Referenzunternehmen; dies ist kein Ausbau
+der Spielerunternehmens- oder Depotmechanik. Jeder routbare Standort erhält Aufträge. Verwendet werden dokumentierte
+Standardwaren oder ausdrücklich simulierte Standardfracht ohne Warenbeleg
+(DB-nutzlastabhängige Mengen, 0,18 €/km/t). Derselbe Ort oder dieselbe
+Firma darf beide Endpunkte besitzen; dieselbe Facility nicht. Details und
+Bestandskompatibilität: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).

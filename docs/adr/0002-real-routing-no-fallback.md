@@ -2,7 +2,7 @@
 
 ## Entscheidung
 
-Ein Auftrag kann nur geroutet und angenommen werden, wenn Geocoding und Valhalla erfolgreich sind. Es existiert kein stiller Luftlinien- oder Demo-Polyline-Fallback.
+Ein Auftrag kann nur geroutet und angenommen werden, wenn verifizierte gespeicherte Endpunktkoordinaten vorhanden sind und Valhalla erfolgreich ist. Es existiert kein stiller Luftlinien- oder Demo-Polyline-Fallback.
 
 ## Konsequenz
 

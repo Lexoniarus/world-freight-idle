@@ -23,6 +23,7 @@ class Settings:
     log_level: str
     cookie_secure: bool = False
     vehicle_catalogue_path: Path | None = None
+    world_catalogue_path: Path | None = None
 
     @classmethod
     def from_env(cls, base_dir: Path | None = None) -> "Settings":
@@ -34,6 +35,14 @@ class Settings:
             base_dir=resolved_base,
             data_dir=data_dir,
             db_path=Path(os.getenv("DB_PATH", data_dir / "game.db")),
+            world_catalogue_path=Path(
+                os.getenv(
+                    "WORLD_CATALOGUE_PATH",
+                    resolved_base
+                    / "data"
+                    / "world_freight_company_facility_mvp.sqlite3",
+                )
+            ),
             vehicle_catalogue_path=Path(
                 os.getenv(
                     "VEHICLE_CATALOGUE_PATH",

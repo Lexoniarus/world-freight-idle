@@ -16,6 +16,8 @@ COMMANDS = (
         "main.py",
         "scripts/quality.py",
         "scripts/update_test_profile.py",
+        "scripts/prepare_world_catalogue.py",
+        "scripts/migrate_world_state.py",
     ),
     (
         sys.executable,
@@ -28,6 +30,8 @@ COMMANDS = (
         "main.py",
         "scripts/quality.py",
         "scripts/update_test_profile.py",
+        "scripts/prepare_world_catalogue.py",
+        "scripts/migrate_world_state.py",
     ),
     (
         sys.executable,
@@ -36,6 +40,8 @@ COMMANDS = (
         "app",
         "main.py",
         "scripts/update_test_profile.py",
+        "scripts/prepare_world_catalogue.py",
+        "scripts/migrate_world_state.py",
     ),
     (
         "node",

@@ -19,9 +19,14 @@ class PricingService:
         tons: float,
         distance_km: float,
         operating_cost_eur_per_km: float = 0.62,
+        rate_eur_per_km_ton: float | None = None,
     ) -> PriceQuote:
         """Price one contract from its real routed distance."""
-        rate = self._rates.get(cargo_name, 0.18)
+        rate = (
+            self._rates.get(cargo_name, 0.18)
+            if rate_eur_per_km_ton is None
+            else rate_eur_per_km_ton
+        )
         payout = round(220 + distance_km * tons * rate)
         operating_cost = round(80 + distance_km * operating_cost_eur_per_km)
         return PriceQuote(

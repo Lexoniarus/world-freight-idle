@@ -72,7 +72,7 @@ def collect_concrete_callables(app_root: Path) -> set[str]:
 def collect_test_functions(tests_root: Path) -> set[str]:
     names = set()
     for path in tests_root.glob("test_*.py"):
-        tree = ast.parse(path.read_text())
+        tree = ast.parse(path.read_text(encoding="utf-8"))
         names.update(
             node.name
             for node in tree.body

@@ -2,7 +2,7 @@
 
 ## Betriebsgrenzen und Quellen
 
-Ein Prozess teilt einen Geocoder über alle Konten. Öffentliche Nominatim-
+Der Spielserver erzeugt keinen Geocoder. Beim Offline-Enrichment gelten für Nominatim-
 Anfragen sind maximal einmal pro Sekunde zulässig; der Adapter verwendet
 1,05 Sekunden Mindestabstand und persistentes Caching. Bei mehreren Workern
 ist ein verteilter Limiter oder ein eigener Dienst erforderlich.
@@ -18,14 +18,16 @@ Eurostat, UN Comtrade und reale Fahrzeugpreise sind noch nicht angebunden.
 
 ## Nominatim / OpenStreetMap
 
-Zweck: Umwandlung der festen MVP-Postadressen in Koordinaten.
+Zweck: Offline-Kandidatensuche für Import/Enrichment. Vor Freigabe sind
+Identität, Quelle und Genauigkeitsklasse gesondert zu prüfen. Die normalen
+Facility-Lookups verwenden gespeicherte Koordinaten aus dem WorldCatalogue.
 
 Konfiguration:
 
 - `NOMINATIM_URL`
 - `HTTP_USER_AGENT`
 
-Der öffentliche OSMF-Dienst ist nur für kleine Nutzung gedacht. Das MVP cached jede Adresse dauerhaft und limitiert Requests seriell. Für Produktion muss ein eigener oder kommerzieller Geocoder verwendet werden.
+Der öffentliche OSMF-Dienst ist nur für kleine Nutzung gedacht. Der Offline-Adapter cached jede Adresse dauerhaft und limitiert Requests seriell. Für Produktion muss ein eigener oder kommerzieller Geocoder verwendet werden.
 
 ## Valhalla / OpenStreetMap
 

@@ -18,7 +18,8 @@ Auch beim Testen über OpenAPI/curl muss der Schreibheader gesetzt werden.
 | GET | `/fleet/catalogue` | Fahrzeugmodelle und simulierte Preise |
 | POST | `/fleet/purchase` | `{model_id}`: atomarer Kauf, 201 |
 | GET | `/leaderboard` | Top 100: Namen und abgeschlossene Lieferungen |
-| GET | `/map/hubs` | Authentifiziert: feste Frachtstandorte mit Koordinaten und Auflösungsstatus |
+| GET | `/map/facilities` | Verifizierte öffentliche Facilities, optional bbox |
+| GET | `/map/hubs` | Kompatibles hubs-Envelope derselben Facilities, kein Geocoding |
 
 Spielername: ASCII-Buchstaben, Ziffern, Unterstrich, 3–24 Zeichen;
 Passwort: 12–128 Zeichen. Sitzungen laufen nach sieben Tagen ab.
@@ -31,12 +32,14 @@ Spielaktionen verwenden ausschließlich diese API. Geocoder, Router und SQLite
 sind keine öffentlichen Schnittstellen. Die Hintergrundkarte lädt ihre Tiles
 direkt vom konfigurierten Kartenanbieter.
 
-GET /map/hubs liefert {"hubs": [...]} mit id, city, label, address, country,
-lat, lon und resolution_status. Bei Erfolg ist der Status resolved und
-geocoded_address vorhanden. Bei einem Providerfehler ist der Status
-unavailable, lat/lon sind null. Teilfehler behalten HTTP 200, die übrigen
-Standorte bleiben nutzbar. Ohne Sitzung HTTP 401. Der bestehende
-Geocoding-Cache und gemeinsame Rate-Limiter werden wiederverwendet.
+GET /map/facilities liefert `facilities`, `catalogue_version` und
+`unavailable_count`. Nur geprüfte Koordinaten werden als Marker ausgeliefert.
+`bbox=west,south,east,north` unterstützt die Datumsgrenze (west > east),
+weist ungültige Werte mit 422 ab und ist optional. Ohne Sitzung 401;
+Katalogausfall 503. Numerische SQLite-PKs sind nicht öffentlich.
+GET /map/hubs liefert weiterhin {"hubs": [...]} als Kompatibilitätsprojektion.
+Beide Endpoints lösen keine Geocoding-Aufrufe aus. Projektionen und Migration:
+[WorldCatalogue](WORLD_CATALOGUE.md).
 
 ## Dashboard
 
@@ -58,7 +61,7 @@ Liefert ein Auftragsdetail.
 
 Führt den externen Datenpfad aus:
 
-`Adresse → Nominatim → Koordinate → Valhalla truck → Route → Pricing`
+`gespeicherter Facility-Snapshot → Valhalla truck → Route → Pricing`
 
 Ohne erfolgreiche Providerroute gibt es kein Angebot.
 
@@ -74,7 +77,7 @@ Validiert Fahrzeugstatus, Modus, Standort, Kapazität und Liquidität. Bei Erfol
 
 ### `POST /contracts/refresh`
 
-Erzeugt einen neuen fiktiven Auftragsmarkt über den bekannten realen Hubs.
+Erzeugt einen neuen fiktiven Auftragsmarkt über den geeigneten verifizierten Facilities.
 
 ## Flotte
 
@@ -107,7 +110,8 @@ Zeigt konfigurierte Provider und API-Version, ohne externe Requests auszulösen.
 - `400` – Domain-/Validierungsfehler
 - `404` – Ressource nicht vorhanden
 - `422` – ungültiges Request-Schema
-- `502` – Geocoding-/Routing-/Providerfehler
+- `502` – Routing-/Providerfehler
+- `503` – benötigter Referenzkatalog fehlt oder ist inkompatibel
 
 Jeder HTTP-Request erhält `X-Trace-Id` in der Response.
 
@@ -144,3 +148,8 @@ Das Konto und die Sitzung sind von der atomaren Spielinitialisierung getrennt.
 Ist der Startkatalog beim ersten Spielabruf nicht verfügbar, folgt HTTP 503;
 nach Wiederherstellung genügt ein neuer Abruf. Bestehende Fahrzeuge bleiben
 nutzbar. Es gibt keine allgemeine automatische Altflotten-/Guthabenmigration.
+
+Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
+Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
+erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
+bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).

@@ -51,7 +51,7 @@ function renderTransportDetails(trip, now, vehicle) {
       >${renderVehicleImage(vehicle || { name: "Lkw", capacity_tons: 24 })}
     </div>
     <h2>${trip.origin.city} ${icon("arrow", 22)} ${trip.destination.city}</h2>
-    <p>${trip.contract.cargo} · ${number(trip.contract.tons)} t</p>
+    <p>${trip.contract.cargo} · ${number(trip.contract.tons, 2)} t</p>
     ${renderProgress(trip, now)}
     <div class="metrics">
       ${metric("Strecke", number(trip.distance_km) + " km")}${metric("Erlös bei Ankunft", money(trip.payout_eur))}${metric("Betriebskosten", money(trip.operating_cost_eur))}${metric("Gewinn", money(trip.profit_eur), "profit")}

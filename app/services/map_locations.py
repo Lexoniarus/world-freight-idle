@@ -1,56 +1,28 @@
-"""Read-only map projection over the shared geocoding provider."""
+"""Map projection of public catalogue facilities, without geocoding."""
 
-import logging
-import math
 from typing import Any
 
-from app.domain.errors import GeocodingError
-from app.domain.models import Hub
-from app.domain.ports import Geocoder
-
-LOGGER = logging.getLogger(__name__)
+from app.domain.ports import WorldCatalogue
+from app.domain.world import FacilityQuery
 
 
 class MapLocationService:
-    """Resolve the fixed freight locations without fabricating coordinates."""
+    """Filter immutable world data without touching player-owned depots."""
 
-    def __init__(self, geocoder: Geocoder, hubs: tuple[Hub, ...]) -> None:
-        self.geocoder = geocoder
-        self.hubs = hubs
+    def __init__(self, world: WorldCatalogue) -> None:
+        self.world = world
+
+    def list_facilities(self, query: FacilityQuery) -> dict[str, Any]:
+        """Return bounded endpoints and explicit unavailable counts."""
+        snapshot = self.world.read()
+        return {
+            "facilities": [f.to_dict() for f in snapshot.query(query)],
+            "catalogue_version": snapshot.version,
+            "unavailable_count": sum(
+                not f.is_routable() for f in snapshot.facilities
+            ),
+        }
 
     async def list_hubs(self) -> list[dict[str, Any]]:
-        """Return independent success/error states for each real location."""
-        locations = []
-        for hub in self.hubs:
-            location = hub.to_dict()
-            try:
-                lat, lon, address = await self.geocoder.geocode(hub.address)
-                if not (
-                    math.isfinite(lat)
-                    and math.isfinite(lon)
-                    and -90 <= lat <= 90
-                    and -180 <= lon <= 180
-                ):
-                    raise ValueError("Invalid map coordinates")
-                location.update(
-                    lat=lat,
-                    lon=lon,
-                    geocoded_address=address,
-                    resolution_status="resolved",
-                )
-            except (GeocodingError, ValueError, KeyError):
-                LOGGER.warning(
-                    "Map location unavailable",
-                    exc_info=True,
-                    extra={
-                        "event": "map.location_failed",
-                        "data": {"hub_id": hub.id},
-                    },
-                )
-                location.update(
-                    lat=None,
-                    lon=None,
-                    resolution_status="unavailable",
-                )
-            locations.append(location)
-        return locations
+        """Keep the v1 envelope while all IDs now denote facilities."""
+        return self.list_facilities(FacilityQuery())["facilities"]

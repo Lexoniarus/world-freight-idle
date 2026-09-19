@@ -1,5 +1,5 @@
-from app.seed_data import CARGO_TYPES
 from app.services.pricing import PricingService
+from tests.seed_data import CARGO_TYPES
 
 
 def test_pricing_quote_uses_distance_and_cargo_rate():

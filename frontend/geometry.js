@@ -74,8 +74,22 @@ export function eligibleVehicles(vehicles, contract) {
   return vehicles.filter(
     (vehicle) =>
       vehicle.status === "idle" &&
-      vehicle.hub_id === contract.origin_hub_id &&
+      (vehicle.facility_uid ?? vehicle.hub_id) ===
+        (contract.origin_facility_uid ?? contract.origin_hub_id) &&
       vehicle.capacity_tons >= contract.tons &&
       vehicle.mode === contract.mode,
+  );
+}
+
+/** Match a stable facility UID or an explicitly retained old URL alias.
+ * @param {import('./types.js').Hub} facility
+ * @param {string | null} identifier
+ * @returns {boolean}
+ */
+export function matchesFacility(facility, identifier) {
+  return (
+    !identifier ||
+    (facility.facility_uid ?? facility.id) === identifier ||
+    (facility.aliases ?? []).includes(identifier)
   );
 }

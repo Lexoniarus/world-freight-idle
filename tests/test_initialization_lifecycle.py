@@ -73,18 +73,15 @@ def test_reset_failure_restores_deleted_state(game):
     [
         "none",
         "first-client",
-        "second-client",
         "game",
         "accounts",
         "auth",
         "body",
         "close-first",
-        "close-second",
     ],
 )
 async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
     clients = [
-        SimpleNamespace(aclose=AsyncMock()),
         SimpleNamespace(aclose=AsyncMock()),
     ]
     app = FastAPI()
@@ -93,12 +90,8 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
     creation: list[SimpleNamespace | RuntimeError] = list(clients)
     if failure == "first-client":
         creation[0] = error
-    if failure == "second-client":
-        creation[1] = error
     if failure == "close-first":
         clients[0].aclose.side_effect = error
-    if failure == "close-second":
-        clients[1].aclose.side_effect = error
     with ExitStack() as patches:
         patches.enter_context(
             patch("app.main.httpx.AsyncClient", side_effect=creation)
@@ -132,11 +125,5 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
                 async with lifespan(app):
                     if failure == "body":
                         raise error
-    expected = (
-        [0, 0]
-        if failure == "first-client"
-        else [1, 0]
-        if failure == "second-client"
-        else [1, 1]
-    )
+    expected = [0] if failure == "first-client" else [1]
     assert [client.aclose.await_count for client in clients] == expected

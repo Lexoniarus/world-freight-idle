@@ -108,9 +108,83 @@ def test_profile_maintenance_keeps_cli_and_sql_out_of_service():
                         "AccountRepository",
                         "SqliteVehicleCatalogue",
                     }, name
+
                 if isinstance(node.func, ast.Attribute):
                     assert node.func.attr not in {
                         "execute",
                         "executemany",
                         "executescript",
                     }, name
+
+
+def world_boundary_violations(source, module):
+    """Resolve static Python imports and SQL calls at world boundaries."""
+    tree = ast.parse(source)
+    imports = []
+    violations = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imports.extend(alias.name for alias in node.names)
+        if isinstance(node, ast.ImportFrom):
+            prefix = node.module or ""
+            if node.level:
+                parts = module.split(".")[: -node.level]
+                prefix = ".".join([*parts, prefix]).rstrip(".")
+            imports.extend(
+                [prefix, *(prefix + "." + alias.name for alias in node.names)]
+            )
+        if isinstance(node, ast.Call):
+            name = ast.unparse(node.func)
+            if (
+                name in {"importlib.import_module", "__import__"}
+                and node.args
+                and isinstance(node.args[0], ast.Constant)
+            ):
+                imports.append(str(node.args[0].value))
+            if isinstance(node.func, ast.Attribute) and node.func.attr in {
+                "execute",
+                "executemany",
+                "executescript",
+            }:
+                violations.append("SQL call")
+    forbidden = [
+        "app.seed_data",
+        "app.providers.geocoding",
+        "app.repositories.world_catalogue",
+        "app.repositories.world_maintenance",
+        "app.repositories.world_state_migration",
+    ]
+    if module.startswith("app.domain") or module in {
+        "app.services.game",
+        "app.services.market",
+        "app.services.world_maintenance",
+        "app.services.world_state_migration",
+    }:
+        forbidden.append("sqlite3")
+    for imported in imports:
+        if any(
+            imported == name or imported.startswith(name + ".")
+            for name in forbidden
+        ):
+            violations.append(imported)
+    return violations
+
+
+def test_world_boundaries_forbid_sql_adapters_and_seed_fallbacks():
+    root = Path(__file__).resolve().parents[1] / "app"
+    for folder in ("domain", "services", "api"):
+        for path in (root / folder).rglob("*.py"):
+            module = "app." + ".".join(
+                path.relative_to(root).with_suffix("").parts
+            )
+            assert not world_boundary_violations(
+                path.read_text(encoding="utf-8"), module
+            ), path
+    for source in (
+        "import sqlite3",
+        "from ..repositories.world_catalogue import SqliteWorldCatalogue",
+        "from app.seed_data import HUBS",
+        'importlib.import_module("app.providers.geocoding")',
+        'db.execute("SELECT 1")',
+    ):
+        assert world_boundary_violations(source, "app.services.market")

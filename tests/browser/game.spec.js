@@ -40,7 +40,7 @@ test("desktop: registration, map, quote, dispatch, purchase, arrival, logout and
   const errors = [];
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
   const username = await register(page);
-  await expect(page.locator("#map-notice")).toBeHidden();
+  await expect(page.locator("#map-notice")).toContainText("Koordinatennachweis");
   await page.screenshot({ animations: "disabled", path: screenshot("desktop") });
   await page.getByRole("link", { name: "Aufträge", exact: true }).click();
   await page.locator(".job-card").filter({ hasText: "Lkw bereit" }).first().click();
@@ -90,7 +90,9 @@ test("mobile: sheets, navigation, keyboard and attribution stay usable", async (
   await expect(page.locator("#panel")).toBeHidden();
   await expect(page.getByRole("link", { name: "Flotte", exact: true })).toBeFocused();
   await page.goto("/fleet?tab=shop");
-  await expect(page.locator(".shop-card")).toHaveCount(8);
+  const catalogue = (await (await page.request.get("/api/v1/fleet/catalogue")).json()).models;
+  expect(catalogue.length).toBeGreaterThanOrEqual(8);
+  await expect(page.locator(".shop-card")).toHaveCount(catalogue.length);
   await page.getByRole("link", { name: "Rangliste", exact: true }).click();
   await expect(page.locator(".rankings li.you")).toBeVisible();
 });
@@ -151,10 +153,10 @@ test("parallel trips persist across navigation and map controls work without reb
 
 test("missing hub coordinates and tile outages preserve the playable lists", async ({ page, context }) => {
   await context.route("https://tile.openstreetmap.org/**", (route) => route.abort());
-  await page.route("**/api/v1/map/hubs", async (route) => {
+  await page.route("**/api/v1/map/facilities", async (route) => {
     const response = await route.fetch();
     const data = await response.json();
-    for (const hub of data.hubs) { hub.lat = null; hub.lon = null; hub.resolution_status = "unavailable"; }
+    for (const hub of data.facilities) { hub.lat = null; hub.lon = null; hub.resolution_status = "unavailable"; }
     await route.fulfill({ json: data });
   });
   await register(page);
@@ -169,7 +171,9 @@ test("missing hub coordinates and tile outages preserve the playable lists", asy
 test("DB vehicle selection changes costs, dispatches and settles after relogin", async ({ page }) => {
   const username = await register(page);
   await page.getByRole("link", { name: "Fahrzeugshop", exact: true }).first().click();
-  await expect(page.locator(".shop-card")).toHaveCount(8);
+  const catalogue = (await (await page.request.get("/api/v1/fleet/catalogue")).json()).models;
+  expect(catalogue.length).toBeGreaterThanOrEqual(8);
+  await expect(page.locator(".shop-card")).toHaveCount(catalogue.length);
   await expect(page.locator(".shop-card").filter({ hasText: "DAF" }).getByRole("button")).toBeDisabled();
   await page.screenshot({ animations: "disabled", path: screenshot("catalogue-desktop") });
   await page.locator(".shop-card").filter({ hasText: "Renault" }).getByRole("button", { name: "Fahrzeug kaufen" }).click();
@@ -212,7 +216,9 @@ test("mobile DB shop preserves focus, shows failure and supports purchase", asyn
   await expect(page.locator("#panel-content")).toContainText("Erneut");
   await page.unroute("**/api/v1/fleet/catalogue");
   await page.locator('[data-action="retry-panel"]').click();
-  await expect(page.locator(".shop-card")).toHaveCount(8);
+  const catalogue = (await (await page.request.get("/api/v1/fleet/catalogue")).json()).models;
+  expect(catalogue.length).toBeGreaterThanOrEqual(8);
+  await expect(page.locator(".shop-card")).toHaveCount(catalogue.length);
   await page.screenshot({ animations: "disabled", path: screenshot("catalogue-mobile") });
   await page.locator(".shop-card").filter({ hasText: "S-Way" }).getByRole("button", { name: "Fahrzeug kaufen" }).click();
   await expect(page.locator("#fleet-count")).toHaveText("2");
@@ -233,6 +239,7 @@ test("two independent profiles stay isolated and catalogue photos load or fall b
     const headers = { "X-Freight-Request": "1" };
     await page.goto("/fleet?tab=shop");
     const offer = page.locator('.shop-card').filter({hasText: 'S-Way'});
+    await offer.scrollIntoViewIfNeeded();
     await expect(offer.locator('figure')).toHaveAttribute('data-image-state', 'loaded');
     await expect(offer.locator('figcaption')).toContainText('CC0 1.0');
     await expect(offer.getByRole('link', {name: 'Quelle', exact: true})).toHaveAttribute('href', /commons.wikimedia.org/);
@@ -278,4 +285,39 @@ test("loaded starter photo survives polling and changed transport panel content"
   await expect(page.locator(".vehicle-card .badge")).toHaveText("Unterwegs", {timeout: 15000});
   expect(await original.evaluate(element => element === document.querySelector(".vehicle-photo img"))).toBeTruthy();
   await expect(figure).toHaveAttribute("data-image-state", "loaded");
+});
+
+test("facility identities, legacy deep links and catalogue outages preserve the game", async ({ page }) => {
+  await register(page);
+  const response = await page.request.get("/api/v1/map/facilities?bbox=13,52,14,53");
+  expect(response.ok()).toBeTruthy();
+  const result = await response.json();
+  expect(result.unavailable_count).toBe(112);
+  const berlin = result.facilities.find(f => f.aliases.includes("berlin_westhafen"));
+  expect(berlin.facility_uid).toMatch(/^[0-9a-f-]{36}$/);
+  expect(berlin.facility_id).toBeUndefined();
+  expect(berlin.company.company_id).toBeUndefined();
+  expect(berlin.coordinate_evidence.length).toBeGreaterThan(0);
+  const all = (await (await page.request.get("/api/v1/map/facilities")).json()).facilities;
+  const jobs = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
+  expect(new Set(jobs.map(job => job.origin_facility_uid))).toEqual(new Set(all.map(facility => facility.facility_uid)));
+  expect(jobs.some(job => job.cargo_basis === "simulated" && job.cargo_evidence === null)).toBeTruthy();
+  const models = (await (await page.request.get("/api/v1/fleet/catalogue")).json()).models;
+  for (const facility of all) {
+    const localJobs = jobs.filter(job => job.origin_facility_uid === facility.facility_uid);
+    for (const model of models) {
+      expect(localJobs.some(job => job.tons > 0 && job.tons <= model.capacity_tons)).toBeTruthy();
+    }
+  }
+  await page.goto("/contracts?hub=berlin_westhafen");
+  const originalCanvas = await page.locator(".maplibregl-canvas").elementHandle();
+  await expect(page.locator(".job-card").first()).toContainText("Berlin Westhafen");
+  await page.locator(".job-card").first().click();
+  await expect(page.locator(".footnote").first()).toContainText("Geschäftsbeziehung, Menge und Auftrag simuliert");
+  expect(await originalCanvas.evaluate(element => element.isConnected)).toBeTruthy();
+  await page.route("**/api/v1/map/facilities", route => route.fulfill({ status: 503, json: { detail: "Weltkatalog derzeit nicht verfügbar." } }));
+  await page.goto("/fleet");
+  await expect(page.locator("#map-notice")).toContainText("konnten nicht geladen");
+  await expect(page.locator(".vehicle-card")).toContainText("Berlin Westhafen");
+  await page.screenshot({ animations: "disabled", path: screenshot("facility-outage") });
 });

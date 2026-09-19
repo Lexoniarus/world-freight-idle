@@ -6,7 +6,7 @@ import uvicorn
 
 
 def main() -> None:
-    """Run the browser game with one shared provider rate limiter."""
+    """Run the server-authoritative browser game in one process."""
     uvicorn.run(
         "app.main:app",
         host=os.getenv("HOST", "0.0.0.0"),

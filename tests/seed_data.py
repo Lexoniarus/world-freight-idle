@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .domain.models import CargoType, Hub
+from app.domain.models import CargoType, Hub
 
 HUBS: tuple[Hub, ...] = (
     Hub(

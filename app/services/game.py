@@ -7,10 +7,13 @@ import time
 import uuid
 from typing import Any
 
-from app.domain.models import Hub
-from app.domain.ports import Geocoder, TruckRouter, VehicleCatalogue
+from app.domain.errors import CatalogueError
+from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
 from app.repositories.sqlite_store import SqliteStore
-from app.services.fleet import create_starter_vehicle
+from app.services.fleet import (
+    create_starter_vehicle,
+    resolve_delivery_facility,
+)
 from app.services.market import MarketGenerator
 from app.services.pricing import PricingService
 
@@ -25,22 +28,18 @@ class GameService:
     def __init__(
         self,
         store: SqliteStore,
-        geocoder: Geocoder,
+        world: WorldCatalogue,
         router: TruckRouter,
         market: MarketGenerator,
         pricing: PricingService,
-        hubs_by_id: dict[str, Hub],
-        hubs: tuple[Hub, ...],
         catalogue: VehicleCatalogue,
         time_scale: float = 1.0,
     ) -> None:
         self.store = store
-        self.geocoder = geocoder
+        self.world = world
         self.router = router
         self.market = market
         self.pricing = pricing
-        self.hubs_by_id = hubs_by_id
-        self.hubs = hubs
         self.time_scale = max(0.001, time_scale)
         self.catalogue = catalogue
 
@@ -63,7 +62,12 @@ class GameService:
         if self.store.get_json("vehicles") is None:
             self.store.set_json(
                 "vehicles",
-                [create_starter_vehicle(self.catalogue)],
+                [
+                    create_starter_vehicle(
+                        self.catalogue,
+                        resolve_delivery_facility(self.world),
+                    )
+                ],
             )
         if self.store.get_json("active_trips") is None:
             legacy = self.store.get_json("active_trip")
@@ -81,12 +85,11 @@ class GameService:
         """Replace a market inside the caller's write transaction."""
         now = self.now()
         current = self.store.get_json("contracts", [])
-        if (
-            not force
-            and current
-            and min(item["expires_at"] for item in current) > now + 60
-        ):
-            return current
+        retained = (
+            []
+            if force
+            else [item for item in current if item["expires_at"] > now + 60]
+        )
 
         vehicles = self.store.get_json("vehicles", [])
         idle_hubs = [
@@ -96,13 +99,36 @@ class GameService:
         ]
         if not idle_hubs:
             idle_hubs = ["berlin_westhafen"]
-        contracts = self.market.generate(now, idle_hubs)
+        try:
+            contracts = self.market.generate(
+                now,
+                idle_hubs,
+                existing_contracts=retained,
+                owned_capacities=[v["capacity_tons"] for v in vehicles],
+            )
+        except CatalogueError:
+            if force:
+                raise
+            LOGGER.warning(
+                "World market unavailable",
+                extra={
+                    "event": "market.catalogue_unavailable",
+                },
+            )
+            return [item for item in current if item["expires_at"] > now]
+        if contracts == current:
+            return current
         self.store.set_json("contracts", contracts)
         LOGGER.info(
             "Contract market refreshed",
             extra={
                 "event": "market.refresh",
-                "data": {"contract_count": len(contracts)},
+                "data": {
+                    "contract_count": len(contracts),
+                    "origin_facility_uids": [
+                        c["origin_facility_uid"] for c in contracts
+                    ],
+                },
             },
         )
         return contracts
@@ -110,7 +136,7 @@ class GameService:
     async def quote_contract(
         self, contract_id: str, vehicle_id: str | None = None
     ) -> dict[str, Any]:
-        """Geocode and route a contract, then calculate its economics."""
+        """Route snapshot coordinates and calculate simulated economics."""
         self.reconcile_arrival()
         contract = self._find_contract(contract_id)
         cost_per_km = 0.62
@@ -120,10 +146,9 @@ class GameService:
             )
             self._validate_dispatch(vehicle, contract)
             cost_per_km = vehicle.get("operating_cost_eur_per_km", 0.62)
-        origin = self.hubs_by_id[contract["origin_hub_id"]]
-        destination = self.hubs_by_id[contract["destination_hub_id"]]
-        origin_geo = await self._geocode_hub(origin)
-        destination_geo = await self._geocode_hub(destination)
+        expanded = self._expand_contract(contract)
+        origin_geo = expanded["origin"]
+        destination_geo = expanded["destination"]
         route = await self.router.route(
             origin_geo["lat"],
             origin_geo["lon"],
@@ -135,6 +160,7 @@ class GameService:
             float(contract["tons"]),
             route.distance_km,
             cost_per_km,
+            contract.get("rate_eur_per_km_ton"),
         )
         LOGGER.info(
             "Contract quoted",
@@ -144,6 +170,10 @@ class GameService:
                     "contract_id": contract_id,
                     "distance_km": route.distance_km,
                     "duration_seconds": route.duration_seconds,
+                    "origin_facility_uid": origin_geo.get("facility_uid"),
+                    "destination_facility_uid": destination_geo.get(
+                        "facility_uid"
+                    ),
                 },
             },
         )
@@ -190,6 +220,7 @@ class GameService:
             float(contract["tons"]),
             quote["distance_km"],
             vehicle.get("operating_cost_eur_per_km", 0.62),
+            contract.get("rate_eur_per_km_ton"),
         )
         quote = {**quote, **economics.to_dict()}
         player = self.store.get_json("player")
@@ -227,6 +258,10 @@ class GameService:
                     "trip_id": trip["id"],
                     "contract_id": contract_id,
                     "vehicle_id": vehicle_id,
+                    "origin_facility_uid": quote["origin"].get("facility_uid"),
+                    "destination_facility_uid": quote["destination"].get(
+                        "facility_uid"
+                    ),
                 },
             },
         )
@@ -246,14 +281,25 @@ class GameService:
                 "active_trips",
                 [trip for trip in trips if trip["arrives_at"] > now],
             )
-            self.refresh_market(force=True)
+        self.refresh_market()
         return True
 
     def _complete_trip(self, trip: dict[str, Any]) -> None:
         """Apply one arrival inside the caller's settlement transaction."""
         vehicles = self.store.get_json("vehicles", [])
         vehicle = self._find_vehicle(vehicles, trip["vehicle_id"])
-        vehicle["hub_id"] = trip["contract"]["destination_hub_id"]
+        destination = (
+            trip.get("destination_snapshot")
+            or trip.get("destination")
+            or self.world.read()
+            .get_facility(trip["contract"]["destination_hub_id"])
+            .to_dict()
+        )
+        vehicle["hub_id"] = (
+            destination.get("facility_uid") or destination["id"]
+        )
+        vehicle["facility_uid"] = vehicle["hub_id"]
+        vehicle["location_snapshot"] = destination
         vehicle["status"] = "idle"
         player = self.store.get_json("player")
         player["cash"] += trip["payout_eur"]
@@ -283,7 +329,7 @@ class GameService:
                 self._expand_contract(contract)
                 for contract in self.store.get_json("contracts", [])
             ],
-            "hubs": [hub.to_dict() for hub in self.hubs],
+            "hubs": [v["hub"] for v in self.list_vehicles()],
         }
 
     def dashboard(self) -> dict[str, Any]:
@@ -364,17 +410,6 @@ class GameService:
             self.ensure_initial_state()
             return self.state()
 
-    async def _geocode_hub(self, hub: Hub) -> dict[str, Any]:
-        """Resolve one hub address and merge coordinates into API data."""
-        lat, lon, display_name = await self.geocoder.geocode(hub.address)
-        return {
-            **hub.to_dict(),
-            "lat": lat,
-            "lon": lon,
-            "geocoded_address": display_name,
-            "geocoder": "Nominatim / OpenStreetMap",
-        }
-
     def _find_contract(self, contract_id: str) -> dict[str, Any]:
         """Find an active market contract or raise a stable not-found error."""
         contract = next(
@@ -434,6 +469,10 @@ class GameService:
             "vehicle_id": vehicle_id,
             "origin": quote["origin"],
             "destination": quote["destination"],
+            "origin_snapshot": contract.get("origin", quote["origin"]),
+            "destination_snapshot": contract.get(
+                "destination", quote["destination"]
+            ),
             "route_geojson": quote["route_geojson"],
             "distance_km": quote["distance_km"],
             "routing_duration_seconds": quote["duration_seconds"],
@@ -447,15 +486,22 @@ class GameService:
 
     def _expand_vehicle(self, vehicle: dict[str, Any]) -> dict[str, Any]:
         """Attach the vehicle's current real freight hub."""
-        hub = self.hubs_by_id[vehicle["hub_id"]]
-        return {**vehicle, "hub": hub.to_dict()}
+        snapshot = vehicle.get("location_snapshot")
+        if snapshot is None:
+            snapshot = (
+                self.world.read().get_facility(vehicle["hub_id"]).to_dict()
+            )
+        return {**vehicle, "hub": snapshot}
 
     def _expand_contract(self, contract: dict[str, Any]) -> dict[str, Any]:
         """Attach real endpoint addresses to a generated contract payload."""
-        origin = self.hubs_by_id[contract["origin_hub_id"]]
-        destination = self.hubs_by_id[contract["destination_hub_id"]]
+        if "origin" in contract and "destination" in contract:
+            return contract
+        world = self.world.read()
         return {
             **contract,
-            "origin": origin.to_dict(),
-            "destination": destination.to_dict(),
+            "origin": world.get_facility(contract["origin_hub_id"]).to_dict(),
+            "destination": world.get_facility(
+                contract["destination_hub_id"]
+            ).to_dict(),
         }

@@ -21,6 +21,6 @@
 - Follow docs/BRANCHING.md. Work on one named feature/fix/refactor/docs/chore/test/hotfix branch per task, based on current main.
 - Never commit directly to main after the initial repository bootstrap; no force-push on shared branches.
 - Enable repository hooks with `git config --local core.hooksPath .githooks` after cloning; do not bypass them with --no-verify.
-- Review the staged diff and exclude player databases, backups, secrets and generated assets. Only the documented vehicle reference catalogue is versioned.
+- Review the staged diff and exclude player databases, backups, secrets and generated assets. Only the two documented vehicle and world reference catalogues are versioned.
 - Integration requires the quality gate, browser regression and an explicit architecture/documentation review. A local-only repository uses fast-forward integration; a remote uses reviewed squash PRs.
 - Do not create remotes, publish branches or release tags without user authorization. Do not claim server-side protection before it is configured.

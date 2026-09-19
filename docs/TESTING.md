@@ -177,3 +177,29 @@ Pylance verwendet dieselbe Projektkonfiguration und den in VS Code ausgewählten
 Interpreter. Der Standardmodus ist eine bewusste Projektgrenze, kein Nachweis
 vollständiger Strict-Typisierung. Globale Benutzereinstellungen bleiben erhalten.
 Neue Meldungen in diesem Modus müssen vor Integration behoben werden.
+
+## WorldCatalogue-Gegentests
+
+Neue Suiten test_world_catalogue.py, test_world_maintenance.py und
+test_world_migration.py prüfen readonly/Cleanup, Quellen, Koordinaten, UIDs
+bei PK-Änderungen, wiederholte Aufbereitung, Backupfehler, transaktionalen
+Rollback und historische Transportwerte. Marktprüfungen sichern Same-City,
+Same-Company, Standardwaren und mögliche Folgeaufträge. Ein Provider-Spy
+verbietet Nominatim-Aufrufe bei Karte, Quote und Disposition. API-Tests sichern
+Authentifizierung, Datumsgrenzen-BBox, 422/503 und Legacy-Aliase. Frontendtests
+prüfen Facility-Filter, gespeicherte Marker bei Katalogausfall und verspätete
+Antworten nach Cleanup. Die Wartungs-CLIs sind in Ruff, mypy und Pyright enthalten.
+
+Historische Browserprüfungen mit Nominatim beschreiben frühere Stände. Der
+aktuelle Server nutzt nur Valhalla; automatisierte Browserläufe verwenden
+den vorhandenen FakeRouter sowie lokale Tiles und getrennte Testspielstände.
+
+Markt-Ergänzung: Jeder routbare Standort besitzt einen ausgehenden Auftrag.
+Mock-Standardfracht hat keinen erfundenen Quellenbeleg. Tests prüfen vollständige
+Standortabdeckung, Nachfüllen angenommener Aufträge und Erhalt bestehender
+Auftrags-IDs/Snapshots. UI und Browserprüfung kontrollieren die Kennzeichnung.
+
+Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
+Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
+erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
+bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).

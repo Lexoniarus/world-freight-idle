@@ -27,8 +27,9 @@ Fahrzeuge, Routen, Frachtstandorte und Aufträge sind getrennt. Firmen-/Depot-
 Quellen bleiben leer, bis Backend-Daten existieren. Öffentliche Hubs sind
 keine eigenen Depots.
 
-GET /api/v1/map/hubs verwendet bestehende Geocoder und Provider-Caches.
-Teilfehler werden pro Hub explizit zurückgegeben.
+GET /api/v1/map/facilities verwendet den read-only WorldCatalogue mit
+BBox-Filter; /map/hubs bleibt kompatibel. Kein normaler Geocoding-Aufruf.
+Ungeprüfte Endpunkte werden gezählt, nicht als routbare Marker ausgegeben.
 
 OSM-Tiles werden direkt durch den Browser mit dauerhafter Attribution geladen.
 Providerkonfiguration und Nutzungsgrenzen stehen in MAP_PROVIDERS.md.
