@@ -45,15 +45,34 @@ export function prepareRoute(coordinates) {
   return { points, distances, total: distances.at(-1) };
 }
 
-/** @param {import('./types.js').PreparedRoute} route
+/** Calculate a compass bearing where north is 0 degrees and east is 90.
+ * @param {number[]} start
+ * @param {number[]} end
+ * @returns {number} */
+export function bearingBetween(start, end) {
+  const rad = Math.PI / 180;
+  const startLon = start[0] * rad;
+  const startLat = start[1] * rad;
+  const endLon = end[0] * rad;
+  const endLat = end[1] * rad;
+  const deltaLon = endLon - startLon;
+  const y = Math.sin(deltaLon) * Math.cos(endLat);
+  const x =
+    Math.cos(startLat) * Math.sin(endLat) -
+    Math.sin(startLat) * Math.cos(endLat) * Math.cos(deltaLon);
+  return (Math.atan2(y, x) / rad + 360) % 360;
+}
+
+/** Interpolate a route position together with the local direction of travel.
+ * @param {import('./types.js').PreparedRoute} route
  * @param {number} fraction
- * @returns {number[] | null} */
-export function routePosition(route, fraction) {
+ * @returns {{coordinate: number[], bearing: number} | null} */
+export function routePose(route, fraction) {
   const { points, distances, total } = route;
   if (!points.length) return null;
-  if (!total || fraction <= 0) return points[0];
-  if (fraction >= 1) return points.at(-1);
-  const target = total * fraction;
+  if (points.length === 1 || !total) return { coordinate: points[0], bearing: 0 };
+
+  const target = total * Math.max(0, Math.min(1, fraction));
   let low = 1;
   let high = points.length - 1;
   while (low < high) {
@@ -61,11 +80,20 @@ export function routePosition(route, fraction) {
     if (distances[mid] < target) low = mid + 1;
     else high = mid;
   }
+
+  const start = points[low - 1];
+  const end = points[low];
   const length = distances[low] - distances[low - 1];
   const ratio = length ? (target - distances[low - 1]) / length : 0;
-  return points[low].map(
-    (value, axis) => points[low - 1][axis] + (value - points[low - 1][axis]) * ratio,
-  );
+  const coordinate = start.map((value, axis) => value + (end[axis] - value) * ratio);
+  return { coordinate, bearing: bearingBetween(start, end) };
+}
+
+/** @param {import('./types.js').PreparedRoute} route
+ * @param {number} fraction
+ * @returns {number[] | null} */
+export function routePosition(route, fraction) {
+  return routePose(route, fraction)?.coordinate ?? null;
 }
 
 /** @param {import('./types.js').Vehicle[]} vehicles
@@ -84,8 +112,7 @@ export function eligibleVehicles(vehicles, contract) {
 /** Match a stable facility UID or an explicitly retained old URL alias.
  * @param {import('./types.js').Hub} facility
  * @param {string | null} identifier
- * @returns {boolean}
- */
+ * @returns {boolean} */
 export function matchesFacility(facility, identifier) {
   return (
     !identifier ||

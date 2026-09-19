@@ -96,14 +96,30 @@ export function addOverlayLayers(map) {
     },
   });
   map.addLayer({
-    id: "vehicles",
+    id: "vehicles-fallback",
     type: "circle",
     source: "vehicles",
+    filter: ["==", ["get", "hasIcon"], false],
     paint: {
       "circle-radius": 9,
       "circle-color": "#f6bc43",
       "circle-stroke-width": 3,
       "circle-stroke-color": "#102b3c",
+    },
+  });
+  map.addLayer({
+    id: "vehicles",
+    type: "symbol",
+    source: "vehicles",
+    filter: ["==", ["get", "hasIcon"], true],
+    layout: {
+      "icon-image": ["get", "iconImage"],
+      "icon-rotate": ["get", "bearing"],
+      "icon-rotation-alignment": "map",
+      "icon-pitch-alignment": "map",
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+      "icon-size": ["interpolate", ["linear"], ["zoom"], 5, 0.55, 9, 0.75, 13, 1, 17, 1.15],
     },
   });
   for (const name of ["companies", "depots"])

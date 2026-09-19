@@ -5,17 +5,29 @@ import { OverlayData, previewFeatures, routeGeometry } from "./overlay-data.js";
 import { addOverlayLayers, updateHubLabel } from "./layers.js";
 import { MapCamera } from "./camera.js";
 import { VehicleAnimator } from "./vehicle-animator.js";
+import { DEFAULT_VEHICLE_COLOR, registerVehicleIcons } from "./vehicle-assets.js";
 
-const HIT_LAYERS = ["vehicles", "orders", "parked", "hub-points", "hub-clusters"];
+const HIT_LAYERS = [
+  "vehicles",
+  "vehicles-fallback",
+  "orders",
+  "parked",
+  "hub-points",
+  "hub-clusters",
+];
 
 /** Own the MapLibre lifecycle and translate map interactions into navigation. */
 export class WorldMap {
   /** @param {string} container
-   * @param {{navigate: import('../types.js').Navigate, notify: import('../types.js').Notify, now: import('../types.js').Clock, provider: import("./provider.js").BasemapProvider, viewport: () => {width: number, height: number, panelOpen: boolean}, reducedMotion: () => boolean, isHidden: () => boolean}} dependencies */
-  constructor(container, { navigate, notify, now, provider, viewport, reducedMotion, isHidden }) {
+   * @param {{navigate: import('../types.js').Navigate, notify: import('../types.js').Notify, now: import('../types.js').Clock, loadAsset: (path: string) => Promise<string>, provider: import("./provider.js").BasemapProvider, viewport: () => {width: number, height: number, panelOpen: boolean}, reducedMotion: () => boolean, isHidden: () => boolean}} dependencies */
+  constructor(
+    container,
+    { navigate, notify, now, loadAsset, provider, viewport, reducedMotion, isHidden },
+  ) {
     this.navigate = navigate;
     this.notify = notify;
     this.now = now;
+    this.loadAsset = loadAsset;
     this.reducedMotion = reducedMotion;
     this.overlays = new OverlayData();
     this.selected = "";
@@ -59,7 +71,13 @@ export class WorldMap {
           "map",
         );
     });
-    this.map.on("load", () => this.initializeOverlays());
+    this.map.on("load", () => {
+      void this.initializeOverlays().catch((error) => {
+        console.warn("Vehicle map assets:", error?.message);
+        if (!this.disposed)
+          this.notify("Fahrzeuggrafiken konnten nicht vollständig geladen werden.", "map");
+      });
+    });
     this.map.on("click", (event) => {
       void this.selectFeature(event).catch(() => {
         if (!this.disposed) this.notify("Kartenobjekt konnte nicht ausgewählt werden.", "map");
@@ -75,8 +93,13 @@ export class WorldMap {
     });
   }
   /** Initialize sources after the basemap is ready and replay pending state. */
-  initializeOverlays() {
+  async initializeOverlays() {
     if (this.disposed) return;
+    const vehicleModels = await registerVehicleIcons(this.map, this.loadAsset, {
+      color: DEFAULT_VEHICLE_COLOR,
+    });
+    if (this.disposed) return;
+    this.overlays.setVehicleModels(vehicleModels);
     addOverlayLayers(this.map);
     this.ready = true;
     this.map.getContainer().setAttribute("aria-busy", "false");
@@ -137,7 +160,7 @@ export class WorldMap {
         zoom,
         duration: this.reducedMotion() ? 0 : 500,
       });
-    } else if (feature.layer.id === "vehicles")
+    } else if (["vehicles", "vehicles-fallback"].includes(feature.layer.id))
       this.navigate("/transports/" + encodeURIComponent(feature.properties.id));
     else
       this.navigate(
@@ -189,7 +212,7 @@ export class WorldMap {
       name === "hubs"
         ? ["hub-clusters", "hub-points", "hub-labels"]
         : name === "vehicles"
-          ? ["vehicles", "parked"]
+          ? ["vehicles", "vehicles-fallback", "parked"]
           : [name];
     for (const layer of layers)
       if (this.map.getLayer(layer))

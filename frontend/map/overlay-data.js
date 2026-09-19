@@ -1,5 +1,6 @@
-import { collection, pointFeature, prepareRoute, routePosition, unwrapRoute } from "../geometry.js";
+import { collection, pointFeature, prepareRoute, routePose, unwrapRoute } from "../geometry.js";
 import { routeProgress } from "../time.js";
+import { vehicleIconId } from "./vehicle-assets.js";
 
 /** Normalize the two supported server route envelopes.
  * @param {import('../types.js').RouteGeometry} route
@@ -13,6 +14,7 @@ export class OverlayData {
     this.hubs = [];
     this.catalogueHubs = [];
     this.routes = new Map();
+    this.availableVehicleModels = new Set();
     this.state = { vehicles: [], contracts: [], transports: [] };
   }
   /** Retain only real resolved coordinates.
@@ -26,6 +28,11 @@ export class OverlayData {
         Number.isFinite(hub.lat),
     );
     this.hubs = this.catalogueHubs;
+  }
+  /** Publish only vehicle models whose map sprite loaded successfully.
+   * @param {Set<string>} modelIds */
+  setVehicleModels(modelIds) {
+    this.availableVehicleModels = new Set(modelIds);
   }
   /** Refresh the route cache for the authoritative active transport set.
    * @param {import('../types.js').MapState} state
@@ -81,24 +88,45 @@ export class OverlayData {
   /** Project the prepared, continuous route for each active transport. */
   routeFeatures() {
     return collection(
-      this.state.transports.map((trip) => ({
-        type: "Feature",
-        properties: { id: trip.id },
-        geometry: { type: "LineString", coordinates: this.routes.get(trip.id).points },
-      })),
+      this.state.transports.flatMap((trip) => {
+        const route = this.routes.get(trip.id);
+        return route
+          ? [
+              {
+                type: "Feature",
+                properties: { id: trip.id },
+                geometry: { type: "LineString", coordinates: route.points },
+              },
+            ]
+          : [];
+      }),
     );
   }
-  /** Project moving vehicle positions using server-adjusted time.
+  /** Project moving vehicle positions and headings using server-adjusted time.
    * @param {number} now
    * @returns {import("geojson").FeatureCollection<import("geojson").Point>}
    */
   vehicleFeatures(now) {
+    const vehiclesById = new Map(this.state.vehicles.map((vehicle) => [vehicle.id, vehicle]));
     return collection(
       this.state.transports.flatMap((trip) => {
         const route = this.routes.get(trip.id);
-        const coordinate =
-          route && routePosition(route, routeProgress(now, trip.departed_at, trip.arrives_at));
-        return coordinate ? [pointFeature(coordinate, { id: trip.id })] : [];
+        const pose =
+          route && routePose(route, routeProgress(now, trip.departed_at, trip.arrives_at));
+        if (!pose) return [];
+        const vehicle = vehiclesById.get(trip.vehicle_id);
+        const modelId = vehicle?.model_id ?? "";
+        const hasIcon = this.availableVehicleModels.has(modelId);
+        return [
+          pointFeature(pose.coordinate, {
+            id: trip.id,
+            vehicleId: trip.vehicle_id,
+            modelId,
+            iconImage: hasIcon ? vehicleIconId(modelId) : "",
+            hasIcon,
+            bearing: pose.bearing,
+          }),
+        ];
       }),
     );
   }
