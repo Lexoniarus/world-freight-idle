@@ -9,6 +9,7 @@ import { VehicleIconRegistry } from "./vehicle-assets.js";
 
 const HIT_LAYERS = [
   "vehicles",
+  "vehicle-owner-ring",
   "vehicles-fallback",
   "orders",
   "parked",
@@ -159,12 +160,12 @@ export class WorldMap {
         zoom,
         duration: this.reducedMotion() ? 0 : 500,
       });
-    } else if (["vehicles", "vehicles-fallback"].includes(feature.layer.id)) {
+    } else if (["vehicles", "vehicle-owner-ring", "vehicles-fallback"].includes(feature.layer.id)) {
       if (feature.properties.isOwn)
         this.navigate("/transports/" + encodeURIComponent(feature.properties.id));
       else
         this.notify(
-          `Fahrzeug von ${feature.properties.username || "einem anderen Spieler"} ist unterwegs.`,
+          `${feature.properties.username || "Ein anderer Spieler"} · ${feature.properties.modelName || "Fahrzeug"}`,
           "map",
         );
     } else
@@ -217,7 +218,7 @@ export class WorldMap {
       name === "hubs"
         ? ["hub-clusters", "hub-points", "hub-labels"]
         : name === "vehicles"
-          ? ["vehicles", "vehicles-fallback", "parked"]
+          ? ["vehicles", "vehicle-owner-ring", "vehicles-fallback", "parked"]
           : [name];
     for (const layer of layers)
       if (this.map.getLayer(layer))

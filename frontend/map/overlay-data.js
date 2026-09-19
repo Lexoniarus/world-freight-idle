@@ -132,6 +132,7 @@ export class OverlayData {
             id: trip.id,
             vehicleId: trip.vehicle_id,
             modelId: trip.model_id,
+            modelName: trip.model_name,
             iconImage: hasIcon ? iconImage : "",
             hasIcon,
             bearing: pose.bearing,

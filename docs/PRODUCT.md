@@ -107,3 +107,13 @@ Kartenfarbe. Unterstützte Brand-Free-Fahrzeugsprites werden je Kombination aus
 Modell und Spielerfarbe einmal rasterisiert; Modelle ohne Sprite verwenden einen
 Fallback-Punkt in derselben Spielerfarbe. Fremde Transportdetails bleiben nicht
 aufrufbar; ein Klick identifiziert lediglich den öffentlichen Spielernamen.
+
+## Gemeinsamer Live-Verkehr – V2
+
+Die gemeinsame Verkehrssicht bleibt read-only und accountübergreifend, liest
+aber keine vollständigen privaten Fahrzeug- oder Transportobjekte mehr in die
+Anwendungsschicht. Die Repository-Projektion liefert nur die für die Karte
+benötigten Felder. Fehler des Multiplayer-Verkehrsendpoints bleiben sichtbar;
+der letzte gültige Kartenstand kann weiter dargestellt werden, während die UI
+den Ausfall meldet. Spielerfarben werden zusätzlich als Kartenring sichtbar,
+auch wenn die Einfärbung eines Fahrzeugs auf kleinem Kartenmaßstab dezent ist.

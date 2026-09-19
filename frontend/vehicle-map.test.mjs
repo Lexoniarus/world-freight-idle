@@ -1,9 +1,11 @@
 import "./test-dom.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { GameApiClient } from "./api.js";
 import { bearingBetween, prepareRoute, routePose } from "./geometry.js";
 import { GameState } from "./state.js";
+import { addOverlayLayers } from "./map/layers.js";
 import { OverlayData } from "./map/overlay-data.js";
 import {
   DEFAULT_VEHICLE_COLOR,
@@ -32,9 +34,12 @@ test("vehicle bearings follow compass orientation and route interpolation", () =
   assert.equal(routePose(prepareRoute([]), 0.5), null);
 });
 
-test("vehicle asset registry maps model and player color to one image id", () => {
+test("vehicle asset registry maps distinct models and player colors to distinct images", () => {
   assert.equal(vehicleAssetPath("iveco_sway_500"), "/assets/iveco_s_way_500_xc13_map.svg");
+  assert.equal(vehicleAssetPath("daf_xg_plus_480"), "/assets/daf_xg_plus_480_map.svg");
+  assert.notEqual(vehicleAssetPath("iveco_sway_500"), vehicleAssetPath("daf_xg_plus_480"));
   assert.equal(vehicleIconId("iveco_sway_500", "#E45756"), "vehicle-iveco_sway_500-e45756");
+  assert.equal(vehicleIconId("daf_xg_plus_480", "#E45756"), "vehicle-daf_xg_plus_480-e45756");
   assert.equal(normalizeVehicleColor("red"), DEFAULT_VEHICLE_COLOR);
   assert.equal(vehicleAssetPath("iveco_daily_35s18"), null);
   assert.equal(vehicleIconId("iveco_daily_35s18", "#123456"), "");
@@ -44,6 +49,17 @@ test("vehicle svg color replacement validates the requested paint", () => {
   const source = '<svg style="--vehicle-color:#ffffff"></svg>';
   assert.match(colorizeVehicleSvg(source, "#123abc"), /--vehicle-color:#123abc/);
   assert.match(colorizeVehicleSvg(source, "red"), new RegExp(DEFAULT_VEHICLE_COLOR));
+});
+
+test("shipped map assets expose the recolorable vehicle paint variable", () => {
+  const iveco = readFileSync(
+    new URL("../assets/iveco_s_way_500_xc13_map.svg", import.meta.url),
+    "utf8",
+  );
+  const daf = readFileSync(new URL("../assets/daf_xg_plus_480_map.svg", import.meta.url), "utf8");
+  assert.match(iveco, /--vehicle-color:#ffffff/i);
+  assert.match(colorizeVehicleSvg(iveco, "#2fda6a"), /--vehicle-color:#2fda6a/i);
+  assert.notEqual(iveco, daf);
 });
 
 test("vehicle svg rasterizer scales the atlas image and releases its blob url", async () => {
@@ -99,18 +115,9 @@ test("colored vehicle icon registry reuses one SVG source across player colors",
     },
   );
   const registered = await registry.ensure([
-    {
-      model_id: "iveco_sway_500",
-      player_color: "#e45756",
-    },
-    {
-      model_id: "iveco_sway_500",
-      player_color: "#4c78a8",
-    },
-    {
-      model_id: "iveco_daily_35s18",
-      player_color: "#123456",
-    },
+    { model_id: "iveco_sway_500", player_color: "#e45756" },
+    { model_id: "iveco_sway_500", player_color: "#4c78a8" },
+    { model_id: "iveco_daily_35s18", player_color: "#123456" },
   ]);
   assert.equal(loads, 1);
   assert.equal(registered.size, 2);
@@ -118,11 +125,12 @@ test("colored vehicle icon registry reuses one SVG source across player colors",
   assert.equal(images.has("vehicle-iveco_sway_500-4c78a8"), true);
 });
 
-test("shared traffic projects both players while private route lines stay private", () => {
+test("shared traffic projects players, model names and private route lines separately", () => {
   const ownTrip = {
     id: "own",
     vehicle_id: "own-truck",
     model_id: "iveco_sway_500",
+    model_name: "IVECO S-Way 500 XC13",
     username: "Alice",
     player_color: "#e45756",
     is_own: true,
@@ -140,6 +148,8 @@ test("shared traffic projects both players while private route lines stay privat
     ...ownTrip,
     id: "other",
     vehicle_id: "other-truck",
+    model_id: "daf_xg_plus_480",
+    model_name: "DAF XG+ 480 MX-13",
     username: "Bob",
     player_color: "#4c78a8",
     is_own: false,
@@ -153,24 +163,21 @@ test("shared traffic projects both players while private route lines stay privat
   };
   const overlays = new OverlayData();
   overlays.setVehicleIcons(
-    new Set(["vehicle-iveco_sway_500-e45756", "vehicle-iveco_sway_500-4c78a8"]),
+    new Set(["vehicle-iveco_sway_500-e45756", "vehicle-daf_xg_plus_480-4c78a8"]),
   );
   overlays.update({
     vehicles: [],
     contracts: [],
-    transports: [
-      {
-        ...ownTrip,
-        origin: {},
-        destination: {},
-      },
-    ],
+    transports: [{ ...ownTrip, origin: {}, destination: {} }],
     traffic: [ownTrip, otherTrip],
   });
   const features = overlays.vehicleFeatures(5).features;
   assert.equal(features.length, 2);
   assert.equal(features[0].properties.username, "Alice");
   assert.equal(features[1].properties.username, "Bob");
+  assert.equal(features[0].properties.modelName, "IVECO S-Way 500 XC13");
+  assert.equal(features[1].properties.modelName, "DAF XG+ 480 MX-13");
+  assert.notEqual(features[0].properties.iconImage, features[1].properties.iconImage);
   assert.equal(features[0].properties.playerColor, "#e45756");
   assert.equal(features[1].properties.playerColor, "#4c78a8");
   assert.equal(features[0].properties.hasIcon, true);
@@ -190,6 +197,7 @@ test("unsupported public vehicle models keep the player-colored fallback", () =>
         id: "daily",
         vehicle_id: "daily-truck",
         model_id: "iveco_daily_35s18",
+        model_name: "IVECO Daily",
         username: "Alice",
         player_color: "#123456",
         is_own: true,
@@ -210,7 +218,7 @@ test("unsupported public vehicle models keep the player-colored fallback", () =>
   assert.equal(feature.properties.playerColor, "#123456");
 });
 
-test("game snapshots load shared traffic and preserve it on a map-only failure", async () => {
+test("game snapshots expose shared traffic failures instead of silently hiding them", async () => {
   let trafficFails = false;
   const requests = [];
   const state = new GameState(async (path) => {
@@ -231,11 +239,29 @@ test("game snapshots load shared traffic and preserve it on a map-only failure",
   });
   await state.refresh();
   assert.deepEqual(state.data.traffic, [{ id: "public-trip" }]);
+  assert.equal(state.data.trafficAvailable, true);
   assert.equal(requests.includes("/map/traffic"), true);
   trafficFails = true;
   await state.refresh();
   assert.deepEqual(state.data.traffic, [{ id: "public-trip" }]);
+  assert.equal(state.data.trafficAvailable, false);
   state.destroy();
+});
+
+test("vehicle layers include a player-colored owner ring behind supported sprites", () => {
+  const layers = [];
+  const map = {
+    addSource() {},
+    addLayer: (layer) => layers.push(layer),
+  };
+  addOverlayLayers(map);
+  const ring = layers.find((layer) => layer.id === "vehicle-owner-ring");
+  assert.equal(ring.type, "circle");
+  assert.deepEqual(ring.paint["circle-stroke-color"], [
+    "coalesce",
+    ["get", "playerColor"],
+    DEFAULT_VEHICLE_COLOR,
+  ]);
 });
 
 test("asset requests remain same-origin and outside the versioned JSON API", async () => {

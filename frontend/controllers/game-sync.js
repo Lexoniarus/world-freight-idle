@@ -33,6 +33,13 @@ export class GameSync {
       this.notify(
         `${current.player.completed - previous.player.completed} Lieferung(en) abgeschlossen. Erlöse wurden gutgeschrieben.`,
       );
+    if (current.trafficAvailable === false && previous?.trafficAvailable !== false)
+      this.notify(
+        "Gemeinsamer Live-Verkehr ist momentan nicht erreichbar. Der letzte bekannte Kartenstand bleibt sichtbar.",
+        "map",
+      );
+    if (current.trafficAvailable === true && previous?.trafficAvailable === false)
+      this.notify("Gemeinsamer Live-Verkehr ist wieder verbunden.", "map");
     this.map?.update(current);
     if (!this.panel.view.busy) this.panel.render();
   }

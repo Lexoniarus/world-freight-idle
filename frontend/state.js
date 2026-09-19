@@ -28,6 +28,28 @@ export class GameState extends EventTarget {
     return this.pending;
   }
 
+  /** Read shared traffic while retaining the last valid map snapshot on failure.
+   * @returns {Promise<{transports: import('./types.js').PublicTransport[], available: boolean}>}
+   */
+  async loadTraffic() {
+    try {
+      const result = await this.request("/map/traffic", {
+        signal: this.lifetime.signal,
+      });
+      return {
+        transports: result.transports,
+        available: true,
+      };
+    } catch (error) {
+      if (error.name === "AbortError") throw error;
+      console.warn("Shared traffic unavailable:", error.message);
+      return {
+        transports: this.data?.traffic ?? [],
+        available: false,
+      };
+    }
+  }
+
   /** Fetch a complete snapshot after reconciling arrivals on the server. */
   async loadSnapshot() {
     const started = Date.now() / 1000;
@@ -36,16 +58,10 @@ export class GameState extends EventTarget {
       signal: this.lifetime.signal,
     });
     this.offset = dashboard.server_time - (started + Date.now() / 1000) / 2;
-    const trafficRequest = this.request("/map/traffic", {
-      signal: this.lifetime.signal,
-    }).catch((error) => {
-      if (error.name === "AbortError") throw error;
-      return { transports: this.data?.traffic ?? [] };
-    });
     const [fleet, contracts, traffic] = await Promise.all([
       this.request("/fleet", { signal: this.lifetime.signal }),
       this.request("/contracts", { signal: this.lifetime.signal }),
-      trafficRequest,
+      this.loadTraffic(),
     ]);
     if (this.disposed) return this.data;
     const previous = this.data;
@@ -54,6 +70,7 @@ export class GameState extends EventTarget {
       vehicles: fleet.vehicles,
       contracts: contracts.contracts,
       traffic: traffic.transports,
+      trafficAvailable: traffic.available,
     };
     this.dispatchEvent(new CustomEvent("change", { detail: { previous, current: this.data } }));
     return this.data;

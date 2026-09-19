@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import colorsys
 import hashlib
+import logging
 import time
 from typing import Any
 
 from app.repositories.multiplayer_map import MultiplayerMapRepository
+
+LOGGER = logging.getLogger(__name__)
 
 
 def player_color(user_id: str) -> str:
@@ -30,45 +33,35 @@ class MultiplayerMapService:
         current_user_id: str,
         now: float | None = None,
     ) -> list[dict[str, Any]]:
-        """Project all live transports into a minimal shared map payload."""
+        """Decorate minimal live-traffic rows with owner and color metadata."""
         active_at = time.time() if now is None else now
-        traffic: list[dict[str, Any]] = []
-        for state in self.repository.list_player_states():
-            vehicles = {
-                vehicle.get("id"): vehicle
-                for vehicle in state["vehicles"]
-                if vehicle.get("id")
+        rows = self.repository.list_active_transports(active_at)
+        traffic = [
+            {
+                "id": row["id"],
+                "vehicle_id": row["vehicle_id"],
+                "model_id": row["model_id"],
+                "model_name": row["model_name"],
+                "username": row["username"],
+                "player_color": player_color(row["user_id"]),
+                "is_own": row["user_id"] == current_user_id,
+                "departed_at": row["departed_at"],
+                "arrives_at": row["arrives_at"],
+                "route_geojson": row["route_geojson"],
             }
-            color = player_color(state["user_id"])
-            for trip in state["active_trips"]:
-                arrives_at = trip.get("arrives_at")
-                departed_at = trip.get("departed_at")
-                trip_id = trip.get("id")
-                vehicle_id = trip.get("vehicle_id")
-                route = trip.get("route_geojson")
-                vehicle = vehicles.get(vehicle_id)
-                if (
-                    not trip_id
-                    or not vehicle_id
-                    or vehicle is None
-                    or route is None
-                    or not isinstance(arrives_at, (int, float))
-                    or not isinstance(departed_at, (int, float))
-                    or arrives_at <= active_at
-                ):
-                    continue
-                traffic.append(
-                    {
-                        "id": trip_id,
-                        "vehicle_id": vehicle_id,
-                        "model_id": vehicle.get("model_id", ""),
-                        "username": state["username"],
-                        "player_color": color,
-                        "is_own": state["user_id"] == current_user_id,
-                        "departed_at": departed_at,
-                        "arrives_at": arrives_at,
-                        "route_geojson": route,
-                    }
-                )
-        traffic.sort(key=lambda item: (item["departed_at"], item["id"]))
+            for row in rows
+        ]
+        LOGGER.info(
+            "Shared map traffic projected",
+            extra={
+                "event": "map.traffic.read",
+                "data": {
+                    "viewer_user_id": current_user_id,
+                    "active_transport_count": len(traffic),
+                    "visible_player_count": len(
+                        {row["user_id"] for row in rows}
+                    ),
+                },
+            },
+        )
         return traffic

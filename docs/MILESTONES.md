@@ -122,3 +122,11 @@ Straßentransporte vorhanden. Die eigentlichen Spielstände bleiben pro Account
 isoliert. Spielerfarben werden deterministisch aus der Account-ID erzeugt; eine
 spätere frei wählbare Unternehmensfarbe kann dieselbe Darstellungsgrenze nutzen.
 Ein gemeinsamer knapper Auftragsmarkt und Marktanteilsmechaniken bleiben offen.
+
+### Gemeinsamer Live-Verkehr V2
+
+Die vorgezogene M4-Verkehrssicht besitzt nun eine minimale SQL-Projektion statt
+des Einlesens vollständiger privater JSON-Snapshots. Fehlerzustände sind für den
+Spieler sichtbar, und die Darstellung kennzeichnet Fahrzeughalter redundant
+über Sprite-Farbe und Farbring. Der gemeinsame knappe Markt bleibt weiterhin
+ein späterer M4-Schritt.

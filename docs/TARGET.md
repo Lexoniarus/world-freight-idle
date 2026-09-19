@@ -160,3 +160,14 @@ bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATAL
 - [x] Brand-Free-Sprites werden pro Modell/Farbe wiederverwendet; fehlende Modelle behalten einen farbigen Fallback.
 - [x] Eigene Routenlinien bleiben privat; fremde Fahrzeugklicks öffnen keine privaten Transportdetails.
 - [x] Ausgeführte/abgelaufene Transporte werden nicht mehr als Live-Verkehr projiziert.
+
+## Abnahme – gemeinsamer Live-Verkehr V2
+
+- [x] Repository liest nur öffentliche Live-Traffic-Felder aus Spielerzuständen.
+- [x] Private Vertrags-, Erlös-, Kosten- und Guthabendaten werden nicht projiziert.
+- [x] Multiplayer-Traffic-Fehler werden in der UI sichtbar und nicht still verschluckt.
+- [x] Letzter gültiger Traffic-Stand bleibt bei temporärem Fehler erhalten.
+- [x] Modell-ID und Modellname bleiben im öffentlichen Kartenpayload getrennt erhalten.
+- [x] Spielerfarbe ist am Sprite und zusätzlich über einen Owner-Ring erkennbar.
+- [x] Anwendungsshell wird mit `Cache-Control: no-store` ausgeliefert, damit ein
+      neuer Vite-Build nicht durch eine alte HTML-Shell verdeckt wird.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 
 from fastapi.testclient import TestClient
@@ -12,6 +13,7 @@ from app.bootstrap import (
 )
 from app.main import create_app
 from app.repositories.accounts import AccountRepository
+from app.repositories.multiplayer_map import MultiplayerMapRepository
 from app.services.multiplayer_map import player_color
 from tests.test_api import make_settings, make_static_files
 
@@ -39,6 +41,7 @@ def active_trip(trip_id: str, vehicle_id: str, now: float) -> dict:
 
 def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
     game,
+    caplog,
 ):
     accounts = AccountRepository(game.store)
     alice = accounts.create_user("Alice", "unused")
@@ -49,6 +52,9 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
 
     alice_vehicle = alice_game.store.get_json("vehicles")[0]
     bob_vehicle = bob_game.store.get_json("vehicles")[0]
+    bob_vehicle["model_id"] = "daf_xg_plus_480"
+    bob_vehicle["name"] = "DAF XG+ 480 MX-13"
+    bob_game.store.set_json("vehicles", [bob_vehicle])
     alice_game.store.set_json(
         "active_trips",
         [active_trip("alice-trip", alice_vehicle["id"], now)],
@@ -64,8 +70,24 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
         ],
     )
 
+    repository = MultiplayerMapRepository(game.store)
+    rows = repository.list_active_transports(now)
+    assert [row["id"] for row in rows] == ["alice-trip", "bob-trip"]
+    assert set(rows[0]) == {
+        "user_id",
+        "username",
+        "id",
+        "vehicle_id",
+        "model_id",
+        "model_name",
+        "departed_at",
+        "arrives_at",
+        "route_geojson",
+    }
+
     service = build_multiplayer_map_service(game)
-    traffic = service.list_traffic(alice["id"], now=now)
+    with caplog.at_level(logging.INFO):
+        traffic = service.list_traffic(alice["id"], now=now)
 
     assert [item["id"] for item in traffic] == ["alice-trip", "bob-trip"]
     own = next(item for item in traffic if item["id"] == "alice-trip")
@@ -74,14 +96,22 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
     assert other["is_own"] is False
     assert own["username"] == "Alice"
     assert other["username"] == "Bob"
-    assert own["model_id"] == alice_vehicle["model_id"]
-    assert other["model_id"] == bob_vehicle["model_id"]
+    assert own["model_id"] == "iveco_sway_500"
+    assert other["model_id"] == "daf_xg_plus_480"
+    assert own["model_name"] != other["model_name"]
     assert own["route_geojson"] == ROUTE
     assert other["route_geojson"] == ROUTE
     assert own["player_color"] != other["player_color"]
     assert re.fullmatch(r"#[0-9a-f]{6}", own["player_color"])
-    assert {"payout_eur", "operating_cost_eur", "profit_eur", "contract"}.isdisjoint(
-        own
+    assert {
+        "payout_eur",
+        "operating_cost_eur",
+        "profit_eur",
+        "contract",
+    }.isdisjoint(own)
+    assert any(
+        record.msg == "Shared map traffic projected"
+        for record in caplog.records
     )
 
 
@@ -119,6 +149,8 @@ def test_multiplayer_map_endpoint_requires_login_and_shares_other_players(
         )
         assert bob_response.status_code == 201
         traffic = client.get("/api/v1/map/traffic").json()["transports"]
-        alice_public = next(item for item in traffic if item["id"] == "alice-live")
+        alice_public = next(
+            item for item in traffic if item["id"] == "alice-live"
+        )
         assert alice_public["username"] == "Alice"
         assert alice_public["is_own"] is False

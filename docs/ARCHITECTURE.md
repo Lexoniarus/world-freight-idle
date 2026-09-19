@@ -240,3 +240,22 @@ getrennt. `VehicleIconRegistry` lädt jedes Brand-Free-SVG je Modell nur einmal
 und erzeugt daraus bei Bedarf farbige MapLibre-Atlasbilder pro Spielerfarbe.
 Die Position zwischen Polls wird weiterhin rein lokal aus Route und Serverzeit
 interpoliert; es entstehen keine hochfrequenten Positionsschreibvorgänge.
+
+## Read-only Multiplayer-Verkehrsprojektion V2
+
+`MultiplayerMapRepository.list_active_transports()` verwendet SQLite JSON1, um
+nur aktive Trip-ID, Vehicle-ID, Modell-ID/-name, Route, Zeitfenster sowie
+öffentliche Account-ID und Benutzername zu projizieren. Vollständige private
+`vehicles`-/`active_trips`-JSON-Objekte verlassen die Persistenzgrenze nicht.
+`MultiplayerMapService` ergänzt ausschließlich stabile Spielerfarbe und das
+`is_own`-Flag und schreibt ein strukturiertes `map.traffic.read`-Event mit
+aggregierten Zählwerten.
+
+`GameState.loadTraffic()` kapselt den optionalen Shared-Traffic-Read. Bei einem
+Fehler bleibt der letzte gültige Traffic-Snapshot erhalten, gleichzeitig wird
+`trafficAvailable=false` veröffentlicht. `GameSync` meldet Ausfall und
+Wiederherstellung genau beim Zustandswechsel. Die Karte erhält weiterhin
+modell- und farbspezifische MapLibre-Image-IDs; ein zusätzlicher Owner-Ring
+macht die Spielerfarbe auch bei kleinen oder ähnlich wirkenden Fahrzeug-Sprites
+sichtbar. Die HTML-Anwendungsshell ist `no-store`, während gebaute Vite-Assets
+weiterhin über ihre gehashten Dateinamen versioniert werden.

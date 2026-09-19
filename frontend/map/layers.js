@@ -108,6 +108,19 @@ export function addOverlayLayers(map) {
     },
   });
   map.addLayer({
+    id: "vehicle-owner-ring",
+    type: "circle",
+    source: "vehicles",
+    filter: ["==", ["get", "hasIcon"], true],
+    paint: {
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 8, 9, 10, 13, 13, 17, 16],
+      "circle-color": "rgba(0, 0, 0, 0)",
+      "circle-stroke-width": 3,
+      "circle-stroke-color": ["coalesce", ["get", "playerColor"], "#f6bc43"],
+      "circle-stroke-opacity": 0.95,
+    },
+  });
+  map.addLayer({
     id: "vehicles",
     type: "symbol",
     source: "vehicles",

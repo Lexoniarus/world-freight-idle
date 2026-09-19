@@ -392,10 +392,22 @@ test("animation respects reduced motion, visibility and cancellation", () => {
 test("map projections aggregate locations, discard invalid hubs and remove settled trips", () => {
   const data = new OverlayData();
   data.setHubs([hub, { ...hub, id: "missing", resolution_status: "unavailable", lon: null }]);
+  const publicTrip = {
+    id: trip.id,
+    vehicle_id: trip.vehicle_id,
+    model_id: "iveco_sway_500",
+    username: "driver",
+    player_color: "#123456",
+    is_own: true,
+    departed_at: trip.departed_at,
+    arrives_at: trip.arrives_at,
+    route_geojson: trip.route_geojson,
+  };
   data.update({
     vehicles: [vehicle],
     contracts: [contract, { ...contract, id: "another" }],
     transports: [trip],
+    traffic: [publicTrip],
   });
   assert.equal(data.hubFeatures().features.length, 1);
   assert.equal(data.locationFeatures(data.state.contracts, "origin_hub_id").features.length, 1);
@@ -407,8 +419,9 @@ test("map projections aggregate locations, discard invalid hubs and remove settl
   assert.equal(data.fleetCoordinates(50).length, 2);
   assert.equal(previewFeatures(quote).features.length, 1);
   assert.equal(previewFeatures(null).features.length, 0);
-  data.update({ ...data.state, transports: [] });
+  data.update({ ...data.state, transports: [], traffic: [] });
   assert.equal(data.routes.size, 0);
+  assert.equal(data.trafficRoutes.size, 0);
   assert.equal(data.vehicleFeatures(200).features.length, 0);
 });
 

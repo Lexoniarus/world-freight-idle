@@ -239,7 +239,7 @@ FUNCTION_TESTS.update(
         "app.api.v1.map.list_map_traffic": "test_multiplayer_map_endpoint_requires_login_and_shares_other_players",
         "app.bootstrap.build_multiplayer_map_service": "test_multiplayer_map_projects_shared_active_traffic_without_private_economy",
         "app.repositories.multiplayer_map.MultiplayerMapRepository.__init__": "test_multiplayer_map_projects_shared_active_traffic_without_private_economy",
-        "app.repositories.multiplayer_map.MultiplayerMapRepository.list_player_states": "test_multiplayer_map_projects_shared_active_traffic_without_private_economy",
+        "app.repositories.multiplayer_map.MultiplayerMapRepository.list_active_transports": "test_multiplayer_map_projects_shared_active_traffic_without_private_economy",
         "app.services.multiplayer_map.MultiplayerMapService.__init__": "test_multiplayer_map_projects_shared_active_traffic_without_private_economy",
         "app.services.multiplayer_map.MultiplayerMapService.list_traffic": "test_multiplayer_map_projects_shared_active_traffic_without_private_economy",
         "app.services.multiplayer_map.player_color": "test_player_color_is_stable_and_changes_between_users",

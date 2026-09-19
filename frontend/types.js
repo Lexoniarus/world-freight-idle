@@ -9,12 +9,12 @@
  * @typedef {import('geojson').LineString | import('geojson').Feature<import('geojson').LineString>} RouteGeometry
  * @typedef {{distance_km: number, duration_seconds: number, payout_eur: number, operating_cost_eur: number, profit_eur: number, route_geojson: RouteGeometry, vehicle_id: string | null, operating_cost_eur_per_km: number}} Quote
  * @typedef {Omit<Quote, "operating_cost_eur_per_km"> & {origin_snapshot?: Hub, destination_snapshot?: Hub, id: string, vehicle_id: string, departed_at: number, arrives_at: number, origin: Hub, destination: Hub, contract: Contract}} Transport
- * @typedef {{id: string, vehicle_id: string, model_id: string, username: string, player_color: string, is_own: boolean, departed_at: number, arrives_at: number, route_geojson: RouteGeometry}} PublicTransport
+ * @typedef {{id: string, vehicle_id: string, model_id: string, model_name: string, username: string, player_color: string, is_own: boolean, departed_at: number, arrives_at: number, route_geojson: RouteGeometry}} PublicTransport
  * @typedef {{cash: number, completed: number, reputation: number}} Player
  * @typedef {{username: string, completed: number}} RankedPlayer
  * @typedef {{id: string, name: string, capacity_tons: number, price_eur: number, manufacturer: string, powertrain: string, operating_cost_eur_per_km: number, unlock_reputation: number, image?: VehicleImage | null}} VehicleModel
  * @typedef {{models: VehicleModel[], delivery_hub: string}} Catalogue
- * @typedef {{vehicles: Vehicle[], contracts: Contract[], transports: Transport[], traffic?: PublicTransport[]}} MapState
+ * @typedef {{vehicles: Vehicle[], contracts: Contract[], transports: Transport[], traffic?: PublicTransport[], trafficAvailable?: boolean}} MapState
  * @typedef {MapState & {player: Player, server_time: number, time_scale: number, idle_vehicles: number, active_transports: number}} GameSnapshot
  * @typedef {{url: URL, state: GameSnapshot | null, user: {username: string}, quote: Quote | null, selectedVehicle: string, mutating: boolean, quoting: boolean, readonly busy: boolean, rankings: RankedPlayer[] | null, catalogue: Catalogue | null, panelError: boolean, now?: number}} PanelView
  * @typedef {(path: string, options?: RequestInit) => Promise<any>} RequestJson
