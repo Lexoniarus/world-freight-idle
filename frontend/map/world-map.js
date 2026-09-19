@@ -7,10 +7,11 @@ import { MapCamera } from "./camera.js";
 import { VehicleAnimator } from "./vehicle-animator.js";
 import { VehicleIconRegistry } from "./vehicle-assets.js";
 
+const OWN_VEHICLE_LAYERS = ["vehicles", "vehicles-fallback"];
+const MULTIPLAYER_VEHICLE_LAYERS = ["multiplayer-vehicles", "multiplayer-vehicles-fallback"];
 const HIT_LAYERS = [
-  "vehicles",
-  "vehicle-owner-ring",
-  "vehicles-fallback",
+  ...OWN_VEHICLE_LAYERS,
+  ...MULTIPLAYER_VEHICLE_LAYERS,
   "orders",
   "parked",
   "hub-points",
@@ -31,7 +32,13 @@ export class WorldMap {
     this.reducedMotion = reducedMotion;
     this.overlays = new OverlayData();
     this.selected = "";
-    this.visible = { hubs: true, orders: true, vehicles: true, routes: true };
+    this.visible = {
+      hubs: true,
+      orders: true,
+      vehicles: true,
+      multiplayer: true,
+      routes: true,
+    };
     this.ready = false;
     this.disposed = false;
     this.preview = null;
@@ -52,7 +59,7 @@ export class WorldMap {
     this.vehicleIcons = new VehicleIconRegistry(this.map, loadAsset);
     this.camera = new MapCamera(this.map, reducedMotion, viewport);
     this.animator = new VehicleAnimator({
-      draw: () => this.setSourceData("vehicles", this.overlays.vehicleFeatures(this.now())),
+      draw: () => this.drawTraffic(),
       isActive: () => (this.overlays.state.traffic ?? []).length > 0,
       isHidden,
       reducedMotion,
@@ -123,7 +130,7 @@ export class WorldMap {
       ),
     );
     this.setSourceData("routes", this.overlays.routeFeatures());
-    this.setSourceData("vehicles", this.overlays.vehicleFeatures(this.now()));
+    this.drawTraffic();
     void this.syncVehicleIcons(state.traffic ?? []);
   }
   /** Ensure colored sprites exist for the latest public traffic snapshot.
@@ -133,8 +140,16 @@ export class WorldMap {
     const imageIds = await this.vehicleIcons.ensure(traffic);
     if (this.disposed) return;
     this.overlays.setVehicleIcons(imageIds);
-    this.setSourceData("vehicles", this.overlays.vehicleFeatures(this.now()));
+    this.drawTraffic();
   }
+
+  /** Draw own and multiplayer vehicles into independent sources. */
+  drawTraffic() {
+    const now = this.now();
+    this.setSourceData("vehicles", this.overlays.vehicleFeatures(now));
+    this.setSourceData("multiplayer-vehicles", this.overlays.multiplayerVehicleFeatures(now));
+  }
+
   /** Update one registered GeoJSON source.
    * @param {string} name
    * @param {import("geojson").FeatureCollection} data
@@ -160,14 +175,13 @@ export class WorldMap {
         zoom,
         duration: this.reducedMotion() ? 0 : 500,
       });
-    } else if (["vehicles", "vehicle-owner-ring", "vehicles-fallback"].includes(feature.layer.id)) {
-      if (feature.properties.isOwn)
-        this.navigate("/transports/" + encodeURIComponent(feature.properties.id));
-      else
-        this.notify(
-          `${feature.properties.username || "Ein anderer Spieler"} · ${feature.properties.modelName || "Fahrzeug"}`,
-          "map",
-        );
+    } else if (OWN_VEHICLE_LAYERS.includes(feature.layer.id)) {
+      this.navigate("/transports/" + encodeURIComponent(feature.properties.id));
+    } else if (MULTIPLAYER_VEHICLE_LAYERS.includes(feature.layer.id)) {
+      this.notify(
+        `${feature.properties.username || "Ein anderer Spieler"} · ${feature.properties.modelName || "Fahrzeug"}`,
+        "map",
+      );
     } else
       this.navigate(
         (feature.layer.id === "parked" ? "/fleet" : "/contracts") +
@@ -218,8 +232,10 @@ export class WorldMap {
       name === "hubs"
         ? ["hub-clusters", "hub-points", "hub-labels"]
         : name === "vehicles"
-          ? ["vehicles", "vehicle-owner-ring", "vehicles-fallback", "parked"]
-          : [name];
+          ? [...OWN_VEHICLE_LAYERS, "parked"]
+          : name === "multiplayer"
+            ? MULTIPLAYER_VEHICLE_LAYERS
+            : [name];
     for (const layer of layers)
       if (this.map.getLayer(layer))
         this.map.setLayoutProperty(layer, "visibility", visible ? "visible" : "none");

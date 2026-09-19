@@ -171,17 +171,19 @@ test("shared traffic projects players, model names and private route lines separ
     transports: [{ ...ownTrip, origin: {}, destination: {} }],
     traffic: [ownTrip, otherTrip],
   });
-  const features = overlays.vehicleFeatures(5).features;
-  assert.equal(features.length, 2);
-  assert.equal(features[0].properties.username, "Alice");
-  assert.equal(features[1].properties.username, "Bob");
-  assert.equal(features[0].properties.modelName, "IVECO S-Way 500 XC13");
-  assert.equal(features[1].properties.modelName, "DAF XG+ 480 MX-13");
-  assert.notEqual(features[0].properties.iconImage, features[1].properties.iconImage);
-  assert.equal(features[0].properties.playerColor, "#e45756");
-  assert.equal(features[1].properties.playerColor, "#4c78a8");
-  assert.equal(features[0].properties.hasIcon, true);
-  assert.equal(features[1].properties.hasIcon, true);
+  const ownFeatures = overlays.vehicleFeatures(5).features;
+  const multiplayerFeatures = overlays.multiplayerVehicleFeatures(5).features;
+  assert.equal(ownFeatures.length, 1);
+  assert.equal(multiplayerFeatures.length, 1);
+  assert.equal(ownFeatures[0].properties.username, "Alice");
+  assert.equal(multiplayerFeatures[0].properties.username, "Bob");
+  assert.equal(ownFeatures[0].properties.modelName, "IVECO S-Way 500 XC13");
+  assert.equal(multiplayerFeatures[0].properties.modelName, "DAF XG+ 480 MX-13");
+  assert.notEqual(ownFeatures[0].properties.iconImage, multiplayerFeatures[0].properties.iconImage);
+  assert.equal(ownFeatures[0].properties.playerColor, "#e45756");
+  assert.equal(multiplayerFeatures[0].properties.playerColor, "#4c78a8");
+  assert.equal(ownFeatures[0].properties.hasIcon, true);
+  assert.equal(multiplayerFeatures[0].properties.hasIcon, true);
   assert.equal(overlays.routeFeatures().features.length, 1);
   assert.deepEqual(overlays.fleetCoordinates(5), [[0.5, 0]]);
 });
@@ -248,20 +250,25 @@ test("game snapshots expose shared traffic failures instead of silently hiding t
   state.destroy();
 });
 
-test("vehicle layers include a player-colored owner ring behind supported sprites", () => {
+test("own and multiplayer vehicles use independent sources without decorative rings", () => {
+  const sources = [];
   const layers = [];
   const map = {
-    addSource() {},
+    addSource: (id) => sources.push(id),
     addLayer: (layer) => layers.push(layer),
   };
   addOverlayLayers(map);
-  const ring = layers.find((layer) => layer.id === "vehicle-owner-ring");
-  assert.equal(ring.type, "circle");
-  assert.deepEqual(ring.paint["circle-stroke-color"], [
-    "coalesce",
-    ["get", "playerColor"],
-    DEFAULT_VEHICLE_COLOR,
-  ]);
+  assert.equal(sources.includes("vehicles"), true);
+  assert.equal(sources.includes("multiplayer-vehicles"), true);
+  assert.equal(
+    layers.some((layer) => layer.id === "vehicle-owner-ring"),
+    false,
+  );
+  assert.equal(layers.find((layer) => layer.id === "vehicles").source, "vehicles");
+  assert.equal(
+    layers.find((layer) => layer.id === "multiplayer-vehicles").source,
+    "multiplayer-vehicles",
+  );
 });
 
 test("asset requests remain same-origin and outside the versioned JSON API", async () => {

@@ -168,6 +168,7 @@ bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATAL
 - [x] Multiplayer-Traffic-Fehler werden in der UI sichtbar und nicht still verschluckt.
 - [x] Letzter gültiger Traffic-Stand bleibt bei temporärem Fehler erhalten.
 - [x] Modell-ID und Modellname bleiben im öffentlichen Kartenpayload getrennt erhalten.
-- [x] Spielerfarbe ist am Sprite und zusätzlich über einen Owner-Ring erkennbar.
+- [x] Spielerfarbe wird direkt im Sprite beziehungsweise beim Fallback-Punkt dargestellt.
+- [x] Eigene Fahrzeuge und Multiplayer-Verkehr sind als getrennte Kartenlayer schaltbar.
 - [x] Anwendungsshell wird mit `Cache-Control: no-store` ausgeliefert, damit ein
       neuer Vite-Build nicht durch eine alte HTML-Shell verdeckt wird.

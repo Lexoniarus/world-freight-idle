@@ -114,13 +114,31 @@ export class OverlayData {
       }),
     );
   }
-  /** Project all players' moving vehicle positions and headings.
+  /** Project the authenticated player's moving vehicle positions.
    * @param {number} now
    * @returns {import("geojson").FeatureCollection<import("geojson").Point>}
    */
   vehicleFeatures(now) {
+    return this.trafficFeatures(now, true);
+  }
+
+  /** Project moving vehicles owned by other players.
+   * @param {number} now
+   * @returns {import("geojson").FeatureCollection<import("geojson").Point>}
+   */
+  multiplayerVehicleFeatures(now) {
+    return this.trafficFeatures(now, false);
+  }
+
+  /** Project one ownership slice of shared traffic.
+   * @param {number} now
+   * @param {boolean} isOwn
+   * @returns {import("geojson").FeatureCollection<import("geojson").Point>}
+   */
+  trafficFeatures(now, isOwn) {
     return collection(
       this.state.traffic.flatMap((trip) => {
+        if (trip.is_own !== isOwn) return [];
         const route = this.trafficRoutes.get(trip.id);
         const pose =
           route && routePose(route, routeProgress(now, trip.departed_at, trip.arrives_at));
@@ -157,9 +175,7 @@ export class OverlayData {
           ),
         )
         .map((hub) => [hub.lon, hub.lat]),
-      ...this.vehicleFeatures(now)
-        .features.filter((feature) => feature.properties.isOwn)
-        .map((feature) => feature.geometry.coordinates),
+      ...this.vehicleFeatures(now).features.map((feature) => feature.geometry.coordinates),
     ];
   }
 }

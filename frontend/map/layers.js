@@ -8,6 +8,7 @@ export function addOverlayLayers(map) {
     "orders",
     "parked",
     "vehicles",
+    "multiplayer-vehicles",
     "routes",
     "preview",
     "companies",
@@ -96,9 +97,9 @@ export function addOverlayLayers(map) {
     },
   });
   map.addLayer({
-    id: "vehicles-fallback",
+    id: "multiplayer-vehicles-fallback",
     type: "circle",
-    source: "vehicles",
+    source: "multiplayer-vehicles",
     filter: ["==", ["get", "hasIcon"], false],
     paint: {
       "circle-radius": 9,
@@ -108,16 +109,30 @@ export function addOverlayLayers(map) {
     },
   });
   map.addLayer({
-    id: "vehicle-owner-ring",
+    id: "multiplayer-vehicles",
+    type: "symbol",
+    source: "multiplayer-vehicles",
+    filter: ["==", ["get", "hasIcon"], true],
+    layout: {
+      "icon-image": ["get", "iconImage"],
+      "icon-rotate": ["get", "bearing"],
+      "icon-rotation-alignment": "map",
+      "icon-pitch-alignment": "map",
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+      "icon-size": ["interpolate", ["linear"], ["zoom"], 5, 0.55, 9, 0.75, 13, 1, 17, 1.15],
+    },
+  });
+  map.addLayer({
+    id: "vehicles-fallback",
     type: "circle",
     source: "vehicles",
-    filter: ["==", ["get", "hasIcon"], true],
+    filter: ["==", ["get", "hasIcon"], false],
     paint: {
-      "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 8, 9, 10, 13, 13, 17, 16],
-      "circle-color": "rgba(0, 0, 0, 0)",
+      "circle-radius": 9,
+      "circle-color": ["coalesce", ["get", "playerColor"], "#f6bc43"],
       "circle-stroke-width": 3,
-      "circle-stroke-color": ["coalesce", ["get", "playerColor"], "#f6bc43"],
-      "circle-stroke-opacity": 0.95,
+      "circle-stroke-color": "#102b3c",
     },
   });
   map.addLayer({

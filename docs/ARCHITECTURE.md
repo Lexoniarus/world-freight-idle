@@ -255,7 +255,9 @@ aggregierten Zählwerten.
 Fehler bleibt der letzte gültige Traffic-Snapshot erhalten, gleichzeitig wird
 `trafficAvailable=false` veröffentlicht. `GameSync` meldet Ausfall und
 Wiederherstellung genau beim Zustandswechsel. Die Karte erhält weiterhin
-modell- und farbspezifische MapLibre-Image-IDs; ein zusätzlicher Owner-Ring
-macht die Spielerfarbe auch bei kleinen oder ähnlich wirkenden Fahrzeug-Sprites
-sichtbar. Die HTML-Anwendungsshell ist `no-store`, während gebaute Vite-Assets
+modell- und farbspezifische MapLibre-Image-IDs. Eigene Fahrzeuge und
+Fremdverkehr werden in getrennte GeoJSON-Quellen und MapLibre-Layer projiziert,
+sodass der Layer-Schalter `Multiplayer-Verkehr` ausschließlich andere Spieler
+ein- oder ausblendet. Zusätzliche Dekorationsringe werden nicht verwendet.
+Die HTML-Anwendungsshell ist `no-store`, während gebaute Vite-Assets
 weiterhin über ihre gehashten Dateinamen versioniert werden.
