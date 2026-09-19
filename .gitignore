@@ -53,3 +53,5 @@ Desktop.ini
 *.swp
 *.swo
 
+!data/world_freight_company_facility_mvp.sqlite3
+data/world_freight_company_facility_mvp.sqlite3
