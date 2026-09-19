@@ -5,14 +5,25 @@ import { OverlayData, previewFeatures, routeGeometry } from "./overlay-data.js";
 import { addOverlayLayers, updateHubLabel } from "./layers.js";
 import { MapCamera } from "./camera.js";
 import { VehicleAnimator } from "./vehicle-animator.js";
+import { VehicleIconRegistry } from "./vehicle-assets.js";
 
-const HIT_LAYERS = ["vehicles", "orders", "parked", "hub-points", "hub-clusters"];
+const HIT_LAYERS = [
+  "vehicles",
+  "vehicles-fallback",
+  "orders",
+  "parked",
+  "hub-points",
+  "hub-clusters",
+];
 
 /** Own the MapLibre lifecycle and translate map interactions into navigation. */
 export class WorldMap {
   /** @param {string} container
-   * @param {{navigate: import('../types.js').Navigate, notify: import('../types.js').Notify, now: import('../types.js').Clock, provider: import("./provider.js").BasemapProvider, viewport: () => {width: number, height: number, panelOpen: boolean}, reducedMotion: () => boolean, isHidden: () => boolean}} dependencies */
-  constructor(container, { navigate, notify, now, provider, viewport, reducedMotion, isHidden }) {
+   * @param {{navigate: import('../types.js').Navigate, notify: import('../types.js').Notify, now: import('../types.js').Clock, loadAsset: (path: string) => Promise<string>, provider: import("./provider.js").BasemapProvider, viewport: () => {width: number, height: number, panelOpen: boolean}, reducedMotion: () => boolean, isHidden: () => boolean}} dependencies */
+  constructor(
+    container,
+    { navigate, notify, now, loadAsset, provider, viewport, reducedMotion, isHidden },
+  ) {
     this.navigate = navigate;
     this.notify = notify;
     this.now = now;
@@ -37,10 +48,11 @@ export class WorldMap {
       dragRotate: false,
       pitchWithRotate: false,
     });
+    this.vehicleIcons = new VehicleIconRegistry(this.map, loadAsset);
     this.camera = new MapCamera(this.map, reducedMotion, viewport);
     this.animator = new VehicleAnimator({
       draw: () => this.setSourceData("vehicles", this.overlays.vehicleFeatures(this.now())),
-      isActive: () => this.overlays.state.transports.length > 0,
+      isActive: () => (this.overlays.state.traffic ?? []).length > 0,
       isHidden,
       reducedMotion,
     });
@@ -111,6 +123,16 @@ export class WorldMap {
     );
     this.setSourceData("routes", this.overlays.routeFeatures());
     this.setSourceData("vehicles", this.overlays.vehicleFeatures(this.now()));
+    void this.syncVehicleIcons(state.traffic ?? []);
+  }
+  /** Ensure colored sprites exist for the latest public traffic snapshot.
+   * @param {import('../types.js').PublicTransport[]} traffic
+   */
+  async syncVehicleIcons(traffic) {
+    const imageIds = await this.vehicleIcons.ensure(traffic);
+    if (this.disposed) return;
+    this.overlays.setVehicleIcons(imageIds);
+    this.setSourceData("vehicles", this.overlays.vehicleFeatures(this.now()));
   }
   /** Update one registered GeoJSON source.
    * @param {string} name
@@ -137,9 +159,15 @@ export class WorldMap {
         zoom,
         duration: this.reducedMotion() ? 0 : 500,
       });
-    } else if (feature.layer.id === "vehicles")
-      this.navigate("/transports/" + encodeURIComponent(feature.properties.id));
-    else
+    } else if (["vehicles", "vehicles-fallback"].includes(feature.layer.id)) {
+      if (feature.properties.isOwn)
+        this.navigate("/transports/" + encodeURIComponent(feature.properties.id));
+      else
+        this.notify(
+          `Fahrzeug von ${feature.properties.username || "einem anderen Spieler"} ist unterwegs.`,
+          "map",
+        );
+    } else
       this.navigate(
         (feature.layer.id === "parked" ? "/fleet" : "/contracts") +
           "?hub=" +
@@ -173,7 +201,7 @@ export class WorldMap {
   focusRoute(route) {
     this.camera.fitRoute(unwrapRoute(routeGeometry(route).coordinates));
   }
-  /** Frame all known parked and moving vehicles. */
+  /** Frame the authenticated player's parked and moving vehicles. */
   focusFleet() {
     const points = this.overlays.fleetCoordinates(this.now());
     if (points.length) this.camera.fitCoordinates(points);
@@ -189,7 +217,7 @@ export class WorldMap {
       name === "hubs"
         ? ["hub-clusters", "hub-points", "hub-labels"]
         : name === "vehicles"
-          ? ["vehicles", "parked"]
+          ? ["vehicles", "vehicles-fallback", "parked"]
           : [name];
     for (const layer of layers)
       if (this.map.getLayer(layer))

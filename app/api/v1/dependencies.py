@@ -5,6 +5,7 @@ from fastapi import Depends, HTTPException, Request
 from app.bootstrap import (
     build_fleet_service,
     build_map_service,
+    build_multiplayer_map_service,
     build_player_service,
     build_vehicle_catalogue,
 )
@@ -14,6 +15,7 @@ from app.services.auth import SESSION_COOKIE, AuthService
 from app.services.fleet import FleetService
 from app.services.game import GameService
 from app.services.map_locations import MapLocationService
+from app.services.multiplayer_map import MultiplayerMapService
 
 
 def get_auth_service(request: Request) -> AuthService:
@@ -68,8 +70,13 @@ def get_fleet_service(
 def get_map_service(
     game: GameService = Depends(get_game_service),
 ) -> MapLocationService:
-    """Resolve the map service through the composition root."""
+    """Resolve the authenticated catalogue map service."""
     return build_map_service(game)
+
+
+def get_multiplayer_map_service(request: Request) -> MultiplayerMapService:
+    """Resolve the shared read-only multiplayer traffic projection."""
+    return build_multiplayer_map_service(request.app.state.game)
 
 
 def get_vehicle_catalogue(request: Request) -> VehicleCatalogue:

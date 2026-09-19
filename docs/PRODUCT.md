@@ -96,3 +96,14 @@ Standardwaren oder ausdrücklich simulierte Standardfracht ohne Warenbeleg
 (DB-nutzlastabhängige Mengen, 0,18 €/km/t). Derselbe Ort oder dieselbe
 Firma darf beide Endpunkte besitzen; dieselbe Facility nicht. Details und
 Bestandskompatibilität: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).
+
+## Gemeinsamer Live-Verkehr
+
+Aktive Straßentransporte angemeldeter Spieler werden als minimale öffentliche
+Kartenprojektion gemeinsam angezeigt. Private Spielstände bleiben getrennt:
+Kapital, Verträge, Erlöse, Kosten und übrige Flottendaten werden nicht geteilt.
+Jeder Account erhält aus seiner stabilen Benutzer-ID eine reproduzierbare
+Kartenfarbe. Unterstützte Brand-Free-Fahrzeugsprites werden je Kombination aus
+Modell und Spielerfarbe einmal rasterisiert; Modelle ohne Sprite verwenden einen
+Fallback-Punkt in derselben Spielerfarbe. Fremde Transportdetails bleiben nicht
+aufrufbar; ein Klick identifiziert lediglich den öffentlichen Spielernamen.

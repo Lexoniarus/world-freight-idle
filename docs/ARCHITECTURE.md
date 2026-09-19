@@ -222,3 +222,21 @@ Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
 Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
 erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
 bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
+
+## Read-only Multiplayer-Verkehrsprojektion
+
+`MultiplayerMapRepository` liest ausschließlich Benutzer-ID, öffentlichen
+Benutzernamen sowie die persistierten Fahrzeug-/Transport-Snapshots aus den
+getrennten `user:<id>:`-Namespaces. `MultiplayerMapService` filtert bereits
+abgelaufene Transporte und projiziert nur Transport-ID, Fahrzeug-ID, Modell-ID,
+Route, Zeitfenster, öffentlichen Namen, Eigentümerflag und stabile Spielerfarbe.
+Private Vertrags-, Kosten-, Erlös- und Kontodaten verlassen den Namespace nicht.
+
+`GET /api/v1/map/traffic` benötigt weiterhin eine gültige Sitzung, ist aber im
+Gegensatz zu Fleet-/Transport-Detailendpoints absichtlich accountübergreifend.
+`GameState` lädt diese Projektion zusammen mit dem privaten Snapshot alle zehn
+Sekunden. `OverlayData` hält private Routenlinien und öffentliche Fahrzeugmarker
+getrennt. `VehicleIconRegistry` lädt jedes Brand-Free-SVG je Modell nur einmal
+und erzeugt daraus bei Bedarf farbige MapLibre-Atlasbilder pro Spielerfarbe.
+Die Position zwischen Polls wird weiterhin rein lokal aus Route und Serverzeit
+interpoliert; es entstehen keine hochfrequenten Positionsschreibvorgänge.

@@ -1,5 +1,6 @@
-import { collection, pointFeature, prepareRoute, routePosition, unwrapRoute } from "../geometry.js";
+import { collection, pointFeature, prepareRoute, routePose, unwrapRoute } from "../geometry.js";
 import { routeProgress } from "../time.js";
+import { vehicleIconId } from "./vehicle-assets.js";
 
 /** Normalize the two supported server route envelopes.
  * @param {import('../types.js').RouteGeometry} route
@@ -13,7 +14,9 @@ export class OverlayData {
     this.hubs = [];
     this.catalogueHubs = [];
     this.routes = new Map();
-    this.state = { vehicles: [], contracts: [], transports: [] };
+    this.trafficRoutes = new Map();
+    this.availableVehicleIcons = new Set();
+    this.state = { vehicles: [], contracts: [], transports: [], traffic: [] };
   }
   /** Retain only real resolved coordinates.
    * @param {import('../types.js').Hub[]} hubs
@@ -27,11 +30,17 @@ export class OverlayData {
     );
     this.hubs = this.catalogueHubs;
   }
-  /** Refresh the route cache for the authoritative active transport set.
+  /** Publish MapLibre image IDs that loaded successfully.
+   * @param {Set<string>} imageIds
+   */
+  setVehicleIcons(imageIds) {
+    this.availableVehicleIcons = new Set(imageIds);
+  }
+  /** Refresh route caches for private routes and shared live traffic.
    * @param {import('../types.js').MapState} state
    */
   update(state) {
-    this.state = state;
+    this.state = { ...state, traffic: state.traffic ?? [] };
     const snapshots = [
       ...state.transports.flatMap((trip) => [
         trip.origin_snapshot ?? trip.origin,
@@ -58,6 +67,16 @@ export class OverlayData {
     for (const trip of state.transports)
       if (!this.routes.has(trip.id))
         this.routes.set(trip.id, prepareRoute(routeGeometry(trip.route_geojson).coordinates));
+
+    const activeTraffic = new Set(this.state.traffic.map((trip) => trip.id));
+    for (const id of this.trafficRoutes.keys())
+      if (!activeTraffic.has(id)) this.trafficRoutes.delete(id);
+    for (const trip of this.state.traffic)
+      if (!this.trafficRoutes.has(trip.id))
+        this.trafficRoutes.set(
+          trip.id,
+          prepareRoute(routeGeometry(trip.route_geojson).coordinates),
+        );
   }
   /** Project public-hub markers with locally rendered label references. */
   hubFeatures() {
@@ -78,31 +97,53 @@ export class OverlayData {
         .map((hub) => pointFeature([hub.lon, hub.lat], { id: hub.id })),
     );
   }
-  /** Project the prepared, continuous route for each active transport. */
+  /** Project only the authenticated player's route lines. */
   routeFeatures() {
     return collection(
-      this.state.transports.map((trip) => ({
-        type: "Feature",
-        properties: { id: trip.id },
-        geometry: { type: "LineString", coordinates: this.routes.get(trip.id).points },
-      })),
+      this.state.transports.flatMap((trip) => {
+        const route = this.routes.get(trip.id);
+        return route
+          ? [
+              {
+                type: "Feature",
+                properties: { id: trip.id },
+                geometry: { type: "LineString", coordinates: route.points },
+              },
+            ]
+          : [];
+      }),
     );
   }
-  /** Project moving vehicle positions using server-adjusted time.
+  /** Project all players' moving vehicle positions and headings.
    * @param {number} now
    * @returns {import("geojson").FeatureCollection<import("geojson").Point>}
    */
   vehicleFeatures(now) {
     return collection(
-      this.state.transports.flatMap((trip) => {
-        const route = this.routes.get(trip.id);
-        const coordinate =
-          route && routePosition(route, routeProgress(now, trip.departed_at, trip.arrives_at));
-        return coordinate ? [pointFeature(coordinate, { id: trip.id })] : [];
+      this.state.traffic.flatMap((trip) => {
+        const route = this.trafficRoutes.get(trip.id);
+        const pose =
+          route && routePose(route, routeProgress(now, trip.departed_at, trip.arrives_at));
+        if (!pose) return [];
+        const iconImage = vehicleIconId(trip.model_id, trip.player_color);
+        const hasIcon = Boolean(iconImage && this.availableVehicleIcons.has(iconImage));
+        return [
+          pointFeature(pose.coordinate, {
+            id: trip.id,
+            vehicleId: trip.vehicle_id,
+            modelId: trip.model_id,
+            iconImage: hasIcon ? iconImage : "",
+            hasIcon,
+            bearing: pose.bearing,
+            playerColor: trip.player_color,
+            username: trip.username,
+            isOwn: trip.is_own,
+          }),
+        ];
       }),
     );
   }
-  /** Return parked and moving vehicle coordinates for camera framing.
+  /** Return only the authenticated player's fleet coordinates for framing.
    * @param {number} now
    * @returns {number[][]}
    */
@@ -115,7 +156,9 @@ export class OverlayData {
           ),
         )
         .map((hub) => [hub.lon, hub.lat]),
-      ...this.vehicleFeatures(now).features.map((feature) => feature.geometry.coordinates),
+      ...this.vehicleFeatures(now)
+        .features.filter((feature) => feature.properties.isOwn)
+        .map((feature) => feature.geometry.coordinates),
     ];
   }
 }
