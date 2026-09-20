@@ -264,10 +264,14 @@ weiterhin über ihre gehashten Dateinamen versioniert werden.
 
 ## Lokale Mehransichten für Flotte und Shop
 
-`frontend/vehicle-card-assets.js` kapselt die Zuordnung von Modell-ID zu den
-lokalen UI-Ansichten. `renderVehicleImage` bevorzugt diese same-origin Assets
-und rendert bei unterstützten Modellen eine kleine Mehransicht aus Front- und
-Seitenansicht. Die Flotten- und Shop-Views bleiben dadurch unverändert an eine
-einzige Darstellungsfunktion gebunden. Modelle ohne lokale Mehransicht fallen
-weiterhin auf das verifizierte Katalogfoto oder die bestehende Illustration
-zurück.
+`frontend/vehicle-card-assets.js` kapselt die Zuordnung aller 14 Modell-IDs zu
+normalisierten lokalen Front- und Seitenansichten. Beide Dateien besitzen feste
+transparente Referenzflächen und werden in `renderVehicleImage` in unabhängigen,
+begrenzten Grid-Zellen dargestellt. Dadurch hängt ihre Geometrie nicht von der
+ursprünglichen Generatorfläche ab und die Bilder können sich nicht überlagern.
+
+Lokale Spielassets tragen bewusst kein `data-vehicle-photo` und keinen
+`data-image-state`; diese Zustände gehören ausschließlich zu externen
+Katalogfotos. `preserve-vehicle-images.js` bewahrt deshalb nur Remote-Fotos mit
+explizitem Ladezustand. Die Flotten- und Shop-Views kennen weiterhin weder
+Assetpfade noch Ladezustandslogik.

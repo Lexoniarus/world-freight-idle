@@ -1,6 +1,7 @@
 import "./test-dom.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
 import { vehicleCardAssetPaths } from "./vehicle-card-assets.js";
 import { renderVehicleImage } from "./ui/vehicle-image.js";
 import { InputController } from "./controllers/input-controller.js";
@@ -89,17 +90,40 @@ test("panel refresh preserves loaded and failed photo nodes but replaces changed
   controller.destroy();
 });
 
-test("local multiview assets take precedence in fleet and shop cards", () => {
-  assert.deepEqual(vehicleCardAssetPaths("iveco_sway_500"), {
-    front: "/assets/iveco_s_way_500_xc13_front.svg",
-    side: "/assets/iveco_s_way_500_xc13_side_left.svg",
-  });
-  assert.deepEqual(vehicleCardAssetPaths("daf_xg_plus_480"), {
-    front: "/assets/daf_xg_plus_480_front.svg",
-    side: "/assets/daf_xg_plus_480_side_left.svg",
-  });
-  assert.equal(vehicleCardAssetPaths("mercedes_atego_818_l"), null);
+test("all catalogue models use real distinct front and side assets", () => {
+  const modelIds = [
+    "daf_xg_plus_480",
+    "iveco_sway_500",
+    "man_tgx_520",
+    "mercedes_actros_l_380",
+    "mercedes_eactros_600",
+    "renault_t_high_520",
+    "scania_r460_gas",
+    "volvo_fh_aero_500_isave",
+    "mercedes_sprinter_317_cdi",
+    "vw_crafter_35_130kw",
+    "iveco_daily_35s18",
+    "mercedes_atego_818_l",
+    "mercedes_atego_1224_l",
+    "man_tgl_12_250",
+  ];
 
+  for (const modelId of modelIds) {
+    const assets = vehicleCardAssetPaths(modelId);
+    assert.ok(assets, modelId);
+    const frontUrl = new URL(`..${assets.front}`, import.meta.url);
+    const sideUrl = new URL(`..${assets.side}`, import.meta.url);
+    assert.equal(existsSync(frontUrl), true, assets.front);
+    assert.equal(existsSync(sideUrl), true, assets.side);
+    assert.equal(
+      readFileSync(frontUrl).equals(readFileSync(sideUrl)),
+      false,
+      `${modelId} front and side must differ`,
+    );
+  }
+});
+
+test("local cards render bounded front and side views without remote image state", () => {
   document.body.replaceChildren(
     renderVehicleImage({
       ...vehicle,
@@ -109,8 +133,10 @@ test("local multiview assets take precedence in fleet and shop cards", () => {
 
   const images = [...document.querySelectorAll("img[data-local-vehicle-asset]")];
   assert.equal(images.length, 2);
-  assert.equal(images[0].getAttribute("src"), "/assets/iveco_s_way_500_xc13_front.svg");
-  assert.equal(images[1].getAttribute("src"), "/assets/iveco_s_way_500_xc13_side_left.svg");
+  assert.equal(images[0].getAttribute("src"), "/assets/iveco_sway_500_front.svg");
+  assert.equal(images[1].getAttribute("src"), "/assets/iveco_sway_500_side_left.svg");
+  assert.equal(document.querySelectorAll("img[data-vehicle-photo]").length, 0);
+  assert.equal(document.querySelector("[data-image-state]"), null);
   assert.match(document.body.textContent, /Frontansicht/);
   assert.match(document.body.textContent, /Seitenansicht/);
 });

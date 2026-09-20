@@ -2,7 +2,7 @@ import { vehicleCardAssetPaths } from "../vehicle-card-assets.js";
 import { html } from "./dom.js";
 import { truckIllustration } from "./illustrations.js";
 
-/** Render local game assets first, then verified catalogue photography as fallback.
+/** Render normalized local game views first, then verified catalogue photography.
  * @param {{id?: string, model_id?: string, name: string, capacity_tons: number, image?: import('../types.js').VehicleImage | null}} vehicle
  * @returns {DocumentFragment}
  */
@@ -11,43 +11,38 @@ export function renderVehicleImage(vehicle) {
   const localAssets = vehicleCardAssetPaths(modelId);
 
   if (localAssets) {
-    return html`<figure class="vehicle-photo vehicle-game-asset vehicle-photo-multiview">
+    return html`<figure class="vehicle-photo vehicle-game-asset">
       <div class="vehicle-photo-grid">
-        <div class="vehicle-photo-frame vehicle-photo-frame-front">
-          <div class="vehicle-photo-fallback">
-            ${truckIllustration(vehicle.capacity_tons <= 12)}
+        <div class="vehicle-asset-view">
+          <div class="vehicle-photo-frame">
+            <img
+              data-local-vehicle-asset
+              src="${localAssets.front}"
+              alt="${vehicle.name} – Frontansicht"
+              width="512"
+              height="512"
+              loading="lazy"
+              decoding="async"
+            />
           </div>
-          <img
-            data-vehicle-photo
-            data-local-vehicle-asset
-            src="${localAssets.front}"
-            alt="${vehicle.name} – Frontansicht"
-            width="640"
-            height="480"
-            loading="lazy"
-            decoding="async"
-          />
+          <span class="vehicle-view-label">Frontansicht</span>
         </div>
-        <div class="vehicle-photo-frame vehicle-photo-frame-side">
-          <div class="vehicle-photo-fallback">
-            ${truckIllustration(vehicle.capacity_tons <= 12)}
+        <div class="vehicle-asset-view">
+          <div class="vehicle-photo-frame">
+            <img
+              data-local-vehicle-asset
+              src="${localAssets.side}"
+              alt="${vehicle.name} – Seitenansicht"
+              width="896"
+              height="512"
+              loading="lazy"
+              decoding="async"
+            />
           </div>
-          <img
-            data-vehicle-photo
-            data-local-vehicle-asset
-            src="${localAssets.side}"
-            alt="${vehicle.name} – Seitenansicht"
-            width="640"
-            height="480"
-            loading="lazy"
-            decoding="async"
-          />
+          <span class="vehicle-view-label">Seitenansicht</span>
         </div>
       </div>
-      <figcaption>
-        <span>Spielgrafik</span>
-        <span class="vehicle-image-scope">Frontansicht · Seitenansicht</span>
-      </figcaption>
+      <figcaption><span>Spielgrafik</span></figcaption>
     </figure>`;
   }
 

@@ -175,7 +175,8 @@ bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATAL
 
 ## Abnahme – lokale Mehransichten in Flotte und Shop
 
-- [x] Verfügbare lokale Spielassets werden in Flotte und Shop bevorzugt vor Katalogfotos gezeigt.
-- [x] Fahrzeugkarten zeigen sowohl Front- als auch Seitenansicht derselben Spielassetserie.
-- [x] Die Mehransicht bleibt responsive und bricht auf kleinen Displays sauber auf eine Spalte um.
-- [x] Modelle ohne lokale Spielassets behalten das verifizierte Katalogfoto beziehungsweise die bestehende Illustration.
+- [x] Alle 14 aktuellen Katalogmodelle besitzen normalisierte Front- und Seitenansichten.
+- [x] Flotte und Shop verwenden dieselbe Modell-ID-Zuordnung zu den lokalen UI-Assets.
+- [x] Front- und Seitenansicht liegen in getrennten begrenzten Zellen und überlagern sich nicht.
+- [x] Tests prüfen für alle 14 Modelle, dass beide Dateien vorhanden und nicht identisch sind.
+- [x] Lokale Spielassets verwenden keinen Remote-Foto-Ladezustand und keine externen Credentials.

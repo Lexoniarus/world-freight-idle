@@ -4,9 +4,9 @@
  * @returns {Array<{current: HTMLElement, next: HTMLElement}>}
  */
 export function matchVehicleImages(currentContent, nextContent) {
-  const available = [...currentContent.querySelectorAll(".vehicle-photo")];
+  const available = [...currentContent.querySelectorAll(".vehicle-photo[data-image-state]")];
   const matches = [];
-  for (const next of nextContent.querySelectorAll(".vehicle-photo")) {
+  for (const next of nextContent.querySelectorAll(".vehicle-photo[data-image-state]")) {
     if (!(next instanceof HTMLElement)) continue;
     const initialState = next.dataset.imageState;
     const index = available.findIndex((current) => {
