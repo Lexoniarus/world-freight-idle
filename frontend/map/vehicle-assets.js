@@ -9,6 +9,10 @@ const VEHICLE_MAP_ASSETS = Object.freeze({
   volvo_fh_aero_500_isave: "/assets/volvo_trucks_fh_aero_500_i_save_map.svg",
   mercedes_sprinter_317_cdi: "/assets/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_map.svg",
   vw_crafter_35_130kw: "/assets/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_map.svg",
+  iveco_daily_35s18: "/assets/iveco_daily_35s18_map.svg",
+  mercedes_atego_818_l: "/assets/mercedes_atego_818_l_map.svg",
+  mercedes_atego_1224_l: "/assets/mercedes_atego_1224_l_map.svg",
+  man_tgl_12_250: "/assets/man_tgl_12_250_map.svg",
 });
 
 export const DEFAULT_VEHICLE_COLOR = "#f6bc43";

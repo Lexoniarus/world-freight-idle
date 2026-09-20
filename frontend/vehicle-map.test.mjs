@@ -1,7 +1,7 @@
 import "./test-dom.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { GameApiClient } from "./api.js";
 import { bearingBetween, prepareRoute, routePose } from "./geometry.js";
 import { GameState } from "./state.js";
@@ -41,8 +41,32 @@ test("vehicle asset registry maps distinct models and player colors to distinct 
   assert.equal(vehicleIconId("iveco_sway_500", "#E45756"), "vehicle-iveco_sway_500-e45756");
   assert.equal(vehicleIconId("daf_xg_plus_480", "#E45756"), "vehicle-daf_xg_plus_480-e45756");
   assert.equal(normalizeVehicleColor("red"), DEFAULT_VEHICLE_COLOR);
-  assert.equal(vehicleAssetPath("iveco_daily_35s18"), null);
-  assert.equal(vehicleIconId("iveco_daily_35s18", "#123456"), "");
+  assert.equal(vehicleAssetPath("iveco_daily_35s18"), "/assets/iveco_daily_35s18_map.svg");
+  assert.equal(vehicleIconId("iveco_daily_35s18", "#123456"), "vehicle-iveco_daily_35s18-123456");
+});
+
+test("all catalogue vehicle models resolve to shipped map assets", () => {
+  const modelIds = [
+    "daf_xg_plus_480",
+    "iveco_sway_500",
+    "man_tgx_520",
+    "mercedes_actros_l_380",
+    "mercedes_eactros_600",
+    "renault_t_high_520",
+    "scania_r460_gas",
+    "volvo_fh_aero_500_isave",
+    "mercedes_sprinter_317_cdi",
+    "vw_crafter_35_130kw",
+    "iveco_daily_35s18",
+    "mercedes_atego_818_l",
+    "mercedes_atego_1224_l",
+    "man_tgl_12_250",
+  ];
+  for (const modelId of modelIds) {
+    const path = vehicleAssetPath(modelId);
+    assert.ok(path, modelId);
+    assert.equal(existsSync(new URL(`..${path}`, import.meta.url)), true, path);
+  }
 });
 
 test("vehicle svg color replacement validates the requested paint", () => {
@@ -119,10 +143,11 @@ test("colored vehicle icon registry reuses one SVG source across player colors",
     { model_id: "iveco_sway_500", player_color: "#4c78a8" },
     { model_id: "iveco_daily_35s18", player_color: "#123456" },
   ]);
-  assert.equal(loads, 1);
-  assert.equal(registered.size, 2);
+  assert.equal(loads, 2);
+  assert.equal(registered.size, 3);
   assert.equal(images.has("vehicle-iveco_sway_500-e45756"), true);
   assert.equal(images.has("vehicle-iveco_sway_500-4c78a8"), true);
+  assert.equal(images.has("vehicle-iveco_daily_35s18-123456"), true);
 });
 
 test("shared traffic projects players, model names and private route lines separately", () => {
@@ -196,10 +221,10 @@ test("unsupported public vehicle models keep the player-colored fallback", () =>
     transports: [],
     traffic: [
       {
-        id: "daily",
-        vehicle_id: "daily-truck",
-        model_id: "iveco_daily_35s18",
-        model_name: "IVECO Daily",
+        id: "unknown",
+        vehicle_id: "unknown-truck",
+        model_id: "unsupported_model",
+        model_name: "Unsupported vehicle",
         username: "Alice",
         player_color: "#123456",
         is_own: true,

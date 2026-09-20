@@ -180,3 +180,11 @@ bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATAL
 - [x] Front- und Seitenansicht liegen in getrennten begrenzten Zellen und überlagern sich nicht.
 - [x] Tests prüfen für alle 14 Modelle, dass beide Dateien vorhanden und nicht identisch sind.
 - [x] Lokale Spielassets verwenden keinen Remote-Foto-Ladezustand und keine externen Credentials.
+
+## Abnahme – vollständige Fahrzeugkarten-Sprites
+
+- [x] Alle 14 aktuellen Katalogmodelle besitzen einen eigenen Map-Sprite.
+- [x] IVECO Daily, Atego 818 L, Atego 1224 L und MAN TGL verwenden keine Punkt-Fallbacks mehr.
+- [x] Die vier ergänzten Map-SVGs unterstützen dieselbe Spielerfarb-Variable wie die bestehenden Sprites.
+- [x] Ein Punkt-Fallback bleibt ausschließlich für unbekannte Modell-IDs erhalten.
+

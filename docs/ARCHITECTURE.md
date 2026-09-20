@@ -275,3 +275,14 @@ Lokale Spielassets tragen bewusst kein `data-vehicle-photo` und keinen
 Katalogfotos. `preserve-vehicle-images.js` bewahrt deshalb nur Remote-Fotos mit
 explizitem Ladezustand. Die Flotten- und Shop-Views kennen weiterhin weder
 Assetpfade noch Ladezustandslogik.
+
+## Vollständige Fahrzeugkarten-Sprites
+
+Die Map-Asset-Registry deckt alle 14 aktuellen Fahrzeugmodell-IDs ab. Die vier
+zuletzt ergänzten Nutzfahrzeuge (IVECO Daily, Atego 818 L, Atego 1224 L und
+MAN TGL) verwenden eigene Top-down-SVGs statt des generischen Punkt-Fallbacks.
+Ihre SVG-Wrapper exponieren ebenfalls `--vehicle-color`, sodass
+`VehicleIconRegistry` für sie denselben modell- und spielerfarbspezifischen
+MapLibre-Atlaspfad wie für die bisherigen zehn Modelle verwendet. Der
+Punkt-Fallback bleibt nur für Modell-IDs außerhalb des ausgelieferten Katalogs.
+
