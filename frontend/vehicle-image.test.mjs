@@ -1,6 +1,7 @@
 import "./test-dom.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
+import { vehicleCardAssetPaths } from "./vehicle-card-assets.js";
 import { renderVehicleImage } from "./ui/vehicle-image.js";
 import { InputController } from "./controllers/input-controller.js";
 
@@ -86,4 +87,30 @@ test("panel refresh preserves loaded and failed photo nodes but replaces changed
   assert.notEqual(document.querySelector("img"), original);
   assert.match(document.querySelector("figcaption").textContent, /Changed credit/);
   controller.destroy();
+});
+
+test("local multiview assets take precedence in fleet and shop cards", () => {
+  assert.deepEqual(vehicleCardAssetPaths("iveco_sway_500"), {
+    front: "/assets/iveco_s_way_500_xc13_front.svg",
+    side: "/assets/iveco_s_way_500_xc13_side_left.svg",
+  });
+  assert.deepEqual(vehicleCardAssetPaths("daf_xg_plus_480"), {
+    front: "/assets/daf_xg_plus_480_front.svg",
+    side: "/assets/daf_xg_plus_480_side_left.svg",
+  });
+  assert.equal(vehicleCardAssetPaths("mercedes_atego_818_l"), null);
+
+  document.body.replaceChildren(
+    renderVehicleImage({
+      ...vehicle,
+      model_id: "iveco_sway_500",
+    }),
+  );
+
+  const images = [...document.querySelectorAll("img[data-local-vehicle-asset]")];
+  assert.equal(images.length, 2);
+  assert.equal(images[0].getAttribute("src"), "/assets/iveco_s_way_500_xc13_front.svg");
+  assert.equal(images[1].getAttribute("src"), "/assets/iveco_s_way_500_xc13_side_left.svg");
+  assert.match(document.body.textContent, /Frontansicht/);
+  assert.match(document.body.textContent, /Seitenansicht/);
 });

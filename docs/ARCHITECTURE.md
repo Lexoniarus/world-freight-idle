@@ -261,3 +261,13 @@ sodass der Layer-Schalter `Multiplayer-Verkehr` ausschließlich andere Spieler
 ein- oder ausblendet. Zusätzliche Dekorationsringe werden nicht verwendet.
 Die HTML-Anwendungsshell ist `no-store`, während gebaute Vite-Assets
 weiterhin über ihre gehashten Dateinamen versioniert werden.
+
+## Lokale Mehransichten für Flotte und Shop
+
+`frontend/vehicle-card-assets.js` kapselt die Zuordnung von Modell-ID zu den
+lokalen UI-Ansichten. `renderVehicleImage` bevorzugt diese same-origin Assets
+und rendert bei unterstützten Modellen eine kleine Mehransicht aus Front- und
+Seitenansicht. Die Flotten- und Shop-Views bleiben dadurch unverändert an eine
+einzige Darstellungsfunktion gebunden. Modelle ohne lokale Mehransicht fallen
+weiterhin auf das verifizierte Katalogfoto oder die bestehende Illustration
+zurück.

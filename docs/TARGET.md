@@ -172,3 +172,10 @@ bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATAL
 - [x] Eigene Fahrzeuge und Multiplayer-Verkehr sind als getrennte Kartenlayer schaltbar.
 - [x] Anwendungsshell wird mit `Cache-Control: no-store` ausgeliefert, damit ein
       neuer Vite-Build nicht durch eine alte HTML-Shell verdeckt wird.
+
+## Abnahme – lokale Mehransichten in Flotte und Shop
+
+- [x] Verfügbare lokale Spielassets werden in Flotte und Shop bevorzugt vor Katalogfotos gezeigt.
+- [x] Fahrzeugkarten zeigen sowohl Front- als auch Seitenansicht derselben Spielassetserie.
+- [x] Die Mehransicht bleibt responsive und bricht auf kleinen Displays sauber auf eine Spalte um.
+- [x] Modelle ohne lokale Spielassets behalten das verifizierte Katalogfoto beziehungsweise die bestehende Illustration.
