@@ -288,3 +288,22 @@ Ihre SVG-Wrapper exponieren ebenfalls `--vehicle-color`, sodass
 MapLibre-Atlaspfad wie für die bisherigen zehn Modelle verwendet. Der
 Punkt-Fallback bleibt nur für Modell-IDs außerhalb des ausgelieferten Katalogs.
 
+## Runtime-Referenzcache und NHM-TradeNetwork (20.09.2026)
+
+Der unveränderliche WorldCatalogue wird im Produktions-Composition-Root durch
+`CachedWorldCatalogue` dekoriert. `SqliteWorldCatalogue` bleibt der validierende
+read-only Loader für Tests und Offline-Werkzeuge; die Runtime baut die 15.099
+NHM-Knoten, 352 Facilities und deren Evidenz dagegen höchstens einmal pro
+Prozess auf.
+
+`TradeNetwork` besitzt ausschließlich die NHM-Kompatibilitätsindizes und
+vorberechneten `TradeOption`-Mengen. `MarketGenerator` orchestriert nur noch
+Payload-Abdeckung, Auswahl und Auffüllen. `ContractFactory` erzeugt persistierte
+Aufträge und verwendet kompakte `Facility.location_snapshot()`-Projektionen.
+Damit werden weder komplette Facility-Cargo-Profile noch dokumentierte
+Warenlisten tausendfach in Markt-JSON dupliziert.
+
+Der Dashboard-Use-Case synchronisiert Ankünfte und Markt genau einmal und
+liefert die vollständige Contract-Projektion direkt mit. Das Frontend lädt
+deshalb beim Polling nicht zusätzlich `/contracts`; `/fleet` bleibt separat,
+weil dort die Fahrzeug-Präsentationsdaten ergänzt werden.

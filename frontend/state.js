@@ -53,22 +53,19 @@ export class GameState extends EventTarget {
   /** Fetch a complete snapshot after reconciling arrivals on the server. */
   async loadSnapshot() {
     const started = Date.now() / 1000;
-    // Dashboard reconciles arrivals before the dependent fleet and market reads.
-    const dashboard = await this.request("/dashboard", {
-      signal: this.lifetime.signal,
-    });
-    this.offset = dashboard.server_time - (started + Date.now() / 1000) / 2;
-    const [fleet, contracts, traffic] = await Promise.all([
+    // Dashboard owns market synchronization and already returns contracts.
+    const [dashboard, fleet, traffic] = await Promise.all([
+      this.request("/dashboard", { signal: this.lifetime.signal }),
       this.request("/fleet", { signal: this.lifetime.signal }),
-      this.request("/contracts", { signal: this.lifetime.signal }),
       this.loadTraffic(),
     ]);
+    this.offset = dashboard.server_time - (started + Date.now() / 1000) / 2;
     if (this.disposed) return this.data;
     const previous = this.data;
     this.data = {
       ...dashboard,
       vehicles: fleet.vehicles,
-      contracts: contracts.contracts,
+      contracts: dashboard.contracts ?? [],
       traffic: traffic.transports,
       trafficAvailable: traffic.available,
     };

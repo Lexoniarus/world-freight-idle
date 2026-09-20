@@ -16,7 +16,10 @@ class MapLocationService:
         """Return bounded endpoints and explicit unavailable counts."""
         snapshot = self.world.read()
         return {
-            "facilities": [f.to_dict() for f in snapshot.query(query)],
+            "facilities": [
+                facility.location_snapshot()
+                for facility in snapshot.query(query)
+            ],
             "catalogue_version": snapshot.version,
             "unavailable_count": sum(
                 not f.is_routable() for f in snapshot.facilities

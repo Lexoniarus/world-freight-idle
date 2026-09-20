@@ -203,3 +203,13 @@ Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
 Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
 erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
 bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
+
+## Runtime-Performance-Regressionsschutz
+
+- `CachedWorldCatalogue` liest seinen Source-Katalog höchstens einmal.
+- `TradeNetwork` wird über mehrere Market-Refreshes wiederverwendet.
+- Contract-/Map-Endpunkte enthalten keine vollständigen Facility-NHM-Profile.
+- Der Browser-Poll lädt Contracts aus `/dashboard` und fordert `/contracts`
+  nicht ein zweites Mal an.
+- Facility-Zählungen in Maintenance-Tests werden datengetrieben geprüft statt
+  gegen historische 155er-Hardcodes.

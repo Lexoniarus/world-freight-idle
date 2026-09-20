@@ -129,6 +129,35 @@ class Facility:
             item for item in self.cargo if item.role in {"output", "both"}
         )
 
+    def location_snapshot(self) -> dict[str, Any]:
+        """Project only routing and display facts needed at runtime."""
+        return {
+            "facility_uid": self.facility_uid,
+            "id": self.facility_uid,
+            "company_uid": (
+                self.company.company_uid if self.company else None
+            ),
+            "label": self.label,
+            "facility_type": self.facility_type,
+            "city": self.city,
+            "country": self.country,
+            "address": self.address,
+            "lat": self.lat,
+            "lon": self.lon,
+            "geocoding_status": self.geocoding_status,
+            "coordinate_evidence": [
+                asdict(item) for item in self.coordinate_evidence
+            ],
+            "catalogue_version": self.catalogue_version,
+            "aliases": list(self.aliases),
+            "resolution_status": (
+                "resolved" if self.is_routable() else "unavailable"
+            ),
+            "location_verified": self.has_verified_location(),
+            "snapshot_version": 1,
+            "location_kind": "public_facility",
+        }
+
     def to_dict(self) -> dict[str, Any]:
         """Make an independent full endpoint snapshot and legacy projection."""
         return {

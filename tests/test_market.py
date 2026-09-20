@@ -6,7 +6,9 @@ from unittest.mock import Mock
 import pytest
 
 from app.domain.errors import WorldCatalogueError
+from app.services.contract_factory import ContractFactory
 from app.services.market import MarketGenerator
+from app.services.trade_network import TradeNetwork
 from app.simulation import PayloadBand, build_payload_bands
 
 
@@ -40,16 +42,10 @@ def test_build_contract_has_expiry_and_valid_nhm_cargo(
     origin = snapshot.get_facility("berlin_westhafen")
     candidates = tuple(f for f in snapshot.facilities if f.is_routable())
     market = MarketGenerator(world_catalogue, random.Random(3), catalogue)
-    inbound_by_row, inbound_by_ancestor = market._index_inbound_cargo(
-        candidates
-    )
-    options = market._build_trade_options(
-        origin,
-        inbound_by_row,
-        inbound_by_ancestor,
-    )
+    network = TradeNetwork(candidates)
+    options = network.options_for(origin.facility_uid)
     option = market._select_trade_option(options)
-    contract = market._build_contract(
+    contract = ContractFactory(market.rng).build(
         option,
         1000,
         PayloadBand("heavy", 24),
@@ -61,8 +57,16 @@ def test_build_contract_has_expiry_and_valid_nhm_cargo(
     assert contract["rate_eur_per_km_ton"] == 0.18
     assert contract["destination_facility_uid"] != origin.facility_uid
     assert contract["trade_match_type"] in {"exact", "ancestor"}
+    assert "cargo" not in contract["origin"]
+    assert "handled_goods" not in contract["origin"]
     with pytest.raises(WorldCatalogueError):
-        market._build_trade_options(origin, {}, {})
+        TradeNetwork._build_trade_options(
+            replace(origin, cargo=()),
+            {},
+            {},
+        )
+    with pytest.raises(WorldCatalogueError):
+        network.options_for("missing")
 
 
 def test_market_contract_count_can_extend_small_valid_market(
@@ -105,7 +109,11 @@ def test_every_routable_facility_has_nhm_work_without_generic_freight(
 ):
     market = MarketGenerator(world_catalogue, random.Random(3), catalogue)
     facilities = world_catalogue.read().facilities
-    contracts = market.generate(1000, ["berlin_westhafen", "berlin_westhafen"])
+    contracts = market.generate(
+        1000,
+        ["berlin_westhafen", "berlin_westhafen"],
+    )
+    network = market.trade_network
     assert {contract["origin_facility_uid"] for contract in contracts} == {
         facility.facility_uid
         for facility in facilities
@@ -135,6 +143,7 @@ def test_every_routable_facility_has_nhm_work_without_generic_freight(
         == contracts[0]["origin_facility_uid"]
     )
     assert market.generate(1002, [], existing_contracts=refilled) == refilled
+    assert market.trade_network is network
 
 
 def test_payload_bands_cover_catalogue_and_reject_invalid_capacities():

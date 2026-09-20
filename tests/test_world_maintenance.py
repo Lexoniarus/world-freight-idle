@@ -95,11 +95,12 @@ def downgrade_fixture(path):
 def test_world_preparation_is_atomic_idempotent_and_enforces_identity(
     world_catalogue, evidence
 ):
+    expected_facility_count = len(world_catalogue.read().facilities)
     downgrade_fixture(world_catalogue.path)
     service = build_world_maintenance_service(world_catalogue.path)
     service.prepare(evidence)
     first = world_catalogue.read()
-    assert len(first.facilities) == 155
+    assert len(first.facilities) == expected_facility_count
     service.prepare(evidence)
     assert world_catalogue.read() == first
     with closing(sqlite3.connect(world_catalogue.path)) as connection:

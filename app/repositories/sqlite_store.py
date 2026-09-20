@@ -35,7 +35,12 @@ CREATE TABLE IF NOT EXISTS route_cache (
 class SqliteStore:
     """Small repository used by the MVP application services."""
 
-    def __init__(self, path: Path, namespace: str = "") -> None:
+    def __init__(
+        self,
+        path: Path,
+        namespace: str = "",
+        initialize_schema: bool = True,
+    ) -> None:
         self.path = path
         self.namespace = namespace
         self._connection: ContextVar[sqlite3.Connection | None] = ContextVar(
@@ -43,7 +48,8 @@ class SqliteStore:
             default=None,
         )
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.initialize()
+        if initialize_schema:
+            self.initialize()
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:

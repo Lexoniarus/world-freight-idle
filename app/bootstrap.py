@@ -10,6 +10,7 @@ import httpx
 from app.config import Settings
 from app.providers.routing import ValhallaTruckRouter
 from app.repositories.accounts import AccountRepository
+from app.repositories.cached_world_catalogue import CachedWorldCatalogue
 from app.repositories.multiplayer_map import MultiplayerMapRepository
 from app.repositories.sqlite_store import SqliteStore
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
@@ -61,7 +62,11 @@ def build_game_service(
 def build_player_service(template: GameService, user_id: str) -> GameService:
     """Isolate game state while sharing rate-limited provider adapters."""
     game = GameService(
-        store=SqliteStore(template.store.path, f"user:{user_id}:"),
+        store=SqliteStore(
+            template.store.path,
+            f"user:{user_id}:",
+            initialize_schema=False,
+        ),
         world=template.world,
         router=template.router,
         market=template.market,
@@ -113,14 +118,15 @@ def build_profile_maintenance_service(
     )
 
 
-def build_world_catalogue(settings: Settings) -> SqliteWorldCatalogue:
-    """Resolve the independent world reference database."""
-    return SqliteWorldCatalogue(
+def build_world_catalogue(settings: Settings) -> CachedWorldCatalogue:
+    """Resolve one lazily cached immutable runtime world revision."""
+    source = SqliteWorldCatalogue(
         settings.world_catalogue_path
         or settings.base_dir
         / "data"
         / "world_freight_company_facility_mvp.sqlite3"
     )
+    return CachedWorldCatalogue(source)
 
 
 def build_world_maintenance_service(path: Path) -> WorldMaintenanceService:

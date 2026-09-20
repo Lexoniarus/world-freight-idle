@@ -330,27 +330,41 @@ class GameService:
 
     def state(self) -> dict[str, Any]:
         """Return the complete client-facing game state."""
-        self.reconcile_arrival()
-        self.refresh_market(force=False)
+        arrived = self.reconcile_arrival()
+        if not arrived:
+            self.refresh_market(force=False)
+        vehicles = [
+            self._expand_vehicle(vehicle)
+            for vehicle in self.store.get_json("vehicles", [])
+        ]
+        contracts = [
+            self._expand_contract(contract)
+            for contract in self.store.get_json("contracts", [])
+        ]
         return {
             "server_time": self.now(),
             "time_scale": self.time_scale,
             "player": self.store.get_json("player"),
-            "vehicles": self.store.get_json("vehicles"),
+            "vehicles": vehicles,
             "active_trips": self.store.get_json("active_trips"),
-            "contracts": [
-                self._expand_contract(contract)
-                for contract in self.store.get_json("contracts", [])
-            ],
-            "hubs": [v["hub"] for v in self.list_vehicles()],
+            "contracts": contracts,
+            "hubs": [vehicle["hub"] for vehicle in vehicles],
         }
 
     def dashboard(self) -> dict[str, Any]:
-        """Return the product dashboard projection for the browser client."""
-        self.reconcile_arrival()
-        contracts = self.list_contracts()
-        vehicles = self.list_vehicles()
-        transports = self.list_transports()
+        """Return one synchronized browser snapshot without nested reads."""
+        arrived = self.reconcile_arrival()
+        if not arrived:
+            self.refresh_market(force=False)
+        contracts = [
+            self._expand_contract(contract)
+            for contract in self.store.get_json("contracts", [])
+        ]
+        vehicles = [
+            self._expand_vehicle(vehicle)
+            for vehicle in self.store.get_json("vehicles", [])
+        ]
+        transports = self.store.get_json("active_trips", [])
         return {
             "server_time": self.now(),
             "time_scale": self.time_scale,
@@ -361,13 +375,16 @@ class GameService:
             ),
             "active_transports": len(transports),
             "featured_contracts": contracts[:3],
+            "contracts": contracts,
+            "vehicles": vehicles,
             "transports": transports,
         }
 
     def list_contracts(self) -> list[dict[str, Any]]:
         """Return market contracts enriched with their real addresses."""
-        self.reconcile_arrival()
-        self.refresh_market(force=False)
+        arrived = self.reconcile_arrival()
+        if not arrived:
+            self.refresh_market(force=False)
         return [
             self._expand_contract(contract)
             for contract in self.store.get_json("contracts", [])
@@ -503,7 +520,9 @@ class GameService:
         snapshot = vehicle.get("location_snapshot")
         if snapshot is None:
             snapshot = (
-                self.world.read().get_facility(vehicle["hub_id"]).to_dict()
+                self.world.read()
+                .get_facility(vehicle["hub_id"])
+                .location_snapshot()
             )
         return {**vehicle, "hub": snapshot}
 
@@ -514,8 +533,10 @@ class GameService:
         world = self.world.read()
         return {
             **contract,
-            "origin": world.get_facility(contract["origin_hub_id"]).to_dict(),
+            "origin": world.get_facility(
+                contract["origin_hub_id"]
+            ).location_snapshot(),
             "destination": world.get_facility(
                 contract["destination_hub_id"]
-            ).to_dict(),
+            ).location_snapshot(),
         }

@@ -241,6 +241,8 @@ def test_dashboard_returns_product_projection(game: GameService):
     assert payload["available_contracts"] >= 1
     assert payload["idle_vehicles"] == 1
     assert payload["active_transports"] == 0
+    assert payload["contracts"]
+    assert payload["vehicles"]
 
 
 def test_list_and_get_contracts_return_real_addresses(game: GameService):

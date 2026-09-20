@@ -3,7 +3,7 @@
 import sqlite3
 from contextlib import closing
 from dataclasses import FrozenInstanceError, replace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -47,6 +47,13 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
         ambiguous.get_facility("berlin_westhafen")
     with pytest.raises(FrozenInstanceError):
         setattr(berlin, "label", "changed")
+    location = berlin.location_snapshot()
+    assert location["id"] == berlin.facility_uid
+    assert location["coordinate_evidence"]
+    assert "cargo" not in location
+    assert "handled_goods" not in location
+    assert "company" not in location
+
     serialized = berlin.to_dict()
     serialized["company"]["display_name"] = "changed"
     assert berlin.company.display_name != "changed"
@@ -142,6 +149,18 @@ def test_nhm_ancestor_reader_rejects_invalid_hierarchy():
     with pytest.raises(ValueError, match="Broken NHM parent reference"):
         read_nhm_ancestors(connection)
     connection.close()
+
+
+def test_cached_world_catalogue_reads_source_once(world_catalogue):
+    from app.repositories.cached_world_catalogue import CachedWorldCatalogue
+
+    snapshot = world_catalogue.read()
+    source = Mock()
+    source.read.return_value = snapshot
+    cached = CachedWorldCatalogue(source)
+    assert cached.read() is snapshot
+    assert cached.read() is snapshot
+    source.read.assert_called_once_with()
 
 
 def test_world_repository_readonly_and_cleanup(world_catalogue):

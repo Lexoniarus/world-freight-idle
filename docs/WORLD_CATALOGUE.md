@@ -149,3 +149,17 @@ Tests sichern insbesondere:
 
 Die allgemeinen Coding-, Architektur- und Quality-Gate-Regeln bleiben in
 `CODING_STANDARDS.md`, `ARCHITECTURE.md` und `TESTING.md` verbindlich.
+
+## Runtime-Performancegrenze
+
+Die ausgelieferte Referenzdatei bleibt read-only und die vollständige
+Schema-/Provenienzvalidierung bleibt im SQLite-Loader. Im Spielprozess wird die
+daraus erzeugte unveränderliche `WorldSnapshot`-Revision anschließend gecacht.
+Runtime-Reads sind dadurch Speicherzugriffe und keine wiederholten
+15.099-NHM-/352-Facility-Rekonstruktionen.
+
+Map- und Contract-Payloads verwenden `Facility.location_snapshot()`. Diese
+Projektion enthält stabile Identität, Adresse, Koordinatenstatus und
+Koordinaten-Evidence, aber bewusst keine vollständigen NHM-Profile,
+`handled_goods` oder Company-Quellen. Vollständige Referenzprojektionen bleiben
+für Wartung/Migration über `to_dict()` verfügbar.

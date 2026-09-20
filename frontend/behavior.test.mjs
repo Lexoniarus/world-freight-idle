@@ -284,16 +284,18 @@ test("uncertain write responses refresh server state instead of repeating the wr
 
 test("disposed state suppresses late snapshots even when a transport ignores abort", async () => {
   let release;
+  const paths = [];
   const gate = new Promise((resolve) => {
     release = resolve;
   });
   const state = new GameState(async (path) => {
+    paths.push(path);
     await gate;
     return path === "/dashboard"
-      ? { server_time: 0 }
+      ? { server_time: 0, contracts: [] }
       : path === "/fleet"
         ? { vehicles: [] }
-        : { contracts: [] };
+        : { transports: [] };
   });
   let changes = 0;
   state.addEventListener("change", () => changes++);
@@ -304,6 +306,7 @@ test("disposed state suppresses late snapshots even when a transport ignores abo
   assert.equal(state.lifetime.signal.aborted, true);
   assert.equal(state.data, null);
   assert.equal(changes, 0);
+  assert.deepEqual(paths.sort(), ["/dashboard", "/fleet", "/map/traffic"].sort());
 });
 
 test("polling only runs when visible and eligible, and releases both intervals", () => {
