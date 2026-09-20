@@ -141,8 +141,8 @@ noch M1-Status. Werkzeug- und Reviewnachweise stehen im Qualitätsbericht.
 ## WorldCatalogue-Teilumfang
 
 Implementiert: separater read-only Referenzkatalog, dauerhafte UUIDs,
-43 verifizierte routbare Facilities mit Aufträgen; 24 mit dokumentierten
-Standardwaren, 19 mit ausdrücklich simulierter Standardfracht,
+352 routbare Facilities mit NHM-basierten Aufträgen; 79 Positionen sind
+verifiziert, 273 ausdrücklich für die Simulation geschätzt;
 Snapshots und explizite Backup-/Bestandsmigration sowie Facility-BBox-API.
 Spielerunternehmen und eigene Depots bleiben offen. Werkzeugprüfungen und
 Architektur-/Browserreview werden getrennt im QUALITY_REPORT.md ausgewiesen.

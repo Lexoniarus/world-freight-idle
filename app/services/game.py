@@ -88,7 +88,12 @@ class GameService:
         retained = (
             []
             if force
-            else [item for item in current if item["expires_at"] > now + 60]
+            else [
+                item
+                for item in current
+                if item["expires_at"] > now + 60
+                and item.get("market_model") == self.market.model_id
+            ]
         )
 
         vehicles = self.store.get_json("vehicles", [])
@@ -115,7 +120,15 @@ class GameService:
                     "event": "market.catalogue_unavailable",
                 },
             )
-            return [item for item in current if item["expires_at"] > now]
+            surviving = [
+                item
+                for item in current
+                if item["expires_at"] > now
+                and item.get("market_model") == self.market.model_id
+            ]
+            if surviving != current:
+                self.store.set_json("contracts", surviving)
+            return surviving
         if contracts == current:
             return current
         self.store.set_json("contracts", contracts)
@@ -418,6 +431,7 @@ class GameService:
                 for item in self.store.get_json("contracts", [])
                 if item["id"] == contract_id
                 and item["expires_at"] > self.now()
+                and item.get("market_model") == self.market.model_id
             ),
             None,
         )

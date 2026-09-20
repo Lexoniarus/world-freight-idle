@@ -16,47 +16,77 @@ def test_market_generate_guarantees_origin_and_real_addresses_are_external(
 ):
     market = MarketGenerator(world_catalogue, random.Random(3), catalogue)
     contracts = market.generate(1000, ["berlin_westhafen", "missing"], 4)
-    berlin = world_catalogue.read().get_facility("berlin_westhafen")
-    assert len(contracts) == 43 * len(
-        build_payload_bands([m.capacity_tons for m in catalogue.list_models()])
+    snapshot = world_catalogue.read()
+    berlin = snapshot.get_facility("berlin_westhafen")
+    bands = build_payload_bands(
+        [model.capacity_tons for model in catalogue.list_models()]
     )
+    assert len(contracts) == len(snapshot.facilities) * len(bands)
     assert contracts[0]["origin_facility_uid"] == berlin.facility_uid
     for contract in contracts:
         assert contract["origin_hub_id"] != contract["destination_hub_id"]
         assert contract["relationship_simulated"] is True
+        assert contract["market_model"] == "nhm_v1"
+        assert contract["cargo_system"] == "NHM2026"
         assert contract["origin"]["coordinate_evidence"]
         assert contract["destination"]["coordinate_evidence"]
 
 
-def test_build_contract_has_expiry_and_valid_cargo(world_catalogue, catalogue):
+def test_build_contract_has_expiry_and_valid_nhm_cargo(
+    world_catalogue,
+    catalogue,
+):
     snapshot = world_catalogue.read()
     origin = snapshot.get_facility("berlin_westhafen")
-    destination = replace(origin, facility_uid="another-facility")
+    candidates = tuple(f for f in snapshot.facilities if f.is_routable())
     market = MarketGenerator(world_catalogue, random.Random(3), catalogue)
+    inbound_by_row, inbound_by_ancestor = market._index_inbound_cargo(
+        candidates
+    )
+    options = market._build_trade_options(
+        origin,
+        inbound_by_row,
+        inbound_by_ancestor,
+    )
+    option = market._select_trade_option(options)
     contract = market._build_contract(
-        origin, (origin, destination), 1000, PayloadBand("heavy", 24)
+        option,
+        1000,
+        PayloadBand("heavy", 24),
     )
     assert contract["expires_at"] == 22600
-    assert contract["cargo"] in {c.name for c in origin.outbound_cargo()}
+    assert contract["cargo_code"] == option.cargo.code
+    assert contract["cargo"] == option.cargo.name
     assert 8 <= contract["tons"] <= 24
     assert contract["rate_eur_per_km_ton"] == 0.18
-    assert contract["destination_facility_uid"] == "another-facility"
-    with pytest.raises(IndexError):
-        market._build_contract(
-            origin, (origin,), 1000, PayloadBand("heavy", 24)
-        )
-    small_world = Mock(
-        read=Mock(
-            return_value=replace(snapshot, facilities=(origin, destination))
-        )
+    assert contract["destination_facility_uid"] != origin.facility_uid
+    assert contract["trade_match_type"] in {"exact", "ancestor"}
+    with pytest.raises(WorldCatalogueError):
+        market._build_trade_options(origin, {}, {})
+
+
+def test_market_contract_count_can_extend_small_valid_market(
+    world_catalogue,
+):
+    snapshot = world_catalogue.read()
+    terminals = tuple(
+        facility
+        for facility in snapshot.facilities
+        if facility.facility_type == "intermodal_terminal"
     )
-    generated = MarketGenerator(
-        small_world, random.Random(3), catalogue
-    ).generate(1000, [], 10)
-    assert len(generated) == 10
-    assert {item["origin_facility_uid"] for item in generated} == {
-        origin.facility_uid,
-        destination.facility_uid,
+    first, second = terminals[:2]
+    world = Mock(
+        read=Mock(return_value=replace(snapshot, facilities=(first, second)))
+    )
+    vehicles = Mock(
+        list_models=Mock(return_value=[SimpleNamespace(capacity_tons=24.0)])
+    )
+    market = MarketGenerator(world, random.Random(11), vehicles)
+    contracts = market.generate(1000, [], contract_count=3)
+    assert len(contracts) == 3
+    assert {contract["origin_facility_uid"] for contract in contracts} == {
+        first.facility_uid,
+        second.facility_uid,
     }
 
 
@@ -69,30 +99,33 @@ def test_market_generate_rejects_world_without_onward_work(
         MarketGenerator(world, random.Random(1), catalogue).generate(1, [])
 
 
-def test_every_routable_facility_has_work_and_mock_goods_are_explicit(
+def test_every_routable_facility_has_nhm_work_without_generic_freight(
     world_catalogue,
     catalogue,
 ):
     market = MarketGenerator(world_catalogue, random.Random(3), catalogue)
     facilities = world_catalogue.read().facilities
     contracts = market.generate(1000, ["berlin_westhafen", "berlin_westhafen"])
-    assert {c["origin_facility_uid"] for c in contracts} == {
-        f.facility_uid for f in facilities if f.is_routable()
+    assert {contract["origin_facility_uid"] for contract in contracts} == {
+        facility.facility_uid
+        for facility in facilities
+        if facility.is_routable()
     }
-    simulated = [c for c in contracts if c["cargo_basis"] == "simulated"]
-    assert len(simulated) == 19 * len(
-        build_payload_bands([m.capacity_tons for m in catalogue.list_models()])
-    )
+    assert all(contract["market_model"] == "nhm_v1" for contract in contracts)
+    assert all(contract["cargo_system"] == "NHM2026" for contract in contracts)
     assert all(
-        c["cargo_evidence"] is None
-        and c["cargo"] == "Standardfracht (Simulation)"
-        for c in simulated
+        contract["cargo_code"] != "simulated_standard"
+        and "Standardfracht" not in contract["cargo"]
+        for contract in contracts
     )
-    assert all(
-        c["cargo_evidence"]
-        for c in contracts
-        if c["cargo_basis"] == "documented"
-    )
+    for contract in contracts:
+        origin = contract["origin_cargo_evidence"]
+        destination = contract["destination_cargo_evidence"]
+        assert (
+            origin["nhm_row_id"] in destination["ancestor_row_ids"]
+            or destination["nhm_row_id"] in origin["ancestor_row_ids"]
+        )
+        assert contract["cargo_basis"] in {"documented", "derived"}
     remaining = contracts[1:]
     refilled = market.generate(1001, [], existing_contracts=remaining)
     assert refilled[: len(remaining)] == remaining
@@ -134,50 +167,67 @@ def test_every_payload_can_work_at_every_facility_and_refill_keeps_ids(
     )
     market = MarketGenerator(world_catalogue, random.Random(5), vehicles)
     contracts = market.generate(1000, [])
-    assert len(contracts) == 129
-    for facility in world_catalogue.read().facilities:
-        if facility.is_routable():
-            local = [
-                c
-                for c in contracts
-                if c["origin_hub_id"] == facility.facility_uid
-            ]
-            assert {c["payload_band"] for c in local} == {
-                "light",
-                "medium",
-                "heavy",
-            }
-            for capacity in capacities:
-                assert any(0 < c["tons"] <= capacity for c in local)
-            assert not all(c["tons"] <= 1.1 for c in local)
-    legacy = {**contracts[0], "id": "unchanged-legacy", "tons": 24}
+    facilities = tuple(
+        facility
+        for facility in world_catalogue.read().facilities
+        if facility.is_routable()
+    )
+    assert len(contracts) == len(facilities) * 3
+    for facility in facilities:
+        local = [
+            contract
+            for contract in contracts
+            if contract["origin_hub_id"] == facility.facility_uid
+        ]
+        assert {contract["payload_band"] for contract in local} == {
+            "light",
+            "medium",
+            "heavy",
+        }
+        for capacity in capacities:
+            assert any(0 < contract["tons"] <= capacity for contract in local)
+        assert not all(contract["tons"] <= 1.1 for contract in local)
+    legacy = {**contracts[0], "id": "unchanged", "tons": 24}
     legacy.pop("payload_band")
     retained = [legacy, *contracts[1:]]
     refilled = market.generate(1001, [], existing_contracts=retained)
     assert refilled[: len(retained)] == retained
-    assert len(refilled) == 130
+    assert len(refilled) == len(contracts) + 1
     vehicles.list_models.return_value = [SimpleNamespace(capacity_tons=0.01)]
     tiny = market.generate(1002, [], existing_contracts=refilled)
-    assert len([c for c in tiny if c["tons"] == 0.01]) == 43
+    assert len(
+        [contract for contract in tiny if contract["tons"] == 0.01]
+    ) == len(facilities)
     vehicles.list_models.return_value = [SimpleNamespace(capacity_tons=24)]
     legacy_fleet = market.generate(1003, [], owned_capacities=[12])
-    assert len(legacy_fleet) == 86
-    assert {c["payload_band"] for c in legacy_fleet} == {"medium", "heavy"}
+    assert len(legacy_fleet) == len(facilities) * 2
+    assert {contract["payload_band"] for contract in legacy_fleet} == {
+        "medium",
+        "heavy",
+    }
 
 
-def test_vehicle_catalogue_outage_preserves_existing_market(game, monkeypatch):
+def test_vehicle_catalogue_outage_preserves_only_current_market(
+    game, monkeypatch
+):
     from app.domain.errors import CatalogueError
 
     original = game.refresh_market()
+    legacy = dict(original[0])
+    legacy["id"] = "legacy-generic"
+    legacy.pop("market_model")
+    game.store.set_json("contracts", [legacy, *original])
     monkeypatch.setattr(
         game.market.vehicles,
         "list_models",
         Mock(side_effect=CatalogueError("offline")),
     )
-    assert game.refresh_market() == original
+    surviving = game.refresh_market()
+    assert all(item.get("market_model") == "nhm_v1" for item in surviving)
+    assert all(item["id"] != "legacy-generic" for item in surviving)
+    assert game.store.get_json("contracts") == surviving
     with pytest.raises(CatalogueError, match="offline"):
         game.refresh_market(force=True)
-    assert game.store.get_json("contracts") == original
 
 
 @pytest.mark.asyncio

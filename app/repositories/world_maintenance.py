@@ -8,6 +8,39 @@ from typing import Any
 
 from app.repositories.world_catalogue import read_world_snapshot
 
+LEGACY_TERMINAL_NHM_CHAPTERS = (
+    "02",
+    "03",
+    "05",
+    "19",
+    "21",
+    "30",
+    "31",
+    "32",
+    "33",
+    "34",
+    "35",
+    "38",
+    "39",
+    "40",
+    "41",
+    "45",
+    "48",
+    "72",
+    "73",
+    "74",
+    "75",
+    "78",
+    "79",
+    "81",
+    "84",
+    "85",
+    "87",
+    "88",
+    "90",
+    "94",
+)
+
 
 class WorldMaintenanceRepository:
     """Atomically upgrade a backed-up reference catalogue in place."""
@@ -142,6 +175,7 @@ def insert_legacy_facility(
     )
     insert_facility_evidence(connection, entry, facility, official, geo_source)
     insert_documented_goods(connection, entry, facility, official)
+    insert_terminal_nhm_profiles(connection, facility, official)
 
 
 def insert_reference_company(
@@ -261,6 +295,40 @@ def insert_facility_evidence(
             entry["osm_type"],
             entry["osm_id"],
         ),
+    )
+
+
+def insert_terminal_nhm_profiles(
+    connection: sqlite3.Connection,
+    facility: int,
+    source_id: int,
+) -> None:
+    """Attach broad derived NHM gateway behavior to one terminal."""
+    rows = connection.execute(
+        "SELECT nhm_row_id,code FROM nhm_codes "
+        "WHERE code IN (%s)"
+        % ",".join("?" for _ in LEGACY_TERMINAL_NHM_CHAPTERS),
+        LEGACY_TERMINAL_NHM_CHAPTERS,
+    ).fetchall()
+    if {row["code"] for row in rows} != set(LEGACY_TERMINAL_NHM_CHAPTERS):
+        raise ValueError("Missing NHM terminal chapter")
+    connection.executemany(
+        """
+        INSERT OR IGNORE INTO facility_nhm_profiles(
+            facility_id,nhm_row_id,cargo_role,priority_score,volume_band,
+            confidence,source_id,evidence_type,notes)
+        VALUES(?,?,'both',0.55,'medium',0.6,?,'derived',?)
+        """,
+        [
+            (
+                facility,
+                row["nhm_row_id"],
+                source_id,
+                "behavior=legacy_terminal_gateway_v1; "
+                "simulated_plausibility=true; role=both",
+            )
+            for row in rows
+        ],
     )
 
 

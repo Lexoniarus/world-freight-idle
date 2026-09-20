@@ -194,10 +194,10 @@ Historische Browserprüfungen mit Nominatim beschreiben frühere Stände. Der
 aktuelle Server nutzt nur Valhalla; automatisierte Browserläufe verwenden
 den vorhandenen FakeRouter sowie lokale Tiles und getrennte Testspielstände.
 
-Markt-Ergänzung: Jeder routbare Standort besitzt einen ausgehenden Auftrag.
-Mock-Standardfracht hat keinen erfundenen Quellenbeleg. Tests prüfen vollständige
-Standortabdeckung, Nachfüllen angenommener Aufträge und Erhalt bestehender
-Auftrags-IDs/Snapshots. UI und Browserprüfung kontrollieren die Kennzeichnung.
+NHM-Markt: Jeder routbare Standort besitzt einen ausgehenden Auftrag mit
+kompatiblem NHM-IN/BOTH-Ziel. Neue Aufträge enthalten keine generische
+Standardfracht. Tests prüfen 352 spielbare Standorte, NHM-Hierarchie, derived
+Evidence, Legacy-Angebotsbereinigung und unveränderte aktive Transporte.
 
 Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
 Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge

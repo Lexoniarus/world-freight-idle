@@ -718,17 +718,25 @@ test("facility API late results are ignored after disposal and errors preserve s
   live.destroy();
 });
 
-test("simulated standard freight is explicit and does not claim a documented good", () => {
+test("derived NHM cargo is explicit without generic freight", () => {
   const view = createView();
   view.state.contracts = [
-    { ...contract, cargo: "Standardfracht (Simulation)", cargo_basis: "simulated" },
+    {
+      ...contract,
+      cargo: "Fahrzeugteile",
+      cargo_code: "8708",
+      cargo_basis: "derived",
+      market_model: "nhm_v1",
+      cargo_system: "NHM2026",
+    },
   ];
   const container = document.createElement("div");
   container.append(renderPanel(view));
-  assert.match(container.textContent, /keine geeignete reale Ware belegt/);
+  assert.match(container.textContent, /NHM-Warenprofil/);
+  assert.doesNotMatch(container.textContent, /Standardfracht/);
   view.state.contracts = [{ ...contract, cargo_basis: "documented" }];
   container.replaceChildren(renderPanel(view));
-  assert.doesNotMatch(container.textContent, /keine geeignete reale Ware belegt/);
+  assert.doesNotMatch(container.textContent, /NHM-Warenprofil/);
 });
 
 test("shipment quantities preserve hundredths for light vehicle selection", () => {

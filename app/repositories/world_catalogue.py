@@ -8,8 +8,8 @@ from pathlib import Path
 
 from app.domain.errors import WorldCatalogueError
 from app.domain.world import (
+    CargoProfile,
     Company,
-    DocumentedCargo,
     DocumentedGood,
     Facility,
     SourceReference,
@@ -17,6 +17,13 @@ from app.domain.world import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+_REQUIRED_WORLD_TABLES = {
+    "facilities",
+    "facility_nhm_profiles",
+    "nhm_codes",
+}
+_REQUIRED_PROFILE_SYSTEM = "NHM 2026 via facility_nhm_profiles -> nhm_codes"
 
 
 class SqliteWorldCatalogue:
@@ -59,10 +66,33 @@ class SqliteWorldCatalogue:
 
 
 def validate_world_schema(connection: sqlite3.Connection) -> str:
-    """Validate schema and references including polymorphic identifiers."""
+    """Validate the NHM-capable schema and cross-table invariants."""
     metadata = dict(connection.execute("SELECT key,value FROM metadata"))
     if metadata.get("schema_version") != "3.0.0":
         raise ValueError("Unsupported world schema")
+    if metadata.get("operational_profile_system") != _REQUIRED_PROFILE_SYSTEM:
+        raise ValueError("Missing NHM profile capability")
+
+    tables = {
+        row[0]
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+    }
+    if not _REQUIRED_WORLD_TABLES.issubset(tables):
+        raise ValueError("Missing NHM world tables")
+    if connection.execute("""
+        SELECT 1
+        FROM company_sources cs
+        JOIN sources s USING(source_id)
+        WHERE s.base_url IS NULL
+           OR (
+               s.base_url NOT LIKE 'http://%'
+               AND s.base_url NOT LIKE 'https://%'
+           )
+        LIMIT 1
+    """).fetchone():
+        raise ValueError("Missing world provenance")
     if connection.execute("PRAGMA foreign_key_check").fetchone():
         raise ValueError("Broken world references")
     if connection.execute("""
@@ -78,6 +108,32 @@ def validate_world_schema(connection: sqlite3.Connection) -> str:
         "WHERE (latitude IS NULL) != (longitude IS NULL)"
     ).fetchone():
         raise ValueError("Incomplete coordinate pair")
+    if connection.execute(
+        "SELECT 1 FROM cargo_types WHERE nst_code LIKE 'NHM:%' LIMIT 1"
+    ).fetchone():
+        raise ValueError("NHM pseudo code stored in NST catalogue")
+    if connection.execute("""
+        SELECT 1
+        FROM facility_nhm_profiles p
+        JOIN nhm_codes n USING(nhm_row_id)
+        WHERE n.code IS NULL OR n.is_numeric != 1
+        LIMIT 1
+    """).fetchone():
+        raise ValueError("Invalid operative NHM profile")
+    if connection.execute("""
+        SELECT 1
+        FROM facilities f
+        LEFT JOIN facility_nhm_profiles p USING(facility_id)
+        GROUP BY f.facility_id
+        HAVING SUM(
+            CASE WHEN p.cargo_role IN ('input','both') THEN 1 ELSE 0 END
+        ) = 0
+        OR SUM(
+            CASE WHEN p.cargo_role IN ('output','both') THEN 1 ELSE 0 END
+        ) = 0
+        LIMIT 1
+    """).fetchone():
+        raise ValueError("Facility without complete NHM behavior")
     return metadata["data_version"]
 
 
@@ -116,44 +172,91 @@ def read_companies(connection: sqlite3.Connection) -> dict[int, Company]:
     }
 
 
+def read_nhm_ancestors(
+    connection: sqlite3.Connection,
+) -> dict[int, tuple[int, ...]]:
+    """Build complete self-to-root NHM ancestry from stored parent links."""
+    parent_by_row = {
+        int(row["nhm_row_id"]): (
+            int(row["parent_row_id"])
+            if row["parent_row_id"] is not None
+            else None
+        )
+        for row in connection.execute(
+            "SELECT nhm_row_id,parent_row_id FROM nhm_codes"
+        )
+    }
+    ancestors: dict[int, tuple[int, ...]] = {}
+    for row_id in parent_by_row:
+        chain: list[int] = []
+        seen: set[int] = set()
+        current: int | None = row_id
+        while current is not None:
+            if current in seen:
+                raise ValueError("Cyclic NHM hierarchy")
+            if current not in parent_by_row:
+                raise ValueError("Broken NHM parent reference")
+            seen.add(current)
+            chain.append(current)
+            current = parent_by_row[current]
+        ancestors[row_id] = tuple(chain)
+    return ancestors
+
+
 def read_cargo(
     connection: sqlite3.Connection,
-) -> dict[int, list[DocumentedCargo]]:
-    """Read documented profiles without inventing goods or input demand."""
-    result: dict[int, list[DocumentedCargo]] = {}
-    for row in connection.execute("""
-        SELECT p.*, c.nst_code, c.name, c.requires_cooling, c.hazardous,
-               c.bulk,c.liquid,s.base_url,s.retrieved_at
-        FROM facility_cargo_profiles p JOIN cargo_types c USING(cargo_type_id)
-        JOIN sources s USING(source_id)
-    """):
-        standard = not any(
-            row[key]
-            for key in (
-                "requires_cooling",
-                "hazardous",
-                "bulk",
-                "liquid",
-            )
-        )
-        source = SourceReference(
-            row["base_url"],
-            row["evidence_type"],
-            row["retrieved_at"],
-        )
-        if not source.url or not source.url.startswith(
+) -> dict[int, list[CargoProfile]]:
+    """Read operative NHM facility profiles and preserve evidence quality."""
+    ancestors = read_nhm_ancestors(connection)
+    result: dict[int, list[CargoProfile]] = {}
+    rows = connection.execute("""
+        SELECT
+            p.facility_id,
+            p.nhm_row_id,
+            p.cargo_role,
+            p.priority_score,
+            p.confidence,
+            p.evidence_type,
+            n.code,
+            COALESCE(
+                NULLIF(n.label_de,''),
+                NULLIF(n.name_de,''),
+                NULLIF(n.label_en,''),
+                NULLIF(n.name_en,''),
+                n.code
+            ) AS cargo_name,
+            s.base_url,
+            s.retrieved_at
+        FROM facility_nhm_profiles p
+        JOIN nhm_codes n USING(nhm_row_id)
+        LEFT JOIN sources s USING(source_id)
+        ORDER BY p.facility_id, p.profile_id
+    """)
+    for row in rows:
+        base_url = row["base_url"]
+        source = None
+        if isinstance(base_url, str) and base_url.startswith(
             ("http://", "https://")
         ):
+            source = SourceReference(
+                base_url,
+                row["evidence_type"],
+                row["retrieved_at"],
+            )
+        elif row["evidence_type"] != "derived":
             raise ValueError("Missing cargo provenance")
-        item = DocumentedCargo(
-            row["nst_code"],
-            row["name"],
+        profile = CargoProfile(
+            int(row["nhm_row_id"]),
+            row["code"],
+            row["cargo_name"],
             row["cargo_role"],
-            standard,
             row["evidence_type"],
+            float(row["confidence"]),
+            float(row["priority_score"]),
+            ancestors[int(row["nhm_row_id"])],
             source,
         )
-        result.setdefault(row["facility_id"], []).append(item)
+        result.setdefault(int(row["facility_id"]), []).append(profile)
     return result
 
 
@@ -161,14 +264,14 @@ def read_facility(
     connection: sqlite3.Connection,
     row: sqlite3.Row,
     companies: dict[int, Company],
-    cargo: tuple[DocumentedCargo, ...],
+    cargo: tuple[CargoProfile, ...],
     version: str,
 ) -> Facility:
     """Join all endpoint facts into a self-contained immutable reference."""
     uid = validate_uid(row["facility_uid"])
     sources = tuple(
-        source_reference(s)
-        for s in connection.execute(
+        source_reference(source)
+        for source in connection.execute(
             "SELECT * FROM facility_sources WHERE facility_id=?",
             (row["facility_id"],),
         )
@@ -191,7 +294,15 @@ def read_facility(
                 "verified_address_point",
             }
             and isinstance(entry["source_url"], str)
-            and entry["source_url"].startswith(("https://", "http://"))
+            and (
+                entry["source_url"].startswith(("https://", "http://"))
+                or (
+                    row["geocoding_status"] == "estimated_for_simulation"
+                    and entry["source_url"].startswith(
+                        "internal://simulation-"
+                    )
+                )
+            )
             and entry["verified_at"]
         ):
             evidence.append(
@@ -204,8 +315,8 @@ def read_facility(
                 )
             )
     aliases = tuple(
-        r[0]
-        for r in connection.execute(
+        alias[0]
+        for alias in connection.execute(
             "SELECT alias FROM facility_aliases WHERE facility_uid=?",
             (uid,),
         )
@@ -245,10 +356,12 @@ def read_handled_goods(
     connection: sqlite3.Connection,
     facility_id: int,
 ) -> tuple[DocumentedGood, ...]:
-    """Keep exact documented goods separate from simulated contract cargo."""
+    """Keep exact documented goods separate from simulated behavior."""
     return tuple(
         DocumentedGood(
-            row["goods_description"], row["nst_code"], source_reference(row)
+            row["goods_description"],
+            row["nst_code"],
+            source_reference(row),
         )
         for row in connection.execute(
             """SELECT g.goods_description,c.nst_code,
@@ -285,12 +398,14 @@ def read_world_snapshot(connection: sqlite3.Connection) -> WorldSnapshot:
         raise ValueError("Empty world catalogue")
     for values in (companies.values(), facilities):
         identities = [
-            getattr(v, "facility_uid", None) or getattr(v, "company_uid")
-            for v in values
+            getattr(value, "facility_uid", None)
+            or getattr(value, "company_uid")
+            for value in values
         ]
         if len(identities) != len(set(identities)):
             raise ValueError("Duplicate world UID")
-    excluded = sum(not f.is_routable() for f in facilities)
+    routable = sum(facility.is_routable() for facility in facilities)
+    verified = sum(facility.has_verified_location() for facility in facilities)
     LOGGER.info(
         "World catalogue read",
         extra={
@@ -298,8 +413,10 @@ def read_world_snapshot(connection: sqlite3.Connection) -> WorldSnapshot:
             "data": {
                 "catalogue_version": version,
                 "facilities": len(facilities),
-                "excluded": excluded,
-                "exclusion_reason": "missing_or_invalid_coordinate_evidence",
+                "routable": routable,
+                "verified_locations": verified,
+                "estimated_locations": routable - verified,
+                "excluded": len(facilities) - routable,
             },
         },
     )

@@ -8,7 +8,7 @@ Abgleich mit [GOAL.md](GOAL.md), Stand 18.09.2026.
 | Sitzung | Token-Digest, Benutzer, Ablaufzeit | Tabelle `sessions` |
 | Spielerzustand | Kapital, Lieferungen, Reputation | KV `user:<id>:player` |
 | Fahrzeug | ID, Modell, Modus, Kapazität, Hub, Status, gespeicherter Kilometerkostensatz | KV `user:<id>:vehicles` |
-| Auftrag | Facility-Snapshots, dokumentierte Fracht, simulierte Menge/Beziehung, Ablaufzeit | KV `user:<id>:contracts` |
+| Auftrag | Facility-Snapshots, NHM-Ware, simulierte Beziehung/Menge, Ablaufzeit | KV `user:<id>:contracts` |
 | Transport | Fahrzeug, Auftragssnapshot, Route, Kosten, Zeitstempel | KV `user:<id>:active_trips` |
 | Referenzunternehmen / Facility | dauerhafte UUIDs, Adresse, Koordinaten, Waren und Quellen | separater read-only WorldCatalogue |
 | Route / Offline-Geocode | normalisierte Providerdaten | Cache-Tabellen; Geocoder außerhalb des Spielpfads |
@@ -37,7 +37,7 @@ VehicleImage ist eine optionale Präsentationsprojektion, kein Bestandteil der
 Transportkosten. Laufende Transporte behalten ihre Kosten-/Auszahlungs-Snapshots,
 auch bei ausdrücklich beauftragter Testprofilpflege.
 
-`Company`, `Facility`, `DocumentedCargo`, `DocumentedGood`, `SourceReference`,
+`Company`, `Facility`, `CargoProfile`, `DocumentedGood`, `SourceReference`,
 `WorldSnapshot` und `FacilityQuery` sind eingefrorene Domain-Referenzmodelle.
 Öffentliche UIDs werden einmalig gespeichert, nicht aus Namen oder PKs abgeleitet.
 Contracts/Transporte/Fahrzeuge besitzen unabhängige Endpunkt-Snapshots.

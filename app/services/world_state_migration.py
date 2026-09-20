@@ -51,10 +51,10 @@ class WorldStateMigrationService:
 
 
 def endpoint_snapshot(identifier: str, world: WorldSnapshot) -> dict[str, Any]:
-    """Require explicit verified identity matches; never relocate a vehicle."""
+    """Require explicit routable identity matches; never relocate a vehicle."""
     facility = world.get_facility(identifier)
     if not facility.is_routable():
-        raise ValueError("Unverified migration endpoint")
+        raise ValueError("Unroutable migration endpoint")
     return facility.to_dict()
 
 

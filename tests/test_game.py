@@ -131,6 +131,28 @@ def test_find_contract_returns_match_and_raises(game: GameService):
         game._find_contract("missing")
 
 
+def test_refresh_market_drops_legacy_offers_but_keeps_active_trips(
+    game: GameService,
+):
+    current = game.refresh_market()
+    legacy = dict(current[0])
+    legacy["id"] = "legacy-offer"
+    legacy.pop("market_model")
+    trip = {
+        "id": "legacy-trip",
+        "vehicle_id": "truck_01",
+        "arrives_at": game.now() + 1000,
+    }
+    game.store.set_json("contracts", [legacy, *current])
+    game.store.set_json("active_trips", [trip])
+    refreshed = game.refresh_market()
+    assert all(item.get("market_model") == "nhm_v1" for item in refreshed)
+    assert all(item["id"] != "legacy-offer" for item in refreshed)
+    assert game.store.get_json("active_trips") == [trip]
+    with pytest.raises(KeyError):
+        game._find_contract("legacy-offer")
+
+
 def test_find_vehicle_returns_match_and_raises(game: GameService):
     vehicles = game.store.get_json("vehicles")
     assert (

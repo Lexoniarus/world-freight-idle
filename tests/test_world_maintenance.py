@@ -13,7 +13,10 @@ import pytest
 
 from app.bootstrap import build_world_maintenance_service
 from app.repositories.database_backup import backup_database
-from app.repositories.world_maintenance import WorldMaintenanceRepository
+from app.repositories.world_maintenance import (
+    WorldMaintenanceRepository,
+    insert_terminal_nhm_profiles,
+)
 from app.services.world_maintenance import validate_legacy_evidence
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,6 +44,17 @@ def downgrade_fixture(path):
                 "SELECT company_id FROM facilities JOIN facility_aliases USING(facility_uid)"
             )
         )
+        if facilities:
+            placeholders = ",".join("?" for _ in facilities)
+            connection.execute(
+                "DELETE FROM facility_handled_goods_nhm "
+                "WHERE handled_goods_id IN ("
+                "SELECT handled_goods_id "
+                "FROM facility_handled_goods "
+                f"WHERE facility_id IN ({placeholders})"
+                ")",
+                facilities,
+            )
         connection.execute("DROP TABLE facility_aliases")
         tables = [
             row[0]
@@ -158,6 +172,18 @@ def test_world_evidence_rejects_unverified_candidates(evidence, field, value):
     evidence[0][field] = value
     with pytest.raises(ValueError):
         validate_legacy_evidence(evidence[0])
+
+
+def test_terminal_nhm_profile_rejects_missing_chapters():
+    connection = sqlite3.connect(":memory:")
+    connection.row_factory = sqlite3.Row
+    connection.execute(
+        "CREATE TABLE nhm_codes("
+        "nhm_row_id INTEGER PRIMARY KEY, code TEXT NOT NULL)"
+    )
+    with pytest.raises(ValueError, match="Missing NHM terminal chapter"):
+        insert_terminal_nhm_profiles(connection, 1, 1)
+    connection.close()
 
 
 def test_world_prepare_cli_requires_backup(

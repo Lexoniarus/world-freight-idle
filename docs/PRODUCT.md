@@ -42,7 +42,7 @@ Der MVP muss einen vollständigen Road-Freight-Loop liefern:
 
 **Real:**
 - Von-/Zu-Adressen
-- Verifizierte Koordinaten mit Quellen
+- Gespeicherte Facility-Koordinaten mit transparentem Verifikationsstatus
 - Referenzunternehmen, Facilities und dokumentierte Waren
 - Straßennetz
 - Truck-Routengeometrie
@@ -91,9 +91,9 @@ und Zuverlässigkeit sind noch keine aktiven Mechaniken. Öffentliche Frachtstan
 Depots unterschieden.
 
 Der WorldCatalogue ergänzt reale Referenzunternehmen; dies ist kein Ausbau
-der Spielerunternehmens- oder Depotmechanik. Jeder routbare Standort erhält Aufträge. Verwendet werden dokumentierte
-Standardwaren oder ausdrücklich simulierte Standardfracht ohne Warenbeleg
-(DB-nutzlastabhängige Mengen, 0,18 €/km/t). Derselbe Ort oder dieselbe
+der Spielerunternehmens- oder Depotmechanik. Jeder routbare Standort erhält Aufträge. Verwendet werden NHM-basierte
+Facility-Profile mit belegter oder transparent derived Warenrolle
+(DB-nutzlastabhängige Mengen, 0,18 €/km/t); generische Standardfracht entfällt. Derselbe Ort oder dieselbe
 Firma darf beide Endpunkte besitzen; dieselbe Facility nicht. Details und
 Bestandskompatibilität: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).
 

@@ -36,8 +36,9 @@ Der aktuelle Hub ist ein öffentlicher Frachtstandort, kein gekauftes Depot.
 
 ## M2 – Real Economy Data
 
-Vorgezogen: reale Referenzunternehmen, Facilities und dokumentierte Waren
-aus dem WorldCatalogue. Geplant bleiben Branchen-/Eurostat-Warenströme und
+Vorgezogen: reale Referenzunternehmen, 352 spielbare Facilities und ein
+NHM-basiertes IN/OUT/BOTH-Verhaltensmodell aus dem WorldCatalogue. Geplant
+bleiben Branchen-/Eurostat-Warenströme und
 regionale Wirtschaftsprofile. Geschäftsbeziehungen und Einzelaufträge bleiben
 simuliert. Später FAF und UN Comtrade für weitere Regionen.
 

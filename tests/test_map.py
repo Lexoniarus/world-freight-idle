@@ -15,13 +15,13 @@ from tests.test_api import make_settings, make_static_files
 async def test_map_hubs_resolve_and_preserve_partial_failures(game):
     service = MapLocationService(game.world)
     result = await service.list_hubs()
-    assert len(result) == 43
+    assert len(result) == 352
     assert all(hub["resolution_status"] == "resolved" for hub in result)
     berlin = next(h for h in result if "berlin_westhafen" in h["aliases"])
     assert berlin["lat"] == 52.5374096
     projection = service.list_facilities(FacilityQuery.parse("13,52,14,53"))
     assert berlin in projection["facilities"]
-    assert projection["unavailable_count"] == 112
+    assert projection["unavailable_count"] == 0
     game.world.path.unlink()
     with pytest.raises(WorldCatalogueError):
         await service.list_hubs()
@@ -36,7 +36,7 @@ def test_map_endpoint_requires_session_and_uses_game_provider(tmp_path, game):
         application.dependency_overrides[get_game_service] = lambda: game
         response = client.get("/api/v1/map/hubs")
         assert response.status_code == 200
-        assert len(response.json()["hubs"]) == 43
+        assert len(response.json()["hubs"]) == 352
         assert (
             response.headers["Referrer-Policy"]
             == "strict-origin-when-cross-origin"

@@ -20,9 +20,11 @@ Basiskarte und GeoJSON-Overlayquellen sind getrennt; leere Firmen-/Depot-
 Layer sind Erweiterungspunkte, keine erfundenen Besitztümer.
 
 GET /api/v1/map/facilities verwendet MapLocationService und WorldCatalogue.
-Nur verifizierte Endpunkte mit passendem Nachweis sind routbar. /map/hubs
-bleibt eine Kompatibilitätsprojektion; beide Pfade benötigen keinen Geocoder.
-Keine künstlichen Ersatzkoordinaten. Kartenabrufe gehen direkt vom Browser
+Verifizierte Endpunkte und ausdrücklich als `estimated_for_simulation`
+gekennzeichnete Standorte sind routbar. /map/hubs bleibt eine
+Kompatibilitätsprojektion; beide Pfade benötigen keinen Geocoder. Geschätzte
+Positionen bleiben als Simulation erkennbar und werden nicht als verifiziert
+ausgegeben. Kartenabrufe gehen direkt vom Browser
 zum Tile-Anbieter, ohne Spiel-Header/Credentials. Referrer-Policy ist
 strict-origin-when-cross-origin. Öffentliche Attribution bleibt sichtbar.
 
@@ -208,7 +210,7 @@ Transporte behalten ihre gespeicherten Werte.
 ## WorldCatalogue und Bestandsmigration
 
 [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md) ist die verbindliche Ergänzung:
-UUIDs statt SQLite-PKs, Domain-Referenzmodelle, dokumentierte Standardwaren,
+UUIDs statt SQLite-PKs, Domain-Referenzmodelle, NHM-Facility-Profile,
 Simulationswerte getrennt in app/simulation.py, vollständige Endpunktsnapshots.
 Pflege- und Migrationsservices erhalten Ports; Repositories besitzen SQL,
 Composition Roots die konkreten Adapter. Backup geht der Mutation voraus.
