@@ -36,10 +36,7 @@ export class GameState extends EventTarget {
       const result = await this.request("/map/traffic", {
         signal: this.lifetime.signal,
       });
-      return {
-        transports: result.transports,
-        available: true,
-      };
+      return { transports: result.transports, available: true };
     } catch (error) {
       if (error.name === "AbortError") throw error;
       console.warn("Shared traffic unavailable:", error.message);
@@ -50,10 +47,9 @@ export class GameState extends EventTarget {
     }
   }
 
-  /** Fetch a complete snapshot after reconciling arrivals on the server. */
+  /** Fetch the lightweight game snapshot without loading the market. */
   async loadSnapshot() {
     const started = Date.now() / 1000;
-    // Dashboard owns market synchronization and already returns contracts.
     const [dashboard, fleet, traffic] = await Promise.all([
       this.request("/dashboard", { signal: this.lifetime.signal }),
       this.request("/fleet", { signal: this.lifetime.signal }),
@@ -65,12 +61,35 @@ export class GameState extends EventTarget {
     this.data = {
       ...dashboard,
       vehicles: fleet.vehicles,
-      contracts: dashboard.contracts ?? [],
+      contracts: this.data?.contracts ?? [],
+      available_contracts: this.data?.contracts?.length ?? 0,
       traffic: traffic.transports,
       trafficAvailable: traffic.available,
     };
-    this.dispatchEvent(new CustomEvent("change", { detail: { previous, current: this.data } }));
+    this.dispatchEvent(
+      new CustomEvent("change", {
+        detail: { previous, current: this.data },
+      }),
+    );
     return this.data;
+  }
+
+  /** Replace only the lazy market slice.
+   * @param {import('./types.js').Contract[]} contracts
+   */
+  replaceContracts(contracts) {
+    if (this.disposed || !this.data) return;
+    const previous = this.data;
+    this.data = {
+      ...this.data,
+      contracts,
+      available_contracts: contracts.length,
+    };
+    this.dispatchEvent(
+      new CustomEvent("change", {
+        detail: { previous, current: this.data },
+      }),
+    );
   }
 
   /** Abort reads and prevent late snapshots from publishing. */
@@ -81,7 +100,6 @@ export class GameState extends EventTarget {
 
   /** Require a read started after any pre-mutation request finishes. */
   async afterMutation() {
-    // A pre-action read cannot serve as the post-action refresh.
     await this.pending?.catch(() => {});
     return this.refresh();
   }
@@ -89,15 +107,15 @@ export class GameState extends EventTarget {
 
 /** Cancel and invalidate selection-specific async work. */
 export class LatestRequest {
-  /** Invalidate even a transport that ignores AbortSignal. */
   cancel() {
     this.controller?.abort();
     this.version++;
   }
+
   constructor() {
     this.version = 0;
   }
-  /** Begin the next selection request and invalidate its predecessor. */
+
   start() {
     this.controller?.abort();
     this.controller = new AbortController();

@@ -7,15 +7,24 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.api.v1.dependencies import get_game_service
 from app.api.v1.schemas import DispatchRequest, QuoteRequest
 from app.domain.errors import RoutingError
+from app.domain.world import FacilityQuery
 from app.services.game import GameService
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
 
 @router.get("")
-def list_contracts(game: GameService = Depends(get_game_service)) -> dict:
-    """Return all currently available market contracts."""
-    return {"contracts": game.list_contracts()}
+def list_contracts(
+    bbox: str | None = None,
+    zoom: float | None = None,
+    game: GameService = Depends(get_game_service),
+) -> dict:
+    """Return the idle-truck plus zoom-enabled viewport market."""
+    try:
+        query = FacilityQuery.parse(bbox)
+    except ValueError as exc:
+        raise HTTPException(422, "Ungültige Bounding Box.") from exc
+    return {"contracts": game.list_contracts(query, zoom)}
 
 
 @router.get("/{contract_id}")
@@ -67,6 +76,14 @@ async def accept_contract(
 
 
 @router.post("/refresh")
-def refresh_contracts(game: GameService = Depends(get_game_service)) -> dict:
-    """Force regeneration of the fictional contract market."""
-    return {"contracts": game.refresh_market(force=True)}
+def refresh_contracts(
+    bbox: str | None = None,
+    zoom: float | None = None,
+    game: GameService = Depends(get_game_service),
+) -> dict:
+    """Regenerate only the current idle-truck plus viewport market."""
+    try:
+        query = FacilityQuery.parse(bbox)
+    except ValueError as exc:
+        raise HTTPException(422, "Ungültige Bounding Box.") from exc
+    return {"contracts": game.refresh_contracts(query, zoom)}

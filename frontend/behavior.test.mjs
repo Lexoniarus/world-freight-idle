@@ -392,9 +392,15 @@ test("animation respects reduced motion, visibility and cancellation", () => {
   assert.equal(draws, 3);
 });
 
-test("map projections aggregate locations, discard invalid hubs and remove settled trips", () => {
+test("map projections derive relevant locations, discard invalid hubs and remove settled trips", () => {
   const data = new OverlayData();
-  data.setHubs([hub, { ...hub, id: "missing", resolution_status: "unavailable", lon: null }]);
+  const unavailable = {
+    ...hub,
+    id: "missing",
+    facility_uid: "missing",
+    resolution_status: "unavailable",
+    lon: null,
+  };
   const publicTrip = {
     id: trip.id,
     vehicle_id: trip.vehicle_id,
@@ -408,7 +414,15 @@ test("map projections aggregate locations, discard invalid hubs and remove settl
   };
   data.update({
     vehicles: [vehicle],
-    contracts: [contract, { ...contract, id: "another" }],
+    contracts: [
+      contract,
+      {
+        ...contract,
+        id: "another",
+        origin_hub_id: unavailable.id,
+        origin: unavailable,
+      },
+    ],
     transports: [trip],
     traffic: [publicTrip],
   });
@@ -672,7 +686,6 @@ test("facility snapshots preserve map locations during catalogue outage and lega
   };
   assert.equal(eligibleVehicles([owned], job).length, 1);
   const overlays = new OverlayData();
-  overlays.setHubs([]);
   overlays.update({ vehicles: [owned], contracts: [job], transports: [] });
   assert.deepEqual(overlays.fleetCoordinates(0), [[13, 52]]);
   assert.equal(overlays.hubFeatures().features.length, 2);
@@ -686,38 +699,55 @@ test("facility snapshots preserve map locations during catalogue outage and lega
   assert.equal(container.querySelectorAll(".job-card").length, 0);
 });
 
-test("facility API late results are ignored after disposal and errors preserve saved overlays", async () => {
-  const { GameSync } = await import("./controllers/game-sync.js");
-  let resolve;
-  const updates = [];
+test("viewport market ignores late results after disposal and preserves saved contracts on errors", async () => {
+  const { ContractMarketController } = await import("./controllers/contract-market-controller.js");
   const notices = [];
-  const sync = new GameSync({
-    state: new EventTarget(),
-    panel: {},
-    map: { setHubs: (hubs) => updates.push(hubs) },
+  const saved = { ...contract, id: "saved" };
+  const state = {
+    data: { contracts: [saved] },
+    replaceContracts(contracts) {
+      this.data.contracts = contracts;
+    },
+  };
+  const map = {
+    marketViewport: () => ({
+      zoom: 7,
+      bbox: [13, 52, 14, 53],
+    }),
+  };
+  const currentUrl = () => new URL("http://test/contracts");
+
+  let resolve;
+  const pendingController = new ContractMarketController({
+    state,
     request: () =>
       new Promise((done) => {
         resolve = done;
       }),
+    map,
     notify: (message) => notices.push(message),
+    currentUrl,
   });
-  const pending = sync.loadHubs();
-  sync.destroy();
-  resolve({ facilities: [hub], unavailable_count: 0 });
+  pendingController.start();
+  const pending = pendingController.refresh();
+  pendingController.destroy();
+  resolve({ contracts: [contract] });
   await pending;
-  assert.deepEqual(updates, []);
-  const live = new GameSync({
-    state: new EventTarget(),
-    panel: {},
-    map: { setHubs: (hubs) => updates.push(hubs) },
+  assert.deepEqual(state.data.contracts, [saved]);
+
+  const live = new ContractMarketController({
+    state,
     request: async () => {
       throw new Error("503");
     },
+    map,
     notify: (message) => notices.push(message),
+    currentUrl,
   });
-  await live.loadHubs();
-  assert.deepEqual(updates, []);
-  assert.match(notices[0], /konnten nicht geladen/);
+  live.start();
+  await live.refresh();
+  assert.deepEqual(state.data.contracts, [saved]);
+  assert.equal(notices.at(-1), "503");
   live.destroy();
 });
 

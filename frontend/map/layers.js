@@ -1,7 +1,5 @@
 import { collection } from "../geometry.js";
 
-/** Register independent game sources and their presentation layers.
- * @param {import("maplibre-gl").Map} map */
 export function addOverlayLayers(map) {
   for (const name of [
     "hubs",
@@ -58,18 +56,6 @@ export function addOverlayLayers(map) {
       "circle-radius": 9,
       "circle-stroke-width": 3,
       "circle-stroke-color": "#fff",
-    },
-  });
-  map.addLayer({
-    id: "hub-labels",
-    type: "symbol",
-    source: "hubs",
-    filter: ["!", ["has", "point_count"]],
-    layout: {
-      "icon-image": ["get", "labelImage"],
-      "icon-anchor": "top",
-      "icon-offset": [0, 16],
-      "icon-size": 0.5,
     },
   });
   map.addLayer({
@@ -157,34 +143,4 @@ export function addOverlayLayers(map) {
       source: name,
       paint: { "circle-color": "#7595ae", "circle-radius": 7 },
     });
-}
-
-/** Draw one public-hub label; canvas text never becomes HTML.
- * @param {import("maplibre-gl").Map} map
- * @param {import("../types.js").Hub} hub
- * @param {import("../types.js").MapState} data
- */
-export function updateHubLabel(map, hub, data) {
-  const count = data.vehicles.filter((v) => v.hub_id === hub.id && v.status === "idle").length;
-  const orders = data.contracts.filter((c) => c.origin_hub_id === hub.id).length;
-  const canvas = document.createElement("canvas");
-  canvas.width = 400;
-  canvas.height = 104;
-  const context = canvas.getContext("2d");
-  context.fillStyle = "#102b3c";
-  context.beginPath();
-  context.roundRect(2, 2, 396, 100, 16);
-  context.fill();
-  context.textAlign = "center";
-  context.fillStyle = "#ffffff";
-  context.font = "600 28px Inter, sans-serif";
-  const title = hub.label.length > 28 ? hub.label.slice(0, 27) + "…" : hub.label;
-  context.fillText(title, 200, 40, 376);
-  context.font = "22px Inter, sans-serif";
-  context.fillStyle = "#a9c1cf";
-  context.fillText(`${hub.city} · ${count} Lkw · ${orders} Aufträge`, 200, 76, 376);
-  const image = context.getImageData(0, 0, 400, 104);
-  const id = "label-" + hub.id;
-  if (map.hasImage(id)) map.updateImage(id, image);
-  else map.addImage(id, image);
 }

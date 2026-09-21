@@ -213,3 +213,25 @@ bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATAL
   nicht ein zweites Mal an.
 - Facility-Zählungen in Maintenance-Tests werden datengetrieben geprüft statt
   gegen historische 155er-Hardcodes.
+
+## Lazy Market Scope und Kartenlebenszyklus
+
+Der Contract-Markt wird nicht mehr global beim Browserstart materialisiert.
+`MarketScopeResolver` ist eine injizierte Backend-Abhängigkeit und bestimmt
+ausschließlich relevante Origin-Facilities: eigene idle Lkw sind immer im Scope;
+zusätzliche Facilities werden erst ab Zoomstufe 7 aus der übergebenen
+`FacilityQuery` aufgenommen. `MarketGenerator` erhält nur diese expliziten
+Origins und kennt weder Viewport noch HTTP.
+
+Im Frontend besitzt `ContractMarketController` den vollständigen Lebenszyklus
+der Contract-Slice-Requests. `WorldMap.marketViewport()` liefert ausschließlich
+neutrale Kartenwerte (`zoom`, `bbox`) und kennt keine Contracts-API. `GameSync`
+synchronisiert weiterhin nur globalen Spielzustand. Die Composition Roots
+injizieren alle zustandsbehafteten Abhängigkeiten.
+
+Facility-Marker entstehen ausschließlich aus eigener Flotte, aktiven
+Transport-Snapshots und der aktuell geladenen Contract-Slice. Die vorherige
+globale `/map/facilities`-Abfrage gehört nicht mehr zum Browserstart.
+Facility-Texte werden nicht dauerhaft als Canvas-Labels erzeugt, sondern nur
+bei Hover als textContent-basierte DOM-Popups angezeigt.
+

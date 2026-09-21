@@ -2,43 +2,21 @@ import { collection, pointFeature, prepareRoute, routePose, unwrapRoute } from "
 import { routeProgress } from "../time.js";
 import { vehicleIconId } from "./vehicle-assets.js";
 
-/** Normalize the two supported server route envelopes.
- * @param {import('../types.js').RouteGeometry} route
- * @returns {import("geojson").LineString}
- */
 export const routeGeometry = (route) => (route.type === "Feature" ? route.geometry : route);
 
-/** Cache immutable routes and project server state into map-independent GeoJSON. */
 export class OverlayData {
   constructor() {
     this.hubs = [];
-    this.catalogueHubs = [];
     this.routes = new Map();
     this.trafficRoutes = new Map();
     this.availableVehicleIcons = new Set();
     this.state = { vehicles: [], contracts: [], transports: [], traffic: [] };
   }
-  /** Retain only real resolved coordinates.
-   * @param {import('../types.js').Hub[]} hubs
-   */
-  setHubs(hubs) {
-    this.catalogueHubs = hubs.filter(
-      (hub) =>
-        hub.resolution_status === "resolved" &&
-        Number.isFinite(hub.lon) &&
-        Number.isFinite(hub.lat),
-    );
-    this.hubs = this.catalogueHubs;
-  }
-  /** Publish MapLibre image IDs that loaded successfully.
-   * @param {Set<string>} imageIds
-   */
+
   setVehicleIcons(imageIds) {
     this.availableVehicleIcons = new Set(imageIds);
   }
-  /** Refresh route caches for private routes and shared live traffic.
-   * @param {import('../types.js').MapState} state
-   */
+
   update(state) {
     this.state = { ...state, traffic: state.traffic ?? [] };
     const snapshots = [
@@ -56,12 +34,10 @@ export class OverlayData {
     );
     this.hubs = [
       ...new Map(
-        [...this.catalogueHubs, ...snapshots].map((facility) => [
-          facility.facility_uid ?? facility.id,
-          facility,
-        ]),
+        snapshots.map((facility) => [facility.facility_uid ?? facility.id, facility]),
       ).values(),
     ];
+
     const active = new Set(state.transports.map((trip) => trip.id));
     for (const id of this.routes.keys()) if (!active.has(id)) this.routes.delete(id);
     for (const trip of state.transports)
@@ -78,26 +54,34 @@ export class OverlayData {
           prepareRoute(routeGeometry(trip.route_geojson).coordinates),
         );
   }
-  /** Project public-hub markers with locally rendered label references. */
+
   hubFeatures() {
     return collection(
-      this.hubs.map((hub) =>
-        pointFeature([hub.lon, hub.lat], { id: hub.id, labelImage: "label-" + hub.id }),
-      ),
+      this.hubs.map((hub) => pointFeature([hub.lon, hub.lat], this.hubProperties(hub))),
     );
   }
-  /** Aggregate co-located orders or parked vehicles by hub.
-   * @param {(import("../types.js").Vehicle | import("../types.js").Contract)[]} items
-   * @param {"hub_id" | "origin_hub_id"} key
-   */
+
   locationFeatures(items, key) {
     return collection(
       this.hubs
         .filter((hub) => items.some((item) => item[key] === hub.id))
-        .map((hub) => pointFeature([hub.lon, hub.lat], { id: hub.id })),
+        .map((hub) => pointFeature([hub.lon, hub.lat], this.hubProperties(hub))),
     );
   }
-  /** Project only the authenticated player's route lines. */
+
+  hubProperties(hub) {
+    return {
+      id: hub.id,
+      label: hub.label,
+      city: hub.city,
+      idleTruckCount: this.state.vehicles.filter(
+        (vehicle) => vehicle.status === "idle" && vehicle.hub_id === hub.id,
+      ).length,
+      orderCount: this.state.contracts.filter((contract) => contract.origin_hub_id === hub.id)
+        .length,
+    };
+  }
+
   routeFeatures() {
     return collection(
       this.state.transports.flatMap((trip) => {
@@ -114,27 +98,15 @@ export class OverlayData {
       }),
     );
   }
-  /** Project the authenticated player's moving vehicle positions.
-   * @param {number} now
-   * @returns {import("geojson").FeatureCollection<import("geojson").Point>}
-   */
+
   vehicleFeatures(now) {
     return this.trafficFeatures(now, true);
   }
 
-  /** Project moving vehicles owned by other players.
-   * @param {number} now
-   * @returns {import("geojson").FeatureCollection<import("geojson").Point>}
-   */
   multiplayerVehicleFeatures(now) {
     return this.trafficFeatures(now, false);
   }
 
-  /** Project one ownership slice of shared traffic.
-   * @param {number} now
-   * @param {boolean} isOwn
-   * @returns {import("geojson").FeatureCollection<import("geojson").Point>}
-   */
   trafficFeatures(now, isOwn) {
     return collection(
       this.state.traffic.flatMap((trip) => {
@@ -162,10 +134,7 @@ export class OverlayData {
       }),
     );
   }
-  /** Return only the authenticated player's fleet coordinates for framing.
-   * @param {number} now
-   * @returns {number[][]}
-   */
+
   fleetCoordinates(now) {
     return [
       ...this.hubs
@@ -180,9 +149,6 @@ export class OverlayData {
   }
 }
 
-/** Convert a selected quote into a route preview without changing game state.
- * @param {import('../types.js').Quote | null} quote
- */
 export function previewFeatures(quote) {
   return collection(
     quote

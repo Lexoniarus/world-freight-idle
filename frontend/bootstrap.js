@@ -5,6 +5,7 @@ import { GameApplication } from "./application.js";
 import { AuthController } from "./controllers/auth-controller.js";
 import { GameActions } from "./controllers/game-actions.js";
 import { GameSync } from "./controllers/game-sync.js";
+import { ContractMarketController } from "./controllers/contract-market-controller.js";
 import { PanelController } from "./controllers/panel-controller.js";
 import { InputController } from "./controllers/input-controller.js";
 import { MobileSheet } from "./controllers/mobile-sheet.js";
@@ -91,13 +92,28 @@ function createGameApplication(api, user, redirect) {
   let application;
   const router = new BrowserRouter(window, (url) => application.navigateTo(url));
   const navigate = (path) => router.navigate(path);
-  const map = createWorldMap(navigate, notify, () => state.now(), api.requestAsset);
-  const sync = new GameSync({ state, request: api.request, panel, map, notify });
+  let contractMarket;
+  const map = createWorldMap(
+    navigate,
+    notify,
+    () => state.now(),
+    api.requestAsset,
+    () => void contractMarket?.refresh(),
+  );
+  const sync = new GameSync({ state, panel, map, notify });
+  contractMarket = new ContractMarketController({
+    state,
+    request: api.request,
+    map,
+    notify,
+    currentUrl: () => view.url,
+  });
   const actions = new GameActions({
     request: api.request,
     state,
     panel,
     map,
+    contractMarket,
     notify,
     navigate,
     refresh: () => sync.refreshGameState(),
@@ -106,6 +122,7 @@ function createGameApplication(api, user, redirect) {
   const scheduler = new RefreshScheduler({
     refresh: async () => {
       await sync.refreshGameState();
+      await contractMarket.refresh();
       if (view.url.pathname === "/leaderboard") await panel.loadDetails();
     },
     updateProgress: () => sync.updateProgress(),
@@ -120,6 +137,7 @@ function createGameApplication(api, user, redirect) {
     map,
     actions,
     sync,
+    contractMarket,
     router,
     scheduler,
     input,
@@ -131,7 +149,7 @@ function createGameApplication(api, user, redirect) {
 }
 
 /** Keep game controls usable when the browser cannot initialize WebGL. */
-function createWorldMap(navigate, notify, now, loadAsset) {
+function createWorldMap(navigate, notify, now, loadAsset, onViewportChange) {
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   try {
     return new WorldMap("world-map", {
@@ -142,6 +160,7 @@ function createWorldMap(navigate, notify, now, loadAsset) {
       provider: createBasemap(),
       reducedMotion: () => reducedMotion.matches,
       isHidden: () => document.hidden,
+      onViewportChange,
       viewport: () => ({
         width: innerWidth,
         height: innerHeight,

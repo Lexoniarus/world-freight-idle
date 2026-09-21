@@ -93,6 +93,15 @@ class SqliteStore:
         with self.connect() as connection:
             connection.executescript(_SCHEMA)
 
+    def has_json(self, key: str) -> bool:
+        """Check key existence without decoding its JSON payload."""
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT 1 FROM kv WHERE key = ?",
+                (self.namespace + key,),
+            ).fetchone()
+        return row is not None
+
     def get_json(self, key: str, default: Any = None) -> Any:
         """Read a JSON value from the key-value state table."""
         with self.connect() as connection:

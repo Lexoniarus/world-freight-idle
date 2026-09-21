@@ -19,7 +19,7 @@ class FakeGame:
             "transports": [],
         }
 
-    def list_contracts(self):
+    def list_contracts(self, query=None, zoom=None):
         return [{"id": "c1"}]
 
     def get_contract(self, contract_id):
@@ -45,6 +45,9 @@ class FakeGame:
 
     def refresh_market(self, force=False):
         return [{"id": "fresh", "force": force}]
+
+    def refresh_contracts(self, query=None, zoom=None):
+        return [{"id": "fresh", "force": True}]
 
     def list_vehicles(self):
         return [{"id": "truck_01"}]
@@ -123,8 +126,13 @@ def test_v1_resource_endpoints_and_error_mapping(tmp_path: Path):
         client.headers["X-Freight-Request"] = "1"
         assert client.get("/api/v1/dashboard").status_code == 200
         assert (
-            client.get("/api/v1/contracts").json()["contracts"][0]["id"]
+            client.get("/api/v1/contracts?bbox=13,52,14,53&zoom=7").json()[
+                "contracts"
+            ][0]["id"]
             == "c1"
+        )
+        assert (
+            client.get("/api/v1/contracts?bbox=bad&zoom=7").status_code == 422
         )
         assert client.get("/api/v1/contracts/c1").json()["id"] == "c1"
         assert client.get("/api/v1/contracts/missing").status_code == 404
@@ -168,6 +176,12 @@ def test_v1_resource_endpoints_and_error_mapping(tmp_path: Path):
                 "force"
             ]
             is True
+        )
+        assert (
+            client.post(
+                "/api/v1/contracts/refresh?bbox=bad&zoom=7"
+            ).status_code
+            == 422
         )
         assert (
             client.get("/api/v1/fleet").json()["vehicles"][0]["id"]

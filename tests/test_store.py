@@ -14,7 +14,9 @@ def test_store_connect_and_initialize(store: SqliteStore):
 
 def test_store_json_roundtrip_and_delete(store: SqliteStore):
     assert store.get_json("missing", {"x": 1}) == {"x": 1}
+    assert not store.has_json("missing")
     store.set_json("alpha", {"value": 3})
+    assert store.has_json("alpha")
     assert store.get_json("alpha") == {"value": 3}
     store.delete_state_keys(("alpha",))
     assert store.get_json("alpha") is None

@@ -1,4 +1,4 @@
-"""Simulated NHM contracts between evidenced public facilities."""
+"""Generate NHM contracts only for explicitly requested origins."""
 
 import random
 from dataclasses import dataclass
@@ -13,7 +13,7 @@ from app.simulation import build_payload_bands
 
 @dataclass(slots=True)
 class MarketGenerator:
-    """Orchestrate market coverage from cached NHM trade options."""
+    """Orchestrate contract coverage from cached NHM trade options."""
 
     model_id: ClassVar[str] = ContractFactory.model_id
     cargo_system: ClassVar[str] = ContractFactory.cargo_system
@@ -32,7 +32,7 @@ class MarketGenerator:
         existing_contracts: list[dict[str, Any]] | None = None,
         owned_capacities: list[float] | None = None,
     ) -> list[dict[str, Any]]:
-        """Guarantee work per facility and payload band using NHM matches."""
+        """Guarantee payload-band work only for requested valid origins."""
         snapshot = self.world.read()
         candidates = tuple(
             facility
@@ -81,11 +81,9 @@ class MarketGenerator:
             ):
                 origins.append(facility)
                 planned.add(facility.facility_uid)
-        origins.extend(
-            facility
-            for facility in candidates
-            if facility.facility_uid not in planned
-        )
+
+        if not origins:
+            return retained
 
         contracts = list(retained)
         assert self.trade_network is not None
@@ -103,7 +101,10 @@ class MarketGenerator:
                 )
                 covered.add(coverage_key)
 
-        while len(contracts) < contract_count:
+        scoped_count = sum(
+            item.get("origin_hub_id") in planned for item in contracts
+        )
+        while scoped_count < contract_count:
             origin = self.rng.choice(origins)
             option = self._select_trade_option(
                 self.trade_network.options_for(origin.facility_uid)
@@ -115,6 +116,7 @@ class MarketGenerator:
                     self.rng.choice(bands),
                 )
             )
+            scoped_count += 1
         return contracts
 
     def _select_trade_option(

@@ -10,6 +10,7 @@ from app.repositories.sqlite_store import SqliteStore
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.services.game import GameService
 from app.services.market import MarketGenerator
+from app.services.market_scope import MarketScopeResolver
 from app.services.pricing import PricingService
 from tests.seed_data import (
     CARGO_TYPES,
@@ -86,11 +87,13 @@ def game(store: SqliteStore, catalogue, world_catalogue) -> GameService:
         world=world_catalogue,
         router=FakeRouter(),
         market=market,
+        market_scope=MarketScopeResolver(world_catalogue),
         pricing=PricingService(CARGO_TYPES),
         catalogue=catalogue,
         time_scale=1.0,
     )
     service.ensure_initial_state()
+    service.refresh_market(force=True)
     return service
 
 

@@ -23,6 +23,7 @@ from app.services.fleet import FleetService
 from app.services.game import GameService
 from app.services.map_locations import MapLocationService
 from app.services.market import MarketGenerator
+from app.services.market_scope import MarketScopeResolver
 from app.services.multiplayer_map import MultiplayerMapService
 from app.services.pricing import PricingService
 from app.services.profile_maintenance import ProfileMaintenanceService
@@ -55,6 +56,7 @@ def build_game_service(
         market=market,
         pricing=pricing,
         catalogue=catalogue,
+        market_scope=MarketScopeResolver(world),
         time_scale=settings.game_time_scale,
     )
 
@@ -72,6 +74,7 @@ def build_player_service(template: GameService, user_id: str) -> GameService:
         market=template.market,
         pricing=template.pricing,
         catalogue=template.catalogue,
+        market_scope=template.market_scope,
         time_scale=template.time_scale,
     )
     game.ensure_initial_state()
