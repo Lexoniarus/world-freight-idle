@@ -7,7 +7,8 @@ Browserbasierter Multiplayer-Logistik-Idler mit Python/FastAPI, SQLite und einer
 MapLibre-/OpenStreetMap-Weltkarte. **UI First: spielbare Grundlage, M1 noch in
 Arbeit.** Die aktuelle Basis ist lokal und automatisiert geprüft; sie ist kein
 freigegebener öffentlicher Produktionsdienst.
-![Uploading image.png…]()
+<img width="1897" height="887" alt="image" src="https://github.com/user-attachments/assets/cf9b7716-34a4-4ae0-9021-593feef781e8" />
+
 
 ## Aktueller Stand
 
