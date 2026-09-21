@@ -137,6 +137,16 @@ class Facility:
             "company_uid": (
                 self.company.company_uid if self.company else None
             ),
+            "company": (
+                {
+                    "company_uid": self.company.company_uid,
+                    "legal_name": self.company.legal_name,
+                    "display_name": self.company.display_name,
+                    "country": self.company.country,
+                }
+                if self.company
+                else None
+            ),
             "label": self.label,
             "facility_type": self.facility_type,
             "city": self.city,

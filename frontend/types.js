@@ -4,7 +4,8 @@
  * @typedef {{url: string, role: string, verified_at: string | null, precision?: string | null, provider?: string | null}} SourceReference
  * @typedef {{facilities: Hub[], catalogue_version: string, unavailable_count: number}} FacilityResponse
  * @typedef {{zoom: number, bbox: [number, number, number, number]}} MarketViewport
- * @typedef {{facility_uid?: string, company_uid?: string | null, aliases?: string[], catalogue_version?: string, coordinate_evidence?: SourceReference[], id: string, city: string, label: string, address: string, lat?: number, lon?: number, resolution_status?: string}} Hub
+ * @typedef {{company_uid: string, legal_name: string, display_name: string, country: string}} CompanyIdentity
+ * @typedef {{facility_uid?: string, company_uid?: string | null, company?: CompanyIdentity | null, aliases?: string[], catalogue_version?: string, coordinate_evidence?: SourceReference[], id: string, city: string, label: string, address: string, lat?: number, lon?: number, resolution_status?: string}} Hub
  * @typedef {{facility_uid?: string, location_snapshot?: Hub, id: string, name: string, hub_id: string, capacity_tons: number, mode: string, status: string, hub: Hub, model_id?: string, image?: VehicleImage | null, operating_cost_eur_per_km?: number}} Vehicle
  * @typedef {{payload_band?: "light" | "medium" | "heavy", cargo_basis?: "documented" | "derived", cargo_code?: string, cargo_system?: "NHM2026", market_model?: "nhm_v1", trade_match_type?: "exact" | "ancestor", origin_facility_uid?: string, destination_facility_uid?: string, id: string, cargo: string, tons: number, mode: string, origin_hub_id: string, origin: Hub, destination: Hub, shipper_name: string, consignee_name: string}} Contract
  * @typedef {import('geojson').LineString | import('geojson').Feature<import('geojson').LineString>} RouteGeometry

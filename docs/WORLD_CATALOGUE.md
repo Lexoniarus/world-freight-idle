@@ -159,10 +159,12 @@ Runtime-Reads sind dadurch Speicherzugriffe und keine wiederholten
 15.099-NHM-/352-Facility-Rekonstruktionen.
 
 Map- und Contract-Payloads verwenden `Facility.location_snapshot()`. Diese
-Projektion enthält stabile Identität, Adresse, Koordinatenstatus und
-Koordinaten-Evidence, aber bewusst keine vollständigen NHM-Profile,
-`handled_goods` oder Company-Quellen. Vollständige Referenzprojektionen bleiben
-für Wartung/Migration über `to_dict()` verfügbar.
+Projektion enthält stabile Facility-Identität, eine kompakte Firmenidentität
+(`company_uid`, `legal_name`, `display_name`, `country`), Adresse,
+Koordinatenstatus und Koordinaten-Evidence. Vollständige NHM-Profile,
+`handled_goods`, Company-Quellen, Websites und weitere schwere Referenzdaten
+bleiben bewusst außerhalb des Runtime-Snapshots. Vollständige
+Referenzprojektionen bleiben für Wartung/Migration über `to_dict()` verfügbar.
 
 ## Lazy Market Scope und Kartenlebenszyklus
 

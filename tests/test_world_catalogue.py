@@ -50,9 +50,17 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
     location = berlin.location_snapshot()
     assert location["id"] == berlin.facility_uid
     assert location["coordinate_evidence"]
+    assert location["company"] == {
+        "company_uid": berlin.company.company_uid,
+        "legal_name": berlin.company.legal_name,
+        "display_name": berlin.company.display_name,
+        "country": berlin.company.country,
+    }
+    assert location["company_uid"] == berlin.company.company_uid
+    assert "sources" not in location["company"]
+    assert "website" not in location["company"]
     assert "cargo" not in location
     assert "handled_goods" not in location
-    assert "company" not in location
 
     serialized = berlin.to_dict()
     serialized["company"]["display_name"] = "changed"
