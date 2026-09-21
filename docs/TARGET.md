@@ -141,8 +141,8 @@ noch M1-Status. Werkzeug- und Reviewnachweise stehen im Qualitätsbericht.
 ## WorldCatalogue-Teilumfang
 
 Implementiert: separater read-only Referenzkatalog, dauerhafte UUIDs,
-43 verifizierte routbare Facilities mit Aufträgen; 24 mit dokumentierten
-Standardwaren, 19 mit ausdrücklich simulierter Standardfracht,
+352 routbare Facilities mit NHM-basierten Aufträgen; 79 Positionen sind
+verifiziert, 273 ausdrücklich für die Simulation geschätzt;
 Snapshots und explizite Backup-/Bestandsmigration sowie Facility-BBox-API.
 Spielerunternehmen und eigene Depots bleiben offen. Werkzeugprüfungen und
 Architektur-/Browserreview werden getrennt im QUALITY_REPORT.md ausgewiesen.
@@ -151,3 +151,40 @@ Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
 Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
 erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
 bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
+
+## Abnahme – gemeinsamer Live-Verkehr
+
+- [x] Aktive Transporte anderer angemeldeter Spieler sind auf derselben Karte sichtbar.
+- [x] Private Wirtschafts- und Vertragsdaten bleiben aus der öffentlichen Projektion ausgeschlossen.
+- [x] Spielerfarben sind stabil und unterscheiden Fahrzeughalter visuell.
+- [x] Brand-Free-Sprites werden pro Modell/Farbe wiederverwendet; fehlende Modelle behalten einen farbigen Fallback.
+- [x] Eigene Routenlinien bleiben privat; fremde Fahrzeugklicks öffnen keine privaten Transportdetails.
+- [x] Ausgeführte/abgelaufene Transporte werden nicht mehr als Live-Verkehr projiziert.
+
+## Abnahme – gemeinsamer Live-Verkehr V2
+
+- [x] Repository liest nur öffentliche Live-Traffic-Felder aus Spielerzuständen.
+- [x] Private Vertrags-, Erlös-, Kosten- und Guthabendaten werden nicht projiziert.
+- [x] Multiplayer-Traffic-Fehler werden in der UI sichtbar und nicht still verschluckt.
+- [x] Letzter gültiger Traffic-Stand bleibt bei temporärem Fehler erhalten.
+- [x] Modell-ID und Modellname bleiben im öffentlichen Kartenpayload getrennt erhalten.
+- [x] Spielerfarbe wird direkt im Sprite beziehungsweise beim Fallback-Punkt dargestellt.
+- [x] Eigene Fahrzeuge und Multiplayer-Verkehr sind als getrennte Kartenlayer schaltbar.
+- [x] Anwendungsshell wird mit `Cache-Control: no-store` ausgeliefert, damit ein
+      neuer Vite-Build nicht durch eine alte HTML-Shell verdeckt wird.
+
+## Abnahme – lokale Mehransichten in Flotte und Shop
+
+- [x] Alle 14 aktuellen Katalogmodelle besitzen normalisierte Front- und Seitenansichten.
+- [x] Flotte und Shop verwenden dieselbe Modell-ID-Zuordnung zu den lokalen UI-Assets.
+- [x] Front- und Seitenansicht liegen in getrennten begrenzten Zellen und überlagern sich nicht.
+- [x] Tests prüfen für alle 14 Modelle, dass beide Dateien vorhanden und nicht identisch sind.
+- [x] Lokale Spielassets verwenden keinen Remote-Foto-Ladezustand und keine externen Credentials.
+
+## Abnahme – vollständige Fahrzeugkarten-Sprites
+
+- [x] Alle 14 aktuellen Katalogmodelle besitzen einen eigenen Map-Sprite.
+- [x] IVECO Daily, Atego 818 L, Atego 1224 L und MAN TGL verwenden keine Punkt-Fallbacks mehr.
+- [x] Die vier ergänzten Map-SVGs unterstützen dieselbe Spielerfarb-Variable wie die bestehenden Sprites.
+- [x] Ein Punkt-Fallback bleibt ausschließlich für unbekannte Modell-IDs erhalten.
+

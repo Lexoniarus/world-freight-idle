@@ -1827,3 +1827,46 @@ input::placeholder {
 .vehicle-photo[data-image-state="failed"] .vehicle-image-error {
   display: block;
 }
+
+/* Normalized local front/side assets for fleet and shop cards. */
+.vehicle-game-asset .vehicle-photo-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.vehicle-game-asset .vehicle-asset-view {
+  min-width: 0;
+}
+
+.vehicle-game-asset .vehicle-photo-frame {
+  aspect-ratio: auto;
+  height: 150px;
+  min-height: 0;
+  padding: 7px;
+  background: radial-gradient(circle at 50% 38%, #27465a 0, #173142 42%, #102333 72%);
+}
+
+.vehicle-game-asset .vehicle-photo-frame img {
+  position: static;
+  inset: auto;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  object-fit: contain;
+  opacity: 1;
+}
+
+.vehicle-game-asset .vehicle-view-label {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 9px;
+  text-align: center;
+}
+
+.vehicle-game-asset figcaption {
+  margin-top: 7px;
+}

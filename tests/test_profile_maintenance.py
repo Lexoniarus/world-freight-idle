@@ -318,6 +318,7 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
     before = 285 if limited_cash else 175000
     player = game.store.get_json("player")
     game.store.set_json("player", {**player, "cash": before})
+    game.refresh_market(force=True)
     contract = first_berlin_contract(game)
     task = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
     await asyncio.wait_for(route_started.wait(), 2)

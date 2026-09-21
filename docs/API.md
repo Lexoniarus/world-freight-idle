@@ -18,7 +18,7 @@ Auch beim Testen über OpenAPI/curl muss der Schreibheader gesetzt werden.
 | GET | `/fleet/catalogue` | Fahrzeugmodelle und simulierte Preise |
 | POST | `/fleet/purchase` | `{model_id}`: atomarer Kauf, 201 |
 | GET | `/leaderboard` | Top 100: Namen und abgeschlossene Lieferungen |
-| GET | `/map/facilities` | Verifizierte öffentliche Facilities, optional bbox |
+| GET | `/map/facilities` | Spielbare öffentliche Facilities mit Verifikationsstatus, optional bbox |
 | GET | `/map/hubs` | Kompatibles hubs-Envelope derselben Facilities, kein Geocoding |
 
 Spielername: ASCII-Buchstaben, Ziffern, Unterstrich, 3–24 Zeichen;
@@ -33,7 +33,7 @@ sind keine öffentlichen Schnittstellen. Die Hintergrundkarte lädt ihre Tiles
 direkt vom konfigurierten Kartenanbieter.
 
 GET /map/facilities liefert `facilities`, `catalogue_version` und
-`unavailable_count`. Nur geprüfte Koordinaten werden als Marker ausgeliefert.
+`unavailable_count`. Verifizierte und ausdrücklich geschätzte Simulationskoordinaten werden mit ihrem Status ausgeliefert.
 `bbox=west,south,east,north` unterstützt die Datumsgrenze (west > east),
 weist ungültige Werte mit 422 ab und ist optional. Ohne Sitzung 401;
 Katalogausfall 503. Numerische SQLite-PKs sind nicht öffentlich.
@@ -77,7 +77,7 @@ Validiert Fahrzeugstatus, Modus, Standort, Kapazität und Liquidität. Bei Erfol
 
 ### `POST /contracts/refresh`
 
-Erzeugt einen neuen fiktiven Auftragsmarkt über den geeigneten verifizierten Facilities.
+Erzeugt einen neuen NHM-basierten Auftragsmarkt über die spielbaren Facilities.
 
 ## Flotte
 

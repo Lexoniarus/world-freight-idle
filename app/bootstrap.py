@@ -10,6 +10,8 @@ import httpx
 from app.config import Settings
 from app.providers.routing import ValhallaTruckRouter
 from app.repositories.accounts import AccountRepository
+from app.repositories.cached_world_catalogue import CachedWorldCatalogue
+from app.repositories.multiplayer_map import MultiplayerMapRepository
 from app.repositories.sqlite_store import SqliteStore
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.repositories.world_catalogue import SqliteWorldCatalogue
@@ -21,6 +23,8 @@ from app.services.fleet import FleetService
 from app.services.game import GameService
 from app.services.map_locations import MapLocationService
 from app.services.market import MarketGenerator
+from app.services.market_scope import MarketScopeResolver
+from app.services.multiplayer_map import MultiplayerMapService
 from app.services.pricing import PricingService
 from app.services.profile_maintenance import ProfileMaintenanceService
 from app.services.world_maintenance import WorldMaintenanceService
@@ -52,6 +56,7 @@ def build_game_service(
         market=market,
         pricing=pricing,
         catalogue=catalogue,
+        market_scope=MarketScopeResolver(world),
         time_scale=settings.game_time_scale,
     )
 
@@ -59,12 +64,17 @@ def build_game_service(
 def build_player_service(template: GameService, user_id: str) -> GameService:
     """Isolate game state while sharing rate-limited provider adapters."""
     game = GameService(
-        store=SqliteStore(template.store.path, f"user:{user_id}:"),
+        store=SqliteStore(
+            template.store.path,
+            f"user:{user_id}:",
+            initialize_schema=False,
+        ),
         world=template.world,
         router=template.router,
         market=template.market,
         pricing=template.pricing,
         catalogue=template.catalogue,
+        market_scope=template.market_scope,
         time_scale=template.time_scale,
     )
     game.ensure_initial_state()
@@ -91,6 +101,11 @@ def build_map_service(game: GameService) -> MapLocationService:
     return MapLocationService(game.world)
 
 
+def build_multiplayer_map_service(game: GameService) -> MultiplayerMapService:
+    """Build the read-only cross-player traffic projection."""
+    return MultiplayerMapService(MultiplayerMapRepository(game.store))
+
+
 def build_profile_maintenance_service(
     settings: Settings,
 ) -> ProfileMaintenanceService:
@@ -106,14 +121,15 @@ def build_profile_maintenance_service(
     )
 
 
-def build_world_catalogue(settings: Settings) -> SqliteWorldCatalogue:
-    """Resolve the independent world reference database."""
-    return SqliteWorldCatalogue(
+def build_world_catalogue(settings: Settings) -> CachedWorldCatalogue:
+    """Resolve one lazily cached immutable runtime world revision."""
+    source = SqliteWorldCatalogue(
         settings.world_catalogue_path
         or settings.base_dir
         / "data"
         / "world_freight_company_facility_mvp.sqlite3"
     )
+    return CachedWorldCatalogue(source)
 
 
 def build_world_maintenance_service(path: Path) -> WorldMaintenanceService:

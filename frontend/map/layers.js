@@ -1,13 +1,12 @@
 import { collection } from "../geometry.js";
 
-/** Register independent game sources and their presentation layers.
- * @param {import("maplibre-gl").Map} map */
 export function addOverlayLayers(map) {
   for (const name of [
     "hubs",
     "orders",
     "parked",
     "vehicles",
+    "multiplayer-vehicles",
     "routes",
     "preview",
     "companies",
@@ -60,18 +59,6 @@ export function addOverlayLayers(map) {
     },
   });
   map.addLayer({
-    id: "hub-labels",
-    type: "symbol",
-    source: "hubs",
-    filter: ["!", ["has", "point_count"]],
-    layout: {
-      "icon-image": ["get", "labelImage"],
-      "icon-anchor": "top",
-      "icon-offset": [0, 16],
-      "icon-size": 0.5,
-    },
-  });
-  map.addLayer({
     id: "orders",
     type: "circle",
     source: "orders",
@@ -96,14 +83,57 @@ export function addOverlayLayers(map) {
     },
   });
   map.addLayer({
-    id: "vehicles",
+    id: "multiplayer-vehicles-fallback",
     type: "circle",
-    source: "vehicles",
+    source: "multiplayer-vehicles",
+    filter: ["==", ["get", "hasIcon"], false],
     paint: {
       "circle-radius": 9,
-      "circle-color": "#f6bc43",
+      "circle-color": ["coalesce", ["get", "playerColor"], "#f6bc43"],
       "circle-stroke-width": 3,
       "circle-stroke-color": "#102b3c",
+    },
+  });
+  map.addLayer({
+    id: "multiplayer-vehicles",
+    type: "symbol",
+    source: "multiplayer-vehicles",
+    filter: ["==", ["get", "hasIcon"], true],
+    layout: {
+      "icon-image": ["get", "iconImage"],
+      "icon-rotate": ["get", "bearing"],
+      "icon-rotation-alignment": "map",
+      "icon-pitch-alignment": "map",
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+      "icon-size": ["interpolate", ["linear"], ["zoom"], 5, 0.55, 9, 0.75, 13, 1, 17, 1.15],
+    },
+  });
+  map.addLayer({
+    id: "vehicles-fallback",
+    type: "circle",
+    source: "vehicles",
+    filter: ["==", ["get", "hasIcon"], false],
+    paint: {
+      "circle-radius": 9,
+      "circle-color": ["coalesce", ["get", "playerColor"], "#f6bc43"],
+      "circle-stroke-width": 3,
+      "circle-stroke-color": "#102b3c",
+    },
+  });
+  map.addLayer({
+    id: "vehicles",
+    type: "symbol",
+    source: "vehicles",
+    filter: ["==", ["get", "hasIcon"], true],
+    layout: {
+      "icon-image": ["get", "iconImage"],
+      "icon-rotate": ["get", "bearing"],
+      "icon-rotation-alignment": "map",
+      "icon-pitch-alignment": "map",
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+      "icon-size": ["interpolate", ["linear"], ["zoom"], 5, 0.55, 9, 0.75, 13, 1, 17, 1.15],
     },
   });
   for (const name of ["companies", "depots"])
@@ -113,34 +143,4 @@ export function addOverlayLayers(map) {
       source: name,
       paint: { "circle-color": "#7595ae", "circle-radius": 7 },
     });
-}
-
-/** Draw one public-hub label; canvas text never becomes HTML.
- * @param {import("maplibre-gl").Map} map
- * @param {import("../types.js").Hub} hub
- * @param {import("../types.js").MapState} data
- */
-export function updateHubLabel(map, hub, data) {
-  const count = data.vehicles.filter((v) => v.hub_id === hub.id && v.status === "idle").length;
-  const orders = data.contracts.filter((c) => c.origin_hub_id === hub.id).length;
-  const canvas = document.createElement("canvas");
-  canvas.width = 400;
-  canvas.height = 104;
-  const context = canvas.getContext("2d");
-  context.fillStyle = "#102b3c";
-  context.beginPath();
-  context.roundRect(2, 2, 396, 100, 16);
-  context.fill();
-  context.textAlign = "center";
-  context.fillStyle = "#ffffff";
-  context.font = "600 28px Inter, sans-serif";
-  const title = hub.label.length > 28 ? hub.label.slice(0, 27) + "…" : hub.label;
-  context.fillText(title, 200, 40, 376);
-  context.font = "22px Inter, sans-serif";
-  context.fillStyle = "#a9c1cf";
-  context.fillText(`${hub.city} · ${count} Lkw · ${orders} Aufträge`, 200, 76, 376);
-  const image = context.getImageData(0, 0, 400, 104);
-  const id = "label-" + hub.id;
-  if (map.hasImage(id)) map.updateImage(id, image);
-  else map.addImage(id, image);
 }

@@ -2,27 +2,60 @@ import * as maplibregl from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { nearestLongitude, unwrapRoute } from "../geometry.js";
 import { OverlayData, previewFeatures, routeGeometry } from "./overlay-data.js";
-import { addOverlayLayers, updateHubLabel } from "./layers.js";
+import { addOverlayLayers } from "./layers.js";
 import { MapCamera } from "./camera.js";
 import { VehicleAnimator } from "./vehicle-animator.js";
+import { VehicleIconRegistry } from "./vehicle-assets.js";
 
-const HIT_LAYERS = ["vehicles", "orders", "parked", "hub-points", "hub-clusters"];
+const OWN_VEHICLE_LAYERS = ["vehicles", "vehicles-fallback"];
+const MULTIPLAYER_VEHICLE_LAYERS = ["multiplayer-vehicles", "multiplayer-vehicles-fallback"];
+const HIT_LAYERS = [
+  ...OWN_VEHICLE_LAYERS,
+  ...MULTIPLAYER_VEHICLE_LAYERS,
+  "orders",
+  "parked",
+  "hub-points",
+  "hub-clusters",
+];
+const FACILITY_HOVER_LAYERS = new Set(["orders", "parked", "hub-points"]);
 
-/** Own the MapLibre lifecycle and translate map interactions into navigation. */
 export class WorldMap {
-  /** @param {string} container
-   * @param {{navigate: import('../types.js').Navigate, notify: import('../types.js').Notify, now: import('../types.js').Clock, provider: import("./provider.js").BasemapProvider, viewport: () => {width: number, height: number, panelOpen: boolean}, reducedMotion: () => boolean, isHidden: () => boolean}} dependencies */
-  constructor(container, { navigate, notify, now, provider, viewport, reducedMotion, isHidden }) {
+  constructor(
+    container,
+    {
+      navigate,
+      notify,
+      now,
+      loadAsset,
+      provider,
+      viewport,
+      reducedMotion,
+      isHidden,
+      onViewportChange,
+    },
+  ) {
     this.navigate = navigate;
     this.notify = notify;
     this.now = now;
     this.reducedMotion = reducedMotion;
+    this.onViewportChange = onViewportChange;
     this.overlays = new OverlayData();
     this.selected = "";
-    this.visible = { hubs: true, orders: true, vehicles: true, routes: true };
+    this.visible = {
+      hubs: true,
+      orders: true,
+      vehicles: true,
+      multiplayer: true,
+      routes: true,
+    };
     this.ready = false;
     this.disposed = false;
     this.preview = null;
+    this.hoverPopup = new maplibregl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      offset: 14,
+    });
     maplibregl.setWorkerUrl(workerUrl);
     this.map = new maplibregl.Map({
       container,
@@ -37,10 +70,11 @@ export class WorldMap {
       dragRotate: false,
       pitchWithRotate: false,
     });
+    this.vehicleIcons = new VehicleIconRegistry(this.map, loadAsset);
     this.camera = new MapCamera(this.map, reducedMotion, viewport);
     this.animator = new VehicleAnimator({
-      draw: () => this.setSourceData("vehicles", this.overlays.vehicleFeatures(this.now())),
-      isActive: () => this.overlays.state.transports.length > 0,
+      draw: () => this.drawTraffic(),
+      isActive: () => (this.overlays.state.traffic ?? []).length > 0,
       isHidden,
       reducedMotion,
     });
@@ -49,7 +83,7 @@ export class WorldMap {
     this.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
     this.bindMapEvents();
   }
-  /** Attach map-owned listeners, released together by MapLibre.remove(). */
+
   bindMapEvents() {
     this.map.on("error", (event) => {
       console.warn("Map rendering:", event.error?.message);
@@ -66,15 +100,18 @@ export class WorldMap {
       });
     });
     this.map.on("mousemove", (event) => {
-      if (this.ready)
-        this.map.getCanvas().style.cursor = this.map.queryRenderedFeatures(event.point, {
-          layers: HIT_LAYERS,
-        }).length
-          ? "pointer"
-          : "";
+      if (!this.ready) return;
+      const feature = this.map.queryRenderedFeatures(event.point, {
+        layers: HIT_LAYERS,
+      })[0];
+      this.map.getCanvas().style.cursor = feature ? "pointer" : "";
+      this.updateFacilityHover(feature, event.lngLat);
+    });
+    this.map.on("moveend", () => {
+      if (this.ready && !this.disposed) this.onViewportChange();
     });
   }
-  /** Initialize sources after the basemap is ready and replay pending state. */
+
   initializeOverlays() {
     if (this.disposed) return;
     addOverlayLayers(this.map);
@@ -86,20 +123,27 @@ export class WorldMap {
     this.select(this.selected);
     this.animator.start();
   }
-  /** Supply resolved public freight locations.
-   * @param {import('../types.js').Hub[]} hubs
-   */
-  setHubs(hubs) {
-    this.overlays.setHubs(hubs);
-    this.update(this.overlays.state);
+
+  marketViewport() {
+    const bounds = this.map.getBounds();
+    const normalize = (longitude) => {
+      const wrapped = ((((longitude + 180) % 360) + 360) % 360) - 180;
+      return Number(wrapped.toFixed(6));
+    };
+    return {
+      zoom: Number(this.map.getZoom().toFixed(2)),
+      bbox: [
+        normalize(bounds.getWest()),
+        Number(Math.max(-90, bounds.getSouth()).toFixed(6)),
+        normalize(bounds.getEast()),
+        Number(Math.min(90, bounds.getNorth()).toFixed(6)),
+      ],
+    };
   }
-  /** Publish one server snapshot to the independent overlay sources.
-   * @param {import('../types.js').MapState} state
-   */
+
   update(state) {
     this.overlays.update(state);
     if (!this.ready || this.disposed) return;
-    for (const hub of this.overlays.hubs) updateHubLabel(this.map, hub, state);
     this.setSourceData("hubs", this.overlays.hubFeatures());
     this.setSourceData("orders", this.overlays.locationFeatures(state.contracts, "origin_hub_id"));
     this.setSourceData(
@@ -110,18 +154,44 @@ export class WorldMap {
       ),
     );
     this.setSourceData("routes", this.overlays.routeFeatures());
-    this.setSourceData("vehicles", this.overlays.vehicleFeatures(this.now()));
+    this.drawTraffic();
+    void this.syncVehicleIcons(state.traffic ?? []);
   }
-  /** Update one registered GeoJSON source.
-   * @param {string} name
-   * @param {import("geojson").FeatureCollection} data
-   */
+
+  updateFacilityHover(feature, lngLat) {
+    if (!feature || !FACILITY_HOVER_LAYERS.has(feature.layer.id)) {
+      this.hoverPopup.remove();
+      return;
+    }
+    const content = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = feature.properties.label || "Frachtstandort";
+    const detail = document.createElement("div");
+    const city = feature.properties.city || "";
+    const trucks = Number(feature.properties.idleTruckCount || 0);
+    const orders = Number(feature.properties.orderCount || 0);
+    detail.textContent = `${city} · ${trucks} Lkw · ${orders} Aufträge`;
+    content.append(title, detail);
+    this.hoverPopup.setLngLat(lngLat).setDOMContent(content).addTo(this.map);
+  }
+
+  async syncVehicleIcons(traffic) {
+    const imageIds = await this.vehicleIcons.ensure(traffic);
+    if (this.disposed) return;
+    this.overlays.setVehicleIcons(imageIds);
+    this.drawTraffic();
+  }
+
+  drawTraffic() {
+    const now = this.now();
+    this.setSourceData("vehicles", this.overlays.vehicleFeatures(now));
+    this.setSourceData("multiplayer-vehicles", this.overlays.multiplayerVehicleFeatures(now));
+  }
+
   setSourceData(name, data) {
     /** @type {import("maplibre-gl").GeoJSONSource} */ (this.map.getSource(name))?.setData(data);
   }
-  /** Expand a cluster or navigate to the selected game resource.
-   * @param {import("maplibre-gl").MapMouseEvent} event
-   */
+
   async selectFeature(event) {
     if (!this.ready || this.disposed) return;
     const feature = this.map.queryRenderedFeatures(event.point, { layers: HIT_LAYERS })[0];
@@ -137,25 +207,27 @@ export class WorldMap {
         zoom,
         duration: this.reducedMotion() ? 0 : 500,
       });
-    } else if (feature.layer.id === "vehicles")
+    } else if (OWN_VEHICLE_LAYERS.includes(feature.layer.id)) {
       this.navigate("/transports/" + encodeURIComponent(feature.properties.id));
-    else
+    } else if (MULTIPLAYER_VEHICLE_LAYERS.includes(feature.layer.id)) {
+      this.notify(
+        `${feature.properties.username || "Ein anderer Spieler"} · ${feature.properties.modelName || "Fahrzeug"}`,
+        "map",
+      );
+    } else {
       this.navigate(
         (feature.layer.id === "parked" ? "/fleet" : "/contracts") +
           "?hub=" +
           encodeURIComponent(feature.properties.id),
       );
+    }
   }
-  /** Display or clear a non-authoritative quote preview.
-   * @param {import("../types.js").Quote | null} quote
-   */
+
   setPreview(quote) {
     this.preview = quote;
     if (this.ready && !this.disposed) this.setSourceData("preview", previewFeatures(quote));
   }
-  /** Highlight the selected transport route.
-   * @param {string} id
-   */
+
   select(id) {
     this.selected = id;
     if (!this.ready || this.disposed) return;
@@ -167,39 +239,37 @@ export class WorldMap {
     ]);
     this.map.setPaintProperty("routes", "line-width", ["case", ["==", ["get", "id"], id], 6, 3]);
   }
-  /** Frame a selected route in the nearest world copy.
-   * @param {import("../types.js").RouteGeometry} route
-   */
+
   focusRoute(route) {
     this.camera.fitRoute(unwrapRoute(routeGeometry(route).coordinates));
   }
-  /** Frame all known parked and moving vehicles. */
+
   focusFleet() {
     const points = this.overlays.fleetCoordinates(this.now());
     if (points.length) this.camera.fitCoordinates(points);
     else this.notify("Die Standorte deiner Flotte werden noch geladen.");
   }
-  /** Toggle the display layers belonging to one logical overlay.
-   * @param {string} name
-   * @param {boolean} visible
-   */
+
   toggle(name, visible) {
     this.visible[name] = visible;
     const layers =
       name === "hubs"
-        ? ["hub-clusters", "hub-points", "hub-labels"]
+        ? ["hub-clusters", "hub-points"]
         : name === "vehicles"
-          ? ["vehicles", "parked"]
-          : [name];
+          ? [...OWN_VEHICLE_LAYERS, "parked"]
+          : name === "multiplayer"
+            ? MULTIPLAYER_VEHICLE_LAYERS
+            : [name];
     for (const layer of layers)
       if (this.map.getLayer(layer))
         this.map.setLayoutProperty(layer, "visibility", visible ? "visible" : "none");
   }
-  /** Release the renderer, its listeners and the shared animation loop. */
+
   destroy() {
     if (this.disposed) return;
     this.disposed = true;
     this.animator.destroy();
+    this.hoverPopup.remove();
     this.map.remove();
   }
 }

@@ -6,18 +6,25 @@ from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse
 
 router = APIRouter(tags=["web"])
+NO_STORE_HEADERS = {"Cache-Control": "no-store"}
 
 
 @router.get("/login", include_in_schema=False)
 def login_page(request: Request) -> FileResponse:
     """Serve the registration and login form."""
-    return FileResponse(_application_path(request))
+    return FileResponse(
+        _application_path(request),
+        headers=NO_STORE_HEADERS,
+    )
 
 
 @router.get("/leaderboard", include_in_schema=False)
 def leaderboard_page(request: Request) -> FileResponse:
     """Serve the shared delivery ranking."""
-    return FileResponse(_application_path(request))
+    return FileResponse(
+        _application_path(request),
+        headers=NO_STORE_HEADERS,
+    )
 
 
 def _application_path(request: Request) -> Path:
@@ -30,32 +37,47 @@ def _application_path(request: Request) -> Path:
 @router.get("/", include_in_schema=False)
 def dashboard_page(request: Request) -> FileResponse:
     """Serve the dashboard page."""
-    return FileResponse(_application_path(request))
+    return FileResponse(
+        _application_path(request),
+        headers=NO_STORE_HEADERS,
+    )
 
 
 @router.get("/contracts", include_in_schema=False)
 def contracts_page(request: Request) -> FileResponse:
     """Serve the contract market page."""
-    return FileResponse(_application_path(request))
+    return FileResponse(
+        _application_path(request),
+        headers=NO_STORE_HEADERS,
+    )
 
 
 @router.get("/contracts/{contract_id}", include_in_schema=False)
 def contract_detail_page(request: Request, contract_id: str) -> FileResponse:
     """Serve the contract detail page; data is loaded through API v1."""
     del contract_id
-    return FileResponse(_application_path(request))
+    return FileResponse(
+        _application_path(request),
+        headers=NO_STORE_HEADERS,
+    )
 
 
 @router.get("/fleet", include_in_schema=False)
 def fleet_page(request: Request) -> FileResponse:
     """Serve the fleet page."""
-    return FileResponse(_application_path(request))
+    return FileResponse(
+        _application_path(request),
+        headers=NO_STORE_HEADERS,
+    )
 
 
 @router.get("/transports", include_in_schema=False)
 def transports_page(request: Request) -> FileResponse:
     """Serve the live transport overview page."""
-    return FileResponse(_application_path(request))
+    return FileResponse(
+        _application_path(request),
+        headers=NO_STORE_HEADERS,
+    )
 
 
 @router.get("/transports/{transport_id}", include_in_schema=False)
@@ -65,4 +87,7 @@ def transport_detail_page(
 ) -> FileResponse:
     """Serve one live transport tracking page."""
     del transport_id
-    return FileResponse(_application_path(request))
+    return FileResponse(
+        _application_path(request),
+        headers=NO_STORE_HEADERS,
+    )

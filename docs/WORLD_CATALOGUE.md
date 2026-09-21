@@ -1,157 +1,189 @@
 # WorldCatalogue: Referenzen und Spielzustand
 
-Stand: 18.09.2026. UI First, FastAPI, native ES-Module, OSM und
+Stand: 20.09.2026. UI First, FastAPI, native ES-Module, OSM und
 `python main.py` bleiben Grundlage. Reale Referenzunternehmen sind keine
 Spielerunternehmen; öffentliche Facilities sind keine eigenen Depots.
 
 ## Referenzdaten
 
 `data/world_freight_company_facility_mvp.sqlite3` wird mit Schema **3.0.0**
-versioniert ausgeliefert. `WORLD_CATALOGUE_PATH` kann diese Datei ersetzen,
-unabhängig von `DATA_DIR` und `DB_PATH`. Laufzeitverbindungen verwenden
-`mode=ro`, `query_only`, Fremdschlüsselprüfung und eine konsistente Lesetransaktion.
-Jeder Handle wird auch bei Fehlern geschlossen. Es gibt keinen Seed-Fallback.
+versioniert ausgeliefert. Die Versionsnummer bleibt aufgrund der bewussten
+Projektentscheidung 3.0.0, obwohl der Katalog inzwischen die operative
+NHM-Erweiterung `facility_nhm_profiles` enthält. Der Runtime-Reader prüft daher
+zusätzlich die erforderlichen Tabellen und Metadaten statt nur die
+Versionsnummer.
 
-Der aufbereitete Stand enthält 83 Referenzunternehmen und 155 Facilities.
-43 Facilities sind routbar: endliche Koordinaten innerhalb WGS84,
-`verified_coordinates` und ein exakt passender Nachweis mit Quelle,
-Prüfdatum und einer der Genauigkeitsklassen `official_facility_coordinate`,
-`facility_centroid`, `osm_feature`, `verified_address_point`.
-19 ursprüngliche Koordinaten ohne passenden Nachweis und 93 Standorte ohne
-Koordinaten bleiben ausgeschlossen. Ein erfolgreicher Nominatim-Aufruf ist
-keine Verifikation. Der Spielserver erzeugt keinen Geocoding-Client.
+`WORLD_CATALOGUE_PATH` kann die Datei ersetzen. Laufzeitverbindungen verwenden
+`mode=ro`, `query_only`, Fremdschlüsselprüfung und eine konsistente
+Lesetransaktion. Es gibt keinen Seed-Fallback.
 
-Alle 43 routbaren Facilities erhalten ausgehende Aufträge je Nutzlastklasse.
-24 besitzen geeignete dokumentierte Ausgangs-/Umschlagwaren. An den übrigen
-19 wird ausdrücklich simulierte Standardfracht angeboten: `cargo_basis=simulated`,
-`cargo_evidence=null`, sichtbarer Hinweis in der UI. Reale Warenbelege werden
-nicht erfunden. Neue Ziele können alle routbaren Facilities sein; Folgeaufträge
-stehen an jedem Standort bereit. Fehlende Aufträge werden ergänzt, während
-weiter gültige Auftrags-IDs und Snapshots unverändert bleiben.
+Der aktuelle Stand enthält 352 Facilities. Alle 352 besitzen gespeicherte
+Koordinaten und Geocoding-Evidence und sind für die Spielsimulation routbar.
+79 Standorte tragen `verified_coordinates`; 273 tragen ausdrücklich
+`estimated_for_simulation`. Geschätzte Positionen bleiben in API-Snapshots als
+solche erkennbar und werden nicht als verifiziert ausgegeben. Für ältere
+Simulationseinträge ist `internal://simulation-*` eine zulässige Provenienz;
+`verified_coordinates` verlangt weiterhin HTTP(S)-Evidence.
 
-## Identitäten und Aufbereitung
+## Warenklassifikation
 
-`company_uid` und `facility_uid` sind einmalig erzeugte und gespeicherte UUIDs.
-Unique-Indizes sowie Pflicht- und Unveränderlichkeitstrigger sichern sie ab.
-Numerische SQLite-PKs werden nur intern für Joins verwendet. Sie erscheinen
-nicht in API-Projektionen oder neuen Spielstandreferenzen. Einseitige
-NULL-Koordinaten werden per Trigger und Lesevalidierung abgewiesen;
-polymorphe externe Identifikatoren werden auf existierende Zielobjekte geprüft.
+Die operative Warenlogik basiert auf NHM 2026:
 
-Das Offline-Werkzeug trennt CLI, Validierung und SQL. Es erstellt zuerst ein
-SQLite-Backup (einschließlich committed WAL-Daten), erweitert v2 transaktional
-und prüft alle Legacy-Endpunkte vor dem Commit. Wiederholung erhält UUIDs.
-
-```sh
-python scripts/prepare_world_catalogue.py --catalogue data/world_freight_company_facility_mvp.sqlite3 --backup data/backups/world-before-v3.sqlite3 --evidence docs/data/legacy-facilities.json
+```text
+facility_nhm_profiles
+        │
+        ▼
+nhm_codes
+        │
+        └── parent_row_id → NHM-Hierarchie
 ```
 
-Ein vorhandener Backuppfad wird nicht überschrieben. Die ausgelieferte Datei
-ist bereits aufbereitet; der Befehl ist kein notwendiger Serverstartschritt.
-Das Werkzeug ist kein allgemeiner Merge-Importer: bestehende Aliase werden
-nicht durch geänderte Namen/Adressen neu zugeordnet. Künftige Importe müssen
-die gespeicherten UUIDs mitführen oder eine ausdrücklich geprüfte eindeutige
-Identitätszuordnung liefern. Abgleich durch Namen, Adressen oder PKs allein
-ist nicht zulässig. UID-Updates werden von der Datenbank blockiert.
+`nhm_codes` enthält 15.099 NHM-Datensätze. `facility_nhm_profiles` enthält
+Facility-spezifische Rollen `input`, `output` und `both` mit Priorität,
+Confidence und Evidence-Typ. `official` bezeichnet belegte Standortinformation;
+`derived` bezeichnet transparent simuliertes Facility-Verhalten. Eine
+`derived`-Beziehung behauptet keine beobachtete Lieferbeziehung.
 
-`facility_aliases` verbindet `berlin_westhafen`, `hamburg_cta`, `duisburg_d3t`
-und `rotterdam_maasvlakte` mit den vier ergänzten verifizierten Facilities.
-Quellen und geprüfte Koordinaten stehen in [legacy-facilities.json](data/legacy-facilities.json).
-Start und Kauf liefern weiterhin nach Berlin Westhafen. Das Aufbereiten der
-Referenzdaten verändert keine Spielerprofile.
+NST bleibt davon getrennt. `cargo_types` enthält ausschließlich die 20
+NST-2007-Kategorien, `facility_cargo_profiles` ausschließlich deren grobe
+Legacy-/Statistikprofile. Es gibt keine `NHM:*`-Pseudozeilen in der NST-Tabelle.
+Der Game-Core verwendet NST nicht zur Auftragserzeugung.
 
-## Simulation und Snapshots
+Konkrete recherchierte Waren bleiben zusätzlich über
+`facility_handled_goods -> facility_handled_goods_nhm -> nhm_codes`
+nachvollziehbar.
 
-Company, Facility, Adresse, Koordinaten, dokumentierte Güter und ihre Quellen
-kommen aus dem WorldCatalogue. Wo geeignete dokumentierte Waren fehlen,
-ist Standardfracht ausdrücklich Mock-/Simulationsinhalt. Empfängerbeziehung, Tonnage, Vergütung und
-Einzelauftrag sind simuliert. Ein tatsächlicher Wareneingang beim Empfänger
-wird nicht behauptet. Same-City und Same-Company sind erlaubt; identische
-Facility-UIDs auf beiden Seiten sind ausgeschlossen.
+## NHM-Netzwerk und Auftragserzeugung
 
-Neue Standardfracht nutzt 0,18 €/km/t. Mengen sind unter `app/simulation.py`
-getrennt simuliert: Nutzlasten aus VehicleCatalogue und bestehenden Fahrzeugen
-werden in leicht (bis 3,5 t), mittel (über 3,5 bis 12 t) und schwer (über 12 t)
-eingeordnet. Dies sind Nutzlastklassen, keine zulässigen Gesamtgewichte.
-Je belegter Klasse und Standort entsteht mindestens ein Auftrag mit 60–100 %
-der kleinsten Nutzlast dieser Klasse, auf 0,01 t abgerundet (mindestens 0,01 t).
-Damit kann jedes Katalogmodell und jedes Bestandsfahrzeug dort Arbeit finden.
-Der lokale 14-Modell-Katalog ergibt 129 Aufträge an 43 Standorten; der
-versionierte 8-Modell-Katalog belegt nur die schwere Klasse und ergibt 43.
-`payload_band` speichert die Simulationsklasse; alte Aufträge ohne dieses Feld
-bleiben erhalten und werden durch passende neue Angebote ergänzt. Beim Kauf
-wird kein bestehender Auftrag geändert. Die UI zeigt Nutzlast und Menge mit
-bis zu zwei Dezimalstellen. Kühlung, Gefahrgut, Tank- und Schüttgut sind
-ausgeschlossen. Es gibt kein globales Limit von 6 Aufträgen. Laufzeit (6 h), Erlösformel und
-fahrzeugbezogene Betriebskosten bleiben erhalten. Alte Aufträge behalten ihre bisherigen Warenregeln.
+Alle 352 Facilities besitzen mindestens ein NHM-Profil für `input/both` und
+mindestens eines für `output/both`. Für jede Facility existiert mindestens ein
+kompatibles anderes Ziel. Matching verwendet die gespeicherte
+`parent_row_id`-Hierarchie: identische NHM-Knoten sowie Vorfahr-/Nachfahr-
+Beziehungen sind kompatibel. Bei einem hierarchischen Match verwendet der
+Auftrag die spezifischere vorhandene NHM-Ware.
 
-Bei Erzeugung speichert ein Auftrag vollständige Endpunktprojektionen:
-UIDs, Referenzunternehmen, Namen, Typ, Adresse, Koordinaten, Nachweise,
-dokumentierte Waren, Quellen und Katalogversion. Quote und Disposition nutzen
-diese Snapshots. Transporte besitzen zusätzlich `origin_snapshot` und
-`destination_snapshot`; Fahrzeuge `facility_uid` und `location_snapshot`.
-Ein später gelöschter oder geänderter Katalogeintrag verändert diese nicht.
+Intermodal- und Multimodalterminals besitzen bewusst breitere `derived both`-
+Profile. Diese bedeuten Umschlagfähigkeit, nicht Produktion oder real belegten
+Warenein-/ausgang. Produktionsstandorte verwenden dagegen möglichst konkrete
+Warenfamilien. Vollständige Schiffe werden im Road-Freight-Markt nicht als
+Truck-Fracht erzeugt; Werften verwenden dafür plausible Module/Strukturen.
 
-## Bestandsmigration
+Neue Aufträge tragen:
 
-Vor der Migration **Server stoppen**; es darf kein paralleler Spielzugriff
-erfolgen. Danach mit derselben `DB_PATH`-/`WORLD_CATALOGUE_PATH`-Konfiguration:
-
-```sh
-python scripts/migrate_world_state.py --backup data/backups/game-before-world-v1.sqlite3
-python main.py
+```text
+market_model = nhm_v1
+cargo_system = NHM2026
 ```
 
-Das Werkzeug sichert zuerst, liest einen konsistenten Katalogstand und ergänzt
-alle Spieler-Namensräume in einer atomaren Transaktion. Es setzt
-`world_state_version=1`. Wiederholung verändert nichts. Unbekannte oder nicht
-verifizierte Zuordnungen brechen ohne Teiländerungen ab. Guthaben, Fahrzeug-
-und Auftrags-IDs, Status und Transportkosten bleiben erhalten. Fahrzeuge
-werden derselben bisherigen Facility zugeordnet, nicht an einen neuen Ort versetzt.
+`Standardfracht (Simulation)` und `simulated_standard` werden nicht mehr neu
+erzeugt. `cargo_basis=documented` bedeutet belegtes Origin-Profil,
+`cargo_basis=derived` ein simuliertes Origin-Verhalten. Die konkrete
+Geschäftsbeziehung, Tonnage, Vergütung und der Einzelauftrag bleiben immer
+Simulation; `relationship_simulated=true` bleibt deshalb erhalten.
 
-Aktive Transporte behalten ihre ursprünglichen `origin`-/`destination`-Daten,
-Geometrien, Zeiten und Auszahlungen. Die zusätzlichen Snapshots übernehmen
-historische Routingpunkte ausdrücklich als `legacy_endpoint`; abweichende
-historische Koordinaten beanspruchen keine neue Verifikation. Keine Neuroute.
-Auch bei Katalogausfall wird eine fällige Auszahlung einmalig verbucht.
-Die anschließende Markterzeugung liegt außerhalb der Abrechnungstransaktion.
+## Markt und Bestandskompatibilität
 
-## API, Darstellung und Fehler
+Je routbarer Facility und belegter Nutzlastklasse entsteht weiterhin mindestens
+ein Auftrag. Mengen werden wie bisher aus den Payload-Bands erzeugt und liegen
+bei 60–100 % der kleinsten Nutzlast der jeweiligen Klasse. `STANDARD_RATE`
+bleibt 0,18 €/km/t. Der NHM-Umbau verändert weder Routing, Pricing noch den
+Transport-Lifecycle.
 
-`GET /api/v1/map/facilities?bbox=west,south,east,north` ist authentifiziert.
-Antwort: `facilities`, `catalogue_version`, `unavailable_count`.
-Bounds müssen endlich und innerhalb WGS84 sein; west > east bedeutet
-Datumsgrenzenübertritt. Fehlerhafte Bounds: 422. Fehlender/inkompatibler
-Katalog: 503. Das Query-Modell hält spätere Zoomfilter offen; aktuell gibt
-es keine serverseitige Zoomaggregation.
+Alte noch nicht angenommene Marktangebote ohne `market_model=nhm_v1` werden
+beim nächsten Refresh verworfen und können nicht mehr gequotet oder angenommen
+werden. Bereits gestartete `active_trips` bleiben unverändert, fahren mit ihren
+gespeicherten Snapshots zu Ende und werden normal ausgezahlt. Auch bei einem
+temporären Katalogausfall werden Legacy-Angebote nicht wieder sichtbar.
 
-`GET /api/v1/map/hubs` bleibt als Envelope `hubs` erhalten, ohne Geocoding.
-`hub_id`, `origin_hub_id`, `destination_hub_id` projizieren die Facility-UIDs.
-Alte UI-Links mit `?hub=berlin_westhafen` werden über Snapshot-Aliase erkannt.
-Kartenobjekte, Auswahl und Vergleiche verwenden dauerhafte Facility-Identität.
-Bei Katalogausfall bleiben gespeicherte Fahrzeug- und Transportpositionen
-verfügbar; unbekannte Standorte erhalten keinen erfundenen Marker.
+## Identitäten und Snapshots
 
-Strukturierte Ereignisse: `world.catalogue_read`, `world.catalogue_error`,
-`world.prepared`, `world.state_migrated`, `world.delivery_unavailable`,
-`market.catalogue_unavailable`, bestehende Quote-/Transportereignisse.
-Katalogversion, Ausschlusszahlen und Facility-UIDs werden mitgeführt;
-HTTP-Anfragen behalten ihre bestehenden Trace-IDs. CLI-Ausgaben sind separat
-vom HTTP-Betrieb und werden als strukturierte Logs ausgegeben.
+`company_uid` und `facility_uid` sind dauerhafte UUIDs. Numerische SQLite-PKs
+werden nur intern für Joins verwendet. Aufträge speichern vollständige
+Endpunktprojektionen; Transporte besitzen zusätzlich `origin_snapshot` und
+`destination_snapshot`. Änderungen am späteren Referenzkatalog verändern
+historische Transporte nicht.
+
+`Facility.is_routable()` beantwortet ausschließlich die Frage, ob eine
+Position im Spiel verwendet werden darf. `Facility.has_verified_location()`
+kennzeichnet separat, ob die Position unabhängig verifiziert ist. Dadurch
+bleiben die 273 Simulationsschätzungen spielbar, ohne ihre Datenqualität zu
+verschleiern.
+
+## API und Fehler
+
+`GET /api/v1/map/facilities?bbox=west,south,east,north` liefert spielbare
+Facilities, `catalogue_version` und `unavailable_count`. Der aktuelle Katalog
+hat `unavailable_count=0`. `GET /api/v1/map/hubs` bleibt die kompatible
+Envelope-Projektion. Beide Pfade verwenden gespeicherte Koordinaten und rufen
+keinen Runtime-Geocoder auf.
+
+Fehlende oder strukturell alte 3.0.0-Kataloge ohne `nhm_codes` und
+`facility_nhm_profiles` werden als inkompatibel abgewiesen. Gleiches gilt für
+gebrochene FKs, NHM-Pseudocodes in `cargo_types` oder Facilities ohne
+vollständiges NHM-IN/OUT-Verhalten.
+
+Strukturierte Ereignisse wie `world.catalogue_read`,
+`world.catalogue_error`, `market.refresh`, `market.catalogue_unavailable`,
+`contract.quote`, `trip.dispatch` und `trip.complete` bleiben erhalten.
 
 ## Verantwortlichkeiten und Abnahme
 
-Der Domain-Port liefert unveränderliche Referenzmodelle. Game-Core und Markt
-kennen weder SQL noch konkrete WorldCatalogue-Adapter. Composition Roots
-verdrahten Laufzeit-, Pflege- und Migrationsports. SQL liegt in Repositories.
-Nominatim bleibt für kontrolliertes Offline-Enrichment mit anschließender
-Prüfung verfügbar; kein normaler Karten-, Quote- oder Dispositionspfad nutzt es.
+Der Domain-Port liefert unveränderliche Referenzmodelle. SQL liegt
+ ausschließlich im Repository. `MarketGenerator` kennt weder SQLite noch
+ konkrete Katalogadapter. `CargoProfile` kapselt NHM-Kompatibilität;
+ `Facility` kapselt IN-/OUT-Rollen und Routability; der MarketGenerator
+ orchestriert TradeOptions und Contract-Snapshots.
 
-Tests prüfen Provenienz, Read-only/Cleanup, UID-Erhalt bei PK-Änderungen,
-Idempotenz/Rollback/Backupfehler, dokumentierte oder ausdrücklich simulierte Standardwaren,
-Same-City/Same-Company, flächendeckende Auftragsversorgung,
-Snapshots bei Katalogausfall und unveränderte Auszahlungen. Jeder konkrete
-Core-Callable hat eine Manifest-Zuordnung. Werkzeug-, Architektur- und
-Browserergebnisse werden getrennt in [QUALITY_REPORT.md](../QUALITY_REPORT.md)
-ausgewiesen. M1, echte iPad-Hardware und öffentlicher Betrieb bleiben eigene
-Abnahmegrenzen.
+Tests sichern insbesondere:
+
+- 352/352 spielbare Facilities im ausgelieferten Katalog,
+- 79 verifizierte und 273 ausdrücklich geschätzte Positionen,
+- NHM- statt NST-basierte Runtime-Waren,
+- ausschließlich `nhm_v1` für neue Angebote,
+- keine neue generische Standardfracht,
+- kompatible Origin-/Destination-NHM-Profile,
+- Erhalt alter aktiver Transporte,
+- Verwerfen alter offener Angebote,
+- Read-only/Cleanup, UIDs und Fremdschlüssel,
+- Function-Test-Manifest und 100 % Core-Statement-Coverage.
+
+Die allgemeinen Coding-, Architektur- und Quality-Gate-Regeln bleiben in
+`CODING_STANDARDS.md`, `ARCHITECTURE.md` und `TESTING.md` verbindlich.
+
+## Runtime-Performancegrenze
+
+Die ausgelieferte Referenzdatei bleibt read-only und die vollständige
+Schema-/Provenienzvalidierung bleibt im SQLite-Loader. Im Spielprozess wird die
+daraus erzeugte unveränderliche `WorldSnapshot`-Revision anschließend gecacht.
+Runtime-Reads sind dadurch Speicherzugriffe und keine wiederholten
+15.099-NHM-/352-Facility-Rekonstruktionen.
+
+Map- und Contract-Payloads verwenden `Facility.location_snapshot()`. Diese
+Projektion enthält stabile Facility-Identität, eine kompakte Firmenidentität
+(`company_uid`, `legal_name`, `display_name`, `country`), Adresse,
+Koordinatenstatus und Koordinaten-Evidence. Vollständige NHM-Profile,
+`handled_goods`, Company-Quellen, Websites und weitere schwere Referenzdaten
+bleiben bewusst außerhalb des Runtime-Snapshots. Vollständige
+Referenzprojektionen bleiben für Wartung/Migration über `to_dict()` verfügbar.
+
+## Lazy Market Scope und Kartenlebenszyklus
+
+Der Contract-Markt wird nicht mehr global beim Browserstart materialisiert.
+`MarketScopeResolver` ist eine injizierte Backend-Abhängigkeit und bestimmt
+ausschließlich relevante Origin-Facilities: eigene idle Lkw sind immer im Scope;
+zusätzliche Facilities werden erst ab Zoomstufe 7 aus der übergebenen
+`FacilityQuery` aufgenommen. `MarketGenerator` erhält nur diese expliziten
+Origins und kennt weder Viewport noch HTTP.
+
+Im Frontend besitzt `ContractMarketController` den vollständigen Lebenszyklus
+der Contract-Slice-Requests. `WorldMap.marketViewport()` liefert ausschließlich
+neutrale Kartenwerte (`zoom`, `bbox`) und kennt keine Contracts-API. `GameSync`
+synchronisiert weiterhin nur globalen Spielzustand. Die Composition Roots
+injizieren alle zustandsbehafteten Abhängigkeiten.
+
+Facility-Marker entstehen ausschließlich aus eigener Flotte, aktiven
+Transport-Snapshots und der aktuell geladenen Contract-Slice. Die vorherige
+globale `/map/facilities`-Abfrage gehört nicht mehr zum Browserstart.
+Facility-Texte werden nicht dauerhaft als Canvas-Labels erzeugt, sondern nur
+bei Hover als textContent-basierte DOM-Popups angezeigt.
+

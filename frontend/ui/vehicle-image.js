@@ -1,11 +1,51 @@
+import { vehicleCardAssetPaths } from "../vehicle-card-assets.js";
 import { html } from "./dom.js";
 import { truckIllustration } from "./illustrations.js";
 
-/** Render catalogue media with provenance and a stable loading/error fallback.
- * @param {{name: string, capacity_tons: number, image?: import('../types.js').VehicleImage | null}} vehicle
+/** Render normalized local game views first, then verified catalogue photography.
+ * @param {{id?: string, model_id?: string, name: string, capacity_tons: number, image?: import('../types.js').VehicleImage | null}} vehicle
  * @returns {DocumentFragment}
  */
 export function renderVehicleImage(vehicle) {
+  const modelId = vehicle.model_id ?? vehicle.id;
+  const localAssets = vehicleCardAssetPaths(modelId);
+
+  if (localAssets) {
+    return html`<figure class="vehicle-photo vehicle-game-asset">
+      <div class="vehicle-photo-grid">
+        <div class="vehicle-asset-view">
+          <div class="vehicle-photo-frame">
+            <img
+              data-local-vehicle-asset
+              src="${localAssets.front}"
+              alt="${vehicle.name} – Frontansicht"
+              width="512"
+              height="512"
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+          <span class="vehicle-view-label">Frontansicht</span>
+        </div>
+        <div class="vehicle-asset-view">
+          <div class="vehicle-photo-frame">
+            <img
+              data-local-vehicle-asset
+              src="${localAssets.side}"
+              alt="${vehicle.name} – Seitenansicht"
+              width="896"
+              height="512"
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+          <span class="vehicle-view-label">Seitenansicht</span>
+        </div>
+      </div>
+      <figcaption><span>Spielgrafik</span></figcaption>
+    </figure>`;
+  }
+
   const photo = vehicle.image;
   if (!photo) return truckIllustration(vehicle.capacity_tons <= 12);
   const scope =

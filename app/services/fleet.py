@@ -109,7 +109,7 @@ def resolve_delivery_facility(world: WorldCatalogue) -> dict:
     try:
         facility = world.read().get_facility("berlin_westhafen")
         if not facility.is_routable():
-            raise ValueError("Unverified delivery facility")
+            raise ValueError("Unroutable delivery facility")
     except (KeyError, ValueError) as exc:
         LOGGER.error(
             "Delivery facility unavailable",

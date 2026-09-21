@@ -3,12 +3,13 @@ import { requiredElement } from "../ui/dom.js";
 
 /** Execute game use cases; views only emit action names and resource IDs. */
 export class GameActions {
-  /** @param {{request: import('../types.js').RequestJson, state: import("../state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../map/world-map.js").WorldMap | null, notify: import('../types.js').Notify, navigate: import('../types.js').Navigate, refresh: () => Promise<void>, logout: () => Promise<void>}} dependencies */
-  constructor({ request, state, panel, map, notify, navigate, refresh, logout }) {
+  /** @param {{request: import('../types.js').RequestJson, state: import("../state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../map/world-map.js").WorldMap | null, contractMarket: import("./contract-market-controller.js").ContractMarketController, notify: import('../types.js').Notify, navigate: import('../types.js').Navigate, refresh: () => Promise<void>, logout: () => Promise<void>}} dependencies */
+  constructor({ request, state, panel, map, contractMarket, notify, navigate, refresh, logout }) {
     this.request = request;
     this.state = state;
     this.panel = panel;
     this.map = map;
+    this.contractMarket = contractMarket;
     this.notify = notify;
     this.navigate = navigate;
     this.refresh = refresh;
@@ -141,7 +142,7 @@ export class GameActions {
   }
   /** Replace the player's available contract market. */
   async refreshMarket() {
-    await this.request("/contracts/refresh", { method: "POST" });
+    await this.contractMarket.forceRefresh();
     if (!this.disposed) this.notify("Neue Aufträge sind verfügbar.");
   }
   /** Invalidate pending quotes and suppress late action results. */

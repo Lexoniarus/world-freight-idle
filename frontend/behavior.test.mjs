@@ -284,16 +284,18 @@ test("uncertain write responses refresh server state instead of repeating the wr
 
 test("disposed state suppresses late snapshots even when a transport ignores abort", async () => {
   let release;
+  const paths = [];
   const gate = new Promise((resolve) => {
     release = resolve;
   });
   const state = new GameState(async (path) => {
+    paths.push(path);
     await gate;
     return path === "/dashboard"
-      ? { server_time: 0 }
+      ? { server_time: 0, contracts: [] }
       : path === "/fleet"
         ? { vehicles: [] }
-        : { contracts: [] };
+        : { transports: [] };
   });
   let changes = 0;
   state.addEventListener("change", () => changes++);
@@ -304,6 +306,7 @@ test("disposed state suppresses late snapshots even when a transport ignores abo
   assert.equal(state.lifetime.signal.aborted, true);
   assert.equal(state.data, null);
   assert.equal(changes, 0);
+  assert.deepEqual(paths.sort(), ["/dashboard", "/fleet", "/map/traffic"].sort());
 });
 
 test("polling only runs when visible and eligible, and releases both intervals", () => {
@@ -389,13 +392,39 @@ test("animation respects reduced motion, visibility and cancellation", () => {
   assert.equal(draws, 3);
 });
 
-test("map projections aggregate locations, discard invalid hubs and remove settled trips", () => {
+test("map projections derive relevant locations, discard invalid hubs and remove settled trips", () => {
   const data = new OverlayData();
-  data.setHubs([hub, { ...hub, id: "missing", resolution_status: "unavailable", lon: null }]);
+  const unavailable = {
+    ...hub,
+    id: "missing",
+    facility_uid: "missing",
+    resolution_status: "unavailable",
+    lon: null,
+  };
+  const publicTrip = {
+    id: trip.id,
+    vehicle_id: trip.vehicle_id,
+    model_id: "iveco_sway_500",
+    username: "driver",
+    player_color: "#123456",
+    is_own: true,
+    departed_at: trip.departed_at,
+    arrives_at: trip.arrives_at,
+    route_geojson: trip.route_geojson,
+  };
   data.update({
     vehicles: [vehicle],
-    contracts: [contract, { ...contract, id: "another" }],
+    contracts: [
+      contract,
+      {
+        ...contract,
+        id: "another",
+        origin_hub_id: unavailable.id,
+        origin: unavailable,
+      },
+    ],
     transports: [trip],
+    traffic: [publicTrip],
   });
   assert.equal(data.hubFeatures().features.length, 1);
   assert.equal(data.locationFeatures(data.state.contracts, "origin_hub_id").features.length, 1);
@@ -407,8 +436,9 @@ test("map projections aggregate locations, discard invalid hubs and remove settl
   assert.equal(data.fleetCoordinates(50).length, 2);
   assert.equal(previewFeatures(quote).features.length, 1);
   assert.equal(previewFeatures(null).features.length, 0);
-  data.update({ ...data.state, transports: [] });
+  data.update({ ...data.state, transports: [], traffic: [] });
   assert.equal(data.routes.size, 0);
+  assert.equal(data.trafficRoutes.size, 0);
   assert.equal(data.vehicleFeatures(200).features.length, 0);
 });
 
@@ -656,7 +686,6 @@ test("facility snapshots preserve map locations during catalogue outage and lega
   };
   assert.equal(eligibleVehicles([owned], job).length, 1);
   const overlays = new OverlayData();
-  overlays.setHubs([]);
   overlays.update({ vehicles: [owned], contracts: [job], transports: [] });
   assert.deepEqual(overlays.fleetCoordinates(0), [[13, 52]]);
   assert.equal(overlays.hubFeatures().features.length, 2);
@@ -670,52 +699,77 @@ test("facility snapshots preserve map locations during catalogue outage and lega
   assert.equal(container.querySelectorAll(".job-card").length, 0);
 });
 
-test("facility API late results are ignored after disposal and errors preserve saved overlays", async () => {
-  const { GameSync } = await import("./controllers/game-sync.js");
-  let resolve;
-  const updates = [];
+test("viewport market ignores late results after disposal and preserves saved contracts on errors", async () => {
+  const { ContractMarketController } = await import("./controllers/contract-market-controller.js");
   const notices = [];
-  const sync = new GameSync({
-    state: new EventTarget(),
-    panel: {},
-    map: { setHubs: (hubs) => updates.push(hubs) },
+  const saved = { ...contract, id: "saved" };
+  const state = {
+    data: { contracts: [saved] },
+    replaceContracts(contracts) {
+      this.data.contracts = contracts;
+    },
+  };
+  const map = {
+    marketViewport: () => ({
+      zoom: 7,
+      bbox: [13, 52, 14, 53],
+    }),
+  };
+  const currentUrl = () => new URL("http://test/contracts");
+
+  let resolve;
+  const pendingController = new ContractMarketController({
+    state,
     request: () =>
       new Promise((done) => {
         resolve = done;
       }),
+    map,
     notify: (message) => notices.push(message),
+    currentUrl,
   });
-  const pending = sync.loadHubs();
-  sync.destroy();
-  resolve({ facilities: [hub], unavailable_count: 0 });
+  pendingController.start();
+  const pending = pendingController.refresh();
+  pendingController.destroy();
+  resolve({ contracts: [contract] });
   await pending;
-  assert.deepEqual(updates, []);
-  const live = new GameSync({
-    state: new EventTarget(),
-    panel: {},
-    map: { setHubs: (hubs) => updates.push(hubs) },
+  assert.deepEqual(state.data.contracts, [saved]);
+
+  const live = new ContractMarketController({
+    state,
     request: async () => {
       throw new Error("503");
     },
+    map,
     notify: (message) => notices.push(message),
+    currentUrl,
   });
-  await live.loadHubs();
-  assert.deepEqual(updates, []);
-  assert.match(notices[0], /konnten nicht geladen/);
+  live.start();
+  await live.refresh();
+  assert.deepEqual(state.data.contracts, [saved]);
+  assert.equal(notices.at(-1), "503");
   live.destroy();
 });
 
-test("simulated standard freight is explicit and does not claim a documented good", () => {
+test("derived NHM cargo is explicit without generic freight", () => {
   const view = createView();
   view.state.contracts = [
-    { ...contract, cargo: "Standardfracht (Simulation)", cargo_basis: "simulated" },
+    {
+      ...contract,
+      cargo: "Fahrzeugteile",
+      cargo_code: "8708",
+      cargo_basis: "derived",
+      market_model: "nhm_v1",
+      cargo_system: "NHM2026",
+    },
   ];
   const container = document.createElement("div");
   container.append(renderPanel(view));
-  assert.match(container.textContent, /keine geeignete reale Ware belegt/);
+  assert.match(container.textContent, /NHM-Warenprofil/);
+  assert.doesNotMatch(container.textContent, /Standardfracht/);
   view.state.contracts = [{ ...contract, cargo_basis: "documented" }];
   container.replaceChildren(renderPanel(view));
-  assert.doesNotMatch(container.textContent, /keine geeignete reale Ware belegt/);
+  assert.doesNotMatch(container.textContent, /NHM-Warenprofil/);
 });
 
 test("shipment quantities preserve hundredths for light vehicle selection", () => {

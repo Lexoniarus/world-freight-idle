@@ -40,7 +40,7 @@ test("desktop: registration, map, quote, dispatch, purchase, arrival, logout and
   const errors = [];
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
   const username = await register(page);
-  await expect(page.locator("#map-notice")).toContainText("Koordinatennachweis");
+  await expect(page.locator("#map-notice")).toBeHidden();
   await page.screenshot({ animations: "disabled", path: screenshot("desktop") });
   await page.getByRole("link", { name: "Aufträge", exact: true }).click();
   await page.locator(".job-card").filter({ hasText: "Lkw bereit" }).first().click();
@@ -151,12 +151,21 @@ test("parallel trips persist across navigation and map controls work without reb
   await page.keyboard.press("Escape");
 });
 
-test("missing hub coordinates and tile outages preserve the playable lists", async ({ page, context }) => {
+test("missing fleet coordinates and tile outages preserve the playable lists", async ({ page, context }) => {
   await context.route("https://tile.openstreetmap.org/**", (route) => route.abort());
-  await page.route("**/api/v1/map/facilities", async (route) => {
+  await page.route("**/api/v1/fleet", async (route) => {
     const response = await route.fetch();
     const data = await response.json();
-    for (const hub of data.facilities) { hub.lat = null; hub.lon = null; hub.resolution_status = "unavailable"; }
+    for (const vehicle of data.vehicles) {
+      vehicle.hub = { ...vehicle.hub, lat: null, lon: null, resolution_status: "unavailable" };
+      if (vehicle.location_snapshot)
+        vehicle.location_snapshot = {
+          ...vehicle.location_snapshot,
+          lat: null,
+          lon: null,
+          resolution_status: "unavailable",
+        };
+    }
     await route.fulfill({ json: data });
   });
   await register(page);
@@ -228,7 +237,7 @@ test("mobile DB shop preserves focus, shows failure and supports purchase", asyn
 });
 
 
-test("two independent profiles stay isolated and catalogue photos load or fall back", async ({ page, browser }) => {
+test("two independent profiles stay isolated and local vehicle assets are deterministic", async ({ page, browser }) => {
   await register(page);
   const second = await browser.newContext({ viewport: { width: 1024, height: 1366 }, isMobile: true, hasTouch: true, baseURL: "http://127.0.0.1:8011" });
   await second.route("https://tile.openstreetmap.org/**", route => route.fulfill({ contentType: "image/png", body: tile }));
@@ -238,86 +247,99 @@ test("two independent profiles stay isolated and catalogue photos load or fall b
     await register(ipad);
     const headers = { "X-Freight-Request": "1" };
     await page.goto("/fleet?tab=shop");
-    const offer = page.locator('.shop-card').filter({hasText: 'S-Way'});
+    const offer = page.locator(".shop-card").filter({ hasText: "S-Way" });
     await offer.scrollIntoViewIfNeeded();
-    await expect(offer.locator('figure')).toHaveAttribute('data-image-state', 'loaded');
-    await expect(offer.locator('figcaption')).toContainText('CC0 1.0');
-    await expect(offer.getByRole('link', {name: 'Quelle', exact: true})).toHaveAttribute('href', /commons.wikimedia.org/);
-    await offer.getByRole('button', {name:'Fahrzeug kaufen'}).click();
-    await expect(page.locator('#fleet-count')).toHaveText('2');
-    const purchased = (await (await page.request.get('/api/v1/fleet')).json()).vehicles.find(v => v.id !== "truck_01");
-    expect((await ipad.request.get('/api/v1/fleet/' + purchased.id)).status()).toBe(404);
-    const dashboard = await (await ipad.request.get('/api/v1/dashboard')).json();
+    await expect(offer.locator("figure")).toHaveClass(/vehicle-game-asset/);
+    await expect(offer.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
+    await expect(offer.locator("figcaption")).toContainText("Spielgrafik");
+    await offer.getByRole("button", { name: "Fahrzeug kaufen" }).click();
+    await expect(page.locator("#fleet-count")).toHaveText("2");
+    const purchased = (await (await page.request.get("/api/v1/fleet")).json()).vehicles.find(v => v.id !== "truck_01");
+    expect((await ipad.request.get("/api/v1/fleet/" + purchased.id)).status()).toBe(404);
+    const dashboard = await (await ipad.request.get("/api/v1/dashboard")).json();
     expect(dashboard.player.cash).toBe(175000);
     expect(dashboard.idle_vehicles).toBe(1);
-    await page.goto('/fleet');
-    await expect(page.locator('.vehicle-card').filter({hasText:'S-Way'}).first().locator('figure')).toHaveAttribute('data-image-state','loaded');
-    await ipad.goto('/fleet?tab=shop');
-    await expect(ipad.locator('.shop-card').first().locator('figure')).toHaveAttribute('data-image-state','failed');
-    await expect(ipad.getByText('Foto nicht erreichbar – Ersatzillustration').first()).toBeVisible();
-    await ipad.screenshot({path:screenshot('ipad-image-fallback'),animations:'disabled'});
-    const response=await ipad.request.post('/api/v1/fleet/purchase',{headers,data:{model_id:'iveco_sway_500'}});
+    await page.goto("/fleet");
+    await expect(page.locator(".vehicle-card").filter({ hasText: "S-Way" }).first().locator("img[data-local-vehicle-asset]")).toHaveCount(2);
+    await ipad.goto("/fleet?tab=shop");
+    const ipadOffer = ipad.locator(".shop-card").first();
+    await expect(ipadOffer.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
+    await expect(ipadOffer.locator("[data-image-state]")).toHaveCount(0);
+    const response = await ipad.request.post("/api/v1/fleet/purchase", { headers, data: { model_id: "iveco_sway_500" } });
     expect(response.status()).toBe(201);
     await ipad.reload();
-    await expect(ipad.locator('#fleet-count')).toHaveText('2');
-  } finally { await second.close(); }
+    await expect(ipad.locator("#fleet-count")).toHaveText("2");
+  } finally {
+    await second.close();
+  }
 });
 
 
-test("loaded starter photo survives polling and changed transport panel content", async ({page}) => {
+test("starter game assets survive polling and changed transport panel content", async ({ page }) => {
   await register(page);
   const vehicles = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
   expect(vehicles[0].model_id).toBe("iveco_sway_500");
   expect(vehicles[0].operating_cost_eur_per_km).toBe(0.51);
-  await page.getByRole("link", {name: "Flotte", exact: true}).click();
+  await page.getByRole("link", { name: "Flotte", exact: true }).click();
   const figure = page.locator(".vehicle-photo").first();
-  await expect(figure).toHaveAttribute("data-image-state", "loaded");
-  const original = await figure.locator("img").elementHandle();
-  await page.screenshot({animations: "disabled", path: screenshot("starter-photo")});
-  await page.waitForResponse(response => response.url().endsWith("/api/v1/fleet"), {timeout: 15000});
-  await expect(figure).toHaveAttribute("data-image-state", "loaded");
-  expect(await original.evaluate(element => element === document.querySelector(".vehicle-photo img"))).toBeTruthy();
-  const headers = {"X-Freight-Request": "1"};
+  await expect(figure).toHaveClass(/vehicle-game-asset/);
+  await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
+  await expect(figure.locator("img").first()).toHaveAttribute("src", "/assets/iveco_sway_500_front.svg");
+  await page.waitForResponse(response => response.url().endsWith("/api/v1/fleet"), { timeout: 15000 });
+  await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
+  const headers = { "X-Freight-Request": "1" };
   const contracts = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
   const contract = contracts.find(item => item.origin_hub_id === vehicles[0].hub_id && item.tons <= vehicles[0].capacity_tons);
-  const response = await page.request.post("/api/v1/contracts/" + contract.id + "/accept", {headers, data: {vehicle_id: vehicles[0].id}});
+  const response = await page.request.post("/api/v1/contracts/" + contract.id + "/accept", { headers, data: { vehicle_id: vehicles[0].id } });
   expect(response.ok()).toBeTruthy();
-  await expect(page.locator(".vehicle-card .badge")).toHaveText("Unterwegs", {timeout: 15000});
-  expect(await original.evaluate(element => element === document.querySelector(".vehicle-photo img"))).toBeTruthy();
-  await expect(figure).toHaveAttribute("data-image-state", "loaded");
+  await expect(page.locator(".vehicle-card .badge")).toHaveText("Unterwegs", { timeout: 15000 });
+  await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
 });
 
-test("facility identities, legacy deep links and catalogue outages preserve the game", async ({ page }) => {
+test("facility identities, lazy market scope and catalogue outages preserve the game", async ({ page }) => {
   await register(page);
   const response = await page.request.get("/api/v1/map/facilities?bbox=13,52,14,53");
   expect(response.ok()).toBeTruthy();
   const result = await response.json();
-  expect(result.unavailable_count).toBe(112);
+  expect(result.unavailable_count).toBe(0);
   const berlin = result.facilities.find(f => f.aliases.includes("berlin_westhafen"));
   expect(berlin.facility_uid).toMatch(/^[0-9a-f-]{36}$/);
   expect(berlin.facility_id).toBeUndefined();
+  expect(berlin.company_uid).toBe(berlin.company.company_uid);
   expect(berlin.company.company_id).toBeUndefined();
+  expect(berlin.company.display_name).toBeTruthy();
+  expect(berlin.company.legal_name).toBeTruthy();
+  expect(berlin.company.country).toBeTruthy();
   expect(berlin.coordinate_evidence.length).toBeGreaterThan(0);
-  const all = (await (await page.request.get("/api/v1/map/facilities")).json()).facilities;
-  const jobs = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
-  expect(new Set(jobs.map(job => job.origin_facility_uid))).toEqual(new Set(all.map(facility => facility.facility_uid)));
-  expect(jobs.some(job => job.cargo_basis === "simulated" && job.cargo_evidence === null)).toBeTruthy();
-  const models = (await (await page.request.get("/api/v1/fleet/catalogue")).json()).models;
-  for (const facility of all) {
-    const localJobs = jobs.filter(job => job.origin_facility_uid === facility.facility_uid);
-    for (const model of models) {
-      expect(localJobs.some(job => job.tons > 0 && job.tons <= model.capacity_tons)).toBeTruthy();
-    }
-  }
+  expect(berlin.resolution_status).toBe("resolved");
+
+  const allResult = await (await page.request.get("/api/v1/map/facilities")).json();
+  expect(allResult.unavailable_count).toBe(0);
+  expect(allResult.facilities).toHaveLength(352);
+
+  const localJobs = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
+  expect(new Set(localJobs.map(job => job.origin_facility_uid))).toEqual(new Set([berlin.facility_uid]));
+  expect(localJobs.every(job => job.market_model === "nhm_v1")).toBeTruthy();
+  expect(localJobs.every(job => ["documented", "derived"].includes(job.cargo_basis))).toBeTruthy();
+  expect(localJobs.every(job => job.cargo_evidence)).toBeTruthy();
+
+  const viewportJobs = (await (await page.request.get("/api/v1/contracts?bbox=8,48,15,54&zoom=7")).json()).contracts;
+  expect(new Set(viewportJobs.map(job => job.origin_facility_uid)).size).toBeGreaterThan(1);
+
   await page.goto("/contracts?hub=berlin_westhafen");
   const originalCanvas = await page.locator(".maplibregl-canvas").elementHandle();
   await expect(page.locator(".job-card").first()).toContainText("Berlin Westhafen");
   await page.locator(".job-card").first().click();
   await expect(page.locator(".footnote").first()).toContainText("Geschäftsbeziehung, Menge und Auftrag simuliert");
   expect(await originalCanvas.evaluate(element => element.isConnected)).toBeTruthy();
-  await page.route("**/api/v1/map/facilities", route => route.fulfill({ status: 503, json: { detail: "Weltkatalog derzeit nicht verfügbar." } }));
-  await page.goto("/fleet");
-  await expect(page.locator("#map-notice")).toContainText("konnten nicht geladen");
+
+  await page.getByRole("link", { name: "Flotte", exact: true }).click();
+  await page.route("**/api/v1/contracts?*", route => route.fulfill({
+    status: 503,
+    json: { detail: "Weltkatalog derzeit nicht verfügbar." },
+  }));
+  await page.getByRole("link", { name: "Aufträge", exact: true }).click();
+  await expect(page.locator("#toasts")).toContainText("Weltkatalog derzeit nicht verfügbar");
+  await page.getByRole("link", { name: "Flotte", exact: true }).click();
   await expect(page.locator(".vehicle-card")).toContainText("Berlin Westhafen");
-  await page.screenshot({ animations: "disabled", path: screenshot("facility-outage") });
 });

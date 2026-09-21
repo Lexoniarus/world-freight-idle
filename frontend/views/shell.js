@@ -70,7 +70,8 @@ export function renderShell(user) {
             ${[
               ["hubs", "Frachtstandorte"],
               ["orders", "Aufträge"],
-              ["vehicles", "Fahrzeuge"],
+              ["vehicles", "Meine Fahrzeuge"],
+              ["multiplayer", "Multiplayer-Verkehr"],
               ["routes", "Transportrouten"],
             ].map(
               ([name, label]) =>

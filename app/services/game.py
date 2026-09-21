@@ -9,12 +9,14 @@ from typing import Any
 
 from app.domain.errors import CatalogueError
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
+from app.domain.world import FacilityQuery
 from app.repositories.sqlite_store import SqliteStore
 from app.services.fleet import (
     create_starter_vehicle,
     resolve_delivery_facility,
 )
 from app.services.market import MarketGenerator
+from app.services.market_scope import MarketScopeResolver
 from app.services.pricing import PricingService
 
 LOGGER = logging.getLogger(__name__)
@@ -33,6 +35,7 @@ class GameService:
         market: MarketGenerator,
         pricing: PricingService,
         catalogue: VehicleCatalogue,
+        market_scope: MarketScopeResolver,
         time_scale: float = 1.0,
     ) -> None:
         self.store = store
@@ -42,6 +45,7 @@ class GameService:
         self.pricing = pricing
         self.time_scale = max(0.001, time_scale)
         self.catalogue = catalogue
+        self.market_scope = market_scope
 
     def now(self) -> float:
         """Return the current wall-clock timestamp."""
@@ -73,51 +77,70 @@ class GameService:
             legacy = self.store.get_json("active_trip")
             self.store.set_json("active_trips", [legacy] if legacy else [])
             self.store.delete_state_keys(("active_trip",))
-        if self.store.get_json("contracts") is None:
-            self.refresh_market(force=True)
+        if not self.store.has_json("contracts"):
+            self.store.set_json("contracts", [])
 
     def refresh_market(self, force: bool = False) -> list[dict[str, Any]]:
-        """Refresh expired market contracts or explicitly regenerate them."""
+        """Synchronize the always-available idle-truck market."""
+        vehicles = self.store.get_json("vehicles", [])
+        origins = self.market_scope.resolve(vehicles)
         with self.store.transaction():
-            return self._refresh_market(force)
+            retained = [] if force else self._current_market_for_scope(origins)
+            try:
+                contracts = self._generate_scoped_market(
+                    origins,
+                    vehicles,
+                    retained,
+                )
+            except CatalogueError:
+                if force:
+                    raise
+                LOGGER.warning(
+                    "World market unavailable",
+                    extra={"event": "market.catalogue_unavailable"},
+                )
+                contracts = retained
+            self._store_market(contracts, len(origins))
+            return contracts
 
-    def _refresh_market(self, force: bool) -> list[dict[str, Any]]:
-        """Replace a market inside the caller's write transaction."""
+    def _current_market_for_scope(
+        self,
+        origin_ids: tuple[str, ...],
+    ) -> list[dict[str, Any]]:
+        """Keep only fresh NHM contracts inside one explicit origin scope."""
         now = self.now()
-        current = self.store.get_json("contracts", [])
-        retained = (
-            []
-            if force
-            else [item for item in current if item["expires_at"] > now + 60]
+        scope = set(origin_ids)
+        return [
+            item
+            for item in self.store.get_json("contracts", [])
+            if item["expires_at"] > now + 60
+            and item.get("market_model") == self.market.model_id
+            and item.get("origin_hub_id") in scope
+        ]
+
+    def _generate_scoped_market(
+        self,
+        origin_ids: tuple[str, ...],
+        vehicles: list[dict[str, Any]],
+        retained: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Generate and persist one already-resolved market scope."""
+        return self.market.generate(
+            self.now(),
+            list(origin_ids),
+            existing_contracts=retained,
+            owned_capacities=[v["capacity_tons"] for v in vehicles],
         )
 
-        vehicles = self.store.get_json("vehicles", [])
-        idle_hubs = [
-            vehicle["hub_id"]
-            for vehicle in vehicles
-            if vehicle["status"] == "idle"
-        ]
-        if not idle_hubs:
-            idle_hubs = ["berlin_westhafen"]
-        try:
-            contracts = self.market.generate(
-                now,
-                idle_hubs,
-                existing_contracts=retained,
-                owned_capacities=[v["capacity_tons"] for v in vehicles],
-            )
-        except CatalogueError:
-            if force:
-                raise
-            LOGGER.warning(
-                "World market unavailable",
-                extra={
-                    "event": "market.catalogue_unavailable",
-                },
-            )
-            return [item for item in current if item["expires_at"] > now]
+    def _store_market(
+        self,
+        contracts: list[dict[str, Any]],
+        origin_count: int,
+    ) -> None:
+        """Persist one complete scoped market only when it changed."""
+        current = self.store.get_json("contracts", [])
         if contracts == current:
-            return current
+            return
         self.store.set_json("contracts", contracts)
         LOGGER.info(
             "Contract market refreshed",
@@ -125,13 +148,10 @@ class GameService:
                 "event": "market.refresh",
                 "data": {
                     "contract_count": len(contracts),
-                    "origin_facility_uids": [
-                        c["origin_facility_uid"] for c in contracts
-                    ],
+                    "scope_origin_count": origin_count,
                 },
             },
         )
-        return contracts
 
     async def quote_contract(
         self, contract_id: str, vehicle_id: str | None = None
@@ -317,48 +337,92 @@ class GameService:
 
     def state(self) -> dict[str, Any]:
         """Return the complete client-facing game state."""
-        self.reconcile_arrival()
-        self.refresh_market(force=False)
+        arrived = self.reconcile_arrival()
+        if not arrived:
+            self.refresh_market(force=False)
+        vehicles = [
+            self._expand_vehicle(vehicle)
+            for vehicle in self.store.get_json("vehicles", [])
+        ]
+        contracts = [
+            self._expand_contract(contract)
+            for contract in self.store.get_json("contracts", [])
+        ]
         return {
             "server_time": self.now(),
             "time_scale": self.time_scale,
             "player": self.store.get_json("player"),
-            "vehicles": self.store.get_json("vehicles"),
+            "vehicles": vehicles,
             "active_trips": self.store.get_json("active_trips"),
-            "contracts": [
-                self._expand_contract(contract)
-                for contract in self.store.get_json("contracts", [])
-            ],
-            "hubs": [v["hub"] for v in self.list_vehicles()],
+            "contracts": contracts,
+            "hubs": [vehicle["hub"] for vehicle in vehicles],
         }
 
     def dashboard(self) -> dict[str, Any]:
-        """Return the product dashboard projection for the browser client."""
+        """Return startup state without materializing the contract market."""
         self.reconcile_arrival()
-        contracts = self.list_contracts()
-        vehicles = self.list_vehicles()
-        transports = self.list_transports()
+        vehicles = [
+            self._expand_vehicle(vehicle)
+            for vehicle in self.store.get_json("vehicles", [])
+        ]
+        transports = self.store.get_json("active_trips", [])
         return {
             "server_time": self.now(),
             "time_scale": self.time_scale,
             "player": self.store.get_json("player"),
-            "available_contracts": len(contracts),
+            "available_contracts": 0,
             "idle_vehicles": sum(
                 1 for vehicle in vehicles if vehicle["status"] == "idle"
             ),
             "active_transports": len(transports),
-            "featured_contracts": contracts[:3],
+            "featured_contracts": [],
+            "vehicles": vehicles,
             "transports": transports,
         }
 
-    def list_contracts(self) -> list[dict[str, Any]]:
-        """Return market contracts enriched with their real addresses."""
+    def list_contracts(
+        self,
+        query: FacilityQuery | None = None,
+        zoom: float | None = None,
+    ) -> list[dict[str, Any]]:
+        """Synchronize and return the current lazy market scope."""
         self.reconcile_arrival()
-        self.refresh_market(force=False)
-        return [
-            self._expand_contract(contract)
-            for contract in self.store.get_json("contracts", [])
-        ]
+        vehicles = self.store.get_json("vehicles", [])
+        origins = self.market_scope.resolve(vehicles, query, zoom)
+        with self.store.transaction():
+            retained = self._current_market_for_scope(origins)
+            try:
+                contracts = self._generate_scoped_market(
+                    origins,
+                    vehicles,
+                    retained,
+                )
+            except CatalogueError:
+                LOGGER.warning(
+                    "World market unavailable",
+                    extra={"event": "market.catalogue_unavailable"},
+                )
+                contracts = retained
+            self._store_market(contracts, len(origins))
+        return [self._expand_contract(item) for item in contracts]
+
+    def refresh_contracts(
+        self,
+        query: FacilityQuery | None = None,
+        zoom: float | None = None,
+    ) -> list[dict[str, Any]]:
+        """Regenerate the current lazy market scope."""
+        self.reconcile_arrival()
+        vehicles = self.store.get_json("vehicles", [])
+        origins = self.market_scope.resolve(vehicles, query, zoom)
+        with self.store.transaction():
+            contracts = self._generate_scoped_market(
+                origins,
+                vehicles,
+                [],
+            )
+            self._store_market(contracts, len(origins))
+        return [self._expand_contract(item) for item in contracts]
 
     def get_contract(self, contract_id: str) -> dict[str, Any]:
         """Return one enriched market contract."""
@@ -418,6 +482,7 @@ class GameService:
                 for item in self.store.get_json("contracts", [])
                 if item["id"] == contract_id
                 and item["expires_at"] > self.now()
+                and item.get("market_model") == self.market.model_id
             ),
             None,
         )
@@ -489,7 +554,9 @@ class GameService:
         snapshot = vehicle.get("location_snapshot")
         if snapshot is None:
             snapshot = (
-                self.world.read().get_facility(vehicle["hub_id"]).to_dict()
+                self.world.read()
+                .get_facility(vehicle["hub_id"])
+                .location_snapshot()
             )
         return {**vehicle, "hub": snapshot}
 
@@ -500,8 +567,10 @@ class GameService:
         world = self.world.read()
         return {
             **contract,
-            "origin": world.get_facility(contract["origin_hub_id"]).to_dict(),
+            "origin": world.get_facility(
+                contract["origin_hub_id"]
+            ).location_snapshot(),
             "destination": world.get_facility(
                 contract["destination_hub_id"]
-            ).to_dict(),
+            ).location_snapshot(),
         }

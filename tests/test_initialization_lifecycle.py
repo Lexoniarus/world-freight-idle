@@ -13,7 +13,7 @@ from app.main import lifespan
 STATE_KEYS = ("player", "vehicles", "active_trips", "contracts")
 
 
-@pytest.mark.parametrize("failure", ["catalogue", "market", "write"])
+@pytest.mark.parametrize("failure", ["catalogue", "write"])
 @pytest.mark.parametrize("existing_player", [False, True])
 def test_initialization_direct_failure_is_atomic(
     game, failure, existing_player
@@ -37,11 +37,6 @@ def test_initialization_direct_failure_is_atomic(
             "list_models",
             side_effect=CatalogueError("unavailable"),
         ),
-        "market": patch.object(
-            type(game.market),
-            "generate",
-            side_effect=RuntimeError("market failed"),
-        ),
         "write": patch.object(game.store, "set_json", side_effect=fail_write),
     }
     with failures[failure], pytest.raises((CatalogueError, RuntimeError)):
@@ -54,6 +49,14 @@ def test_initialization_direct_failure_is_atomic(
     assert initialized["player"]["cash"] == (
         123 if existing_player else 175000
     )
+
+
+def test_initialization_defers_market_generation(game):
+    game.store.delete_state_keys(STATE_KEYS)
+    with patch.object(type(game.market), "generate") as generate:
+        game.ensure_initial_state()
+    generate.assert_not_called()
+    assert game.store.get_json("contracts") == []
 
 
 def test_reset_failure_restores_deleted_state(game):

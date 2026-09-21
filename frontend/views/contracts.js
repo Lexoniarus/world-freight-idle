@@ -73,7 +73,7 @@ export function renderContractDetails(contract, view) {
     <p class="footnote">
       Reale Standorte und Referenzunternehmen · Geschäftsbeziehung, Menge und Auftrag simuliert
     </p>
-    ${contract.cargo_basis === "simulated" ? html`<p class="footnote">Simulierte Standardfracht: Für diesen Standort ist keine geeignete reale Ware belegt.</p>` : null}
+    ${contract.cargo_basis === "derived" ? html`<p class="footnote">NHM-Warenprofil für diesen Standort simuliert; konkrete Geschäftsbeziehung und Auftrag bleiben Spielsimulation.</p>` : null}
     ${renderQuote(view)}${renderDispatchForm(contract, view)}`;
 }
 

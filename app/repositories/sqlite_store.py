@@ -35,7 +35,12 @@ CREATE TABLE IF NOT EXISTS route_cache (
 class SqliteStore:
     """Small repository used by the MVP application services."""
 
-    def __init__(self, path: Path, namespace: str = "") -> None:
+    def __init__(
+        self,
+        path: Path,
+        namespace: str = "",
+        initialize_schema: bool = True,
+    ) -> None:
         self.path = path
         self.namespace = namespace
         self._connection: ContextVar[sqlite3.Connection | None] = ContextVar(
@@ -43,7 +48,8 @@ class SqliteStore:
             default=None,
         )
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.initialize()
+        if initialize_schema:
+            self.initialize()
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
@@ -86,6 +92,15 @@ class SqliteStore:
         """Create required tables if they do not already exist."""
         with self.connect() as connection:
             connection.executescript(_SCHEMA)
+
+    def has_json(self, key: str) -> bool:
+        """Check key existence without decoding its JSON payload."""
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT 1 FROM kv WHERE key = ?",
+                (self.namespace + key,),
+            ).fetchone()
+        return row is not None
 
     def get_json(self, key: str, default: Any = None) -> Any:
         """Read a JSON value from the key-value state table."""

@@ -1853,10 +1853,10 @@ verbindlich: injizierte Grenzen, klare Module und zusammenhängende Funktionen.
 Reale Facilities ergänzen die UI-First-Basis; keine Spielerunternehmen oder
 eigenen Depots. Stand, stabile Identitäten, Quellenprüfung und explizite
 Bestandsmigration: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md). Die umfassendere
-Wirtschaftsvision bleibt Zielbild. 43 verifizierte Standorte sind sichtbar,
-jeder erhält Aufträge. 24 besitzen dokumentierte Standardwaren; sonst wird
-Standardfracht ausdrücklich simuliert. Keine erfundenen Koordinaten oder
-Warenbelege.
+Wirtschaftsvision bleibt Zielbild. 352 Facilities sind spielbar; 79
+Positionen sind verifiziert und 273 ausdrücklich für die Simulation geschätzt.
+Neue Aufträge verwenden ausschließlich NHM-basierte Warenprofile; konkrete
+Geschäftsbeziehungen und Einzelaufträge bleiben simuliert.
 
 Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
 Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge

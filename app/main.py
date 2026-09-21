@@ -56,6 +56,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         StaticFiles(directory=active_settings.base_dir / "static"),
         name="static",
     )
+    app.mount(
+        "/assets",
+        StaticFiles(
+            directory=active_settings.base_dir / "assets",
+            check_dir=False,
+        ),
+        name="assets",
+    )
     app.include_router(build_v1_router())
     app.include_router(web_router)
     return app

@@ -109,9 +109,21 @@ def test_world_migration_preserves_snapshots_and_rejects_unknown_endpoints(
     before["user:bob:vehicles"] = [{"hub_id": "unknown"}]
     with pytest.raises(KeyError):
         migrate_world_records(before, world)
-    unverified = next(f for f in world.facilities if not f.is_routable())
+    estimated = next(
+        facility
+        for facility in world.facilities
+        if not facility.has_verified_location()
+    )
+    assert (
+        endpoint_snapshot(estimated.facility_uid, world)["geocoding_status"]
+        == "estimated_for_simulation"
+    )
+    unroutable = replace(estimated, coordinate_evidence=())
     with pytest.raises(ValueError):
-        endpoint_snapshot(unverified.facility_uid, world)
+        endpoint_snapshot(
+            unroutable.facility_uid,
+            replace(world, facilities=(unroutable,)),
+        )
     endpoint = world.get_facility("berlin_westhafen").to_dict()
     assert preserve_routing_endpoint(endpoint, None) == endpoint
     assert preserve_routing_endpoint(endpoint, endpoint)["coordinate_evidence"]

@@ -194,12 +194,44 @@ Historische Browserprüfungen mit Nominatim beschreiben frühere Stände. Der
 aktuelle Server nutzt nur Valhalla; automatisierte Browserläufe verwenden
 den vorhandenen FakeRouter sowie lokale Tiles und getrennte Testspielstände.
 
-Markt-Ergänzung: Jeder routbare Standort besitzt einen ausgehenden Auftrag.
-Mock-Standardfracht hat keinen erfundenen Quellenbeleg. Tests prüfen vollständige
-Standortabdeckung, Nachfüllen angenommener Aufträge und Erhalt bestehender
-Auftrags-IDs/Snapshots. UI und Browserprüfung kontrollieren die Kennzeichnung.
+NHM-Markt: Jeder routbare Standort besitzt einen ausgehenden Auftrag mit
+kompatiblem NHM-IN/BOTH-Ziel. Neue Aufträge enthalten keine generische
+Standardfracht. Tests prüfen 352 spielbare Standorte, NHM-Hierarchie, derived
+Evidence, Legacy-Angebotsbereinigung und unveränderte aktive Transporte.
 
 Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
 Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
 erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
 bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
+
+## Runtime-Performance-Regressionsschutz
+
+- `CachedWorldCatalogue` liest seinen Source-Katalog höchstens einmal.
+- `TradeNetwork` wird über mehrere Market-Refreshes wiederverwendet.
+- Contract-/Map-Endpunkte enthalten keine vollständigen Facility-NHM-Profile.
+- Der Browser-Poll lädt Contracts aus `/dashboard` und fordert `/contracts`
+  nicht ein zweites Mal an.
+- Facility-Zählungen in Maintenance-Tests werden datengetrieben geprüft statt
+  gegen historische 155er-Hardcodes.
+
+## Lazy Market Scope und Kartenlebenszyklus
+
+Der Contract-Markt wird nicht mehr global beim Browserstart materialisiert.
+`MarketScopeResolver` ist eine injizierte Backend-Abhängigkeit und bestimmt
+ausschließlich relevante Origin-Facilities: eigene idle Lkw sind immer im Scope;
+zusätzliche Facilities werden erst ab Zoomstufe 7 aus der übergebenen
+`FacilityQuery` aufgenommen. `MarketGenerator` erhält nur diese expliziten
+Origins und kennt weder Viewport noch HTTP.
+
+Im Frontend besitzt `ContractMarketController` den vollständigen Lebenszyklus
+der Contract-Slice-Requests. `WorldMap.marketViewport()` liefert ausschließlich
+neutrale Kartenwerte (`zoom`, `bbox`) und kennt keine Contracts-API. `GameSync`
+synchronisiert weiterhin nur globalen Spielzustand. Die Composition Roots
+injizieren alle zustandsbehafteten Abhängigkeiten.
+
+Facility-Marker entstehen ausschließlich aus eigener Flotte, aktiven
+Transport-Snapshots und der aktuell geladenen Contract-Slice. Die vorherige
+globale `/map/facilities`-Abfrage gehört nicht mehr zum Browserstart.
+Facility-Texte werden nicht dauerhaft als Canvas-Labels erzeugt, sondern nur
+bei Hover als textContent-basierte DOM-Popups angezeigt.
+

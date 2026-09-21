@@ -20,9 +20,11 @@ Basiskarte und GeoJSON-Overlayquellen sind getrennt; leere Firmen-/Depot-
 Layer sind Erweiterungspunkte, keine erfundenen Besitztümer.
 
 GET /api/v1/map/facilities verwendet MapLocationService und WorldCatalogue.
-Nur verifizierte Endpunkte mit passendem Nachweis sind routbar. /map/hubs
-bleibt eine Kompatibilitätsprojektion; beide Pfade benötigen keinen Geocoder.
-Keine künstlichen Ersatzkoordinaten. Kartenabrufe gehen direkt vom Browser
+Verifizierte Endpunkte und ausdrücklich als `estimated_for_simulation`
+gekennzeichnete Standorte sind routbar. /map/hubs bleibt eine
+Kompatibilitätsprojektion; beide Pfade benötigen keinen Geocoder. Geschätzte
+Positionen bleiben als Simulation erkennbar und werden nicht als verifiziert
+ausgegeben. Kartenabrufe gehen direkt vom Browser
 zum Tile-Anbieter, ohne Spiel-Header/Credentials. Referrer-Policy ist
 strict-origin-when-cross-origin. Öffentliche Attribution bleibt sichtbar.
 
@@ -208,7 +210,7 @@ Transporte behalten ihre gespeicherten Werte.
 ## WorldCatalogue und Bestandsmigration
 
 [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md) ist die verbindliche Ergänzung:
-UUIDs statt SQLite-PKs, Domain-Referenzmodelle, dokumentierte Standardwaren,
+UUIDs statt SQLite-PKs, Domain-Referenzmodelle, NHM-Facility-Profile,
 Simulationswerte getrennt in app/simulation.py, vollständige Endpunktsnapshots.
 Pflege- und Migrationsservices erhalten Ports; Repositories besitzen SQL,
 Composition Roots die konkreten Adapter. Backup geht der Mutation voraus.
@@ -222,3 +224,108 @@ Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
 Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
 erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
 bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
+
+## Read-only Multiplayer-Verkehrsprojektion
+
+`MultiplayerMapRepository` liest ausschließlich Benutzer-ID, öffentlichen
+Benutzernamen sowie die persistierten Fahrzeug-/Transport-Snapshots aus den
+getrennten `user:<id>:`-Namespaces. `MultiplayerMapService` filtert bereits
+abgelaufene Transporte und projiziert nur Transport-ID, Fahrzeug-ID, Modell-ID,
+Route, Zeitfenster, öffentlichen Namen, Eigentümerflag und stabile Spielerfarbe.
+Private Vertrags-, Kosten-, Erlös- und Kontodaten verlassen den Namespace nicht.
+
+`GET /api/v1/map/traffic` benötigt weiterhin eine gültige Sitzung, ist aber im
+Gegensatz zu Fleet-/Transport-Detailendpoints absichtlich accountübergreifend.
+`GameState` lädt diese Projektion zusammen mit dem privaten Snapshot alle zehn
+Sekunden. `OverlayData` hält private Routenlinien und öffentliche Fahrzeugmarker
+getrennt. `VehicleIconRegistry` lädt jedes Brand-Free-SVG je Modell nur einmal
+und erzeugt daraus bei Bedarf farbige MapLibre-Atlasbilder pro Spielerfarbe.
+Die Position zwischen Polls wird weiterhin rein lokal aus Route und Serverzeit
+interpoliert; es entstehen keine hochfrequenten Positionsschreibvorgänge.
+
+## Read-only Multiplayer-Verkehrsprojektion V2
+
+`MultiplayerMapRepository.list_active_transports()` verwendet SQLite JSON1, um
+nur aktive Trip-ID, Vehicle-ID, Modell-ID/-name, Route, Zeitfenster sowie
+öffentliche Account-ID und Benutzername zu projizieren. Vollständige private
+`vehicles`-/`active_trips`-JSON-Objekte verlassen die Persistenzgrenze nicht.
+`MultiplayerMapService` ergänzt ausschließlich stabile Spielerfarbe und das
+`is_own`-Flag und schreibt ein strukturiertes `map.traffic.read`-Event mit
+aggregierten Zählwerten.
+
+`GameState.loadTraffic()` kapselt den optionalen Shared-Traffic-Read. Bei einem
+Fehler bleibt der letzte gültige Traffic-Snapshot erhalten, gleichzeitig wird
+`trafficAvailable=false` veröffentlicht. `GameSync` meldet Ausfall und
+Wiederherstellung genau beim Zustandswechsel. Die Karte erhält weiterhin
+modell- und farbspezifische MapLibre-Image-IDs. Eigene Fahrzeuge und
+Fremdverkehr werden in getrennte GeoJSON-Quellen und MapLibre-Layer projiziert,
+sodass der Layer-Schalter `Multiplayer-Verkehr` ausschließlich andere Spieler
+ein- oder ausblendet. Zusätzliche Dekorationsringe werden nicht verwendet.
+Die HTML-Anwendungsshell ist `no-store`, während gebaute Vite-Assets
+weiterhin über ihre gehashten Dateinamen versioniert werden.
+
+## Lokale Mehransichten für Flotte und Shop
+
+`frontend/vehicle-card-assets.js` kapselt die Zuordnung aller 14 Modell-IDs zu
+normalisierten lokalen Front- und Seitenansichten. Beide Dateien besitzen feste
+transparente Referenzflächen und werden in `renderVehicleImage` in unabhängigen,
+begrenzten Grid-Zellen dargestellt. Dadurch hängt ihre Geometrie nicht von der
+ursprünglichen Generatorfläche ab und die Bilder können sich nicht überlagern.
+
+Lokale Spielassets tragen bewusst kein `data-vehicle-photo` und keinen
+`data-image-state`; diese Zustände gehören ausschließlich zu externen
+Katalogfotos. `preserve-vehicle-images.js` bewahrt deshalb nur Remote-Fotos mit
+explizitem Ladezustand. Die Flotten- und Shop-Views kennen weiterhin weder
+Assetpfade noch Ladezustandslogik.
+
+## Vollständige Fahrzeugkarten-Sprites
+
+Die Map-Asset-Registry deckt alle 14 aktuellen Fahrzeugmodell-IDs ab. Die vier
+zuletzt ergänzten Nutzfahrzeuge (IVECO Daily, Atego 818 L, Atego 1224 L und
+MAN TGL) verwenden eigene Top-down-SVGs statt des generischen Punkt-Fallbacks.
+Ihre SVG-Wrapper exponieren ebenfalls `--vehicle-color`, sodass
+`VehicleIconRegistry` für sie denselben modell- und spielerfarbspezifischen
+MapLibre-Atlaspfad wie für die bisherigen zehn Modelle verwendet. Der
+Punkt-Fallback bleibt nur für Modell-IDs außerhalb des ausgelieferten Katalogs.
+
+## Runtime-Referenzcache und NHM-TradeNetwork (20.09.2026)
+
+Der unveränderliche WorldCatalogue wird im Produktions-Composition-Root durch
+`CachedWorldCatalogue` dekoriert. `SqliteWorldCatalogue` bleibt der validierende
+read-only Loader für Tests und Offline-Werkzeuge; die Runtime baut die 15.099
+NHM-Knoten, 352 Facilities und deren Evidenz dagegen höchstens einmal pro
+Prozess auf.
+
+`TradeNetwork` besitzt ausschließlich die NHM-Kompatibilitätsindizes und
+vorberechneten `TradeOption`-Mengen. `MarketGenerator` orchestriert nur noch
+Payload-Abdeckung, Auswahl und Auffüllen. `ContractFactory` erzeugt persistierte
+Aufträge und verwendet kompakte `Facility.location_snapshot()`-Projektionen.
+Damit werden weder komplette Facility-Cargo-Profile noch dokumentierte
+Warenlisten tausendfach in Markt-JSON dupliziert.
+
+Der Dashboard-Use-Case synchronisiert Ankünfte und Markt genau einmal und
+liefert die vollständige Contract-Projektion direkt mit. Das Frontend lädt
+deshalb beim Polling nicht zusätzlich `/contracts`; `/fleet` bleibt separat,
+weil dort die Fahrzeug-Präsentationsdaten ergänzt werden.
+
+## Lazy Market Scope und Kartenlebenszyklus
+
+Der Contract-Markt wird nicht mehr global beim Browserstart materialisiert.
+`MarketScopeResolver` ist eine injizierte Backend-Abhängigkeit und bestimmt
+ausschließlich relevante Origin-Facilities: eigene idle Lkw sind immer im Scope;
+zusätzliche Facilities werden erst ab Zoomstufe 7 aus der übergebenen
+`FacilityQuery` aufgenommen. `MarketGenerator` erhält nur diese expliziten
+Origins und kennt weder Viewport noch HTTP.
+
+Im Frontend besitzt `ContractMarketController` den vollständigen Lebenszyklus
+der Contract-Slice-Requests. `WorldMap.marketViewport()` liefert ausschließlich
+neutrale Kartenwerte (`zoom`, `bbox`) und kennt keine Contracts-API. `GameSync`
+synchronisiert weiterhin nur globalen Spielzustand. Die Composition Roots
+injizieren alle zustandsbehafteten Abhängigkeiten.
+
+Facility-Marker entstehen ausschließlich aus eigener Flotte, aktiven
+Transport-Snapshots und der aktuell geladenen Contract-Slice. Die vorherige
+globale `/map/facilities`-Abfrage gehört nicht mehr zum Browserstart.
+Facility-Texte werden nicht dauerhaft als Canvas-Labels erzeugt, sondern nur
+bei Hover als textContent-basierte DOM-Popups angezeigt.
+

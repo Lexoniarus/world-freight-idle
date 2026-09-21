@@ -42,7 +42,7 @@ Der MVP muss einen vollständigen Road-Freight-Loop liefern:
 
 **Real:**
 - Von-/Zu-Adressen
-- Verifizierte Koordinaten mit Quellen
+- Gespeicherte Facility-Koordinaten mit transparentem Verifikationsstatus
 - Referenzunternehmen, Facilities und dokumentierte Waren
 - Straßennetz
 - Truck-Routengeometrie
@@ -91,8 +91,29 @@ und Zuverlässigkeit sind noch keine aktiven Mechaniken. Öffentliche Frachtstan
 Depots unterschieden.
 
 Der WorldCatalogue ergänzt reale Referenzunternehmen; dies ist kein Ausbau
-der Spielerunternehmens- oder Depotmechanik. Jeder routbare Standort erhält Aufträge. Verwendet werden dokumentierte
-Standardwaren oder ausdrücklich simulierte Standardfracht ohne Warenbeleg
-(DB-nutzlastabhängige Mengen, 0,18 €/km/t). Derselbe Ort oder dieselbe
+der Spielerunternehmens- oder Depotmechanik. Jeder routbare Standort erhält Aufträge. Verwendet werden NHM-basierte
+Facility-Profile mit belegter oder transparent derived Warenrolle
+(DB-nutzlastabhängige Mengen, 0,18 €/km/t); generische Standardfracht entfällt. Derselbe Ort oder dieselbe
 Firma darf beide Endpunkte besitzen; dieselbe Facility nicht. Details und
 Bestandskompatibilität: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).
+
+## Gemeinsamer Live-Verkehr
+
+Aktive Straßentransporte angemeldeter Spieler werden als minimale öffentliche
+Kartenprojektion gemeinsam angezeigt. Private Spielstände bleiben getrennt:
+Kapital, Verträge, Erlöse, Kosten und übrige Flottendaten werden nicht geteilt.
+Jeder Account erhält aus seiner stabilen Benutzer-ID eine reproduzierbare
+Kartenfarbe. Unterstützte Brand-Free-Fahrzeugsprites werden je Kombination aus
+Modell und Spielerfarbe einmal rasterisiert; Modelle ohne Sprite verwenden einen
+Fallback-Punkt in derselben Spielerfarbe. Fremde Transportdetails bleiben nicht
+aufrufbar; ein Klick identifiziert lediglich den öffentlichen Spielernamen.
+
+## Gemeinsamer Live-Verkehr – V2
+
+Die gemeinsame Verkehrssicht bleibt read-only und accountübergreifend, liest
+aber keine vollständigen privaten Fahrzeug- oder Transportobjekte mehr in die
+Anwendungsschicht. Die Repository-Projektion liefert nur die für die Karte
+benötigten Felder. Fehler des Multiplayer-Verkehrsendpoints bleiben sichtbar;
+der letzte gültige Kartenstand kann weiter dargestellt werden, während die UI
+den Ausfall meldet. Spielerfarben werden zusätzlich als Kartenring sichtbar,
+auch wenn die Einfärbung eines Fahrzeugs auf kleinem Kartenmaßstab dezent ist.

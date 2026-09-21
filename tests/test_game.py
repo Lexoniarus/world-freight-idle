@@ -4,6 +4,7 @@ import time
 
 import pytest
 
+from app.domain.world import FacilityQuery
 from app.services.game import GameService
 from tests.conftest import BERLIN_UID
 from tests.seed_data import HUBS
@@ -131,6 +132,28 @@ def test_find_contract_returns_match_and_raises(game: GameService):
         game._find_contract("missing")
 
 
+def test_refresh_market_drops_legacy_offers_but_keeps_active_trips(
+    game: GameService,
+):
+    current = game.refresh_market()
+    legacy = dict(current[0])
+    legacy["id"] = "legacy-offer"
+    legacy.pop("market_model")
+    trip = {
+        "id": "legacy-trip",
+        "vehicle_id": "truck_01",
+        "arrives_at": game.now() + 1000,
+    }
+    game.store.set_json("contracts", [legacy, *current])
+    game.store.set_json("active_trips", [trip])
+    refreshed = game.refresh_market()
+    assert all(item.get("market_model") == "nhm_v1" for item in refreshed)
+    assert all(item["id"] != "legacy-offer" for item in refreshed)
+    assert game.store.get_json("active_trips") == [trip]
+    with pytest.raises(KeyError):
+        game._find_contract("legacy-offer")
+
+
 def test_find_vehicle_returns_match_and_raises(game: GameService):
     vehicles = game.store.get_json("vehicles")
     assert (
@@ -196,13 +219,26 @@ def test_expand_contract_attaches_hubs(game: GameService):
     )
     assert expanded["destination"]["address"]
 
+    legacy = {
+        key: value
+        for key, value in contract.items()
+        if key not in {"origin", "destination"}
+    }
+    restored = game._expand_contract(legacy)
+    assert (
+        restored["origin"]["address"]
+        == game.world.read().get_facility(BERLIN_UID).address
+    )
+    assert restored["destination"]["address"]
 
-def test_refresh_market_falls_back_when_no_vehicle_is_idle(game: GameService):
+
+def test_refresh_market_without_idle_vehicle_has_no_local_origins(
+    game: GameService,
+):
     vehicles = game.store.get_json("vehicles")
     vehicles[0]["status"] = "enroute"
     game.store.set_json("vehicles", vehicles)
-    contracts = game.refresh_market(force=True)
-    assert contracts[0]["origin_hub_id"] == BERLIN_UID
+    assert game.refresh_market(force=True) == []
 
 
 @pytest.mark.asyncio
@@ -216,15 +252,31 @@ async def test_dispatch_rejects_insufficient_cash(game: GameService):
 def test_dashboard_returns_product_projection(game: GameService):
     payload = game.dashboard()
     assert payload["player"]["cash"] == 175000
-    assert payload["available_contracts"] >= 1
+    assert payload["available_contracts"] == 0
     assert payload["idle_vehicles"] == 1
     assert payload["active_transports"] == 0
+    assert "contracts" not in payload
+    assert payload["featured_contracts"] == []
+    assert payload["vehicles"]
 
 
 def test_list_and_get_contracts_return_real_addresses(game: GameService):
     contracts = game.list_contracts()
     assert contracts
-    contract = game.get_contract(contracts[0]["id"])
+    assert {item["origin_hub_id"] for item in contracts} == {BERLIN_UID}
+
+    viewport = game.list_contracts(
+        FacilityQuery.parse("-10,35,30,60"),
+        game.market_scope.minimum_zoom,
+    )
+    assert len(viewport) > len(contracts)
+
+    refreshed = game.refresh_contracts(
+        FacilityQuery.parse("-10,35,30,60"),
+        game.market_scope.minimum_zoom,
+    )
+    assert refreshed != viewport
+    contract = game.get_contract(refreshed[0]["id"])
     assert contract["origin"]["address"]
     assert contract["destination"]["address"]
     with pytest.raises(KeyError):

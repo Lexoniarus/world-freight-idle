@@ -31,15 +31,25 @@ class Company:
 
 
 @dataclass(frozen=True, slots=True)
-class DocumentedCargo:
-    """A documented outward or handled good, without simulated economics."""
+class CargoProfile:
+    """One NHM facility behavior profile with explicit evidence quality."""
 
+    nhm_row_id: int
     code: str
     name: str
     role: str
-    standard: bool
     evidence_type: str
-    source: SourceReference
+    confidence: float
+    priority_score: float
+    ancestor_row_ids: tuple[int, ...]
+    source: SourceReference | None
+
+    def is_compatible_with(self, other: CargoProfile) -> bool:
+        """Match equal NHM nodes or profiles on the same ancestor chain."""
+        return (
+            self.nhm_row_id in other.ancestor_row_ids
+            or other.nhm_row_id in self.ancestor_row_ids
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,33 +77,96 @@ class Facility:
     geocoding_status: str
     sources: tuple[SourceReference, ...]
     coordinate_evidence: tuple[SourceReference, ...]
-    cargo: tuple[DocumentedCargo, ...]
+    cargo: tuple[CargoProfile, ...]
     catalogue_version: str
     aliases: tuple[str, ...] = ()
     handled_goods: tuple[DocumentedGood, ...] = ()
 
     def is_routable(self) -> bool:
-        """Require facility-level coordinate evidence, never city guesses."""
+        """Allow verified coordinates or explicit simulation estimates."""
+        if self.geocoding_status not in {
+            "verified_coordinates",
+            "estimated_for_simulation",
+        }:
+            return False
+        if (
+            self.lat is None
+            or self.lon is None
+            or not math.isfinite(self.lat)
+            or not math.isfinite(self.lon)
+            or not -90 <= self.lat <= 90
+            or not -180 <= self.lon <= 180
+        ):
+            return False
+        public_evidence = any(
+            item.url.startswith(("https://", "http://"))
+            for item in self.coordinate_evidence
+        )
+        simulation_evidence = any(
+            item.url.startswith("internal://simulation-")
+            for item in self.coordinate_evidence
+        )
+        if self.geocoding_status == "verified_coordinates":
+            return public_evidence
+        return public_evidence or simulation_evidence
+
+    def has_verified_location(self) -> bool:
+        """Report whether a routable location is independently verified."""
         return (
             self.geocoding_status == "verified_coordinates"
-            and self.lat is not None
-            and self.lon is not None
-            and math.isfinite(self.lat)
-            and math.isfinite(self.lon)
-            and -90 <= self.lat <= 90
-            and -180 <= self.lon <= 180
-            and bool(self.coordinate_evidence)
+            and self.is_routable()
         )
 
-    def outbound_cargo(self) -> tuple[DocumentedCargo, ...]:
-        """Select evidenced standard goods suitable for simulated trucking."""
+    def inbound_cargo(self) -> tuple[CargoProfile, ...]:
+        """Return NHM profiles that can receive or transship cargo."""
         return tuple(
-            item
-            for item in self.cargo
-            if item.standard
-            and item.role in {"output", "both"}
-            and item.evidence_type in {"official", "osm", "statistical"}
+            item for item in self.cargo if item.role in {"input", "both"}
         )
+
+    def outbound_cargo(self) -> tuple[CargoProfile, ...]:
+        """Return NHM profiles that can source or transship cargo."""
+        return tuple(
+            item for item in self.cargo if item.role in {"output", "both"}
+        )
+
+    def location_snapshot(self) -> dict[str, Any]:
+        """Project only routing and display facts needed at runtime."""
+        return {
+            "facility_uid": self.facility_uid,
+            "id": self.facility_uid,
+            "company_uid": (
+                self.company.company_uid if self.company else None
+            ),
+            "company": (
+                {
+                    "company_uid": self.company.company_uid,
+                    "legal_name": self.company.legal_name,
+                    "display_name": self.company.display_name,
+                    "country": self.company.country,
+                }
+                if self.company
+                else None
+            ),
+            "label": self.label,
+            "facility_type": self.facility_type,
+            "city": self.city,
+            "country": self.country,
+            "address": self.address,
+            "lat": self.lat,
+            "lon": self.lon,
+            "geocoding_status": self.geocoding_status,
+            "coordinate_evidence": [
+                asdict(item) for item in self.coordinate_evidence
+            ],
+            "catalogue_version": self.catalogue_version,
+            "aliases": list(self.aliases),
+            "resolution_status": (
+                "resolved" if self.is_routable() else "unavailable"
+            ),
+            "location_verified": self.has_verified_location(),
+            "snapshot_version": 1,
+            "location_kind": "public_facility",
+        }
 
     def to_dict(self) -> dict[str, Any]:
         """Make an independent full endpoint snapshot and legacy projection."""
@@ -104,6 +177,7 @@ class Facility:
             "resolution_status": (
                 "resolved" if self.is_routable() else "unavailable"
             ),
+            "location_verified": self.has_verified_location(),
             "snapshot_version": 1,
             "location_kind": "public_facility",
         }

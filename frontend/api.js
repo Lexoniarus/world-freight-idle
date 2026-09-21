@@ -20,6 +20,7 @@ export class GameApiClient {
     this.redirect = redirect;
     this.lifetime = new AbortController();
     this.request = this.request.bind(this);
+    this.requestAsset = this.requestAsset.bind(this);
   }
 
   /** Request an API-relative resource with same-origin credentials only.
@@ -52,6 +53,27 @@ export class GameApiClient {
     }
     return payload;
   }
+
+  /** Load one same-origin visual asset without bypassing the API client's lifecycle.
+   * @param {string} path
+   * @param {RequestInit} [options]
+   * @returns {Promise<string>}
+   */
+  async requestAsset(path, options = {}) {
+    if (!path.startsWith("/assets/") || path.startsWith("//"))
+      throw new Error("Expected /assets/ path");
+    const response = await this.fetchResponse(path, {
+      ...options,
+      credentials: "same-origin",
+      redirect: "error",
+      signal: options.signal
+        ? AbortSignal.any([options.signal, this.lifetime.signal])
+        : this.lifetime.signal,
+    });
+    if (!response.ok) throw new ApiError(`Asset HTTP ${response.status}`, response.status);
+    return response.text();
+  }
+
   /** Abort all in-flight reads and writes; settlement remains server-owned. */
   destroy() {
     this.lifetime.abort();
