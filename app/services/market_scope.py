@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Any
 
+from app.domain.game import OwnedVehicle
 from app.domain.ports import WorldCatalogue
 from app.domain.world import FacilityQuery
 
@@ -21,7 +21,7 @@ class MarketScopeResolver:
 
     def resolve(
         self,
-        vehicles: list[dict[str, Any]],
+        vehicles: list[OwnedVehicle],
         query: FacilityQuery | None = None,
         zoom: float | None = None,
     ) -> tuple[str, ...]:
@@ -30,10 +30,10 @@ class MarketScopeResolver:
         seen: set[str] = set()
 
         for vehicle in vehicles:
-            if vehicle.get("status") != "idle":
+            if vehicle.status != "idle":
                 continue
-            identifier = vehicle.get("facility_uid") or vehicle.get("hub_id")
-            if isinstance(identifier, str) and identifier not in seen:
+            identifier = vehicle.facility_uid or vehicle.hub_id
+            if identifier not in seen:
                 origins.append(identifier)
                 seen.add(identifier)
 

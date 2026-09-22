@@ -1,0 +1,25 @@
+warning: in the working copy of 'app/domain/world.py', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'app/services/fleet.py', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'app/services/game.py', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'app/services/market_scope.py', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'app/services/profile_maintenance.py', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'docs/ARCHITECTURE.md', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'docs/DOMAIN_MODEL.md', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'tests/function_test_manifest.py', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'tests/test_game.py', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'tests/test_market.py', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'tests/test_world_catalogue.py', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'tests/test_world_migration.py', CRLF will be replaced by LF the next time Git touches it
+ app/domain/world.py                 |  49 [32m++++++++++++[m
+ app/services/fleet.py               |  79 [32m+++++++++++[m[31m--------[m
+ app/services/game.py                | 149 [32m++++++++++++++++++++++[m[31m--------------[m
+ app/services/market_scope.py        |  10 [32m+[m[31m--[m
+ app/services/profile_maintenance.py |  40 [32m++++[m[31m------[m
+ docs/ARCHITECTURE.md                |  10 [32m+++[m
+ docs/DOMAIN_MODEL.md                |  10 [32m++[m[31m-[m
+ tests/function_test_manifest.py     |  14 [32m+++[m[31m-[m
+ tests/test_game.py                  |  29 [32m++++[m[31m---[m
+ tests/test_market.py                |  28 [32m+++++[m[31m--[m
+ tests/test_world_catalogue.py       |  17 [32m++[m[31m--[m
+ tests/test_world_migration.py       |  28 [32m++++++[m[31m-[m
+ 12 files changed, 315 insertions(+), 148 deletions(-)

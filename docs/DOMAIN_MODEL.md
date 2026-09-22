@@ -388,10 +388,16 @@ Bereits typisierte Runtime-Snapshots:
 immutable Objekte. An den bestehenden API-/Persistenzgrenzen wird weiterhin
 explizit in das kompatible JSON-Format serialisiert.
 
+Bereits als Runtime-Spielentities umgesetzt:
+
+- `PlayerState`
+- `OwnedVehicle`
+
+Ihre Persistenzprojektion bleibt in dieser Stufe JSON-kompatibel; die
+Repository-Grenze folgt in Schritt 4.
+
 Noch überwiegend dynamisches JSON/dict:
 
-- Spielerzustand
-- Owned Vehicles
 - persistierte Contract Offers
 - Active Transports
 

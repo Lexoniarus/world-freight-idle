@@ -93,6 +93,55 @@ class FacilityLocationSnapshot:
     snapshot_version: int = 1
     location_kind: str = "public_facility"
 
+    @classmethod
+    def from_dict(
+        cls,
+        value: dict[str, Any],
+    ) -> FacilityLocationSnapshot:
+        """Hydrate a persisted compact or legacy-compatible snapshot."""
+        raw_company = value.get("company")
+        company = (
+            CompanyIdentity(
+                company_uid=str(raw_company["company_uid"]),
+                legal_name=str(raw_company["legal_name"]),
+                display_name=str(raw_company["display_name"]),
+                country=str(raw_company["country"]),
+            )
+            if isinstance(raw_company, dict)
+            else None
+        )
+        evidence = tuple(
+            SourceReference(
+                url=str(item["url"]),
+                role=str(item["role"]),
+                verified_at=item.get("verified_at"),
+                precision=item.get("precision"),
+                provider=item.get("provider"),
+            )
+            for item in value.get("coordinate_evidence", [])
+        )
+        return cls(
+            facility_uid=str(value.get("facility_uid") or value["id"]),
+            company=company,
+            label=str(value["label"]),
+            facility_type=str(value.get("facility_type", "")),
+            city=str(value["city"]),
+            country=str(value["country"]),
+            address=str(value["address"]),
+            lat=value.get("lat"),
+            lon=value.get("lon"),
+            geocoding_status=str(value.get("geocoding_status", "")),
+            coordinate_evidence=evidence,
+            catalogue_version=str(value.get("catalogue_version", "")),
+            aliases=tuple(value.get("aliases", ())),
+            resolution_status=str(
+                value.get("resolution_status", "unavailable")
+            ),
+            location_verified=bool(value.get("location_verified", False)),
+            snapshot_version=int(value.get("snapshot_version", 1)),
+            location_kind=str(value.get("location_kind", "public_facility")),
+        )
+
     def to_dict(self) -> dict[str, Any]:
         """Serialize the compact snapshot at an external boundary."""
         return {

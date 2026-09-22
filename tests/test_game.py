@@ -4,6 +4,7 @@ import time
 
 import pytest
 
+from app.domain.game import OwnedVehicle
 from app.domain.world import FacilityQuery
 from app.services.game import GameService
 from tests.conftest import BERLIN_UID
@@ -155,10 +156,12 @@ def test_refresh_market_drops_legacy_offers_but_keeps_active_trips(
 
 
 def test_find_vehicle_returns_match_and_raises(game: GameService):
-    vehicles = game.store.get_json("vehicles")
-    assert (
-        game._find_vehicle(vehicles, "truck_01")["name"]
-        == "IVECO S-Way 500 XC13"
+    vehicles = [
+        OwnedVehicle.from_dict(item)
+        for item in game.store.get_json("vehicles")
+    ]
+    assert game._find_vehicle(vehicles, "truck_01").name == (
+        "IVECO S-Way 500 XC13"
     )
     with pytest.raises(ValueError):
         game._find_vehicle(vehicles, "missing")
@@ -168,22 +171,26 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
     game: GameService,
 ):
     contract = first_berlin_contract(game)
-    vehicle = game.store.get_json("vehicles")[0]
+    vehicle = OwnedVehicle.from_dict(game.store.get_json("vehicles")[0])
     game._validate_dispatch(vehicle, contract)
 
-    wrong_location = {**vehicle, "hub_id": "hamburg_cta"}
+    wrong_location = OwnedVehicle.from_dict(
+        {**vehicle.to_dict(), "hub_id": "hamburg_cta"}
+    )
     with pytest.raises(ValueError, match="Abholadresse"):
         game._validate_dispatch(wrong_location, contract)
 
-    too_small = {**vehicle, "capacity_tons": 0.1}
+    too_small = OwnedVehicle.from_dict(
+        {**vehicle.to_dict(), "capacity_tons": 0.1}
+    )
     with pytest.raises(ValueError, match="kapazität"):
         game._validate_dispatch(too_small, contract)
 
-    wrong_mode = {**vehicle, "mode": "ship"}
+    wrong_mode = OwnedVehicle.from_dict({**vehicle.to_dict(), "mode": "ship"})
     with pytest.raises(ValueError, match="Fahrzeugtyp"):
         game._validate_dispatch(wrong_mode, contract)
 
-    busy = {**vehicle, "status": "enroute"}
+    busy = OwnedVehicle.from_dict({**vehicle.to_dict(), "status": "enroute"})
     with pytest.raises(ValueError, match="verfügbar"):
         game._validate_dispatch(busy, contract)
 
@@ -291,7 +298,9 @@ def test_list_get_and_expand_vehicles(game: GameService):
     )
     assert game.get_vehicle("truck_01")["hub"]["city"] == HUBS[0].city
     assert (
-        game._expand_vehicle(game.store.get_json("vehicles")[0])["hub"]["id"]
+        game._expand_vehicle(
+            OwnedVehicle.from_dict(game.store.get_json("vehicles")[0])
+        )["hub"]["id"]
         == BERLIN_UID
     )
     with pytest.raises(KeyError):

@@ -4,6 +4,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
+from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.models import VehicleModel
 from app.domain.ports import VehicleCatalogue
 from app.repositories.accounts import AccountRepository
@@ -40,22 +41,24 @@ class ProfileMaintenanceService:
         models = {model.id: model for model in self.catalogue.list_models()}
         store = self.player_store_factory(user["id"])
         with store.transaction():
-            player = store.get_json("player")
-            vehicles = store.get_json("vehicles")
-            if player is None or vehicles is None:
+            raw_player = store.get_json("player")
+            raw_vehicles = store.get_json("vehicles")
+            if raw_player is None or raw_vehicles is None:
                 raise ValueError("Profile has no initialized game state")
+            player = PlayerState.from_dict(raw_player)
+            vehicles = [OwnedVehicle.from_dict(item) for item in raw_vehicles]
             validate_assignments(vehicles, assignments, models)
             trips = store.get_json("active_trips", [])
             for vehicle in vehicles:
-                if vehicle["id"] not in assignments:
+                if vehicle.id not in assignments:
                     continue
-                model = models[assignments[vehicle["id"]]]
-                validate_active_load(vehicle["id"], model, trips)
-                apply_vehicle_model(vehicle, model)
+                model = models[assignments[vehicle.id]]
+                validate_active_load(vehicle.id, model, trips)
+                vehicle.apply_model(model)
             if cash is not None:
-                player["cash"] = cash
-            store.set_json("vehicles", vehicles)
-            store.set_json("player", player)
+                player.cash = cash
+            store.set_json("vehicles", [item.to_dict() for item in vehicles])
+            store.set_json("player", player.to_dict())
         LOGGER.info(
             "Profile maintenance completed",
             extra={
@@ -69,18 +72,18 @@ class ProfileMaintenanceService:
         )
         return {
             "username": user["username"],
-            "cash": player["cash"],
+            "cash": player.cash,
             "assignments": assignments,
         }
 
 
 def validate_assignments(
-    vehicles: list[dict[str, Any]],
+    vehicles: list[OwnedVehicle],
     assignments: dict[str, str],
     models: dict[str, VehicleModel],
 ) -> None:
     """Reject empty requests or identifiers outside the selected profile."""
-    known = {vehicle["id"] for vehicle in vehicles}
+    known = {vehicle.id for vehicle in vehicles}
     if (
         not assignments
         or not assignments.keys() <= known
@@ -99,14 +102,3 @@ def validate_active_load(
         for trip in trips
     ):
         raise ValueError("New vehicle cannot carry its active load")
-
-
-def apply_vehicle_model(vehicle: dict[str, Any], model: VehicleModel) -> None:
-    """Replace model properties while retaining identity and trip status."""
-    vehicle.update(
-        model_id=model.id,
-        name=model.name,
-        mode=model.mode,
-        capacity_tons=model.capacity_tons,
-        operating_cost_eur_per_km=model.operating_cost_eur_per_km,
-    )

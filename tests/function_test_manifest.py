@@ -67,6 +67,17 @@ FUNCTION_TESTS = {
     "app.services.game.GameService.reset": "test_reset_restores_playable_state",
     "app.services.game.GameService.state": "test_state_expands_contract_addresses",
     "app.domain.contracts.ContractOfferSnapshot.to_dict": "test_build_contract_has_expiry_and_valid_nhm_cargo",
+    "app.domain.world.FacilityLocationSnapshot.from_dict": "test_world_snapshot_identity_provenance_and_query",
+    "app.domain.game.PlayerState.from_dict": "test_player_state_domain_rules",
+    "app.domain.game.PlayerState.to_dict": "test_player_state_domain_rules",
+    "app.domain.game.PlayerState.debit": "test_player_state_domain_rules",
+    "app.domain.game.PlayerState.complete_delivery": "test_player_state_domain_rules",
+    "app.domain.game.OwnedVehicle.from_dict": "test_owned_vehicle_domain_rules",
+    "app.domain.game.OwnedVehicle.to_dict": "test_owned_vehicle_domain_rules",
+    "app.domain.game.OwnedVehicle.validate_dispatch": "test_owned_vehicle_domain_rules",
+    "app.domain.game.OwnedVehicle.start_trip": "test_owned_vehicle_domain_rules",
+    "app.domain.game.OwnedVehicle.arrive": "test_owned_vehicle_domain_rules",
+    "app.domain.game.OwnedVehicle.apply_model": "test_owned_vehicle_domain_rules",
     "app.domain.world.FacilityLocationSnapshot.to_dict": "test_world_snapshot_identity_provenance_and_query",
     "app.services.contract_factory.ContractFactory.build": "test_build_contract_has_expiry_and_valid_nhm_cargo",
     "app.services.market.MarketGenerator._select_trade_option": "test_build_contract_has_expiry_and_valid_nhm_cargo",
@@ -169,7 +180,7 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.services.fleet.build_vehicle_snapshot": "test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts",
+        "app.services.fleet.build_owned_vehicle": "test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts",
         "app.services.fleet.create_starter_vehicle": "test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts",
     }
 )
@@ -184,7 +195,6 @@ FUNCTION_TESTS.update(
         "app.services.profile_maintenance.ProfileMaintenanceService.update_profile": "test_maintenance_write_failure_rolls_back_and_retains_unselected",
         "app.services.profile_maintenance.validate_assignments": "test_maintenance_validation_preserves_state",
         "app.services.profile_maintenance.validate_active_load": "test_profile_update_preserves_other_players_and_trip_snapshots",
-        "app.services.profile_maintenance.apply_vehicle_model": "test_maintenance_write_failure_rolls_back_and_retains_unselected",
         "app.services.game.GameService.ensure_initial_state": "test_initialization_direct_failure_is_atomic",
         "app.main.lifespan": "test_lifespan_cleans_up_partial_start_and_shutdown",
     }

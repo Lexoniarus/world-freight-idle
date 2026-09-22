@@ -57,6 +57,7 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
         setattr(location, "label", "changed")
 
     location_payload = location.to_dict()
+    assert type(location).from_dict(location_payload) == location
     assert location_payload["id"] == berlin.facility_uid
     assert location_payload["company_uid"] == berlin.company.company_uid
     assert "sources" not in location_payload["company"]
@@ -330,13 +331,15 @@ def test_delivery_requires_verified_catalogue_endpoint(world_catalogue):
     snapshot = world_catalogue.read()
     delivery = resolve_delivery_facility(world_catalogue)
     berlin = snapshot.get_facility("berlin_westhafen")
-    assert delivery["facility_uid"] == berlin.facility_uid
-    assert delivery["resolution_status"] == "resolved"
-    assert delivery["coordinate_evidence"]
-    assert delivery["company"]["company_uid"] == berlin.company.company_uid
-    assert "handled_goods" not in delivery
-    assert "cargo" not in delivery
-    assert "sources" not in delivery
+    assert delivery.facility_uid == berlin.facility_uid
+    assert delivery.resolution_status == "resolved"
+    assert delivery.coordinate_evidence
+    assert delivery.company is not None
+    assert delivery.company.company_uid == berlin.company.company_uid
+    payload = delivery.to_dict()
+    assert "handled_goods" not in payload
+    assert "cargo" not in payload
+    assert "sources" not in payload
 
     for facilities in (
         (),

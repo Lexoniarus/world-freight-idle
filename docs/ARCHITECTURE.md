@@ -339,3 +339,13 @@ serialisieren diese Objekte explizit mit `to_dict()`. Das öffentliche
 JSON-Format bleibt in diesem Schritt kompatibel; Player-, Vehicle-,
 Contract- und Transportzustand werden erst in der folgenden Migrationsstufe
 vollständig typisiert.
+
+## Typisierte Spielerentities (22.09.2026)
+
+`PlayerState` kapselt Guthaben, Lieferzähler und Reputation sowie Debit- und
+Settlement-Invarianten. `OwnedVehicle` kapselt Identität, Modell-Snapshot,
+Kapazität, Status, Standortwechsel und Dispatch-Validierung. `GameService`,
+`FleetService`, `MarketScopeResolver` und die Profilpflege verwenden diese
+Entities innerhalb ihrer Use Cases und serialisieren erst an der bestehenden
+KV-Grenze zurück in das kompatible JSON-Format. `ContractOffer` und
+`ActiveTransport` folgen in der zweiten Hälfte dieser Migrationsstufe.

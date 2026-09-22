@@ -7,6 +7,7 @@ import pytest
 
 from app.domain.contracts import ContractOfferSnapshot
 from app.domain.errors import WorldCatalogueError
+from app.domain.game import OwnedVehicle
 from app.domain.world import FacilityQuery
 from app.services.contract_factory import ContractFactory
 from app.services.market import MarketGenerator
@@ -174,12 +175,27 @@ def test_market_scope_combines_idle_trucks_and_zoomed_viewport(
     resolver = MarketScopeResolver(world_catalogue)
     berlin = world_catalogue.read().get_facility("berlin_westhafen")
     vehicles = [
-        {
-            "hub_id": berlin.facility_uid,
-            "facility_uid": berlin.facility_uid,
-            "status": "idle",
-        },
-        {"hub_id": "ignored", "status": "enroute"},
+        OwnedVehicle.from_dict(
+            {
+                "id": "idle",
+                "name": "Idle",
+                "mode": "truck",
+                "capacity_tons": 24,
+                "hub_id": berlin.facility_uid,
+                "facility_uid": berlin.facility_uid,
+                "status": "idle",
+            }
+        ),
+        OwnedVehicle.from_dict(
+            {
+                "id": "busy",
+                "name": "Busy",
+                "mode": "truck",
+                "capacity_tons": 24,
+                "hub_id": "ignored",
+                "status": "enroute",
+            }
+        ),
     ]
     query = FacilityQuery.parse("-10,35,30,60")
 
