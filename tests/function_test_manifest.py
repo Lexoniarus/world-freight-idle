@@ -66,6 +66,8 @@ FUNCTION_TESTS = {
     "app.services.game.GameService.refresh_market": "test_refresh_market_reuses_fresh_market_and_can_force",
     "app.services.game.GameService.reset": "test_reset_restores_playable_state",
     "app.services.game.GameService.state": "test_state_expands_contract_addresses",
+    "app.domain.contracts.ContractOfferSnapshot.to_dict": "test_build_contract_has_expiry_and_valid_nhm_cargo",
+    "app.domain.world.FacilityLocationSnapshot.to_dict": "test_world_snapshot_identity_provenance_and_query",
     "app.services.contract_factory.ContractFactory.build": "test_build_contract_has_expiry_and_valid_nhm_cargo",
     "app.services.market.MarketGenerator._select_trade_option": "test_build_contract_has_expiry_and_valid_nhm_cargo",
     "app.services.trade_network.TradeNetwork.__init__": "test_build_contract_has_expiry_and_valid_nhm_cargo",

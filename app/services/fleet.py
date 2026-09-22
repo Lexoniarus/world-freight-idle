@@ -118,4 +118,4 @@ def resolve_delivery_facility(world: WorldCatalogue) -> dict:
             },
         )
         raise WorldCatalogueError("Startstandort nicht verfügbar.") from exc
-    return facility.to_dict()
+    return facility.location_snapshot().to_dict()

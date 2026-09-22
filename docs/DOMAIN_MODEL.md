@@ -378,13 +378,22 @@ Bereits als echte immutable Domainobjekte vorhanden:
 `CargoProfile` ist dabei ein Übergangsmodell. Es wird schrittweise in
 `NhmProduct` und `FacilityNhmProfile` aufgeteilt.
 
+Bereits typisierte Runtime-Snapshots:
+
+- `CompanyIdentity`
+- `FacilityLocationSnapshot`
+- `ContractOfferSnapshot`
+
+`Facility.location_snapshot()` und `ContractFactory.build()` liefern damit
+immutable Objekte. An den bestehenden API-/Persistenzgrenzen wird weiterhin
+explizit in das kompatible JSON-Format serialisiert.
+
 Noch überwiegend dynamisches JSON/dict:
 
 - Spielerzustand
 - Owned Vehicles
-- Contract Offers
+- persistierte Contract Offers
 - Active Transports
-- Runtime Location Snapshots
 
 Legacy-/Übergangskonzepte:
 
@@ -398,21 +407,20 @@ Quality Gates grün sind.
 
 ## Migrationsreihenfolge
 
-1. `Coordinates`, `Address`, `Country`, `City`, `CompanyIdentity` und
-   `FacilityLocationSnapshot` als immutable Domain-/Value-Objekte einführen.
-2. WorldCatalogue auf strukturierte Geography-Objekte migrieren.
-3. `NhmProduct` und `FacilityNhmProfile` aus dem heutigen `CargoProfile`
-   herauslösen.
-4. `ContractOffer` und ContractFactory typisieren.
-5. `OwnedVehicle` und `PlayerState` typisieren.
-6. `ActiveTransport` typisieren.
-7. `GameStateRepository` als Port einziehen und konkrete SQLite-Persistenz
+1. Ziel-Domainmodell und ADR verbindlich dokumentieren.
+2. Runtime-Snapshots typisieren: `CompanyIdentity`,
+   `FacilityLocationSnapshot` und `ContractOfferSnapshot`.
+3. `PlayerState`, `OwnedVehicle`, `ContractOffer` und `ActiveTransport`
+   als echte Spiel-Domainobjekte einführen.
+4. `GameStateRepository` als Port einziehen und konkrete SQLite-Persistenz
    aus Services entfernen.
-8. Navigierbare `WorldScope`-/Country-/City-/Company-Queries einführen.
-9. `Hub`, altes `Contract`, `CargoProfile` und nicht mehr benötigte
+5. Referenzwelt normalisieren und navigierbar machen: `Country`, `City`,
+   `Address`, `Coordinates`, `NhmProduct`, `FacilityNhmProfile` sowie
+   World-/Country-/City-/Company-Scopes.
+6. `Hub`, altes `Contract`, `CargoProfile` und nicht mehr benötigte
    Legacy-Modelle entfernen.
-10. Architektur- und API-Dokumentation auf die endgültige Ist-Struktur
-    konsolidieren.
+7. Architekturtests verschärfen und Architektur-/API-Dokumentation auf die
+   endgültige Ist-Struktur konsolidieren.
 
 Jeder Schritt hält das bestehende Verhalten kompatibel, erhält vollständige
 Tests und aktualisiert das Function-Test-Manifest für neue konkrete Core-

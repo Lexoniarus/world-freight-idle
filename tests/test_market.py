@@ -1,10 +1,11 @@
 import random
-from dataclasses import replace
+from dataclasses import FrozenInstanceError, replace
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
+from app.domain.contracts import ContractOfferSnapshot
 from app.domain.errors import WorldCatalogueError
 from app.domain.world import FacilityQuery
 from app.services.contract_factory import ContractFactory
@@ -52,15 +53,21 @@ def test_build_contract_has_expiry_and_valid_nhm_cargo(
         1000,
         PayloadBand("heavy", 24),
     )
-    assert contract["expires_at"] == 22600
-    assert contract["cargo_code"] == option.cargo.code
-    assert contract["cargo"] == option.cargo.name
-    assert 8 <= contract["tons"] <= 24
-    assert contract["rate_eur_per_km_ton"] == 0.18
-    assert contract["destination_facility_uid"] != origin.facility_uid
-    assert contract["trade_match_type"] in {"exact", "ancestor"}
-    assert "cargo" not in contract["origin"]
-    assert "handled_goods" not in contract["origin"]
+    assert isinstance(contract, ContractOfferSnapshot)
+    assert contract.expires_at == 22600
+    assert contract.cargo.code == option.cargo.code
+    assert contract.cargo.name == option.cargo.name
+    assert 8 <= contract.tons <= 24
+    assert contract.rate_eur_per_km_ton == 0.18
+    assert contract.destination.facility_uid != origin.facility_uid
+    assert contract.trade_match_type in {"exact", "ancestor"}
+    with pytest.raises(FrozenInstanceError):
+        setattr(contract, "tons", 1)
+
+    payload = contract.to_dict()
+    assert payload["cargo_code"] == option.cargo.code
+    assert "cargo" not in payload["origin"]
+    assert "handled_goods" not in payload["origin"]
     with pytest.raises(WorldCatalogueError):
         TradeNetwork._build_trade_options(
             replace(origin, cargo=()),

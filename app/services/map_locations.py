@@ -17,7 +17,7 @@ class MapLocationService:
         snapshot = self.world.read()
         return {
             "facilities": [
-                facility.location_snapshot()
+                facility.location_snapshot().to_dict()
                 for facility in snapshot.query(query)
             ],
             "catalogue_version": snapshot.version,

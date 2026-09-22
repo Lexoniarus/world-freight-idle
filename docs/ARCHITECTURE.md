@@ -329,3 +329,13 @@ globale `/map/facilities`-Abfrage gehört nicht mehr zum Browserstart.
 Facility-Texte werden nicht dauerhaft als Canvas-Labels erzeugt, sondern nur
 bei Hover als textContent-basierte DOM-Popups angezeigt.
 
+## Typisierte Runtime-Snapshots (21.09.2026)
+
+`Facility.location_snapshot()` liefert ein immutable
+`FacilityLocationSnapshot` statt eines unstrukturierten Dictionaries.
+`ContractFactory.build()` liefert entsprechend ein immutable
+`ContractOfferSnapshot`. Map-, Market-, Migrations- und Persistenzgrenzen
+serialisieren diese Objekte explizit mit `to_dict()`. Das öffentliche
+JSON-Format bleibt in diesem Schritt kompatibel; Player-, Vehicle-,
+Contract- und Transportzustand werden erst in der folgenden Migrationsstufe
+vollständig typisiert.

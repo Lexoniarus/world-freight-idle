@@ -313,6 +313,7 @@ class GameService:
             or trip.get("destination")
             or self.world.read()
             .get_facility(trip["contract"]["destination_hub_id"])
+            .location_snapshot()
             .to_dict()
         )
         vehicle["hub_id"] = (
@@ -557,6 +558,7 @@ class GameService:
                 self.world.read()
                 .get_facility(vehicle["hub_id"])
                 .location_snapshot()
+                .to_dict()
             )
         return {**vehicle, "hub": snapshot}
 
@@ -567,10 +569,10 @@ class GameService:
         world = self.world.read()
         return {
             **contract,
-            "origin": world.get_facility(
-                contract["origin_hub_id"]
-            ).location_snapshot(),
-            "destination": world.get_facility(
-                contract["destination_hub_id"]
-            ).location_snapshot(),
+            "origin": world.get_facility(contract["origin_hub_id"])
+            .location_snapshot()
+            .to_dict(),
+            "destination": world.get_facility(contract["destination_hub_id"])
+            .location_snapshot()
+            .to_dict(),
         }
