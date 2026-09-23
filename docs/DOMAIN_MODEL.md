@@ -2,7 +2,8 @@
 
 Stand: 23.09.2026. Dieses Dokument beschreibt die implementierte Struktur.
 Entscheidungsgründe stehen in ADR 0005/0006, Fortschrittshistorie in
-REFACTOR_EXECUTION.md. Domainobjekte kennen keine Persistenzformate.
+[der archivierten Refactor-Chronik](archive/REFACTOR_EXECUTION.md).
+Domainobjekte kennen keine Persistenzformate.
 
 ## Spielerzustand
 

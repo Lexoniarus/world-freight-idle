@@ -16,7 +16,8 @@ freigegebener öffentlicher Produktionsdienst.
 - Aufträge auswählen, Fahrzeug disponieren, parallele Transporte verfolgen,
   Offline-Ankünfte abrechnen und die Flotte erweitern.
 - 14 DB-Fahrzeugmodelle mit Kaufpreis, Nutzlast, Reputationsfreigabe und
-  Kilometerkosten; Fahrzeugfotos mit Herkunft/Lizenz und Ersatzdarstellung.
+  Kilometerkosten; lokale Karten-, Front- und Seitenbilder für alle Modelle.
+  Katalogfotos mit Herkunft/Lizenz bleiben Ersatz für Modelle ohne lokale Grafik.
 - Neue Profile: **175.000 Euro plus kostenloser IVECO S-Way 500 XC13** in Berlin.
   Gekaufte und vergebene Fahrzeugwerte sind gespeicherte Snapshots.
 - Permanente Karte, Kontextpanels, mobile Bedienung, Tastatur und Fehlerzustände.
@@ -163,10 +164,12 @@ beide Teil des Quality Gates.
 
 ## Docker und Betrieb
 
-`docker compose up --build` baut das Frontend und liefert den Katalog mit aus;
+`docker compose up --build` baut das Frontend und liefert beide Kataloge
+und `assets/vehicles/` mit aus;
 Compose bindet beide Kataloge zusätzlich separat nur lesend ein. Docker wurde in
 der aktuellen lokalen Abnahme nicht ausgeführt. Individuelle Deployments müssen
-den Referenzkatalog ebenfalls mitliefern.
+beide Referenzkataloge sowie Assets und zugehörigen Frontend-Build mitliefern.
+Nach einer Asset-Pfadänderung benötigen offene Seiten einen Reload.
 
 Aktuell: ein Prozess, SQLite und gemeinsame Provider-Limiter. HTTPS, kontrollierter
 Reverse Proxy, Betriebsbackups, geeignete Provider und weitere Konten-/Betriebs-
@@ -186,6 +189,9 @@ nicht. Details: [BRANCHING](docs/BRANCHING.md).
 - [ARCHITECTURE](docs/ARCHITECTURE.md), [DOMAIN_MODEL](docs/DOMAIN_MODEL.md), [API](docs/API.md): technische Verträge.
 - [TESTING](docs/TESTING.md), [QUALITY_REPORT](QUALITY_REPORT.md): Prüfungen und Grenzen.
 - [MAP_PROVIDERS](docs/MAP_PROVIDERS.md), [DATA_SOURCES](docs/DATA_SOURCES.md): externe Daten.
+- [RELATIONAL_STATE](docs/RELATIONAL_STATE.md), [WORLD_CATALOGUE](docs/WORLD_CATALOGUE.md): aktuelle Persistenz und Referenzwelt.
+- [Asset-Manifest](assets/MANIFEST.md): Modellordner, Verwendung und Prüfsummen.
+- [Archivierte Refactor-Chronik](docs/archive/REFACTOR_EXECUTION.md): historische Zwischenstände.
 - [BRANCHING](docs/BRANCHING.md), [CHANGELOG](CHANGELOG.md): Zusammenarbeit und Änderungen.
 
 Jeder routbare Standort bietet passende Auftragsmengen für alle vorhandenen

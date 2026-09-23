@@ -698,17 +698,22 @@ Damit wird die reale Erde selbst zu einem zentralen Teil des Spielerlebnisses.
 
 ---
 
-# 63. Aktualisierte North-Star-Definition
+# 63. Aktualisierte North-Star-Definition (langfristiges Zielbild)
 
 **World Freight Idle ist ein map-first, browserbasierter Multiplayer-Logistik-Tycoon, dessen primäre Benutzeroberfläche eine interaktive Satellitenkarte der realen Welt bildet. Spieler bauen darauf persistente Transportnetzwerke auf, kaufen Fahrzeuge und Depots, bedienen datengetriebene Frachtaufträge und verfolgen ihre Transporte in Echtzeit entlang realer Verkehrswege.**
 
 ## Umsetzungsabgleich: Fahrzeugkatalog und Kalkulation
 
-Der bestehende Shop zeigt acht DB-Modelle mit Spielpreis, Nutzlast,
+Der bestehende Shop zeigt 14 DB-Modelle mit Spielpreis, Nutzlast,
 Kilometerkosten und Reputationsfreigabe. Gesperrte oder nicht bezahlbare
-Angebote benennen ihren Grund. Verifizierte DB-Fotos erscheinen in Shop, Flotte und Transportdetails mit
-Urheber, Quelle und Lizenz. Modellfamilienfotos werden als solche bezeichnet;
-bei Ladefehlern erscheint eine Ersatzillustration mit sichtbarem Hinweis.
+Angebote benennen ihren Grund. Alle 14 Modelle verwenden in Shop, Flotte und
+Transportdetails dieselben lokalen Front- und Seitenbilder. Auf der Karte
+erscheint die zugehörige Draufsicht mit Spielerfarbe und Fahrtrichtung.
+Für Modelle ohne lokale Grafik folgen verifizierte Katalogfotos mit Urheber,
+Quelle, Lizenz und Modellfamilienhinweis; ohne Foto beziehungsweise bei dessen
+Ladefehler bleibt die bestehende Ersatzillustration. Die Pfade liegen gemeinsam
+in `frontend/vehicle-assets.js`; Darstellung und Ladeverhalten bleiben getrennt.
+Siehe [Asset-Manifest](../assets/MANIFEST.md).
 Ein Fahrzeugwechsel verwirft die alte Quote. Transportstart erfordert eine
 aktuelle Kalkulation für genau das gewählte Fahrzeug. Kamera, Panelposition,
 Tastaturfokus und mobile Bedienung bleiben erhalten. Neue Spielstände erhalten
@@ -722,7 +727,9 @@ sichtbar. Der Polling-Zyklus darf sie nicht erneut in den Ladezustand versetzen.
 
 ## Facility-Referenzen in der bestehenden Oberfläche
 
-Die Standortquelle verwendet /api/v1/map/facilities und stabile UUIDs;
+Die Facility-API /api/v1/map/facilities stellt stabile UUIDs bereit. Der
+Browser lädt beim Start keinen globalen Facility-Bestand: Marker entstehen
+aus eigener Flotte, aktiven Transporten und dem bedarfsabhängigen Auftragsmarkt;
 Legacy-Hub-Links werden über explizite Aliase erkannt. Clustering, World
 Wrapping, Kamera, Panels und Fokusverhalten bleiben erhalten. Auftragstexte
 unterscheiden reale Standorte/Referenzunternehmen von simulierten Beziehungen,
@@ -736,14 +743,12 @@ erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
 bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
 
 
-## Domain-/Persistenzstand, 23.09.2026
+## Aktuelle technische Grundlage
 
-Die Spielbasis verwendet typisierte Entities, eine relationale SQLite-Laufzeit
-hinter Repository-/Unit-of-Work-Ports und WorldCatalogue 4.0.0 mit stabilen
-Stadtidentitäten und unveränderlichen World-Scopes. API-Felder, UI, Spielregeln
-und python main.py bleiben erhalten. Historische Transportwerte überleben
-Katalogupdates. Die drei Testkonten sind nach Backup übernommen; Sitzungen
-wurden verworfen. UI First bleibt verbindlich; Unternehmen, eigene Depots,
-Satelliten und neue Wirtschaftsmechaniken gehören weiterhin nicht zu diesem
-Umbau. Abnahme und ausgeführte Nachweise: QUALITY_REPORT.md. Der technische
-Umbau allein behauptet weder eine vollständige MVP- noch reale iPad-Abnahme.
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.0.0) und
+WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
+bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
+[Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
+Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).
+Aktuelle Prüfungen und Grenzen stehen im [Qualitätsbericht](../QUALITY_REPORT.md).
+Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abnahme.

@@ -88,7 +88,13 @@ migrierten Profile werden nicht erneut importiert.
 
 `assets/inventory.json` sichert vor der Ordnerumstellung alle 134 SVGs mit
 Modellzuordnung, bisheriger Verwendung, Alt-/Zielpfad und SHA-256. Die 42 aktiven
-Zuordnungen wurden aus dem bestehenden Karten-/Kartenbild-Code erfasst und
+Zuordnungen wurden aus dem bestehenden Karten-/Fahrzeugbild-Code erfasst und
 werden unabhängig vom neuen Resolver geprüft. Das feste Browser-Testprofil
 AssetReference liefert Flotten-/Shopansichten auf Desktop und Mobil.
 ASSET_VISUAL_PHASE benennt den lokalen Screenshot-Ordner unter artifacts.
+Der Dateitest prüft jetzt alle Zielpfade gegen die vorab gespeicherten Hashes;
+unbekannte/fehlende Modelle und unveränderliche Zuordnungen sind Gegenfälle.
+`tests/test_assets.py` prüft für alle 42 verwendeten SVGs HTTP-Status, MIME und
+Dateihash sowie 404 für alte oder fehlende Pfade, mit temporärem Spielstand.
+Kartenverhalten (Farbmaske, Orientierung, Rasterisierung, Cache und Cleanup)
+und Bildstabilität bleiben durch die vorhandenen Regressionen abgesichert.

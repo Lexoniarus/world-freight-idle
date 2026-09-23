@@ -1,4 +1,10 @@
-# Domain-/Persistenz-Refactor: Ausführungsstand
+# Historisch: Domain-/Persistenz-Refactor
+
+Archiviert am 23.09.2026 nach Integration in PR #8. Die folgenden Pläne und
+Zwischenberichte sind historische Nachweise, keine Beschreibung der aktuellen
+Laufzeit oder erneuter Arbeitsauftrag. Aktuell gelten
+[Architektur](../ARCHITECTURE.md), [Domainmodell](../DOMAIN_MODEL.md),
+[Persistenz](../RELATIONAL_STATE.md) und [Qualitätsbericht](../../QUALITY_REPORT.md).
 
 ## Überarbeiteter Ablaufplan mit verbindlichem Cleanup
 

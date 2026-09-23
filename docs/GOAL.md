@@ -16,7 +16,7 @@
 
 ---
 
-## Umsetzungsstand am 18.09.2026
+## Umsetzungsstand am 23.09.2026
 
 **Verbindliche Priorität: UI First.** Die Oberfläche wird auf dem bestehenden
 Backend fertiggestellt, bevor Spielerunternehmen, eigene Depots und weitere
@@ -35,16 +35,16 @@ dass sämtliche Funktionen bereits implementiert sind.
 | Python-Module, OOP, PEP 8, main.py | Bestehende Basis konsolidiert; Ruff mit 79 Zeichen, differenzierte Architekturabnahme in TARGET.md |
 | Registrierung, Login, Logout, Sessions | Implementiert; eigene Spielstände |
 | Eigenständiges Spielerunternehmen | Offen; aktuell Konto mit Spielerkapital und Reputation |
-| Eigenes Depot / Depotkauf | Offen; aktuell feste öffentliche Hubs und Start in Berlin |
-| Fahrzeuge kaufen, Standort und Kapazität | Implementiert; acht DB-Modelle mit Spiel-Nutzlast, Kaufpreis und Freigaben |
-| Reale Hersteller-/Modell-/Verbrauchsdaten | Acht Hersteller-Modellprofile integriert; Spiel-Kilometerkosten aktiv, Verbrauchssimulation offen |
-| Reale Adressen, Straßenroute, Distanz, ETA | WorldCatalogue mit geprüften Koordinaten und Valhalla-Truck-Routing; Nominatim nur offline |
+| Eigenes Depot / Depotkauf | Offen; aktuell öffentliche Facilities und Start in Berlin Westhafen |
+| Fahrzeuge kaufen, Standort und Kapazität | Implementiert; 14 DB-Modelle mit Spiel-Nutzlast, Kaufpreis und Freigaben |
+| Reale Hersteller-/Modell-/Verbrauchsdaten | 14 Modellprofile von acht Herstellern integriert; Spiel-Kilometerkosten aktiv, Verbrauchssimulation offen |
+| Reale Adressen, Straßenroute, Distanz, ETA | WorldCatalogue mit 79 verifizierten und 273 ausdrücklich geschätzten Positionen und Valhalla-Truck-Routing; Nominatim nur offline |
 | Aufträge, parallele Transporte, Offline-Auszahlung | Implementiert und auf konkurrierende Zugriffe getestet |
 | Tracking | Alle aktiven Transporte als Layer, Serverzeit und gespeicherte Route |
 | Primäre Weltkarte mit Kontextpanels | MapLibre/OSM implementiert; Satelliten später |
-| Wettbewerb | Gemeinsame Lieferungsrangliste implementiert |
+| Wettbewerb | Gemeinsame Lieferungsrangliste und öffentlicher Live-Verkehr implementiert |
 | Gemeinsamer knapper Markt / dynamische Frachtraten | Offen; aktuell eigene generierte Märkte |
-| Transporthistorie und Geldbewegungsjournal | Offen; aktive Transporte und Summen werden gespeichert |
+| Transporthistorie und Geldbewegungsjournal | Aktive und abgerechnete Transporte werden gespeichert; Historienoberfläche und Geldjournal bleiben offen |
 | Reale Firmen / statistische Warenströme | Referenzunternehmen/Facilities und dokumentierte Waren integriert; Beziehungen, Mengen und Einzelaufträge simuliert; statistische Wirtschaftsmechanik offen |
 | PostgreSQL, öffentlicher Betrieb, Account-Recovery | Offen; lokaler SQLite-MVP mit einem Prozess |
 
@@ -1843,9 +1843,10 @@ M1 verwendet weiterhin OSM-Raster; Satelliten, Unternehmen und eigene Depots
 folgen später. Neue Profile starten mit 175.000 Euro und einem kostenlosen
 IVECO S-Way 500 XC13 aus dem Referenzkatalog. Dessen Spielwerte werden wie bei
 Käufen als Snapshot gespeichert. Ältere Flotten bleiben kompatibel und werden
-nur auf ausdrücklichen Auftrag angepasst. Verifizierte Fahrzeugfotos sind nun
-mit Lizenz-/Quellenangaben und Modellfamilienhinweis sichtbar; Ladefehler haben
-eine Illustration als Ersatz. Die Regeln aus Abschnitten 21 und 27–29 bleiben
+nur auf ausdrücklichen Auftrag angepasst. Alle 14 Modelle besitzen lokale Karten-, Front- und Seitenansichten.
+Für Modelle ohne lokale Grafik bleiben verifizierte Katalogfotos mit Lizenz-/
+Quellenangaben und Modellfamilienhinweis verfügbar; fehlende Fotos und deren
+Ladefehler haben eine Illustration als Ersatz. Die Regeln aus Abschnitten 21 und 27–29 bleiben
 verbindlich: injizierte Grenzen, klare Module und zusammenhängende Funktionen.
 
 ## Verbindliche WorldCatalogue-Ergänzung (18.09.2026)
@@ -1864,14 +1865,12 @@ erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
 bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
 
 
-## Domain-/Persistenzstand, 23.09.2026
+## Aktuelle technische Grundlage
 
-Die Spielbasis verwendet typisierte Entities, eine relationale SQLite-Laufzeit
-hinter Repository-/Unit-of-Work-Ports und WorldCatalogue 4.0.0 mit stabilen
-Stadtidentitäten und unveränderlichen World-Scopes. API-Felder, UI, Spielregeln
-und python main.py bleiben erhalten. Historische Transportwerte überleben
-Katalogupdates. Die drei Testkonten sind nach Backup übernommen; Sitzungen
-wurden verworfen. UI First bleibt verbindlich; Unternehmen, eigene Depots,
-Satelliten und neue Wirtschaftsmechaniken gehören weiterhin nicht zu diesem
-Umbau. Abnahme und ausgeführte Nachweise: QUALITY_REPORT.md. Der technische
-Umbau allein behauptet weder eine vollständige MVP- noch reale iPad-Abnahme.
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.0.0) und
+WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
+bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
+[Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
+Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).
+Aktuelle Prüfungen und Grenzen stehen im [Qualitätsbericht](../QUALITY_REPORT.md).
+Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abnahme.

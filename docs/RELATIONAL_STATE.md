@@ -2,7 +2,8 @@
 
 Status: Relationales Schema 1.0.0, direkte Port-Verdrahtung und getrennte
 Persistenz-/HTTP-Projektionen sind implementiert. Der Offline-Importer ist der
-einzige Leser alter Spielzustände. Aktuelle Prüfergebnisse: QUALITY_REPORT.md.
+einzige Leser alter Spielzustände. Aktuelle Prüfergebnisse:
+[Qualitätsbericht](../QUALITY_REPORT.md).
 
 ## Fachliche Grenzen
 

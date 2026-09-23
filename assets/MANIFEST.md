@@ -9,6 +9,46 @@ Die folgenden übernommenen Teilinventare bewahren die ursprünglichen
 Ansichts- und Größenangaben. Maßgeblich für Vollständigkeit, aktuelle
 Dateiauswahl und unveränderte Bytes ist `inventory.json`.
 
+## Struktur und Pflege
+
+```text
+assets/vehicles/<catalogue_model_id>/
+  map.svg
+  front.svg
+  side-left.svg
+  source/<bisheriger_dateiname>.svg
+```
+
+`frontend/vehicle-assets.js` ordnet jedem Modell genau diese drei verwendeten
+Ansichten zu; der reine Resolver `getVehicleAssets(modelId)` liefert ein
+unveränderliches Objekt mit `map`, `front`, `side` oder null. Die Reihenfolge
+lokale Grafik → vorhandenes Katalogfoto → generische Illustration bleibt in
+der Darstellung. Die Karte besitzt separat Spielerfarbe, Rotation,
+Rasterisierung, Caching und den Punkt-Fallback für unbekannte Modelle.
+
+Bei neuen Grafiken:
+
+1. Die vorhandene Katalogmodellkennung verwenden und die gewünschte Ansicht
+   ausdrücklich festlegen; ähnlich benannte Varianten nicht still ersetzen.
+2. Weitere Ansichten und Teile unter `source/` mit aussagekräftigem Dateinamen
+   ablegen; ihre Rolle und Herkunft dokumentieren. Keine fremden Lizenzrechte
+   aus technischen Fahrzeugdaten ableiten.
+3. Die gemeinsame Zuordnung aktualisieren, keine zweite Pfadtabelle anlegen.
+4. Inventar, SHA-256 und Herkunftsangaben bewusst aktualisieren. Bestehende
+   Prüfsummen nur bei einer ausdrücklich beabsichtigten Bildänderung ersetzen.
+5. Dateierhalt, Auswahl, HTTP-Auslieferung, Fallbacks und die betroffenen
+   Desktop-/Mobilansichten prüfen. Karte und Panels behalten ihre Bildknoten.
+
+`inventory.json` ist der unveränderte Nachweis der Ordnerumstellung; sein
+`baseline_commit` benennt die ursprüngliche Auswahl. `reference` bedeutet
+aktuell nicht direkt verwendet: Ansichten wie `rear`, `top`, `side_right`,
+Einzelteile, `brandfree`-Varianten und `sheet`-Übersichten. Es bezeichnet
+keinen pauschalen Rohdateistatus. Runtime lädt das Inventar nicht.
+
+Assets werden einmal über FastAPI `/assets/` bereitgestellt; Vite proxyt
+lokale Entwicklungsabrufe. Build und Asset-Ordner gemeinsam ausliefern,
+anschließend offene Seiten neu laden. Alte Pfadkopien werden nicht gepflegt.
+
 ## Übernommene Dateimetadaten
 
 | File | Vehicle | Size | SHA-256 |

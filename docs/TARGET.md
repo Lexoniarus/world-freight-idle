@@ -31,7 +31,7 @@ in TESTING.md; die Gesamt-M1-Abnahme bleibt bis zum Backend-Ausbau offen.
 - [x] Fahrzeugkatalog und atomarer Kauf zu Serverpreisen.
 - [x] Parallele Transporte, genau einmal verbuchte Ankünfte.
 - [x] Gemeinsame Rangliste inklusive Offline-Ankünften.
-- [x] Coding-Standards mit Ruff und 79 Zeichen.
+- [x] Ruff/Format mit 79 Zeichen; Architekturabnahme wird gesondert dokumentiert.
 - [ ] Öffentlicher Produktionsbetrieb/Hosting (separater Meilenstein).
 - [ ] Global begrenzter gemeinsamer Markt.
 
@@ -77,7 +77,7 @@ aus GOAL.md und MILESTONES.md.
 - [x] Getrennte Views, Aktionen, Synchronisierung und Kartendarstellung
 - [x] Benannte Use Cases und Composition Roots für Service-Verdrahtung
 - [x] Review der bereinigten Modulgrenzen, ergänzt durch Architekturtests
-- [ ] Erneutes OOP-/Single-Responsibility-Review bei jedem weiteren Ausbau
+- Fortlaufend verbindlich: erneutes OOP-/Single-Responsibility-Review bei jedem weiteren Ausbau
 - [x] Funktionstest-Manifest verhindert ungetestete Python-Core-Funktionen
 - [x] strukturierte Logs
 - [x] Trace-ID je HTTP-Request
@@ -85,7 +85,7 @@ aus GOAL.md und MILESTONES.md.
 
 ### Externe Integrationen
 
-- [x] Nominatim-Adapter
+- [x] Nominatim-Adapter ausschließlich für Offline-Enrichment
 - [x] Valhalla-Adapter mit `truck`-Profil
 - [x] Caching der Providerantworten
 - [x] kein Luftlinien-Fallback
@@ -96,7 +96,7 @@ Eine Funktion gilt erst als fertig, wenn:
 
 1. sie eine einzelne klar benennbare Verantwortung hat,
 2. ein expliziter Gegentest existiert,
-3. sie in `tests/function_test_manifest.py` referenziert ist,
+3. sie als konkrete Python-Core-Funktion in `tests/function_test_manifest.py` referenziert ist (Frontend: Verhaltenstest und Gegentest),
 4. Fehlerpfade getestet sind,
 5. relevante Logs/Tracing vorhanden sind,
 6. betroffene Dokumentation aktualisiert wurde.
@@ -117,16 +117,16 @@ Prüfzahlen und tatsächliche Ausführung stehen ausschließlich im aktuellen
 [QUALITY_REPORT.md](../QUALITY_REPORT.md). Die Abnahme dieser Bereinigung
 ist keine pauschale Freigabe künftiger Architektur oder des gesamten M1.
 
-## Ergänzung: Stabilisierung und Fahrzeug-DB
+## Fahrzeugkatalog und Startausstattung
 
-- Acht Modelle aus dem vorhandenen Referenzkatalog, getrennte technische Daten
+- 14 Modelle aus dem vorhandenen Referenzkatalog, getrennte technische Daten
   und Spielwerte; Katalog wird mit ausgeliefert und nur lesend geöffnet.
 - Neue Spielstände: 175.000 € plus kostenlosem DB-IVECO S-Way. Keine automatische Gutschrift
   oder Umwandlung alter Flotten; alte Modelle bleiben disponierbar.
 - Kaufpreis, Nutzlast, Reputationsfreigabe und individuelle Kilometerkosten aktiv.
 - Wartung, Reichweitenbeschränkungen, Energiehalte und Zuverlässigkeit bleiben offen.
-- Die sechs Reviewbefunde sind durch gezielte Korrekturen und Regressionstests
-  adressiert. Tatsächliche Abnahmeergebnisse stehen in QUALITY_REPORT.md.
+- Kauf-/Quote-Validierung, verspätete Antworten und Fehlerfälle besitzen
+  Regressionstests. Tatsächliche Prüfergebnisse stehen im Qualitätsbericht.
 - M1 insgesamt bleibt wegen Unternehmen/eigener Depots weiterhin in Arbeit.
 
 
@@ -161,9 +161,7 @@ bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATAL
 - [x] Eigene Routenlinien bleiben privat; fremde Fahrzeugklicks öffnen keine privaten Transportdetails.
 - [x] Ausgeführte/abgelaufene Transporte werden nicht mehr als Live-Verkehr projiziert.
 
-## Abnahme – gemeinsamer Live-Verkehr V2
-
-- [x] Repository liest nur öffentliche Live-Traffic-Felder aus Spielerzuständen.
+- [x] TrafficReader gibt nur öffentliche Trackingwerte weiter; der SQLite-Leser validiert zuvor gespeicherte Transport-Snapshots.
 - [x] Private Vertrags-, Erlös-, Kosten- und Guthabendaten werden nicht projiziert.
 - [x] Multiplayer-Traffic-Fehler werden in der UI sichtbar und nicht still verschluckt.
 - [x] Letzter gültiger Traffic-Stand bleibt bei temporärem Fehler erhalten.
@@ -176,7 +174,9 @@ bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATAL
 ## Abnahme – lokale Mehransichten in Flotte und Shop
 
 - [x] Alle 14 aktuellen Katalogmodelle besitzen normalisierte Front- und Seitenansichten.
-- [x] Flotte und Shop verwenden dieselbe Modell-ID-Zuordnung zu den lokalen UI-Assets.
+- [x] Karte, Flotte und Shop verwenden eine gemeinsame unveränderliche Modell-ID-Zuordnung.
+- [x] Alle 134 SVGs sind mit unverändertem SHA-256 erhalten, ohne alte Pfadkopien.
+- [x] 42 aktive Ansichten und 92 zusätzliche Dateien sind nach Katalogmodell geordnet.
 - [x] Front- und Seitenansicht liegen in getrennten begrenzten Zellen und überlagern sich nicht.
 - [x] Tests prüfen für alle 14 Modelle, dass beide Dateien vorhanden und nicht identisch sind.
 - [x] Lokale Spielassets verwenden keinen Remote-Foto-Ladezustand und keine externen Credentials.
@@ -190,14 +190,12 @@ bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATAL
 
 
 
-## Domain-/Persistenzstand, 23.09.2026
+## Aktuelle technische Grundlage
 
-Die Spielbasis verwendet typisierte Entities, eine relationale SQLite-Laufzeit
-hinter Repository-/Unit-of-Work-Ports und WorldCatalogue 4.0.0 mit stabilen
-Stadtidentitäten und unveränderlichen World-Scopes. API-Felder, UI, Spielregeln
-und python main.py bleiben erhalten. Historische Transportwerte überleben
-Katalogupdates. Die drei Testkonten sind nach Backup übernommen; Sitzungen
-wurden verworfen. UI First bleibt verbindlich; Unternehmen, eigene Depots,
-Satelliten und neue Wirtschaftsmechaniken gehören weiterhin nicht zu diesem
-Umbau. Abnahme und ausgeführte Nachweise: QUALITY_REPORT.md. Der technische
-Umbau allein behauptet weder eine vollständige MVP- noch reale iPad-Abnahme.
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.0.0) und
+WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
+bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
+[Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
+Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).
+Aktuelle Prüfungen und Grenzen stehen im [Qualitätsbericht](../QUALITY_REPORT.md).
+Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abnahme.

@@ -56,6 +56,21 @@ TrafficReader liefert unveränderliche SharedTransport-Werte mit Koordinaten.
 Spielerfarben, Eigentumsmarkierung und GeoJSON entstehen erst in der API-
 Projektion; ein zusätzlicher durchreichender Mehrspieler-Service entfällt.
 
+### Begrenzte Transportabfragen
+
+Normale Spielabfragen laden ausschließlich aktive beziehungsweise fällige
+Transporte über typisierte Repository-Methoden. SQL filtert Besitzer, Status
+und Ankunft vor der Snapshot-Deserialisierung; der Index `arrivals` unterstützt
+diesen Zugriff. Vollständige Historienabfragen bleiben expliziten
+Bestandsabgleichen vorbehalten. Settlement bleibt atomar.
+
+Die Startprüfung vergleicht Primär-/Fremdschlüssel und die ausführbaren
+Transport-Guards mit dem unterstützten Schema, nicht nur deren Namen.
+SQL-Formatierung wird ignoriert, Literalinhalte bleiben unverändert.
+Abweichungen liefern `UnsupportedGameSchema` und `state.schema_rejected`;
+eine automatische Reparatur bestehender Dateien findet nicht statt.
+Die Schemaversion bleibt 1.0.0.
+
 ## Referenzwelt und Markt
 
 WorldCatalogue 4.0.0 liefert gemeinsame Country-/City-Objekte. Facility
@@ -126,18 +141,3 @@ Auszahlung und Katalogzugriff. Persistenzfehler werden an Adaptergrenzen
 normalisiert; HTTP 503 enthält weder SQL noch private Daten. Migrationsberichte
 mit Spielerbezug, Datenbanken, Backups und Prüfarbeitsdateien bleiben außerhalb
 von Git. Werkzeugnachweise und manuelles Review stehen im Qualitätsbericht.
-
-### Begrenzte Transportabfragen
-
-Normale Spielabfragen laden ausschließlich aktive beziehungsweise fällige
-Transporte über typisierte Repository-Methoden. SQL filtert Besitzer, Status
-und Ankunft vor der Snapshot-Deserialisierung; der Index `arrivals` unterstützt
-diesen Zugriff. Vollständige Historienabfragen bleiben expliziten
-Bestandsabgleichen vorbehalten. Settlement bleibt atomar.
-
-Die Startprüfung vergleicht Primär-/Fremdschlüssel und die ausführbaren
-Transport-Guards mit dem unterstützten Schema, nicht nur deren Namen.
-SQL-Formatierung wird ignoriert, Literalinhalte bleiben unverändert.
-Abweichungen liefern `UnsupportedGameSchema` und `state.schema_rejected`;
-eine automatische Reparatur bestehender Dateien findet nicht statt.
-Die Schemaversion bleibt 1.0.0.

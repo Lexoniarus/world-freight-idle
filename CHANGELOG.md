@@ -1,5 +1,17 @@
 # Changelog
 
+## Dokumentation und Fahrzeugassets – 23.09.2026
+
+- Alle 134 SVGs bytegleich nach den 14 Katalogmodellen geordnet; 42 aktive
+  Ansichten und 92 zusätzliche Dateien mit unabhängiger Inventur abgesichert.
+- Eine immutable Modellzuordnung ersetzt zwei Pfadtabellen. Bildauswahl,
+  Fallbacks, Spielerfarben, Rasterisierung und stabile Bildknoten bleiben erhalten.
+- Hauptdokumente beschreiben aktuellen Markt, relationale Laufzeit, Grafiknutzung
+  und offene Produktziele; abgeschlossene Refactor-Chronik ins Archiv verschoben.
+- Build und Assets müssen gemeinsam ausgeliefert werden; offene Seiten danach
+  neu laden. Keine Schema-/Profildatenänderung, kein Serverneustart.
+- Ausgeführte Prüfungen und Einschränkungen: [Qualitätsbericht](QUALITY_REPORT.md).
+
 ## Persistenz-Review-Fixes – 23.09.2026
 
 - Aktive und fällige Transporte werden vor dem Laden der Snapshots in SQL
