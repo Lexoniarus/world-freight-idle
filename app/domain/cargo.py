@@ -67,3 +67,26 @@ class FacilityNhmProfile:
         require_finite(self.priority_score, "Priority")
         if self.confidence > 1 or self.priority_score > 1:
             raise ValueError("NHM weights must be between zero and one.")
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentedCargo:
+    """Historical goods description without claiming an NHM identity."""
+
+    code: str
+    name: str
+    role: str
+    standard: bool
+    evidence_type: str
+    source: SourceReference | None
+
+    def __post_init__(self) -> None:
+        """Require an identified description and explicit handling evidence."""
+        require_identity(self.code, "Goods code")
+        require_identity(self.name, "Goods description")
+        require_identity(self.evidence_type, "Evidence type")
+        if (
+            self.role not in {"input", "output", "both"}
+            or type(self.standard) is not bool
+        ):
+            raise ValueError("Invalid documented goods evidence.")

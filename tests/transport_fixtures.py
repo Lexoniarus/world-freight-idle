@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 
+from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.services.game import GameService
 
@@ -25,7 +26,7 @@ def add_transport(
     trip = ActiveTransport(
         transport_id,
         vehicle.id,
-        offer,
+        HistoricalContractSnapshot.from_offer(offer),
         offer.origin,
         offer.destination,
         RouteSnapshot(((13, 52), (9, 53)), 400, 100, "fixture"),

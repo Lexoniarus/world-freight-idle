@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from app.domain.cargo import FacilityNhmProfile
+from app.domain.cargo import DocumentedCargo, FacilityNhmProfile
 from app.domain.evidence import SourceReference
 from app.domain.geography import Address, City, Coordinates, Country
 
@@ -27,9 +27,11 @@ class CompanyIdentity:
     """Compact immutable company identity for runtime projections."""
 
     company_uid: str
-    legal_name: str
-    display_name: str
-    country: Country
+    legal_name: str | None
+    display_name: str | None
+    country: Country | None
+    website: str | None = None
+    sources: tuple[SourceReference, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +62,9 @@ class FacilityLocationSnapshot:
     location_verified: bool
     snapshot_version: int = 1
     location_kind: str = "public_facility"
+    sources: tuple[SourceReference, ...] = ()
+    handled_goods: tuple[DocumentedGood, ...] = ()
+    handling_evidence: tuple[FacilityNhmProfile | DocumentedCargo, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,6 +137,8 @@ class Facility:
                 legal_name=self.company.legal_name,
                 display_name=self.company.display_name,
                 country=self.company.country,
+                website=self.company.website,
+                sources=self.company.sources,
             )
             if self.company
             else None
@@ -152,6 +159,8 @@ class Facility:
                 "resolved" if self.is_routable() else "unavailable"
             ),
             location_verified=self.has_verified_location(),
+            sources=self.sources,
+            handled_goods=self.handled_goods,
         )
 
 

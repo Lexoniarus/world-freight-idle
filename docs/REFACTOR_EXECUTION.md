@@ -426,3 +426,35 @@ Fehlgeschlagene Kopien und Imports hinterlassen keine halbfertige Ausgabe.
 
 Zwölf betroffene Import-/Backup-/Manifest-/Architekturfälle bestanden. mypy,
 Pyright und Ruff bestanden. Die echte Profilübernahme folgt nach diesem Commit.
+
+## F: Tatsächliche Altformate und ausdrückliche Demo-Ausnahme
+
+Das SQLite-Backup wurde vor dem ersten Lesen der echten Profile erstellt;
+kein Spielserver lief. Die erste Prüfung brach korrekt an älteren vollständigen
+Referenzsnapshots ab. Das Offline-Mapping bewahrt nun auch deren Quellen und
+dokumentierte Waren. Ein HistoricalContractSnapshot trennt transportierte
+Vereinbarungen von heutigen verfügbaren Angeboten; alte Waren erhalten keine
+erfundene NHM-Identität. Neue Dispositionen verwenden dieselbe historische
+Domainstruktur.
+
+Der Nutzer hat ausdrücklich bestätigt, den zusätzlichen kontolosen Demostand
+nur im Backup zu behalten. Dafür besitzt ausschließlich das Offline-CLI die
+Option --exclude-global-demo; unbekannte Zustände werden weiter abgewiesen.
+Die Inventur erkennt drei Konten, 21 Fahrzeuge und 21 offene Transporte.
+51 betroffene Tests sowie mypy/Pyright bestanden. Die Aktivierung erfolgt erst
+nach unabhängiger Prüfung der neuen Datei.
+
+Die Datenübernahme wurde am 23.09.2026 ausgeführt: Drei Konten, 21 Fahrzeuge
+und 21 laufende Transporte sind übernommen. Alle gespeicherten Altwerte
+einschließlich Passwort-Hashes, Endpunkte, Geometrien, Zeiten und Geldwerte
+wurden unabhängig verglichen. 25 abgelaufene Angebote sind im privaten
+Importbericht ausgewiesen. Der autorisiert ausgeschlossene globale Demostand
+bleibt im Backup. Auf einer Wegwerfkopie wurden alle 21 fälligen Transporte
+ohne Routing und ohne Doppelzahlung abgerechnet. Die aktivierte game.db
+enthält sie weiterhin unabgerechnet für den nächsten normalen Spielzugriff.
+
+51 betroffene Fälle bestanden; im zusätzlichen Aufruferlauf zeigten drei
+Tests eine unnötige Vergrößerung der öffentlichen Standortprojektion. Diese
+bleibt kompakt, während die Persistenz sämtliche historischen Quellen hält.
+Der Nachlauf mit allen drei Fällen, Import und Manifest bestand (15 Fälle).
+Backup, Originaldateien und private Abgleichberichte sind ausgeschlossen von Git.

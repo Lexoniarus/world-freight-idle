@@ -3,7 +3,10 @@
 from typing import Any
 
 from app.domain.transports import ActiveTransport, RouteSnapshot
-from app.repositories.snapshot_mapping import load_location, load_offer
+from app.repositories.snapshot_mapping import (
+    load_historical_contract,
+    load_location,
+)
 
 
 def load_transport(value: dict[str, Any]) -> ActiveTransport:
@@ -12,7 +15,7 @@ def load_transport(value: dict[str, Any]) -> ActiveTransport:
     return ActiveTransport(
         **{
             **value,
-            "contract": load_offer(value["contract"]),
+            "contract": load_historical_contract(value["contract"]),
             "origin": load_location(value["origin"]),
             "destination": load_location(value["destination"]),
             "route": RouteSnapshot(

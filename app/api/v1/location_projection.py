@@ -16,8 +16,12 @@ def project_location(location: FacilityLocationSnapshot) -> dict[str, Any]:
         ),
         "company": (
             {
-                **asdict(location.company),
-                "country": location.company.country.code,
+                "company_uid": location.company.company_uid,
+                "legal_name": location.company.legal_name,
+                "display_name": location.company.display_name,
+                "country": location.company.country.code
+                if location.company.country
+                else None,
             }
             if location.company
             else None

@@ -20,6 +20,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", required=True, type=Path)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--exclude-global-demo", action="store_true")
     parser.add_argument("--backup", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
@@ -29,7 +30,9 @@ def main() -> None:
     if args.check:
         if args.backup or args.output:
             parser.error("Check mode takes only --source.")
-        report = build_game_importer(args.source, settings).inspect(now)
+        report = build_game_importer(
+            args.source, settings, args.exclude_global_demo
+        ).inspect(now)
     else:
         if args.backup is None or args.output is None:
             parser.error("Execution requires --backup and --output.")
@@ -39,9 +42,9 @@ def main() -> None:
         if args.output.exists():
             parser.error("Output already exists; nothing will be overwritten.")
         backup_database(args.source, args.backup)
-        report = build_game_importer(args.backup, settings).import_to(
-            args.output, now
-        )
+        report = build_game_importer(
+            args.backup, settings, args.exclude_global_demo
+        ).import_to(args.output, now)
     print(json.dumps(asdict(report), ensure_ascii=False))
 
 

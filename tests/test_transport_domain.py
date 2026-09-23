@@ -8,6 +8,7 @@ from app.api.v1.game_projection import (
     project_vehicle,
 )
 from app.api.v1.location_projection import project_location
+from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.repositories.transport_mapping import load_transport
 
@@ -18,7 +19,7 @@ def test_transport_lifecycle_rejects_invalid_and_duplicate_settlement(game):
     trip = ActiveTransport(
         "trip",
         "truck",
-        offer,
+        HistoricalContractSnapshot.from_offer(offer),
         offer.origin,
         offer.destination,
         route,

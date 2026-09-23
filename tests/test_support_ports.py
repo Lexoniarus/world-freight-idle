@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.errors import DuplicateAccountError, PersistenceError
 from app.domain.game import PlayerState
 from app.domain.transports import ActiveTransport, RouteSnapshot
@@ -30,7 +31,7 @@ def test_relational_public_reads_preserve_privacy_and_offline_progress(
     trip = ActiveTransport(
         "shared",
         vehicle.id,
-        offer,
+        HistoricalContractSnapshot.from_offer(offer),
         offer.origin,
         offer.destination,
         route,

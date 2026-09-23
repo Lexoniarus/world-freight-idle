@@ -407,3 +407,17 @@ FUNCTION_TESTS.update(
 FUNCTION_TESTS[
     "app.repositories.legacy_import_mapping.reject_unknown_fields"
 ] = "test_legacy_snapshot_decoding_rejects_conflicting_facts"
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.cargo.DocumentedCargo.__post_init__": "test_historical_terms_preserve_non_nhm_evidence_and_reject_invalid_values",
+        "app.domain.contracts.HistoricalContractSnapshot.__post_init__": "test_historical_terms_preserve_non_nhm_evidence_and_reject_invalid_values",
+        "app.domain.contracts.HistoricalContractSnapshot.from_offer": "test_historical_terms_preserve_non_nhm_evidence_and_reject_invalid_values",
+        "app.repositories.snapshot_mapping.load_documented_cargo": "test_historical_terms_preserve_non_nhm_evidence_and_reject_invalid_values",
+        "app.repositories.snapshot_mapping.load_historical_contract": "test_historical_terms_preserve_non_nhm_evidence_and_reject_invalid_values",
+        "app.repositories.legacy_import_mapping.read_documented_cargo": "test_old_reference_documents_and_retired_offers_are_explicitly_handled",
+        "app.repositories.legacy_import_mapping.LegacySnapshotReader.historical_contract": "test_old_reference_documents_and_retired_offers_are_explicitly_handled",
+        "app.repositories.legacy_import_mapping.LegacySnapshotReader.validate_obsolete_offer": "test_old_reference_documents_and_retired_offers_are_explicitly_handled",
+        "app.repositories.legacy_game_import.LegacyGameImporter._exclude_global_demo": "test_global_demo_exclusion_requires_explicit_choice",
+    }
+)

@@ -462,3 +462,10 @@ Legacy-Abbau: Hub, Minimal-Contract, CargoType und RouteResult sind entfernt.
 OwnedVehicle besitzt genau eine facility_uid. Das historische HTTP-Feld
 hub_id wird nur im API-Mapper projiziert. calculate_price ist eine reine
 Berechnung mit gespeicherten Konditionen; keine namensabhängige Cargo-Tabelle.
+
+ActiveTransport komponiert einen HistoricalContractSnapshot, keine verfügbare
+ContractOffer-Entity. Historische Waren können als dokumentierte Beschreibung
+vorliegen, ohne NHM-Identität zu behaupten. Quellen, dokumentierte Waren und
+damalige Handling-Evidenz bleiben typisierte Standort-Snapshotwerte.
+CompanyIdentity erlaubt bei früheren kompakten Endpunkten eine bekannte UID
+ohne nachträglich erfundene Namen.

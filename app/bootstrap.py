@@ -159,10 +159,13 @@ def build_geography_migration(
     return WorldGeographyRepository(backup, target)
 
 
-def build_game_importer(source: Path, settings: Settings) -> GameStateImporter:
+def build_game_importer(
+    source: Path, settings: Settings, exclude_global_demo: bool = False
+) -> GameStateImporter:
     """Assemble the explicit offline importer without opening runtime state."""
     return LegacyGameImporter(
         source,
         WorldScope(build_world_catalogue(settings).read()),
         MarketGenerator.model_id,
+        exclude_global_demo=exclude_global_demo,
     )

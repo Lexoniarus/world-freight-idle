@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.api.v1.dependencies import get_game_service
 from app.config import Settings
+from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.game import PlayerState
 from app.domain.models import PriceQuote
 from app.domain.results import ContractQuote, GameSnapshot
@@ -24,7 +25,7 @@ class FakeGame:
         self.trip = ActiveTransport(
             "trip1",
             self.vehicle.id,
-            self.offer,
+            HistoricalContractSnapshot.from_offer(self.offer),
             self.offer.origin,
             self.offer.destination,
             self.route,

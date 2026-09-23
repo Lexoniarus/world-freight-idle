@@ -3,7 +3,7 @@
 from dataclasses import dataclass, replace
 from typing import Literal
 
-from app.domain.contracts import ContractOffer
+from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.validation import (
     require_finite,
     require_identity,
@@ -45,7 +45,7 @@ class ActiveTransport:
 
     id: str
     vehicle_id: str
-    contract: ContractOffer
+    contract: HistoricalContractSnapshot
     origin: FacilityLocationSnapshot
     destination: FacilityLocationSnapshot
     route: RouteSnapshot

@@ -71,11 +71,16 @@ class LegacyGameImporter:
     """Read only the offline source and write an exclusively created target."""
 
     def __init__(
-        self, source: Path, world: WorldScope, market_model: str
+        self,
+        source: Path,
+        world: WorldScope,
+        market_model: str,
+        exclude_global_demo: bool = False,
     ) -> None:
         self.source = source.resolve()
         self.reader = LegacySnapshotReader(world)
         self.market_model = market_model
+        self.exclude_global_demo = exclude_global_demo
 
     def _read_profiles(self, now: float) -> tuple[ImportedProfile, ...]:
         """Inventory a consistent read transaction; reject unknown state."""
@@ -122,6 +127,8 @@ class LegacyGameImporter:
                     self._read_profile(account, states, now)
                     for account in accounts
                 )
+                if self.exclude_global_demo:
+                    self._exclude_global_demo(states)
                 if states:
                     raise ValueError(
                         "Unassigned or unknown legacy state keys."
@@ -154,6 +161,9 @@ class LegacyGameImporter:
             require_identity(value, "Account field")
         require_finite(created_at, "Account creation")
         prefix = f"user:{user_id}:"
+        version = states.pop(prefix + "world_state_version", 1)
+        if version != 1:
+            raise ValueError("Unknown world-state revision.")
         player = PlayerState(**states.pop(prefix + "player"))
         vehicles = tuple(
             self.reader.vehicle(value)
@@ -162,6 +172,12 @@ class LegacyGameImporter:
         offers = []
         excluded = []
         for value in states.pop(prefix + "contracts"):
+            if "market_model" not in value:
+                self.reader.validate_obsolete_offer(value)
+                excluded.append(
+                    ExcludedOffer(user_id, value["id"], "obsolete_goods_model")
+                )
+                continue
             offer = self.reader.offer(value)
             if offer.is_available(now, self.market_model):
                 offers.append(offer)
@@ -183,6 +199,25 @@ class LegacyGameImporter:
         )
         validate_profile_links(profile)
         return profile
+
+    def _exclude_global_demo(self, states: dict[str, Any]) -> None:
+        """Leave the explicitly approved unassigned demo only in its backup."""
+        required = {"player", "vehicles", "contracts", "active_trips"}
+        if not required <= states.keys() or states["active_trips"]:
+            raise ValueError("Global demo is missing or contains transports.")
+        if states.get("world_state_version", 1) != 1:
+            raise ValueError("Unknown global world-state revision.")
+        PlayerState(**states["player"])
+        for vehicle in states["vehicles"]:
+            self.reader.vehicle(vehicle)
+        for offer in states["contracts"]:
+            self.reader.validate_obsolete_offer(offer)
+        for key in required | {"world_state_version"}:
+            states.pop(key, None)
+        LOGGER.info(
+            "Authorized global demo retained in backup",
+            extra={"event": "state.import_demo_excluded"},
+        )
 
     def inspect(self, now: float) -> GameImportReport:
         """Validate and count a source without opening any destination."""

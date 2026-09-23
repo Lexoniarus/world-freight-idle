@@ -2,13 +2,18 @@
 
 from typing import Any
 
-from app.domain.cargo import FacilityNhmProfile, NhmProduct
-from app.domain.contracts import ContractOffer
+from app.domain.cargo import DocumentedCargo, FacilityNhmProfile, NhmProduct
+from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.evidence import SourceReference
 from app.domain.game import OwnedVehicle
 from app.domain.geography import City, Coordinates
 from app.domain.transports import ActiveTransport, RouteSnapshot
-from app.domain.world import CompanyIdentity, FacilityLocationSnapshot
+from app.domain.validation import require_finite, require_identity
+from app.domain.world import (
+    CompanyIdentity,
+    DocumentedGood,
+    FacilityLocationSnapshot,
+)
 from app.domain.world_scopes import WorldScope
 
 
@@ -37,7 +42,7 @@ class LegacySnapshotReader:
             country,
             reference.address.city.region,
         )
-        raw_company = value["company"]
+        raw_company = value.get("company")
         company = None
         if raw_company is not None:
             company = CompanyIdentity(
@@ -45,7 +50,14 @@ class LegacySnapshotReader:
                 raw_company["legal_name"],
                 raw_company["display_name"],
                 self.world.country(raw_company["country"]).country,
+                raw_company.get("website"),
+                tuple(
+                    SourceReference(**item)
+                    for item in raw_company.get("sources", [])
+                ),
             )
+        elif value.get("company_uid"):
+            company = CompanyIdentity(value["company_uid"], None, None, None)
         if value.get("company_uid") != (
             company.company_uid if company else None
         ):
@@ -70,9 +82,27 @@ class LegacySnapshotReader:
             catalogue_version=value["catalogue_version"],
             aliases=tuple(value["aliases"]),
             resolution_status=value["resolution_status"],
-            location_verified=value["location_verified"],
+            location_verified=value.get(
+                "location_verified",
+                value["geocoding_status"] == "verified_coordinates",
+            ),
             snapshot_version=value["snapshot_version"],
             location_kind=value["location_kind"],
+            sources=tuple(
+                SourceReference(**item) for item in value.get("sources", [])
+            ),
+            handled_goods=tuple(
+                DocumentedGood(
+                    **{**item, "source": SourceReference(**item["source"])}
+                )
+                for item in value.get("handled_goods", [])
+            ),
+            handling_evidence=tuple(
+                read_legacy_profile(item)
+                if "nhm_row_id" in item
+                else read_documented_cargo(item)
+                for item in value.get("cargo", [])
+            ),
         )
 
     def vehicle(self, value: dict[str, Any]) -> OwnedVehicle:
@@ -148,6 +178,57 @@ class LegacySnapshotReader:
             relationship_simulated=value["relationship_simulated"],
         )
 
+    def validate_obsolete_offer(self, value: dict[str, Any]) -> None:
+        """Validate known retired offers before reporting their exclusion."""
+        reject_unknown_fields(value, OFFER_FIELDS)
+        for field in ("id", "cargo", "shipper_name", "consignee_name", "mode"):
+            require_identity(value[field], "Historical offer field")
+        require_finite(value["tons"], "Tonnage", 0.01)
+        require_finite(value["created_at"], "Creation")
+        require_finite(value["expires_at"], "Expiry")
+        if value["expires_at"] <= value["created_at"]:
+            raise ValueError("Invalid obsolete offer timeline.")
+        origin = self.location(value["origin"])
+        destination = self.location(value["destination"])
+        if origin.facility_uid == destination.facility_uid:
+            raise ValueError("Identical obsolete offer endpoints.")
+        for prefix, location in (
+            ("origin", origin),
+            ("destination", destination),
+        ):
+            if any(
+                value[prefix + "_" + suffix] != location.facility_uid
+                for suffix in ("hub_id", "facility_uid")
+            ):
+                raise ValueError("Conflicting obsolete offer endpoints.")
+
+    def historical_contract(
+        self, value: dict[str, Any]
+    ) -> HistoricalContractSnapshot:
+        """Preserve NHM or documented goods without inventing facts."""
+        if value.get("market_model") is not None:
+            return HistoricalContractSnapshot.from_offer(self.offer(value))
+        self.validate_obsolete_offer(value)
+        cargo = read_documented_cargo(value["cargo_evidence"])
+        if cargo.code != value["cargo_code"] or cargo.name != value["cargo"]:
+            raise ValueError("Historical description differs from evidence.")
+        return HistoricalContractSnapshot(
+            id=value["id"],
+            origin=self.location(value["origin"]),
+            destination=self.location(value["destination"]),
+            shipper_name=value["shipper_name"],
+            consignee_name=value["consignee_name"],
+            cargo=cargo,
+            tons=value["tons"],
+            created_at=value["created_at"],
+            expires_at=value["expires_at"],
+            mode=value["mode"],
+            relationship_simulated=value["relationship_simulated"],
+            cargo_basis=value["cargo_basis"],
+            payload_band=value["payload_band"],
+            rate_eur_per_km_ton=value["rate_eur_per_km_ton"],
+        )
+
     def transport(self, value: dict[str, Any]) -> ActiveTransport:
         """Copy the saved route, timeline and economics; never reroute."""
         reject_unknown_fields(value, TRANSPORT_FIELDS)
@@ -169,7 +250,7 @@ class LegacySnapshotReader:
         return ActiveTransport(
             id=value["id"],
             vehicle_id=value["vehicle_id"],
-            contract=self.offer(value["contract"]),
+            contract=self.historical_contract(value["contract"]),
             origin=self.location(value["origin_snapshot"]),
             destination=self.location(value["destination_snapshot"]),
             route=RouteSnapshot(
@@ -226,6 +307,9 @@ LOCATION_FIELDS = frozenset(
         "location_verified",
         "snapshot_version",
         "location_kind",
+        "sources",
+        "handled_goods",
+        "cargo",
     }
 )
 VEHICLE_FIELDS = frozenset(
@@ -302,3 +386,15 @@ def reject_unknown_fields(
     """Fail closed on unrecognized documents rather than losing new fields."""
     if not isinstance(value, dict) or value.keys() - allowed:
         raise ValueError("Unknown legacy snapshot fields.")
+
+
+def read_documented_cargo(value: dict[str, Any]) -> DocumentedCargo:
+    """Retain an older documented classification as its own historical fact."""
+    return DocumentedCargo(
+        **{
+            **value,
+            "source": SourceReference(**value["source"])
+            if value["source"]
+            else None,
+        }
+    )

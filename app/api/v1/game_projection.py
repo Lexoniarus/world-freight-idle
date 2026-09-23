@@ -4,22 +4,34 @@ from dataclasses import asdict
 from typing import Any
 
 from app.api.v1.location_projection import project_location
-from app.domain.cargo import FacilityNhmProfile
-from app.domain.contracts import ContractOffer, ContractOfferSnapshot
+from app.domain.cargo import DocumentedCargo, FacilityNhmProfile
+from app.domain.contracts import (
+    ContractOffer,
+    ContractOfferSnapshot,
+    HistoricalContractSnapshot,
+)
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.results import ContractQuote, FleetCatalogue, GameSnapshot
 from app.domain.transports import ActiveTransport
 
 
 def project_contract(
-    offer: ContractOffer | ContractOfferSnapshot,
+    offer: ContractOffer | ContractOfferSnapshot | HistoricalContractSnapshot,
 ) -> dict[str, Any]:
     """Expose an offer using the established v1 field names."""
     origin = project_location(offer.origin)
     destination = project_location(offer.destination)
-    origin_evidence = project_nhm_profile(offer.origin_cargo_evidence)
-    destination_evidence = project_nhm_profile(
-        offer.destination_cargo_evidence
+    origin_evidence = (
+        project_nhm_profile(offer.origin_cargo_evidence)
+        if offer.origin_cargo_evidence
+        else asdict(offer.cargo)
+        if isinstance(offer.cargo, DocumentedCargo)
+        else None
+    )
+    destination_evidence = (
+        project_nhm_profile(offer.destination_cargo_evidence)
+        if offer.destination_cargo_evidence
+        else None
     )
     return {
         "id": offer.id,

@@ -7,7 +7,7 @@ import time
 import uuid
 from collections.abc import Sequence
 
-from app.domain.contracts import ContractOffer
+from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.errors import CatalogueError
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
@@ -492,7 +492,7 @@ class GameService:
         trip = ActiveTransport(
             id=str(uuid.uuid4()),
             vehicle_id=vehicle_id,
-            contract=contract,
+            contract=HistoricalContractSnapshot.from_offer(contract),
             origin=contract.origin,
             destination=contract.destination,
             route=quote.route,

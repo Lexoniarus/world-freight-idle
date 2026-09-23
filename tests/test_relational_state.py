@@ -8,6 +8,7 @@ from dataclasses import replace
 
 import pytest
 
+from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.errors import PersistenceError, UnsupportedGameSchema
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.transports import ActiveTransport, RouteSnapshot
@@ -118,7 +119,7 @@ def test_relational_entities_roundtrip_isolate_and_protect_history(
     trip = ActiveTransport(
         "trip",
         vehicle.id,
-        offer,
+        HistoricalContractSnapshot.from_offer(offer),
         offer.origin,
         offer.destination,
         route,
@@ -214,7 +215,7 @@ def test_snapshot_envelopes_and_corrupt_records_fail_explicitly(
     trip = ActiveTransport(
         "t",
         vehicle.id,
-        offer,
+        HistoricalContractSnapshot.from_offer(offer),
         offer.origin,
         offer.destination,
         RouteSnapshot(((1, 1), (2, 2)), 1, 1, "fake"),

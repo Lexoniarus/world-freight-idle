@@ -20,6 +20,7 @@ from app.bootstrap import (
     build_player_service,
 )
 from app.config import Settings
+from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.errors import PersistenceError
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.domain.world_scopes import WorldScope
@@ -48,7 +49,7 @@ def legacy_source(tmp_path, game):
     trip = ActiveTransport(
         "trip-1",
         vehicle.id,
-        offer,
+        HistoricalContractSnapshot.from_offer(offer),
         offer.origin,
         offer.destination,
         RouteSnapshot(
@@ -316,7 +317,9 @@ def test_import_cli_requires_backup_and_separate_paths(
 
     path, importer, _, now, _ = legacy_source
     monkeypatch.setattr(
-        cli, "build_game_importer", lambda source, settings: importer
+        cli,
+        "build_game_importer",
+        lambda source, settings, exclude_global_demo=False: importer,
     )
     monkeypatch.setattr(cli.time, "time", lambda: now)
     monkeypatch.setattr(
@@ -404,3 +407,159 @@ def test_backup_failure_removes_only_its_own_incomplete_output(tmp_path):
         origin.close.assert_called_once()
         destination.close.assert_called_once()
     assert source.read_bytes() == b"source untouched"
+
+
+def test_historical_terms_preserve_non_nhm_evidence_and_reject_invalid_values(
+    game,
+):
+    from dataclasses import asdict
+
+    from app.domain.cargo import DocumentedCargo
+    from app.repositories.snapshot_mapping import (
+        load_documented_cargo,
+        load_historical_contract,
+    )
+
+    offer = game.state_repository.list_offers()[0]
+    saved = HistoricalContractSnapshot.from_offer(offer)
+    assert load_historical_contract(asdict(saved)) == saved
+    goods = DocumentedCargo("10", "Metals", "output", True, "official", None)
+    old = replace(
+        saved,
+        cargo=goods,
+        origin_cargo_evidence=None,
+        destination_cargo_evidence=None,
+        market_model=None,
+        cargo_system=None,
+        trade_match_type=None,
+    )
+    assert load_historical_contract(asdict(old)) == old
+    assert load_documented_cargo(asdict(goods)) == goods
+    for changes in ({"role": "unknown"}, {"standard": 1}, {"code": ""}):
+        with pytest.raises(ValueError):
+            replace(goods, **changes)
+    for changes in (
+        {"id": ""},
+        {"tons": float("inf")},
+        {"expires_at": saved.created_at},
+        {"destination": saved.origin},
+        {"origin_cargo_evidence": None},
+        {"cargo": replace(saved.cargo, code="other")},
+    ):
+        with pytest.raises(ValueError):
+            replace(saved, **changes)
+    with pytest.raises(ValueError):
+        replace(old, origin_cargo_evidence=saved.origin_cargo_evidence)
+    with pytest.raises(KeyError):
+        load_historical_contract({})
+    with pytest.raises(TypeError):
+        load_documented_cargo({"source": None})
+
+
+def test_old_reference_documents_and_retired_offers_are_explicitly_handled(
+    legacy_source,
+):
+    from dataclasses import asdict
+
+    from app.repositories.legacy_import_mapping import read_documented_cargo
+    from app.repositories.snapshot_mapping import load_location
+
+    _, importer, state, _, _ = legacy_source
+    reader = importer.reader
+    goods = {
+        "code": "10",
+        "name": "Metals",
+        "role": "output",
+        "standard": True,
+        "evidence_type": "official",
+        "source": {
+            "url": "https://example.test/fact",
+            "role": "official",
+            "verified_at": "2026-09-18",
+        },
+    }
+    offer = copy.deepcopy(state["contracts"][0])
+    for key in (
+        "market_model",
+        "cargo_system",
+        "origin_cargo_evidence",
+        "destination_cargo_evidence",
+        "trade_match_type",
+    ):
+        offer.pop(key)
+    offer.update(cargo="Metals", cargo_code="10", cargo_evidence=goods)
+    offer["origin"]["cargo"] = [
+        goods,
+        state["contracts"][0]["origin_cargo_evidence"],
+    ]
+    offer["origin"].pop("location_verified")
+    old = reader.historical_contract(offer)
+    assert old.market_model is None and old.cargo.name == "Metals"
+    assert load_location(asdict(old.origin)) == old.origin
+    assert len(old.origin.handling_evidence) == 2
+    compact = copy.deepcopy(offer["origin"])
+    compact.pop("company")
+    partial = reader.location(compact)
+    assert partial.company.company_uid == compact["company_uid"]
+    assert partial.company.legal_name is None
+    assert load_location(asdict(partial)) == partial
+    no_company = {**compact, "company_uid": None, "lat": None, "lon": None}
+    assert reader.location(no_company).company is None
+    vehicle = {**state["vehicles"][0]}
+    vehicle.pop("location_snapshot")
+    assert reader.vehicle(vehicle).location is not None
+    with pytest.raises(ValueError):
+        reader.location({**compact, "snapshot_version": 99})
+    with pytest.raises(ValueError):
+        reader.historical_contract({**offer, "cargo_code": "wrong"})
+    with pytest.raises(ValueError):
+        read_documented_cargo({**goods, "role": "bad"})
+    for changed in (
+        {**offer, "tons": -1},
+        {**offer, "expires_at": offer["created_at"]},
+        {**offer, "destination": offer["origin"]},
+        {**offer, "origin_hub_id": "other"},
+    ):
+        with pytest.raises(ValueError):
+            reader.validate_obsolete_offer(changed)
+
+
+def test_global_demo_exclusion_requires_explicit_choice(
+    legacy_source, tmp_path
+):
+    path, importer, state, now, _ = legacy_source
+    demo = copy.deepcopy(state)
+    demo["active_trips"] = []
+    demo["vehicles"][0]["status"] = "idle"
+    demo["contracts"] = []
+    with closing(sqlite3.connect(path)) as connection:
+        connection.executemany(
+            "INSERT INTO kv VALUES (?,?)",
+            [(key, json.dumps(value)) for key, value in demo.items()],
+        )
+        connection.execute("INSERT INTO kv VALUES ('world_state_version','1')")
+        connection.execute(
+            "INSERT INTO kv VALUES ('user:a:world_state_version','1')"
+        )
+        connection.commit()
+    with pytest.raises(PersistenceError):
+        importer.inspect(now)
+    explicit = LegacyGameImporter(
+        path,
+        importer.reader.world,
+        importer.market_model,
+        exclude_global_demo=True,
+    )
+    assert explicit.inspect(now).accounts == 3
+    explicit.import_to(tmp_path / "selected.db", now)
+    update_legacy(path, "active_trips", state["active_trips"])
+    with pytest.raises(PersistenceError):
+        explicit.inspect(now)
+    update_legacy(path, "active_trips", [])
+    update_legacy(path, "world_state_version", 2)
+    with pytest.raises(PersistenceError):
+        explicit.inspect(now)
+    update_legacy(path, "world_state_version", 1)
+    update_legacy(path, "user:a:world_state_version", 2)
+    with pytest.raises(PersistenceError):
+        explicit.inspect(now)
