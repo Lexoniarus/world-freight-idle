@@ -1,26 +1,25 @@
-# Qualitätsbericht: Drei Persistenz-Review-Fixes
+# Qualitätsbericht: Dokumentation und Fahrzeugassets
 
-Stand: 23.09.2026. Umfang: `fix/domain-persistence-review` gegenüber
-`main` nach PR #8. Umgebung: Windows, Python 3.11.9, Node 24, Microsoft Edge.
-Dieser Bericht ersetzt die frühere pauschale Abschlussbewertung. Historische
-Refactor- und Migrationsnachweise bleiben in PR #8 und der Git-Historie erhalten.
+Stand: 23.09.2026. Umfang: `refactor/docs-and-vehicle-assets` gegenüber main
+(f82cd51, nach PR #9). Lokale Umgebung: Windows, Python 3.11.9, Node 24,
+Microsoft Edge. Frühere Persistenz-Reproduktionen bleiben in PR #9 und der
+Git-Historie nachvollziehbar; dieser Bericht beschreibt den aktuellen Change.
 
-## Reproduzierte und reparierte Befunde
+## Änderungen und Erhaltungsnachweise
 
-1. Ein Dashboard-Aufruf deserialisierte bei 100 abgeschlossenen Transporten
-   200 Transportdatensätze innerhalb von Schreibtransaktionen. Repository-Abfragen
-   filtern jetzt Besitzer, aktiven Status und Fälligkeit vor der Deserialisierung.
-   Der Regressionstest bestätigt null geladene Transporte bei reiner Historie.
-2. Die Startprüfung akzeptierte einen gewöhnlichen Index mit dem Namen des
-   erforderlichen Unique-Index. Sie vergleicht jetzt Primär-/Fremdschlüssel und
-   tatsächliche Guard-Definitionen. Manipulierte Indizes/Trigger werden abgewiesen;
-   Formatierung darf variieren, Literalinhalte werden nicht verändert.
-3. Unbekannte Unternehmensfelder wurden beim Offline-Import verworfen.
-   Verschachtelte Firmen, Quellen, Waren, NHM-Profile und GeoJSON werden nun vor
-   dem Mapping geprüft. Beide Importmodi brechen mit einem sicheren Feldpfad ab;
-   unbekannte Feldwerte erscheinen nicht in Diagnosen. Bekannte optionale
-   Metadaten werden bewahrt. Widersprüchliche Stadt-/Standortangaben werden
-   zurückgewiesen, statt sie still durch Referenzwerte zu ersetzen.
+- Unabhängige Inventur vor der Umordnung: 134 SVGs, 14 Katalogmodelle,
+  42 tatsächlich verwendete Karten-/Front-/Seitenbilder und 92 weitere Dateien.
+  Altpfad, Modell, Rolle, Zielpfad und SHA-256 bleiben versioniert erhalten.
+- Alle 134 Dateien bytegleich verschoben. Keine Variante gelöscht, kombiniert
+  oder neu gerendert; keine Datenbank oder Katalog-Bildmetadaten geändert.
+- Eine unveränderliche Modellzuordnung ersetzt zwei Pfadtabellen. Keine
+  Pfadkopien, Weiterleitungs- oder Kompatibilitätsschicht eingeführt.
+- Ein bereits falscher DAF-Frontbild-Hash im alten Teilmanifest wurde mit der
+  unabhängig erfassten Datei abgeglichen. Die alte Angabe bleibt als historische
+  Notiz erhalten; die SVG selbst ist unverändert.
+- Hauptdokumente unterscheiden Ist-Stand, Vision und offene Abnahme. Korrigiert
+  sind Modellanzahl, Grafikpriorität, lazy Markt und relationale Traffic-Leser.
+  Die abgeschlossene Umbauchronik ist ausdrücklich historisch archiviert.
 
 ## Ausgeführte Werkzeugprüfungen
 
@@ -28,64 +27,61 @@ Refactor- und Migrationsnachweise bleiben in PR #8 und der Git-Historie erhalten
 | --- | --- |
 | `python scripts/quality.py` | Vollständig bestanden, Exit 0 |
 | Ruff / Format | Bestanden, 129 Dateien |
-| mypy einschließlich Pflege-/Import-CLIs | 84 Quelldateien, keine Fehler |
+| mypy einschließlich Offline-CLIs | 84 Quelldateien, keine Fehler |
 | Pyright | 0 Fehler, 0 Warnungen |
-| Python-Verhalten, API, Architektur und Manifest | 277 Tests bestanden |
+| Python-Verhalten, API, Architektur und Manifest | 278 Tests bestanden |
 | Core-Statement-Coverage | 100 %, 3.087 Statements, 0 fehlend |
-| Frontend-Verhalten und Architektur | 54 Tests bestanden |
+| Frontend-Verhalten und Architektur | 57 Tests bestanden |
 | ESLint, Stylelint, Prettier, checkJs | Bestanden |
 | Vite-Produktionsbuild / compileall | Bestanden |
-| Browserregression | 10 Szenarien bestanden, Edge, 1,9 Minuten |
-| Git-Diff-Whitespace | Keine Fehler |
+| Browserregression | Alle 11 vorhandenen Szenarien bestanden, Edge, 1,6 Minuten |
+| Asset-Inventar | Alle 134 Zielpfade und SHA-256 stimmen; 42 Bildauswahlen unverändert |
+| Statische HTTP-Auslieferung | Alle 42 verwendeten SVGs: 200, SVG-MIME und unveränderter Hash; alte/fehlende Pfade: 404 |
+| Vite-Entwicklungsproxy | 42 SVG-Pfade einschließlich MIME/Hash und fehlender Pfad geprüft |
+| Dokumentationslinks / Git-Diff | Lokale Dateilinks geprüft; keine fehlenden Ziele oder Whitespacefehler |
 
-Lokale Nachweise: `artifacts/review-final-quality.log`,
-`artifacts/review-e2e.log`, `artifacts/review-transport-tests.log`,
-`artifacts/review-schema-tests.log` und `artifacts/review-order-repro.log`.
+Neue Python-Core-Funktionen wurden nicht eingeführt; das bestehende Manifest
+ist unverändert und wurde vollständig geprüft. Der Resolver besitzt eigene
+Gegentests für fehlende/unbekannte IDs, Prototype-Namen und Mutationsversuche.
+Python meldet zwei bestehende DeprecationWarnings aus Testabhängigkeiten.
 
-Der erste Gesamtlauf deckte zusätzlich eine Abhängigkeit der neuen Log-Tests
-vom zuvor gesetzten Log-Level und einen nicht mehr erreichten Gegenfall der
-Importprüfung auf. Die Log-Tests setzen ihren Capture-Level nun ausdrücklich;
-ein eigener Korruptionsfall prüft den Abfahrtsort aktiver Transporte nach der
-Validierung beider Standortprojektionen. Der anschließende gezielte Lauf mit
-vorgeschalteten API-Tests bestand alle 26 Tests.
+Lokale Nachweise: `artifacts/assets-final-quality.log`,
+`artifacts/assets-after-browser.log`, `artifacts/assets-http.log`,
+`artifacts/assets-vite-proxy.log`, `artifacts/assets-doc-links.log` und die
+Vorher-/Nachher-Aufnahmen unter `artifacts/assets-before` / `assets-after`.
+Der Integrationsnachweis entsteht gesondert durch die GitHub-Checks des PRs;
+dieser Abschnitt dokumentiert ausschließlich tatsächlich lokale Prüfläufe.
 
-Die Coverage-Aussage gilt für Statements, nicht für vollständige Branch- oder
-Pfadabdeckung. Die zwei bekannten Testclient-Deprecation-Warnungen wurden nicht
-unterdrückt.
+## Visuelles und manuelles Review
 
-## Manuelles Architektur- und Dokumentationsreview
+Feste Testdaten und lokale Tiles sichern vergleichbare Flotten-/Shopansichten
+bei 1440 × 900 und 390 × 844. Alle vier Ansichten wurden visuell geprüft.
+Drei Screenshotdateien sind byteidentisch; beim mobilen Shop liegen die
+1.166 abweichenden Pixel ausschließlich in der unteren Navigation
+(x=110–214, y=781–820), außerhalb der Fahrzeugbilder. Bildflächen sind gleich.
+Die Auftragsansicht mit Karte wurde ebenfalls visuell geprüft. Bestehende
+Browserfälle prüfen Polling, Panelwechsel, mehrere Transporte, Wiederanmeldung,
+Offline-Abrechnung, Fehlerzustände, Bildstabilität und getrennte Testprofile.
 
-- SQL und Deserialisierung bleiben im vorhandenen SQLite-Repository.
-  Services benutzen typisierte aktive/fällige Abfragen; der bisherige private
-  Durchreicher für aktive Transporte ist entfernt. Vollständige Inventare bleiben
-  für explizite Offline-Abgleiche beziehungsweise Profilpflege verfügbar.
-- Settlement bleibt atomar. Der bestehende Ankunftsindex wird im Regressionstest
-  über den Query-Plan nachgewiesen. Historische Datensätze werden nicht gelöscht.
-- Schema-Vergleich und Ressourcenbesitz bleiben im SQLite-Adapter. Die temporäre
-  In-Memory-Referenz verwendet die vorhandene Schema-Definition und wird auch bei
-  Ablehnung geschlossen. Bestehende Dateien werden nicht automatisch repariert.
-- Importvalidierung und Mapping bleiben im Offline-Repository. Kleine benannte
-  Funktionen prüfen Quellen, Waren, Arrays und Geometrien. Es gibt keine neue
-  Laufzeitschicht, keinen zweiten Mapper und kein Validierungsframework.
-- Neue Core-Funktionen besitzen Verhaltenstests, Gegenfälle und Manifest-Einträge.
-  Architektur-, Testdokumentation und Changelog beschreiben den geänderten Stand.
+Manuelles Änderungsreview: Der Resolver hat ausschließlich die Aufgabe der
+Modell-/Pfadauflösung. Views behalten die Bildauswahl; Kartenmodul und Registry
+behalten Farbmaske, Orientierung, Rasterisierung, Cache und Cleanup. Keine
+neuen Ressourcen, Dienste oder Adapter. Das Backend ist unverändert; SQL-,
+Domain- und API-Grenzen werden durch diese Umordnung nicht erweitert.
 
-Für diese drei Befunde bestehen nach dem inhaltlichen Review keine weiteren
-wesentlichen offenen Punkte. Dies ist das Review des implementierenden Agenten,
-keine unabhängige externe Architekturfreigabe und keine globale Fehlerfreiheit.
+README, GOAL, UI DESIGN, Produkt, Zielstand, Meilensteine, Architektur, Domain,
+Persistenz, API, WorldCatalogue, Datenquellen und Tests wurden gegen die aktive
+Implementierung abgeglichen. Quellen-/Lizenzangaben bleiben erhalten; Regeln
+für neue Grafiken stehen im Asset-Manifest. M1 bleibt in Arbeit.
 
-## Browserprüfung und Grenzen
+## Grenzen und Auslieferung
 
-Alle zehn vorhandenen Playwright-Szenarien bestanden unter Edge in 1,9 Minuten.
-Sie prüfen unter anderem Registrierung/Anmeldung, Kauf, parallele Transporte,
-Offline-Ankunft, getrennte Profile, Rangliste, Mehrspielerkarte, Bildstabilität,
-Deep Links, Fehlerfälle, Fokus und mobile Panels. Desktop 1440 × 900 und Mobil
-390 × 844 wurden automatisiert geprüft; aktuelle Desktop-/Mobil-Screenshots
-wurden zusätzlich visuell angesehen. Keine neue Layoutregression festgestellt.
-
-Die Tests verwenden separate temporäre Datenbanken, Mock-Routing und lokale
-Tiles. Es gab keine erneute Profilmigration und keinen Schreibzugriff dieses
-Fixablaufs auf die aktive game.db, Profile oder Backups. Der bestehende Server
-auf Port 8000 wurde nicht neu gestartet. API-Verträge und Schema 1.0.0 bleiben
-unverändert. Reale iPad-Abnahme, öffentliche Providerverfügbarkeit und Docker
-wurden in diesem Fix nicht erneut geprüft. Integration nur nach grüner CI.
+- Dockerfile-COPY, .dockerignore und Asset-Mount wurden geprüft. Ein tatsächlicher
+  Docker-Build wurde mangels installiertem Docker nicht ausgeführt.
+- Automatisierte Mobilansichten sind keine reale iPad-/Safari-Abnahme.
+  Externe Routing- und Tile-Dienste sind im Browserlauf simuliert.
+- Kein Spielserverneustart und keine Änderung an gespeicherten Profilen,
+  Spielstanddatenbanken oder Referenzkatalogen durch diesen Change.
+- Build und neuer Asset-Ordner müssen gemeinsam ausgeliefert werden. Bereits
+  geöffnete Seiten benötigen danach einen Reload. Öffentlicher Produktionsbetrieb
+  und vollständige MVP-Abnahme bleiben separate Aufgaben.

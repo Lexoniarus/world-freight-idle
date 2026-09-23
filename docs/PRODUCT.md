@@ -42,7 +42,7 @@ Der MVP muss einen vollständigen Road-Freight-Loop liefern:
 
 **Real:**
 - Von-/Zu-Adressen
-- Gespeicherte Facility-Koordinaten mit transparentem Verifikationsstatus
+- 79 verifizierte Facility-Positionen mit Koordinatennachweis
 - Referenzunternehmen, Facilities und dokumentierte Waren
 - Straßennetz
 - Truck-Routengeometrie
@@ -51,6 +51,7 @@ Der MVP muss einen vollständigen Road-Freight-Loop liefern:
 - Echtzeit-Timestamps
 
 **Simuliert:**
+- 273 ausdrücklich geschätzte Facility-Positionen, getrennt von verifizierten Koordinaten
 - Konkrete Geschäftsbeziehung
 - Tonnage und konkrete Lieferung
 - Auftragsentstehung
@@ -73,7 +74,7 @@ Diese Themen sind Folge-Meilensteine und dürfen M1 nicht blockieren.
 
 Registrierung und Anmeldung mit öffentlichem Spielernamen, privatem
 Spielstand, 175.000 Euro Startkapital und einem kostenlosen IVECO S-Way 500 XC13 (24,2 t). Der
-Fahrzeugshop bietet acht reale Modellprofile aus dem SQLite-Katalog mit
+Fahrzeugshop bietet 14 reale Modellprofile aus dem SQLite-Katalog mit
 getrennten Spielwerten für Preis, Nutzlast, Reputationsfreigabe und Kilometerkosten. Pro Fahrzeug kann ein Transport aktiv
 sein; mehrere Fahrzeuge fahren parallel. Spieler konkurrieren in einer
 Lieferungsrangliste. Aufträge sind pro Spieler generiert, kein geteilter
@@ -91,7 +92,10 @@ und Zuverlässigkeit sind noch keine aktiven Mechaniken. Öffentliche Frachtstan
 Depots unterschieden.
 
 Der WorldCatalogue ergänzt reale Referenzunternehmen; dies ist kein Ausbau
-der Spielerunternehmens- oder Depotmechanik. Jeder routbare Standort erhält Aufträge. Verwendet werden NHM-basierte
+der Spielerunternehmens- oder Depotmechanik. Jeder routbare Standort kann passende Aufträge erhalten;
+erzeugt werden
+sie bedarfsabhängig an eigenen freien Fahrzeugen und ab Zoom 7 im Kartenbereich.
+Verwendet werden NHM-basierte
 Facility-Profile mit belegter oder transparent derived Warenrolle
 (DB-nutzlastabhängige Mengen, 0,18 €/km/t); generische Standardfracht entfällt. Derselbe Ort oder dieselbe
 Firma darf beide Endpunkte besitzen; dieselbe Facility nicht. Details und
@@ -108,25 +112,21 @@ Modell und Spielerfarbe einmal rasterisiert; Modelle ohne Sprite verwenden einen
 Fallback-Punkt in derselben Spielerfarbe. Fremde Transportdetails bleiben nicht
 aufrufbar; ein Klick identifiziert lediglich den öffentlichen Spielernamen.
 
-## Gemeinsamer Live-Verkehr – V2
-
-Die gemeinsame Verkehrssicht bleibt read-only und accountübergreifend, liest
-aber keine vollständigen privaten Fahrzeug- oder Transportobjekte mehr in die
-Anwendungsschicht. Die Repository-Projektion liefert nur die für die Karte
-benötigten Felder. Fehler des Multiplayer-Verkehrsendpoints bleiben sichtbar;
+Die gemeinsame Verkehrssicht bleibt read-only und accountübergreifend.
+Der relationale Leser validiert gespeicherte Transport-Snapshots und liefert
+über den TrafficReader-Port ausschließlich öffentliche Trackingwerte.
+Fehler des Multiplayer-Verkehrsendpoints bleiben sichtbar;
 der letzte gültige Kartenstand kann weiter dargestellt werden, während die UI
 den Ausfall meldet. Spielerfarben werden zusätzlich als Kartenring sichtbar,
 auch wenn die Einfärbung eines Fahrzeugs auf kleinem Kartenmaßstab dezent ist.
 
 
-## Domain-/Persistenzstand, 23.09.2026
+## Aktuelle technische Grundlage
 
-Die Spielbasis verwendet typisierte Entities, eine relationale SQLite-Laufzeit
-hinter Repository-/Unit-of-Work-Ports und WorldCatalogue 4.0.0 mit stabilen
-Stadtidentitäten und unveränderlichen World-Scopes. API-Felder, UI, Spielregeln
-und python main.py bleiben erhalten. Historische Transportwerte überleben
-Katalogupdates. Die drei Testkonten sind nach Backup übernommen; Sitzungen
-wurden verworfen. UI First bleibt verbindlich; Unternehmen, eigene Depots,
-Satelliten und neue Wirtschaftsmechaniken gehören weiterhin nicht zu diesem
-Umbau. Abnahme und ausgeführte Nachweise: QUALITY_REPORT.md. Der technische
-Umbau allein behauptet weder eine vollständige MVP- noch reale iPad-Abnahme.
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.0.0) und
+WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
+bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
+[Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
+Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).
+Aktuelle Prüfungen und Grenzen stehen im [Qualitätsbericht](../QUALITY_REPORT.md).
+Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abnahme.

@@ -1,3 +1,4 @@
+import { getVehicleAssets } from "./vehicle-assets.js";
 import "./test-dom.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -13,7 +14,6 @@ import {
   colorizeVehicleSvg,
   normalizeVehicleColor,
   rasterizeVehicleSvg,
-  vehicleAssetPath,
   vehicleIconId,
 } from "./map/vehicle-assets.js";
 
@@ -35,13 +35,22 @@ test("vehicle bearings follow compass orientation and route interpolation", () =
 });
 
 test("vehicle asset registry maps distinct models and player colors to distinct images", () => {
-  assert.equal(vehicleAssetPath("iveco_sway_500"), "/assets/iveco_s_way_500_xc13_map.svg");
-  assert.equal(vehicleAssetPath("daf_xg_plus_480"), "/assets/daf_xg_plus_480_map.svg");
-  assert.notEqual(vehicleAssetPath("iveco_sway_500"), vehicleAssetPath("daf_xg_plus_480"));
+  assert.equal(getVehicleAssets("iveco_sway_500")?.map, "/assets/vehicles/iveco_sway_500/map.svg");
+  assert.equal(
+    getVehicleAssets("daf_xg_plus_480")?.map,
+    "/assets/vehicles/daf_xg_plus_480/map.svg",
+  );
+  assert.notEqual(
+    getVehicleAssets("iveco_sway_500")?.map,
+    getVehicleAssets("daf_xg_plus_480")?.map,
+  );
   assert.equal(vehicleIconId("iveco_sway_500", "#E45756"), "vehicle-iveco_sway_500-e45756");
   assert.equal(vehicleIconId("daf_xg_plus_480", "#E45756"), "vehicle-daf_xg_plus_480-e45756");
   assert.equal(normalizeVehicleColor("red"), DEFAULT_VEHICLE_COLOR);
-  assert.equal(vehicleAssetPath("iveco_daily_35s18"), "/assets/iveco_daily_35s18_map.svg");
+  assert.equal(
+    getVehicleAssets("iveco_daily_35s18")?.map,
+    "/assets/vehicles/iveco_daily_35s18/map.svg",
+  );
   assert.equal(vehicleIconId("iveco_daily_35s18", "#123456"), "vehicle-iveco_daily_35s18-123456");
 });
 
@@ -63,7 +72,7 @@ test("all catalogue vehicle models resolve to shipped map assets", () => {
     "man_tgl_12_250",
   ];
   for (const modelId of modelIds) {
-    const path = vehicleAssetPath(modelId);
+    const path = getVehicleAssets(modelId)?.map;
     assert.ok(path, modelId);
     assert.equal(existsSync(new URL(`..${path}`, import.meta.url)), true, path);
   }
@@ -77,10 +86,13 @@ test("vehicle svg color replacement validates the requested paint", () => {
 
 test("shipped map assets expose the recolorable vehicle paint variable", () => {
   const iveco = readFileSync(
-    new URL("../assets/iveco_s_way_500_xc13_map.svg", import.meta.url),
+    new URL("../assets/vehicles/iveco_sway_500/map.svg", import.meta.url),
     "utf8",
   );
-  const daf = readFileSync(new URL("../assets/daf_xg_plus_480_map.svg", import.meta.url), "utf8");
+  const daf = readFileSync(
+    new URL("../assets/vehicles/daf_xg_plus_480/map.svg", import.meta.url),
+    "utf8",
+  );
   assert.match(iveco, /--vehicle-color:#ffffff/i);
   assert.match(colorizeVehicleSvg(iveco, "#2fda6a"), /--vehicle-color:#2fda6a/i);
   assert.notEqual(iveco, daf);

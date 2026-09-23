@@ -44,13 +44,14 @@ simuliert. Später FAF und UN Comtrade für weitere Regionen.
 
 ## M3 – Fleet Management
 
-Vorgezogen: acht reale Modellprofile, DB-Kauf, Reputationsfreigaben und
+Vorgezogen: 14 reale Modellprofile, DB-Kauf, Reputationsfreigaben und
 fahrzeugbezogene Spiel-Kilometerkosten. Geplant bleiben Verbrauchssimulation,
 Alter, Wartung, Energiehalte, zusätzliche Depots, Leerfahrten und Rückfracht.
 
 ## M4 – Multiplayer Economy
 
-Lieferungsrangliste vorhanden. Geplant: gemeinsamer knapper Auftragsmarkt,
+Lieferungsrangliste und gemeinsamer Live-Verkehr vorhanden.
+Geplant: gemeinsamer knapper Auftragsmarkt,
 regionale Märkte, dynamische Frachtraten und Marktanteile.
 
 ## M5 – Rail Freight
@@ -100,7 +101,8 @@ M1 insgesamt bleibt in Arbeit; Prüfzahlen stehen im Qualitätsbericht.
 ### Standards-Reparatur der vorhandenen Basis
 
 Die drei nachträglich gefundenen Standards-Lücken sind adressiert: öffentliche
-Initialisierung atomar, HTTP-Clients über den gesamten Lifespan geschützt und
+Initialisierung atomar, Routing-HTTP-Client über den gesamten Lifespan
+geschützt und
 Profilpflege in injizierten Services/Repositories. Die zusätzliche Race-Condition
 zwischen Profilpflege und Transportstart besitzt eine Regression. Dies ist
 Basisstabilisierung; es werden keine neuen Wirtschaftsmechaniken freigegeben.
@@ -124,23 +126,19 @@ isoliert. Spielerfarben werden deterministisch aus der Account-ID erzeugt; eine
 spätere frei wählbare Unternehmensfarbe kann dieselbe Darstellungsgrenze nutzen.
 Ein gemeinsamer knapper Auftragsmarkt und Marktanteilsmechaniken bleiben offen.
 
-### Gemeinsamer Live-Verkehr V2
-
-Die vorgezogene M4-Verkehrssicht besitzt nun eine minimale SQL-Projektion statt
-des Einlesens vollständiger privater JSON-Snapshots. Fehlerzustände sind für den
-Spieler sichtbar, und die Darstellung kennzeichnet Fahrzeughalter redundant
-über Sprite-Farbe und Farbring. Der gemeinsame knappe Markt bleibt weiterhin
-ein späterer M4-Schritt.
+Der relationale TrafficReader filtert aktive Transporte und validiert ihre
+gespeicherten Snapshots, bevor er öffentliche Trackingwerte weitergibt.
+Fehlerzustände bleiben sichtbar; Sprite-Farbe und Farbring kennzeichnen den
+Halter. Alle 14 Modelle besitzen lokale Karten-, Front- und Seitenansichten.
+Die gemeinsame Asset-Zuordnung und Modellordner ändern keine Spielmechanik.
 
 
-## Domain-/Persistenzstand, 23.09.2026
+## Aktuelle technische Grundlage
 
-Die Spielbasis verwendet typisierte Entities, eine relationale SQLite-Laufzeit
-hinter Repository-/Unit-of-Work-Ports und WorldCatalogue 4.0.0 mit stabilen
-Stadtidentitäten und unveränderlichen World-Scopes. API-Felder, UI, Spielregeln
-und python main.py bleiben erhalten. Historische Transportwerte überleben
-Katalogupdates. Die drei Testkonten sind nach Backup übernommen; Sitzungen
-wurden verworfen. UI First bleibt verbindlich; Unternehmen, eigene Depots,
-Satelliten und neue Wirtschaftsmechaniken gehören weiterhin nicht zu diesem
-Umbau. Abnahme und ausgeführte Nachweise: QUALITY_REPORT.md. Der technische
-Umbau allein behauptet weder eine vollständige MVP- noch reale iPad-Abnahme.
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.0.0) und
+WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
+bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
+[Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
+Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).
+Aktuelle Prüfungen und Grenzen stehen im [Qualitätsbericht](../QUALITY_REPORT.md).
+Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abnahme.

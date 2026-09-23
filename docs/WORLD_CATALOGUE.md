@@ -81,8 +81,10 @@ Simulation; `relationship_simulated=true` bleibt deshalb erhalten.
 
 ## Markt und Bestandskompatibilität
 
-Je routbarer Facility und belegter Nutzlastklasse entsteht weiterhin mindestens
-ein Auftrag. Mengen werden wie bisher aus den Payload-Bands erzeugt und liegen
+Je routbarer Facility im angefragten Scope und belegter Nutzlastklasse
+entsteht mindestens ein Auftrag. Der Scope wird bedarfsabhängig ermittelt
+(siehe „Lazy Market Scope“); es wird kein globaler Markt vorab erzeugt.
+Mengen werden wie bisher aus den Payload-Bands erzeugt und liegen
 bei 60–100 % der kleinsten Nutzlast der jeweiligen Klasse. `STANDARD_RATE`
 bleibt 0,18 €/km/t. Der NHM-Umbau verändert weder Routing, Pricing noch den
 Transport-Lifecycle.

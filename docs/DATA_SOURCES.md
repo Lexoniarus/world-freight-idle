@@ -26,9 +26,14 @@ OSM-Attribution ist bei der Karte verlinkt. Ein Providerfehler bleibt ein
 sichtbarer Fehler; das Spiel erfindet keine Ersatz-Straßenroute.
 Cache-Einträge besitzen Zeitstempel, derzeit aber keine automatische TTL-
 Invalidierung. Für Fahrzeugprofile und Bilder sind Herkunfts-/Lizenzmetadaten im Katalog
-vorhanden. Verifizierte Fotos werden direkt von Wikimedia geladen. Quelle, Urheber, Lizenz
-und Bildbezug (z. B. Modellfamilie statt exakter Variante) bleiben sichtbar.
-Bei ungültigen Metadaten oder Ladefehlern bleibt die Illustration als Ersatz. Andere Datenquellen besitzen noch keine durchgängigen
+vorhanden. Für alle 14 bekannten Modelle werden zuerst lokale Spielgrafiken
+verwendet. Für Modelle ohne lokale Grafiken können verifizierte Fotos direkt
+von Wikimedia geladen werden. Quelle, Urheber, Lizenz und Modellfamilienbezug
+bleiben dann sichtbar; ohne Foto oder bei Ladefehlern folgt die Illustration.
+Lokale Grafiken: [Manifest](../assets/MANIFEST.md),
+[Herkunft und Nutzung](../assets/LICENSE.md). Die Ordnerumstellung erhält alle
+SVG-Bytes und externen Katalogmetadaten; sie begründet keine neue Lizenz.
+Andere Datenquellen besitzen noch keine durchgängigen
 Herkunfts-/Lizenzmetadaten pro Datensatz.
 
 ## WorldCatalogue: aufbereiteter Referenzstand

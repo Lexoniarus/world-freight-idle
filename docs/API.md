@@ -45,13 +45,20 @@ Beide Endpoints lösen keine Geocoding-Aufrufe aus. Projektionen und Migration:
 
 ### `GET /dashboard`
 
-Liefert eine kompakte Projektion für die Startseite: Spielerwerte, Anzahl verfügbarer Aufträge, freie Fahrzeuge, aktive Transporte und drei Auftragsvorschläge.
+Liefert Spielerwerte, freie Fahrzeuge sowie Fahrzeuge und aktive Transporte
+mit Serverzeit und Zeitfaktor. Der Dashboardabruf erzeugt keinen globalen Markt:
+`available_contracts` bleibt als kompatibles Feld 0, `featured_contracts` leer.
+Den bedarfsabhängigen Markt lädt der Client gesondert über `/contracts`.
 
 ## Aufträge
 
 ### `GET /contracts`
 
-Liefert den aktuellen Markt mit realen Endpunktadressen.
+Liefert den bedarfsabhängigen Markt mit gespeicherten Endpunktadressen.
+Optional: `bbox=west,south,east,north` und `zoom`. Origins eigener freier
+Fahrzeuge sind immer enthalten; ab Zoom 7 kommen spielbare Facilities im
+Kartenbereich hinzu. Ohne Viewport entsteht kein globaler Markt. Ungültige
+Bounding Boxes ergeben 422; die Datumsgrenze wird unterstützt.
 
 ### `GET /contracts/{contract_id}`
 
@@ -77,13 +84,15 @@ Validiert Fahrzeugstatus, Modus, Standort, Kapazität und Liquidität. Bei Erfol
 
 ### `POST /contracts/refresh`
 
-Erzeugt einen neuen NHM-basierten Auftragsmarkt über die spielbaren Facilities.
+Erneuert den NHM-basierten Markt für denselben Fahrzeug-/Viewport-Scope
+wie `GET /contracts`; dieselben optionalen `bbox`-/`zoom`-Parameter gelten.
 
 ## Flotte
 
 ### `GET /fleet`
 
-Liefert alle Fahrzeuge inklusive aktuellem realen Hub.
+Liefert alle Fahrzeuge mit gespeichertem Facility-Standort. `hub_id` bleibt
+ein kompatibler Name für die Facility-UID; öffentliche Facilities sind keine Depots.
 
 ### `GET /fleet/{vehicle_id}`
 
@@ -97,7 +106,18 @@ Liefert aktive Transporte.
 
 ### `GET /transports/{transport_id}`
 
-Liefert Route, Start-/Zielpunkt, Departure/Arrival-Timestamps und Economics für das Live-Tracking.
+Liefert einen eigenen aktiven Transport mit Route, Endpunkten, Zeitpunkten
+und Kalkulation. Abgerechnete Transporte bleiben gespeichert, sind über
+diese aktive Ansicht aber nicht mehr abrufbar (404).
+
+## Öffentlicher Live-Verkehr
+
+### `GET /map/traffic`
+
+Authentifizierte, accountübergreifende Kartenprojektion aktiver Transporte:
+öffentlicher Spielername, Fahrzeugdarstellung, Route, Zeiten und Spielerfarbe.
+Private Guthaben, Verträge, Kosten und Auszahlungen werden nicht veröffentlicht.
+Ein fremder Transport kann nicht über private Detailendpoints geöffnet werden.
 
 ## System
 
@@ -142,7 +162,9 @@ license_url, attribution, scope}`. Nur verifizierte HTTPS-Metadaten werden
 angeboten. `scope=model_family` bezeichnet ein Beispielfoto, keine Zusage der
 exakten Variante. Bei fehlendem Katalog liefert die Flottenansicht weiterhin
 die gespeicherten Fahrzeuge mit `image=null`. Kaufantworten bleiben kompatibel;
-der anschließende Flottenabruf ergänzt das Foto.
+der anschließende Flottenabruf ergänzt die Fotometadaten. Die Oberfläche
+bevorzugt für bekannte Modelle lokale SVGs über `getVehicleAssets(modelId)`;
+die HTTP-Bildmetadaten werden dadurch nicht verändert.
 
 Neue Spielstände: kostenloser `iveco_sway_500`, ID `truck_01`, 175.000 Euro.
 Das Konto und die Sitzung sind von der atomaren Spielinitialisierung getrennt.

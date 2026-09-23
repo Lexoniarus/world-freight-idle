@@ -30,4 +30,4 @@ Nutzerentscheid im Backup; die drei Konten wurden übernommen.
 
 Zwischencommits prüfen betroffene Tests. Vollständiges Gate, E2E, manuelles
 Architekturreview und CI sind vor dem abschließenden Squash-PR erforderlich.
-Der Arbeitsverlauf steht getrennt von den Ist-Dokumenten in REFACTOR_EXECUTION.md.
+Der Arbeitsverlauf steht getrennt von den Ist-Dokumenten in der [archivierten Refactor-Chronik](../archive/REFACTOR_EXECUTION.md).

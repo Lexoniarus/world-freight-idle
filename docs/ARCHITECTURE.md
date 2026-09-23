@@ -56,6 +56,21 @@ TrafficReader liefert unveränderliche SharedTransport-Werte mit Koordinaten.
 Spielerfarben, Eigentumsmarkierung und GeoJSON entstehen erst in der API-
 Projektion; ein zusätzlicher durchreichender Mehrspieler-Service entfällt.
 
+### Begrenzte Transportabfragen
+
+Normale Spielabfragen laden ausschließlich aktive beziehungsweise fällige
+Transporte über typisierte Repository-Methoden. SQL filtert Besitzer, Status
+und Ankunft vor der Snapshot-Deserialisierung; der Index `arrivals` unterstützt
+diesen Zugriff. Vollständige Historienabfragen bleiben expliziten
+Bestandsabgleichen vorbehalten. Settlement bleibt atomar.
+
+Die Startprüfung vergleicht Primär-/Fremdschlüssel und die ausführbaren
+Transport-Guards mit dem unterstützten Schema, nicht nur deren Namen.
+SQL-Formatierung wird ignoriert, Literalinhalte bleiben unverändert.
+Abweichungen liefern `UnsupportedGameSchema` und `state.schema_rejected`;
+eine automatische Reparatur bestehender Dateien findet nicht statt.
+Die Schemaversion bleibt 1.0.0.
+
 ## Referenzwelt und Markt
 
 WorldCatalogue 4.0.0 liefert gemeinsame Country-/City-Objekte. Facility
@@ -94,6 +109,24 @@ Flotte, Transport-Snapshots und der aktuellen Auftragsscheibe. Spielerfarben
 und öffentliche Transporte bleiben von privaten Wirtschaftsangaben getrennt.
 World Wrapping, Clustering, Tastatur, mobile Panels und Reduced Motion bleiben.
 
+### Fahrzeugassets
+
+`frontend/vehicle-assets.js` besitzt die einzige unveränderliche Zuordnung
+von Katalogmodell zu Karten-, Front- und Seitenbild. `getVehicleAssets()`
+liefert Pfade oder null. Views wählen weiterhin zuerst lokale Grafiken,
+sonst ein vorhandenes Katalogfoto beziehungsweise die generische Illustration.
+Karten-Rasterisierung, Farbmasken, Rotation und Cache-Lebenszyklus bleiben im
+Kartenmodul. Stabile Bildknoten verhindern erneutes Laden beim Polling.
+
+Die 134 SVGs liegen nach Modell unter `assets/vehicles/`; drei ausgewählte
+Ansichten je Modell liegen direkt darin, weitere Varianten unter `source/`.
+FastAPI liefert diese Dateien über `/assets/` aus. Vite bündelt die Zuordnung,
+kopiert aber keine zweite Asset-Sammlung in den Build. Docker übernimmt den
+Asset-Ordner mit dem Anwendungscode. Build und Assets werden gemeinsam
+bereitgestellt; bereits geöffnete Seiten benötigen nach dem Update einen Reload.
+Dateierhalt und Bildauswahl werden gegen das vorab erfasste Inventar geprüft.
+Siehe [Asset-Manifest](../assets/MANIFEST.md).
+
 ## Offline-Werkzeuge und Beobachtbarkeit
 
 Der normale Start lehnt KV-/unbekannte Spielschemata ab. Ausschließlich
@@ -108,18 +141,3 @@ Auszahlung und Katalogzugriff. Persistenzfehler werden an Adaptergrenzen
 normalisiert; HTTP 503 enthält weder SQL noch private Daten. Migrationsberichte
 mit Spielerbezug, Datenbanken, Backups und Prüfarbeitsdateien bleiben außerhalb
 von Git. Werkzeugnachweise und manuelles Review stehen im Qualitätsbericht.
-
-### Begrenzte Transportabfragen
-
-Normale Spielabfragen laden ausschließlich aktive beziehungsweise fällige
-Transporte über typisierte Repository-Methoden. SQL filtert Besitzer, Status
-und Ankunft vor der Snapshot-Deserialisierung; der Index `arrivals` unterstützt
-diesen Zugriff. Vollständige Historienabfragen bleiben expliziten
-Bestandsabgleichen vorbehalten. Settlement bleibt atomar.
-
-Die Startprüfung vergleicht Primär-/Fremdschlüssel und die ausführbaren
-Transport-Guards mit dem unterstützten Schema, nicht nur deren Namen.
-SQL-Formatierung wird ignoriert, Literalinhalte bleiben unverändert.
-Abweichungen liefern `UnsupportedGameSchema` und `state.schema_rejected`;
-eine automatische Reparatur bestehender Dateien findet nicht statt.
-Die Schemaversion bleibt 1.0.0.
