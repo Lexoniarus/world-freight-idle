@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
+from app.domain.contracts import ContractOffer, ContractOfferSnapshot
 from app.domain.game import OwnedVehicle, PlayerState
 
 
@@ -100,3 +103,77 @@ def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
     )
     assert legacy.to_dict()["model_id"] is None
     assert "location_snapshot" not in legacy.to_dict()
+
+
+def test_contract_offer_domain_rules(game):
+    payload = game.store.get_json("contracts")[0]
+    offer = ContractOffer.from_dict(payload)
+
+    assert offer.to_dict() == payload
+    assert offer.is_available(offer.created_at, offer.market_model)
+    assert not offer.is_available(offer.expires_at, offer.market_model)
+    assert not offer.is_available(offer.created_at, "other-model")
+
+    snapshot = ContractOfferSnapshot(
+        id=offer.id,
+        market_model=offer.market_model,
+        cargo_system=offer.cargo_system,
+        origin=offer.origin,
+        destination=offer.destination,
+        shipper_name=offer.shipper_name,
+        consignee_name=offer.consignee_name,
+        cargo=offer.cargo,
+        origin_cargo_evidence=offer.origin_cargo_evidence,
+        destination_cargo_evidence=offer.destination_cargo_evidence,
+        cargo_basis=offer.cargo_basis,
+        trade_match_type=offer.trade_match_type,
+        tons=offer.tons,
+        payload_band=offer.payload_band,
+        rate_eur_per_km_ton=offer.rate_eur_per_km_ton,
+        created_at=offer.created_at,
+        expires_at=offer.expires_at,
+        mode=offer.mode,
+        relationship_simulated=offer.relationship_simulated,
+    )
+    assert ContractOffer.from_snapshot(snapshot) == offer
+
+    broken = {**payload, "cargo_code": "not-in-evidence"}
+    with pytest.raises(ValueError, match="Cargo code"):
+        ContractOffer.from_dict(broken)
+
+    for changes in (
+        {"id": ""},
+        {"tons": 0},
+        {"tons": float("nan")},
+        {"rate_eur_per_km_ton": -1},
+        {"created_at": float("inf")},
+        {"expires_at": offer.created_at},
+        {"destination": offer.origin},
+        {"cargo": replace(offer.cargo, code="missing")},
+    ):
+        with pytest.raises(ValueError):
+            replace(offer, **changes)
+    assert not offer.is_available(offer.created_at - 1, offer.market_model)
+    with pytest.raises(ValueError):
+        offer.is_available(float("nan"), offer.market_model)
+
+
+def test_domain_value_validators_reject_invalid_values():
+    from app.domain.validation import (
+        require_finite,
+        require_identity,
+        require_integer,
+    )
+
+    require_finite(0, "value")
+    require_integer(0, "money")
+    require_identity("known", "id")
+    for value in (True, "1", float("inf"), float("nan"), -1):
+        with pytest.raises(ValueError):
+            require_finite(value, "value")
+    for value in (True, 1.5, -1):
+        with pytest.raises(ValueError):
+            require_integer(value, "money")
+    for value in (None, "", "  "):
+        with pytest.raises(ValueError):
+            require_identity(value, "id")

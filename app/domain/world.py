@@ -54,6 +54,33 @@ class CargoProfile:
     ancestor_row_ids: tuple[int, ...]
     source: SourceReference | None
 
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> CargoProfile:
+        """Hydrate persisted NHM evidence for a contract offer."""
+        raw_source = value.get("source")
+        source = (
+            SourceReference(
+                url=str(raw_source["url"]),
+                role=str(raw_source["role"]),
+                verified_at=raw_source.get("verified_at"),
+                precision=raw_source.get("precision"),
+                provider=raw_source.get("provider"),
+            )
+            if isinstance(raw_source, dict)
+            else None
+        )
+        return cls(
+            nhm_row_id=int(value["nhm_row_id"]),
+            code=str(value["code"]),
+            name=str(value["name"]),
+            role=str(value["role"]),
+            evidence_type=str(value["evidence_type"]),
+            confidence=float(value["confidence"]),
+            priority_score=float(value["priority_score"]),
+            ancestor_row_ids=tuple(value["ancestor_row_ids"]),
+            source=source,
+        )
+
     def is_compatible_with(self, other: CargoProfile) -> bool:
         """Match equal NHM nodes or profiles on the same ancestor chain."""
         return (

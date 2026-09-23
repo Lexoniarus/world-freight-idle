@@ -7,6 +7,7 @@ import time
 import uuid
 from typing import Any
 
+from app.domain.contracts import ContractOffer
 from app.domain.errors import CatalogueError
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
@@ -192,11 +193,11 @@ class GameService:
             destination_geo["lon"],
         )
         economics = self.pricing.quote(
-            contract["cargo"],
-            float(contract["tons"]),
+            contract.cargo.name,
+            contract.tons,
             route.distance_km,
             cost_per_km,
-            contract.get("rate_eur_per_km_ton"),
+            contract.rate_eur_per_km_ton,
         )
         LOGGER.info(
             "Contract quoted",
@@ -220,7 +221,7 @@ class GameService:
             "operating_cost_eur_per_km": cost_per_km,
             "origin": origin_geo,
             "destination": destination_geo,
-            "contract": contract,
+            "contract": contract.to_dict(),
         }
 
     async def dispatch(
@@ -258,15 +259,15 @@ class GameService:
         self._validate_dispatch(vehicle, contract)
         # Maintenance may have changed the vehicle during provider awaits.
         economics = self.pricing.quote(
-            contract["cargo"],
-            float(contract["tons"]),
+            contract.cargo.name,
+            contract.tons,
             quote["distance_km"],
             (
                 0.62
                 if vehicle.operating_cost_eur_per_km is None
                 else vehicle.operating_cost_eur_per_km
             ),
-            contract.get("rate_eur_per_km_ton"),
+            contract.rate_eur_per_km_ton,
         )
         quote = {**quote, **economics.to_dict()}
         player = PlayerState.from_dict(self.store.get_json("player"))
@@ -511,19 +512,21 @@ class GameService:
             self.ensure_initial_state()
             return self.state()
 
-    def _find_contract(self, contract_id: str) -> dict[str, Any]:
-        """Find an active market contract or raise a stable not-found error."""
-        contract = next(
+    def _find_contract(self, contract_id: str) -> ContractOffer:
+        """Find and hydrate one current, non-expired market offer."""
+        payload = next(
             (
                 item
                 for item in self.store.get_json("contracts", [])
                 if item["id"] == contract_id
-                and item["expires_at"] > self.now()
                 and item.get("market_model") == self.market.model_id
             ),
             None,
         )
-        if contract is None:
+        if payload is None:
+            raise KeyError("Auftrag nicht gefunden")
+        contract = ContractOffer.from_dict(payload)
+        if not contract.is_available(self.now(), self.market.model_id):
             raise KeyError("Auftrag nicht gefunden")
         return contract
 
@@ -544,18 +547,18 @@ class GameService:
     def _validate_dispatch(
         self,
         vehicle: OwnedVehicle,
-        contract: dict[str, Any],
+        contract: ContractOffer,
     ) -> None:
         """Delegate vehicle-specific dispatch invariants to the entity."""
         vehicle.validate_dispatch(
-            str(contract["mode"]),
-            str(contract["origin_hub_id"]),
-            float(contract["tons"]),
+            contract.mode,
+            contract.origin.facility_uid,
+            contract.tons,
         )
 
     def _build_trip(
         self,
-        contract: dict[str, Any],
+        contract: ContractOffer,
         vehicle_id: str,
         quote: dict[str, Any],
         departed_at: float,
@@ -564,14 +567,12 @@ class GameService:
         """Create the immutable persisted trip snapshot used for tracking."""
         return {
             "id": str(uuid.uuid4()),
-            "contract": contract,
+            "contract": contract.to_dict(),
             "vehicle_id": vehicle_id,
             "origin": quote["origin"],
             "destination": quote["destination"],
-            "origin_snapshot": contract.get("origin", quote["origin"]),
-            "destination_snapshot": contract.get(
-                "destination", quote["destination"]
-            ),
+            "origin_snapshot": contract.origin.to_dict(),
+            "destination_snapshot": contract.destination.to_dict(),
             "route_geojson": quote["route_geojson"],
             "distance_km": quote["distance_km"],
             "routing_duration_seconds": quote["duration_seconds"],
@@ -597,8 +598,13 @@ class GameService:
             )
         return {**vehicle.to_dict(), "hub": snapshot.to_dict()}
 
-    def _expand_contract(self, contract: dict[str, Any]) -> dict[str, Any]:
-        """Attach real endpoint addresses to a generated contract payload."""
+    def _expand_contract(
+        self,
+        contract: ContractOffer | dict[str, Any],
+    ) -> dict[str, Any]:
+        """Serialize current offers or explicitly project a legacy alias."""
+        if isinstance(contract, ContractOffer):
+            return contract.to_dict()
         if "origin" in contract and "destination" in contract:
             return contract
         world = self.world.read()

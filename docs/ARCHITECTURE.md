@@ -349,3 +349,12 @@ Kapazität, Status, Standortwechsel und Dispatch-Validierung. `GameService`,
 Entities innerhalb ihrer Use Cases und serialisieren erst an der bestehenden
 KV-Grenze zurück in das kompatible JSON-Format. `ContractOffer` und
 `ActiveTransport` folgen in der zweiten Hälfte dieser Migrationsstufe.
+
+## Typisierte Contract Offers (22.09.2026)
+
+`ContractOffer` ist die Spiel-Entity für aktuelle Marktangebote.
+Persistierte JSON-Angebote werden an der bestehenden KV-Grenze hydriert;
+Quote- und Dispatch-Logik arbeiten anschließend gegen das typisierte
+Domainobjekt. Die öffentliche `/api/v1`-Projektion bleibt unverändert und
+wird weiterhin explizit serialisiert. `ActiveTransport` folgt separat, bevor
+die Persistenz hinter `GameStateRepository` verschoben wird.

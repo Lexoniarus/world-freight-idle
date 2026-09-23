@@ -392,13 +392,13 @@ Bereits als Runtime-Spielentities umgesetzt:
 
 - `PlayerState`
 - `OwnedVehicle`
+- `ContractOffer`
 
-Ihre Persistenzprojektion bleibt in dieser Stufe JSON-kompatibel; die
-Repository-Grenze folgt in Schritt 4.
+Ihre Persistenz- und API-Projektionen bleiben in dieser Stufe
+JSON-kompatibel; die Repository- und explizite API-DTO-Grenze folgen später.
 
 Noch überwiegend dynamisches JSON/dict:
 
-- persistierte Contract Offers
 - Active Transports
 
 Legacy-/Übergangskonzepte:
