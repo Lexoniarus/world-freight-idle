@@ -18,6 +18,7 @@ from app.api.v1.game_projection import (
     project_transport,
     project_vehicle,
 )
+from app.api.v1.location_projection import project_location
 from app.bootstrap import build_world_state_migration_service
 from app.domain.errors import WorldCatalogueError
 from app.domain.game import OwnedVehicle
@@ -133,7 +134,9 @@ def test_world_migration_preserves_snapshots_and_rejects_unknown_endpoints(
             unroutable.facility_uid,
             replace(world, facilities=(unroutable,)),
         )
-    endpoint = world.get_facility("berlin_westhafen").to_dict()
+    endpoint = project_location(
+        world.get_facility("berlin_westhafen").location_snapshot()
+    )
     assert preserve_routing_endpoint(endpoint, None) == endpoint
     assert preserve_routing_endpoint(endpoint, endpoint)["coordinate_evidence"]
     assert migrate_world_records(
@@ -207,12 +210,10 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
         trip = project_transport(
             await game.dispatch(contract["id"], "truck_01")
         )
-        cash = game._get_player().to_dict()["cash"]
+        cash = game._get_player().cash
         monkeypatch.setattr(game, "now", lambda: trip["arrives_at"] + 1)
         assert game.reconcile_arrival()
-        assert (
-            game._get_player().to_dict()["cash"] == cash + trip["payout_eur"]
-        )
+        assert game._get_player().cash == cash + trip["payout_eur"]
         assert not game.reconcile_arrival()
         assert [project_vehicle(value) for value in game.list_vehicles()][0][
             "hub"

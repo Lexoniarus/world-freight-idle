@@ -3,8 +3,9 @@
 from dataclasses import asdict
 from typing import Any
 
+from app.api.v1.location_projection import project_location
 from app.domain.contracts import ContractOffer, ContractOfferSnapshot
-from app.domain.game import OwnedVehicle
+from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.results import ContractQuote, FleetCatalogue, GameSnapshot
 from app.domain.transports import ActiveTransport
 
@@ -13,8 +14,8 @@ def project_contract(
     offer: ContractOffer | ContractOfferSnapshot,
 ) -> dict[str, Any]:
     """Expose an offer using the established v1 field names."""
-    origin = offer.origin.to_dict()
-    destination = offer.destination.to_dict()
+    origin = project_location(offer.origin)
+    destination = project_location(offer.destination)
     origin_evidence = asdict(offer.origin_cargo_evidence)
     origin_evidence["ancestor_row_ids"] = list(
         offer.origin_cargo_evidence.ancestor_row_ids
@@ -54,10 +55,25 @@ def project_contract(
 
 def project_vehicle(vehicle: OwnedVehicle) -> dict[str, Any]:
     """Expose owned model values and the saved public facility location."""
-    return {
-        **vehicle.to_dict(),
-        "hub": vehicle.location.to_dict() if vehicle.location else None,
+    result: dict[str, Any] = {
+        "id": vehicle.id,
+        "name": vehicle.name,
+        "mode": vehicle.mode,
+        "model_id": vehicle.model_id,
+        "capacity_tons": vehicle.capacity_tons,
+        "hub_id": vehicle.hub_id,
+        "status": vehicle.status,
     }
+    if vehicle.operating_cost_eur_per_km is not None:
+        result["operating_cost_eur_per_km"] = vehicle.operating_cost_eur_per_km
+    if vehicle.facility_uid is not None:
+        result["facility_uid"] = vehicle.facility_uid
+    if vehicle.location is not None:
+        result["location_snapshot"] = project_location(vehicle.location)
+    result["hub"] = (
+        project_location(vehicle.location) if vehicle.location else None
+    )
+    return result
 
 
 def project_quote(quote: ContractQuote) -> dict[str, Any]:
@@ -70,11 +86,11 @@ def project_quote(quote: ContractQuote) -> dict[str, Any]:
             "coordinates": [list(point) for point in quote.route.coordinates],
         },
         "provider": quote.route.provider,
-        **quote.economics.to_dict(),
+        **asdict(quote.economics),
         "vehicle_id": quote.vehicle_id,
         "operating_cost_eur_per_km": quote.operating_cost_eur_per_km,
-        "origin": quote.contract.origin.to_dict(),
-        "destination": quote.contract.destination.to_dict(),
+        "origin": project_location(quote.contract.origin),
+        "destination": project_location(quote.contract.destination),
         "contract": project_contract(quote.contract),
     }
 
@@ -85,10 +101,10 @@ def project_transport(trip: ActiveTransport) -> dict[str, Any]:
         "id": trip.id,
         "vehicle_id": trip.vehicle_id,
         "contract": project_contract(trip.contract),
-        "origin": trip.origin.to_dict(),
-        "destination": trip.destination.to_dict(),
-        "origin_snapshot": trip.origin.to_dict(),
-        "destination_snapshot": trip.destination.to_dict(),
+        "origin": project_location(trip.origin),
+        "destination": project_location(trip.destination),
+        "origin_snapshot": project_location(trip.origin),
+        "destination_snapshot": project_location(trip.destination),
         "route_geojson": {
             "type": "LineString",
             "coordinates": [list(point) for point in trip.route.coordinates],
@@ -110,7 +126,7 @@ def project_state(state: GameSnapshot) -> dict[str, Any]:
     return {
         "server_time": state.server_time,
         "time_scale": state.time_scale,
-        "player": state.player.to_dict(),
+        "player": project_player(state.player),
         "vehicles": vehicles,
         "active_trips": [project_transport(item) for item in state.transports],
         "contracts": [project_contract(item) for item in state.contracts],
@@ -123,7 +139,7 @@ def project_dashboard(state: GameSnapshot) -> dict[str, Any]:
     return {
         "server_time": state.server_time,
         "time_scale": state.time_scale,
-        "player": state.player.to_dict(),
+        "player": project_player(state.player),
         "available_contracts": 0,
         "idle_vehicles": sum(item.status == "idle" for item in state.vehicles),
         "active_transports": len(state.transports),
@@ -136,6 +152,15 @@ def project_dashboard(state: GameSnapshot) -> dict[str, Any]:
 def project_catalogue(catalogue: FleetCatalogue) -> dict[str, Any]:
     """Expose read-only model offers and the compatible delivery label."""
     return {
-        "models": [model.to_dict() for model in catalogue.models],
+        "models": [asdict(model) for model in catalogue.models],
         "delivery_hub": catalogue.delivery_location.label,
+    }
+
+
+def project_player(player: PlayerState) -> dict[str, int]:
+    """Expose authoritative counters without mutable entity internals."""
+    return {
+        "cash": player.cash,
+        "completed": player.completed,
+        "reputation": player.reputation,
     }

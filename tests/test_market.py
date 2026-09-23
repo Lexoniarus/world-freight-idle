@@ -178,26 +178,22 @@ def test_market_scope_combines_idle_trucks_and_zoomed_viewport(
     resolver = MarketScopeResolver(world_catalogue)
     berlin = world_catalogue.read().get_facility("berlin_westhafen")
     vehicles = [
-        OwnedVehicle.from_dict(
-            {
-                "id": "idle",
-                "name": "Idle",
-                "mode": "truck",
-                "capacity_tons": 24,
-                "hub_id": berlin.facility_uid,
-                "facility_uid": berlin.facility_uid,
-                "status": "idle",
-            }
+        OwnedVehicle(
+            id="idle",
+            name="Idle",
+            mode="truck",
+            capacity_tons=24,
+            hub_id=berlin.facility_uid,
+            facility_uid=berlin.facility_uid,
+            status="idle",
         ),
-        OwnedVehicle.from_dict(
-            {
-                "id": "busy",
-                "name": "Busy",
-                "mode": "truck",
-                "capacity_tons": 24,
-                "hub_id": "ignored",
-                "status": "enroute",
-            }
+        OwnedVehicle(
+            id="busy",
+            name="Busy",
+            mode="truck",
+            capacity_tons=24,
+            hub_id="ignored",
+            status="enroute",
         ),
     ]
     query = FacilityQuery.parse("-10,35,30,60")
@@ -346,7 +342,7 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
         project_contract(item) for item in game.state_repository.list_offers()
     ]
     monkeypatch.setattr(game, "now", lambda: trip["arrives_at"] + 1)
-    cash = game._get_player().to_dict()["cash"]
+    cash = game._get_player().cash
     with patch.object(
         game.market.vehicles,
         "list_models",
@@ -354,7 +350,7 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
     ):
         assert game.reconcile_arrival()
         assert not game.reconcile_arrival()
-    assert game._get_player().to_dict()["cash"] == cash + trip["payout_eur"]
+    assert game._get_player().cash == cash + trip["payout_eur"]
     assert [
         project_contract(item) for item in game.state_repository.list_offers()
     ] == []

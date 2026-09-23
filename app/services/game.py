@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+from collections.abc import Sequence
 
 from app.domain.contracts import ContractOffer
 from app.domain.errors import CatalogueError
@@ -109,7 +110,7 @@ class GameService:
     def _generate_scoped_market(
         self,
         origin_ids: tuple[str, ...],
-        vehicles: list[OwnedVehicle],
+        vehicles: Sequence[OwnedVehicle],
         retained: list[ContractOffer],
     ) -> list[ContractOffer]:
         """Generate and persist one already-resolved market scope."""
@@ -458,7 +459,7 @@ class GameService:
 
     def _find_vehicle(
         self,
-        vehicles: list[OwnedVehicle],
+        vehicles: Sequence[OwnedVehicle],
         vehicle_id: str,
     ) -> OwnedVehicle:
         """Find a vehicle by ID or raise a stable validation error."""

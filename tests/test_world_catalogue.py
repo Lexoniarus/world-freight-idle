@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from app.api.v1.location_projection import project_location
 from app.domain.errors import WorldCatalogueError
 from app.domain.world import CargoProfile, FacilityQuery
 
@@ -56,8 +57,7 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
     with pytest.raises(FrozenInstanceError):
         setattr(location, "label", "changed")
 
-    location_payload = location.to_dict()
-    assert type(location).from_dict(location_payload) == location
+    location_payload = project_location(location)
     assert location_payload["id"] == berlin.facility_uid
     assert location_payload["company_uid"] == berlin.company.company_uid
     assert "sources" not in location_payload["company"]
@@ -65,13 +65,18 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
     assert "cargo" not in location_payload
     assert "handled_goods" not in location_payload
 
-    serialized = berlin.to_dict()
+    serialized = project_location(berlin.location_snapshot())
     serialized["company"]["display_name"] = "changed"
     assert berlin.company.display_name != "changed"
     assert serialized["id"] == berlin.facility_uid
     assert serialized["location_verified"] is True
     assert "facility_id" not in serialized and "company_id" not in serialized
-    assert replace(berlin, company=None).to_dict()["company_uid"] is None
+    assert (
+        project_location(replace(berlin, company=None).location_snapshot())[
+            "company_uid"
+        ]
+        is None
+    )
     for field, value in (
         ("lat", None),
         ("lon", float("inf")),
@@ -336,7 +341,7 @@ def test_delivery_requires_verified_catalogue_endpoint(world_catalogue):
     assert delivery.coordinate_evidence
     assert delivery.company is not None
     assert delivery.company.company_uid == berlin.company.company_uid
-    payload = delivery.to_dict()
+    payload = project_location(delivery)
     assert "handled_goods" not in payload
     assert "cargo" not in payload
     assert "sources" not in payload

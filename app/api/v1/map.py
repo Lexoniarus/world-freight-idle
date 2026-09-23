@@ -7,6 +7,7 @@ from app.api.v1.dependencies import (
     get_map_service,
     get_multiplayer_map_service,
 )
+from app.api.v1.location_projection import project_location
 from app.domain.world import FacilityQuery
 from app.services.map_locations import MapLocationService
 from app.services.multiplayer_map import MultiplayerMapService
@@ -21,7 +22,7 @@ async def list_map_hubs(
     """Project verified public facilities without external lookups."""
     return {
         "hubs": [
-            location.to_dict()
+            project_location(location)
             for location in service.list_facilities(FacilityQuery()).facilities
         ]
     }
@@ -39,7 +40,9 @@ def list_map_facilities(
         raise HTTPException(422, "Ungültige Bounding Box.") from exc
     page = service.list_facilities(query)
     return {
-        "facilities": [location.to_dict() for location in page.facilities],
+        "facilities": [
+            project_location(location) for location in page.facilities
+        ],
         "catalogue_version": page.catalogue_version,
         "unavailable_count": page.unavailable_count,
     }

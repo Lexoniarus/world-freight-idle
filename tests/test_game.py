@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import asdict, replace
+from typing import Any
 
 import pytest
 
@@ -43,12 +44,14 @@ def test_now_returns_wall_clock(game: GameService):
 
 
 def test_ensure_initial_state_is_idempotent(game: GameService):
-    before = [item.to_dict() for item in game.state_repository.list_vehicles()]
+    before = [
+        project_vehicle(item) for item in game.state_repository.list_vehicles()
+    ]
     game.ensure_initial_state()
     assert [
-        item.to_dict() for item in game.state_repository.list_vehicles()
+        project_vehicle(item) for item in game.state_repository.list_vehicles()
     ] == before
-    assert game._get_player().to_dict()["cash"] == 175000
+    assert game._get_player().cash == 175000
 
 
 def test_refresh_market_reuses_fresh_market_and_can_force(game: GameService):
@@ -87,18 +90,18 @@ async def test_dispatch_builds_persisted_trip_and_debits_cost(
     game: GameService,
 ):
     contract = first_berlin_contract(game)
-    before_cash = game._get_player().to_dict()["cash"]
+    before_cash = game._get_player().cash
     trip = project_transport(await game.dispatch(contract["id"], "truck_01"))
-    after_cash = game._get_player().to_dict()["cash"]
+    after_cash = game._get_player().cash
     assert (
         trip["origin"]["address"]
         == game.world.read().get_facility(BERLIN_UID).address
     )
     assert trip["route_geojson"]["type"] == "LineString"
     assert after_cash == before_cash - trip["operating_cost_eur"]
-    assert [item.to_dict() for item in game.state_repository.list_vehicles()][
-        0
-    ]["status"] == "enroute"
+    assert [
+        project_vehicle(item) for item in game.state_repository.list_vehicles()
+    ][0]["status"] == "enroute"
 
 
 def test_reconcile_arrival_moves_vehicle_and_pays(game: GameService):
@@ -114,21 +117,18 @@ def test_reconcile_arrival_moves_vehicle_and_pays(game: GameService):
         game._find_contract(contract["id"]), "truck_01", quote, 1.0, 1.0
     )
     game.state_repository.save_transport(trip)
-    vehicles = [
-        item.to_dict() for item in game.state_repository.list_vehicles()
-    ]
-    vehicles[0]["status"] = "enroute"
-    for item in vehicles:
-        game.state_repository.save_vehicle(OwnedVehicle.from_dict(item))
-    before_cash = game._get_player().to_dict()["cash"]
+    vehicle = game.state_repository.list_vehicles()[0]
+    vehicle.start_trip()
+    game.state_repository.save_vehicle(vehicle)
+    before_cash = game._get_player().cash
     assert game.reconcile_arrival() is True
     assert game.reconcile_arrival() is False
     vehicle = [
-        item.to_dict() for item in game.state_repository.list_vehicles()
+        project_vehicle(item) for item in game.state_repository.list_vehicles()
     ][0]
     assert vehicle["hub_id"] == contract["destination_hub_id"]
     assert vehicle["status"] == "idle"
-    assert game._get_player().to_dict()["cash"] == before_cash + 1000
+    assert game._get_player().cash == before_cash + 1000
 
 
 def test_state_expands_contract_addresses(game: GameService):
@@ -143,7 +143,7 @@ def test_state_expands_contract_addresses(game: GameService):
 
 def test_reset_restores_playable_state(game: GameService):
     game.state_repository.save_player(
-        PlayerState.from_dict({"cash": 1, "completed": 99, "reputation": 99})
+        PlayerState(cash=1, completed=99, reputation=99)
     )
     state = project_state(game.reset())
     assert state["player"]["cash"] == 175000
@@ -186,12 +186,7 @@ def test_refresh_market_drops_legacy_offers_but_keeps_active_trips(
 
 
 def test_find_vehicle_returns_match_and_raises(game: GameService):
-    vehicles = [
-        OwnedVehicle.from_dict(item)
-        for item in [
-            item.to_dict() for item in game.state_repository.list_vehicles()
-        ]
-    ]
+    vehicles = game.state_repository.list_vehicles()
     assert game._find_vehicle(vehicles, "truck_01").name == (
         "IVECO S-Way 500 XC13"
     )
@@ -203,39 +198,28 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
     game: GameService,
 ):
     contract = first_berlin_contract(game)
-    vehicle = OwnedVehicle.from_dict(
-        [item.to_dict() for item in game.state_repository.list_vehicles()][0]
-    )
+    vehicle = game.state_repository.list_vehicles()[0]
     game._validate_dispatch(vehicle, game._find_contract(contract["id"]))
 
-    wrong_location = OwnedVehicle.from_dict(
-        {
-            **vehicle.to_dict(),
-            "hub_id": "hamburg_cta",
-            "facility_uid": "hamburg_cta",
-            "location_snapshot": None,
-        }
+    base: dict[str, Any] = dict(
+        id=vehicle.id,
+        name=vehicle.name,
+        mode=vehicle.mode,
+        capacity_tons=vehicle.capacity_tons,
+        hub_id=vehicle.hub_id,
+        status=vehicle.status,
     )
-    with pytest.raises(ValueError, match="Abholadresse"):
-        game._validate_dispatch(
-            wrong_location, game._find_contract(contract["id"])
-        )
-
-    too_small = OwnedVehicle.from_dict(
-        {**vehicle.to_dict(), "capacity_tons": 0.1}
-    )
-    with pytest.raises(ValueError, match="kapazität"):
-        game._validate_dispatch(too_small, game._find_contract(contract["id"]))
-
-    wrong_mode = OwnedVehicle.from_dict({**vehicle.to_dict(), "mode": "ship"})
-    with pytest.raises(ValueError, match="Fahrzeugtyp"):
-        game._validate_dispatch(
-            wrong_mode, game._find_contract(contract["id"])
-        )
-
-    busy = OwnedVehicle.from_dict({**vehicle.to_dict(), "status": "enroute"})
-    with pytest.raises(ValueError, match="verfügbar"):
-        game._validate_dispatch(busy, game._find_contract(contract["id"]))
+    for changes, message in (
+        ({"hub_id": "hamburg_cta"}, "Abholadresse"),
+        ({"capacity_tons": 0.1}, "kapazität"),
+        ({"mode": "ship"}, "Fahrzeugtyp"),
+        ({"status": "enroute"}, "verfügbar"),
+    ):
+        invalid = OwnedVehicle(**{**base, **changes})
+        with pytest.raises(ValueError, match=message):
+            game._validate_dispatch(
+                invalid, game._find_contract(contract["id"])
+            )
 
 
 def test_build_trip_contains_tracking_timestamps(game: GameService):
@@ -272,12 +256,9 @@ def test_contract_projection_retains_endpoint_snapshots(game):
 def test_refresh_market_without_idle_vehicle_has_no_local_origins(
     game: GameService,
 ):
-    vehicles = [
-        item.to_dict() for item in game.state_repository.list_vehicles()
-    ]
-    vehicles[0]["status"] = "enroute"
-    for item in vehicles:
-        game.state_repository.save_vehicle(OwnedVehicle.from_dict(item))
+    vehicle = game.state_repository.list_vehicles()[0]
+    vehicle.start_trip()
+    game.state_repository.save_vehicle(vehicle)
     assert [
         project_contract(value) for value in game.refresh_market(force=True)
     ] == []
@@ -287,7 +268,7 @@ def test_refresh_market_without_idle_vehicle_has_no_local_origins(
 async def test_dispatch_rejects_insufficient_cash(game: GameService):
     contract = first_berlin_contract(game)
     game.state_repository.save_player(
-        PlayerState.from_dict({"cash": 0, "completed": 0, "reputation": 0})
+        PlayerState(cash=0, completed=0, reputation=0)
     )
     with pytest.raises(ValueError, match="Nicht genug Geld"):
         project_transport(await game.dispatch(contract["id"], "truck_01"))
@@ -344,14 +325,7 @@ def test_list_get_and_expand_vehicles(game: GameService):
         == HUBS[0].city
     )
     assert (
-        project_vehicle(
-            OwnedVehicle.from_dict(
-                [
-                    item.to_dict()
-                    for item in game.state_repository.list_vehicles()
-                ][0]
-            )
-        )["hub"]["id"]
+        project_vehicle(game.state_repository.list_vehicles()[0])["hub"]["id"]
         == BERLIN_UID
     )
     with pytest.raises(KeyError):

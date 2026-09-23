@@ -12,6 +12,7 @@ import pytest
 
 from app.api.v1.game_projection import (
     project_contract,
+    project_player,
     project_transport,
     project_vehicle,
 )
@@ -50,7 +51,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
         for item in selected.state_repository.list_transports()
         if item.status == "active"
     ]
-    other_before = other_game._get_player().to_dict()
+    other_before = project_player(other_game._get_player())
     backup = tmp_path / "backup.db"
     backup_database(database.path, backup)
     assert backup.exists()
@@ -70,16 +71,16 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
         project_vehicle(selected.get_vehicle("truck_01"))["model_id"]
         == "iveco_sway_500"
     )
-    assert other_game._get_player().to_dict() == other_before
+    assert project_player(other_game._get_player()) == other_before
     selected.state_repository.save_player(
-        PlayerState.from_dict({**other_before, "cash": 12345})
+        PlayerState(**{**other_before, "cash": 12345})
     )
     service.update_profile(
         "Selected",
         {"truck_01": "iveco_sway_500"},
         None,
     )
-    assert selected._get_player().to_dict()["cash"] == 12345
+    assert selected._get_player().cash == 12345
     with pytest.raises(ValueError):
         service.update_profile(
             "Selected",
@@ -92,7 +93,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
             {"truck_01": "mercedes_eactros_600"},
             1,
         )
-    assert selected._get_player().to_dict()["cash"] == 12345
+    assert selected._get_player().cash == 12345
 
 
 @pytest.fixture
@@ -125,8 +126,11 @@ def maintenance(database, runtime, game, catalogue, tmp_path):
 def test_maintenance_validation_preserves_state(maintenance, failure):
     _, service, selected, accounts = maintenance
     before = (
-        [item.to_dict() for item in selected.state_repository.list_vehicles()],
-        selected._get_player().to_dict(),
+        [
+            project_vehicle(item)
+            for item in selected.state_repository.list_vehicles()
+        ],
+        project_player(selected._get_player()),
     )
     username = "Selected"
     assignments = {"truck_01": "man_tgx_520"}
@@ -147,8 +151,11 @@ def test_maintenance_validation_preserves_state(maintenance, failure):
     with pytest.raises(ValueError):
         service.update_profile(username, assignments, cash)
     assert (
-        [item.to_dict() for item in selected.state_repository.list_vehicles()],
-        selected._get_player().to_dict(),
+        [
+            project_vehicle(item)
+            for item in selected.state_repository.list_vehicles()
+        ],
+        project_player(selected._get_player()),
     ) == before
 
 
@@ -156,22 +163,29 @@ def test_maintenance_write_failure_rolls_back_and_retains_unselected(
     maintenance,
 ):
     _, service, selected, _ = maintenance
-    vehicles = [
-        item.to_dict() for item in selected.state_repository.list_vehicles()
-    ]
+    vehicle = selected.state_repository.list_vehicles()[0]
     hamburg = selected.world.read().get_facility("hamburg_cta")
-    vehicles[0].update(
-        status="enroute",
-        hub_id=hamburg.facility_uid,
+    vehicle.start_trip()
+    vehicle.arrive(hamburg.location_snapshot())
+    vehicle.start_trip()
+    other = OwnedVehicle(
+        "other",
+        "Untouched",
+        vehicle.mode,
+        vehicle.capacity_tons,
+        hamburg.facility_uid,
+        "enroute",
+        model_id=vehicle.model_id,
+        operating_cost_eur_per_km=vehicle.operating_cost_eur_per_km,
         facility_uid=hamburg.facility_uid,
-        location_snapshot=hamburg.location_snapshot().to_dict(),
+        location=hamburg.location_snapshot(),
     )
-    vehicles.append({**vehicles[0], "id": "other", "name": "Untouched"})
-    for item in vehicles:
-        selected.state_repository.save_vehicle(OwnedVehicle.from_dict(item))
+    vehicles = [project_vehicle(vehicle), project_vehicle(other)]
+    selected.state_repository.save_vehicle(vehicle)
+    selected.state_repository.save_vehicle(other)
     repository = selected.state_repository
     service.player_unit_of_work_factory = lambda user_id: selected.unit_of_work
-    before = repository.get_player().to_dict()
+    before = project_player(repository.get_player())
     with patch.object(
         repository,
         "save_player",
@@ -181,10 +195,12 @@ def test_maintenance_write_failure_rolls_back_and_retains_unselected(
             service.update_profile(
                 "Selected", {"truck_01": "man_tgx_520"}, 123
             )
-    assert [item.to_dict() for item in repository.list_vehicles()] == vehicles
-    assert repository.get_player().to_dict() == before
+    assert [
+        project_vehicle(item) for item in repository.list_vehicles()
+    ] == vehicles
+    assert project_player(repository.get_player()) == before
     result = service.update_profile("selected", {"truck_01": "man_tgx_520"})
-    after = [item.to_dict() for item in repository.list_vehicles()]
+    after = [project_vehicle(item) for item in repository.list_vehicles()]
     assert after[1] == vehicles[1]
     assert (
         after[0]["status"] == "enroute"
@@ -253,7 +269,8 @@ def test_cli_backs_up_before_mutation_and_preserves_cash(
     if cash is not None:
         sys.argv.extend(["--cash", str(cash)])
     before = [
-        item.to_dict() for item in selected.state_repository.list_vehicles()
+        project_vehicle(item)
+        for item in selected.state_repository.list_vehicles()
     ]
     with patch(
         "scripts.update_test_profile.Settings.from_env", return_value=settings
@@ -268,7 +285,8 @@ def test_cli_backs_up_before_mutation_and_preserves_cash(
         ).fetchall()
     assert stored == [(item["id"], item["model_id"]) for item in before]
     assert [
-        item.to_dict() for item in selected.state_repository.list_vehicles()
+        project_vehicle(item)
+        for item in selected.state_repository.list_vehicles()
     ][0]["model_id"] == "man_tgx_520"
 
 
@@ -336,9 +354,9 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
 
     game.router.route = delayed_route
     before = 285 if limited_cash else 175000
-    player = game._get_player().to_dict()
+    player = project_player(game._get_player())
     game.state_repository.save_player(
-        PlayerState.from_dict({**player, "cash": before})
+        PlayerState(**{**player, "cash": before})
     )
     [project_contract(value) for value in game.refresh_market(force=True)]
     contract = first_berlin_contract(game)
@@ -352,11 +370,8 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
         with pytest.raises(ValueError, match="Nicht genug"):
             await task
         assert game.state_repository.list_transports() == ()
-        assert game._get_player().to_dict()["cash"] == before
+        assert game._get_player().cash == before
     else:
         trip = project_transport(await task)
         assert trip["operating_cost_eur"] == round(80 + 400 * 0.53)
-        assert (
-            game._get_player().to_dict()["cash"]
-            == before - trip["operating_cost_eur"]
-        )
+        assert game._get_player().cash == before - trip["operating_cost_eur"]

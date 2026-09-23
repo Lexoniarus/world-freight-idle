@@ -27,10 +27,6 @@ FUNCTION_TESTS = {
     "app.api.v1.transports.list_transports": "test_v1_resource_endpoints_and_error_mapping",
     "app.bootstrap.build_game_runtime": "test_build_game_service_wires_real_provider_adapters",
     "app.config.Settings.from_env": "test_settings_from_env",
-    "app.domain.models.Contract.to_dict": "test_contract_to_dict",
-    "app.domain.models.Hub.to_dict": "test_hub_to_dict",
-    "app.domain.models.PriceQuote.to_dict": "test_price_quote_to_dict",
-    "app.domain.models.RouteResult.to_dict": "test_route_result_to_dict",
     "app.logging_config.JsonFormatter.format": "test_json_formatter_includes_structured_fields",
     "app.logging_config.configure_logging": "test_configure_logging_replaces_root_handler",
     "app.main.create_app": "test_v1_resource_endpoints_and_error_mapping",
@@ -76,19 +72,12 @@ FUNCTION_TESTS = {
     "app.services.game.GameService.state": "test_state_expands_contract_addresses",
     "app.domain.contracts.ContractOffer.from_snapshot": "test_contract_offer_domain_rules",
     "app.domain.contracts.ContractOffer.is_available": "test_contract_offer_domain_rules",
-    "app.domain.world.CargoProfile.from_dict": "test_contract_offer_domain_rules",
-    "app.domain.world.FacilityLocationSnapshot.from_dict": "test_world_snapshot_identity_provenance_and_query",
-    "app.domain.game.PlayerState.from_dict": "test_player_state_domain_rules",
-    "app.domain.game.PlayerState.to_dict": "test_player_state_domain_rules",
     "app.domain.game.PlayerState.debit": "test_player_state_domain_rules",
     "app.domain.game.PlayerState.complete_delivery": "test_player_state_domain_rules",
-    "app.domain.game.OwnedVehicle.from_dict": "test_owned_vehicle_domain_rules",
-    "app.domain.game.OwnedVehicle.to_dict": "test_owned_vehicle_domain_rules",
     "app.domain.game.OwnedVehicle.validate_dispatch": "test_owned_vehicle_domain_rules",
     "app.domain.game.OwnedVehicle.start_trip": "test_owned_vehicle_domain_rules",
     "app.domain.game.OwnedVehicle.arrive": "test_owned_vehicle_domain_rules",
     "app.domain.game.OwnedVehicle.apply_model": "test_owned_vehicle_domain_rules",
-    "app.domain.world.FacilityLocationSnapshot.to_dict": "test_world_snapshot_identity_provenance_and_query",
     "app.services.contract_factory.ContractFactory.build": "test_build_contract_has_expiry_and_valid_nhm_cargo",
     "app.services.market.MarketGenerator._select_trade_option": "test_build_contract_has_expiry_and_valid_nhm_cargo",
     "app.services.trade_network.TradeNetwork.__init__": "test_build_contract_has_expiry_and_valid_nhm_cargo",
@@ -158,7 +147,6 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.domain.models.VehicleModel.to_dict": "test_catalogue_projects_all_offers_without_writing",
         "app.providers.geocoding.NominatimGeocoder.__init__": "test_geocode_calls_nominatim_and_caches",
         "app.providers.routing.ValhallaTruckRouter.__init__": "test_route_calls_valhalla_and_caches",
         "app.providers.validation.parse_coordinates": "test_coordinate_validation_rejects_invalid_values",
@@ -181,7 +169,6 @@ FUNCTION_TESTS.update(
     {
         "app.bootstrap.build_vehicle_catalogue": "test_catalogue_builder_default_path",
         "app.api.v1.dependencies.get_vehicle_catalogue": "test_auth_api_and_private_game_resources",
-        "app.domain.models.VehicleImage.to_dict": "test_images_preserve_provenance_and_never_change_gameplay",
         "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue._read_image": "test_images_preserve_provenance_and_never_change_gameplay",
         "app.api.v1.vehicle_presentation.present_vehicles": "test_images_preserve_provenance_and_never_change_gameplay",
     }
@@ -225,7 +212,6 @@ FUNCTION_TESTS.update(
         "app.domain.world.Facility.inbound_cargo": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.Facility.is_routable": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.Facility.outbound_cargo": "test_world_snapshot_identity_provenance_and_query",
-        "app.domain.world.Facility.to_dict": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.FacilityQuery.includes": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.FacilityQuery.parse": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.WorldSnapshot.get_company": "test_world_snapshot_identity_provenance_and_query",
@@ -369,5 +355,12 @@ FUNCTION_TESTS.update(
         "app.repositories.snapshot_mapping.load_location": "test_canonical_snapshots_preserve_facts_and_reject_public_documents",
         "app.repositories.snapshot_mapping.load_cargo": "test_canonical_snapshots_preserve_facts_and_reject_public_documents",
         "app.repositories.snapshot_mapping.load_offer": "test_canonical_snapshots_preserve_facts_and_reject_public_documents",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.api.v1.location_projection.project_location": "test_world_snapshot_identity_provenance_and_query",
+        "app.api.v1.game_projection.project_player": "test_player_state_domain_rules",
     }
 )

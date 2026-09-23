@@ -112,9 +112,7 @@ def test_relational_entities_roundtrip_isolate_and_protect_history(
 ):
     alice = SqliteGameStateRepository(relational, "alice")
     bob = SqliteGameStateRepository(relational, "bob")
-    vehicle = OwnedVehicle.from_dict(
-        [item.to_dict() for item in game.state_repository.list_vehicles()][0]
-    )
+    vehicle = game.state_repository.list_vehicles()[0]
     offer = game.state_repository.list_offers()[0]
     route = RouteSnapshot(((13, 52), (9, 53)), 400, 100, "fixture")
     trip = ActiveTransport(
@@ -209,9 +207,7 @@ def test_snapshot_envelopes_and_corrupt_records_fail_explicitly(
             decode_snapshot("sample", encoded)
     repository = SqliteGameStateRepository(relational, "alice")
     repository.save_player(PlayerState(1, 0, 0))
-    vehicle = OwnedVehicle.from_dict(
-        [item.to_dict() for item in game.state_repository.list_vehicles()][0]
-    )
+    vehicle = game.state_repository.list_vehicles()[0]
     offer = game.state_repository.list_offers()[0]
     repository.save_vehicle(vehicle)
     repository.replace_offers((offer,))

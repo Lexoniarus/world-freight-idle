@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from app.domain.models import VehicleModel, VehicleStatus
 from app.domain.validation import (
@@ -30,23 +29,6 @@ class PlayerState:
         self._cash = cash
         self._completed = completed
         self._reputation = reputation
-
-    @classmethod
-    def from_dict(cls, value: dict[str, Any]) -> PlayerState:
-        """Hydrate one persisted player state."""
-        return cls(
-            cash=value["cash"],
-            completed=value["completed"],
-            reputation=value["reputation"],
-        )
-
-    def to_dict(self) -> dict[str, int]:
-        """Serialize the current player state for persistence or API use."""
-        return {
-            "cash": self._cash,
-            "completed": self._completed,
-            "reputation": self._reputation,
-        }
 
     def debit(self, amount: int) -> None:
         """Debit a non-negative amount without allowing negative cash."""
@@ -138,49 +120,6 @@ class OwnedVehicle:
         self._operating_cost_eur_per_km = operating_cost_eur_per_km
         self._facility_uid = facility_uid
         self._location = location
-
-    @classmethod
-    def from_dict(cls, value: dict[str, Any]) -> OwnedVehicle:
-        """Hydrate one persisted vehicle while accepting legacy snapshots."""
-        raw_location = value.get("location_snapshot")
-        location = (
-            FacilityLocationSnapshot.from_dict(raw_location)
-            if isinstance(raw_location, dict)
-            else None
-        )
-        return cls(
-            id=str(value["id"]),
-            name=str(value.get("name", value["id"])),
-            mode=str(value.get("mode", "truck")),
-            capacity_tons=value["capacity_tons"],
-            hub_id=str(value["hub_id"]),
-            status=value.get("status", "idle"),
-            model_id=value.get("model_id"),
-            operating_cost_eur_per_km=value.get("operating_cost_eur_per_km"),
-            facility_uid=value.get("facility_uid"),
-            location=location,
-        )
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize without inventing optional legacy fields."""
-        result: dict[str, Any] = {
-            "id": self._id,
-            "name": self._name,
-            "mode": self._mode,
-            "model_id": self._model_id,
-            "capacity_tons": self._capacity_tons,
-            "hub_id": self._hub_id,
-            "status": self._status,
-        }
-        if self._operating_cost_eur_per_km is not None:
-            result["operating_cost_eur_per_km"] = (
-                self._operating_cost_eur_per_km
-            )
-        if self._facility_uid is not None:
-            result["facility_uid"] = self._facility_uid
-        if self._location is not None:
-            result["location_snapshot"] = self._location.to_dict()
-        return result
 
     def validate_dispatch(
         self,

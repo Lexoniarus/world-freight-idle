@@ -2,6 +2,7 @@
 
 import copy
 import logging
+from dataclasses import asdict
 from typing import Any
 
 from app.domain.ports import WorldCatalogue, WorldStateStore
@@ -55,7 +56,7 @@ def endpoint_snapshot(identifier: str, world: WorldSnapshot) -> dict[str, Any]:
     facility = world.get_facility(identifier)
     if not facility.is_routable():
         raise ValueError("Unroutable migration endpoint")
-    return facility.location_snapshot().to_dict()
+    return asdict(facility.location_snapshot())
 
 
 def migrate_contract(contract: dict[str, Any], world: WorldSnapshot) -> None:

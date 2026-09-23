@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Any, Literal
 
 TransportMode = Literal["truck"]
@@ -18,10 +18,6 @@ class Hub:
     label: str
     address: str
     country: str
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize the hub for API payloads."""
-        return asdict(self)
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,10 +45,6 @@ class Contract:
     expires_at: float
     mode: TransportMode = "truck"
 
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize the contract for persistence and API payloads."""
-        return asdict(self)
-
 
 @dataclass(frozen=True, slots=True)
 class RouteResult:
@@ -63,10 +55,6 @@ class RouteResult:
     route_geojson: dict[str, Any]
     provider: str
 
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize the route result."""
-        return asdict(self)
-
 
 @dataclass(frozen=True, slots=True)
 class PriceQuote:
@@ -75,10 +63,6 @@ class PriceQuote:
     payout_eur: int
     operating_cost_eur: int
     profit_eur: int
-
-    def to_dict(self) -> dict[str, int]:
-        """Serialize the quote calculation."""
-        return asdict(self)
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,10 +76,6 @@ class VehicleImage:
     license_url: str
     attribution: str
     scope: str
-
-    def to_dict(self) -> dict[str, str]:
-        """Expose image provenance alongside its display URL."""
-        return asdict(self)
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,7 +92,3 @@ class VehicleModel:
     unlock_reputation: int
     mode: str = "truck"
     image: VehicleImage | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize the stable catalogue projection."""
-        return asdict(self)

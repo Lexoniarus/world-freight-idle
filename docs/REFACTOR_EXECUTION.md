@@ -330,3 +330,17 @@ Aufträge werden ausschließlich durch den Repository-Decoder hergestellt.
 Die betroffenen Domain-, Markt-, Spiel-, Repository-, Transport-, Multiplayer-,
 Migrations- und API-Tests bestanden; Pyright meldet keine Fehler. Regeltests
 verändern typisierte Angebote gezielt über immutable Kopien.
+
+## B: Domainwerte ohne Datenformate
+
+PlayerState, OwnedVehicle, Referenzwerte und Katalogmodelle besitzen keine
+from_dict-/to_dict-Methoden mehr. Das API projiziert Spieler-, Fahrzeug- und
+Standortwerte; die relationalen Repositories konstruieren Entities direkt.
+Tests verwenden Konstruktoren und benannte Zustandswechsel statt
+Domain-Hydrierung öffentlicher JSON-Dokumente. Die alte separate
+KV-Weltmigration bleibt ausschließlich bis zum geplanten Legacy-Abbau erhalten.
+
+Im betroffenen Lauf bestanden 137 von 138 Fällen. Der verbleibende Test hatte
+beim Aufbau eines reisenden Fahrzeugs start_trip ausgelassen; der korrigierte
+Aufbau und die unmittelbar betroffenen Änderungen bestanden im Nachlauf
+(fünf Fälle). mypy, Pyright und Function-Test-Manifest sind grün.

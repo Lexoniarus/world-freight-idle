@@ -265,9 +265,7 @@ def test_leaderboard_counts_offline_arrivals_without_double_counting(
     accounts.create_user("Bob", "unused")
     service = build_player_service(runtime, alice["id"])
     service.state_repository.save_player(
-        PlayerState.from_dict(
-            {"cash": 175000, "completed": 2, "reputation": 2}
-        )
+        PlayerState(cash=175000, completed=2, reputation=2)
     )
     add_transport(service, payout=100)
     reader = build_leaderboard_reader(runtime)

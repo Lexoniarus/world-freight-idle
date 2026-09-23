@@ -7,6 +7,7 @@ import pytest
 from app.api.v1.game_projection import (
     project_vehicle,
 )
+from app.api.v1.location_projection import project_location
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.repositories.transport_mapping import load_transport
 
@@ -96,7 +97,7 @@ def test_transport_settlement_keeps_saved_location_without_catalogue(game):
         assert game.reconcile_arrival()
         assert [project_vehicle(value) for value in game.list_vehicles()][0][
             "hub"
-        ] == trip.destination.to_dict()
+        ] == project_location(trip.destination)
     player = game.state_repository.get_player()
     assert player is not None and player.cash == 175050
     assert not game.reconcile_arrival()

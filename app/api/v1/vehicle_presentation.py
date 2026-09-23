@@ -1,5 +1,7 @@
 """Enrich fleet presentation without rewriting owned vehicle snapshots."""
 
+from dataclasses import asdict
+
 from app.domain.errors import CatalogueError
 from app.domain.ports import VehicleCatalogue
 
@@ -13,7 +15,7 @@ def present_vehicles(
     except CatalogueError:
         images = {}
     return [
-        {**vehicle, "image": image.to_dict() if image else None}
+        {**vehicle, "image": asdict(image) if image else None}
         for vehicle in vehicles
         for image in [images.get(vehicle.get("model_id") or "")]
     ]

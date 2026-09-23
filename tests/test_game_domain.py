@@ -7,23 +7,23 @@ from typing import Any
 
 import pytest
 
+from app.api.v1.game_projection import project_player, project_vehicle
+from app.api.v1.location_projection import project_location
 from app.domain.contracts import ContractOffer, ContractOfferSnapshot
 from app.domain.game import OwnedVehicle, PlayerState
 
 
 def test_player_state_domain_rules():
-    player = PlayerState.from_dict(
-        {"cash": 1000, "completed": 2, "reputation": 3}
-    )
+    player = PlayerState(cash=1000, completed=2, reputation=3)
     player.debit(250)
-    assert player.to_dict() == {
+    assert project_player(player) == {
         "cash": 750,
         "completed": 2,
         "reputation": 3,
     }
 
     player.complete_delivery(125)
-    assert player.to_dict() == {
+    assert project_player(player) == {
         "cash": 875,
         "completed": 3,
         "reputation": 4,
@@ -40,19 +40,17 @@ def test_player_state_domain_rules():
 def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
     berlin = world_catalogue.read().get_facility("berlin_westhafen")
     location = berlin.location_snapshot()
-    vehicle = OwnedVehicle.from_dict(
-        {
-            "id": "truck_01",
-            "name": "Test",
-            "mode": "truck",
-            "model_id": "legacy",
-            "operating_cost_eur_per_km": 0.5,
-            "capacity_tons": 24,
-            "hub_id": berlin.facility_uid,
-            "facility_uid": berlin.facility_uid,
-            "location_snapshot": location.to_dict(),
-            "status": "idle",
-        }
+    vehicle = OwnedVehicle(
+        id="truck_01",
+        name="Test",
+        mode="truck",
+        model_id="legacy",
+        operating_cost_eur_per_km=0.5,
+        capacity_tons=24,
+        hub_id=berlin.facility_uid,
+        facility_uid=berlin.facility_uid,
+        location=location,
+        status="idle",
     )
 
     assert vehicle.location == location
@@ -89,21 +87,19 @@ def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
     assert vehicle.id == identity
     assert vehicle.model_id == model.id
     assert vehicle.capacity_tons == model.capacity_tons
-    payload = vehicle.to_dict()
-    assert payload["location_snapshot"] == destination.to_dict()
+    payload = project_vehicle(vehicle)
+    assert payload["location_snapshot"] == project_location(destination)
 
-    legacy = OwnedVehicle.from_dict(
-        {
-            "id": "legacy",
-            "name": "Legacy",
-            "mode": "truck",
-            "capacity_tons": 12,
-            "hub_id": berlin.facility_uid,
-            "status": "idle",
-        }
+    legacy = OwnedVehicle(
+        id="legacy",
+        name="Legacy",
+        mode="truck",
+        capacity_tons=12,
+        hub_id=berlin.facility_uid,
+        status="idle",
     )
-    assert legacy.to_dict()["model_id"] is None
-    assert "location_snapshot" not in legacy.to_dict()
+    assert project_vehicle(legacy)["model_id"] is None
+    assert "location_snapshot" not in project_vehicle(legacy)
 
 
 def test_contract_offer_domain_rules(game):
@@ -241,9 +237,9 @@ def test_entity_construction_and_mutation_are_guarded(
         vehicle.arrive(location)
     with pytest.raises(ValueError):
         vehicle.validate_dispatch("truck", location.facility_uid, float("nan"))
-    original = vehicle.to_dict()
+    original = project_vehicle(vehicle)
     model = catalogue.list_models()[0]
     for changes in ({"capacity_tons": 0}, {"operating_cost_eur_per_km": -1}):
         with pytest.raises(ValueError):
             vehicle.apply_model(replace(model, **changes))
-        assert vehicle.to_dict() == original
+        assert project_vehicle(vehicle) == original
