@@ -65,3 +65,21 @@ CI installiert Chromium. Lokale Screenshots werden zusätzlich visuell geprüft.
 Automatisierte Mobilansicht ist keine reale iPad-Abnahme. Provider-Mocks beweisen
 keine öffentliche Dienstverfügbarkeit. Tatsächlich ausgeführte Ergebnisse stehen
 in QUALITY_REPORT.md; historische Läufe sind keine aktuelle Freigabe.
+
+## Regressionen des Persistenzreviews
+
+Ein Dashboard mit 100 abgeschlossenen Transporten darf keinen historischen
+Transport deserialisieren. Gemischte Bestandsfixtures sichern aktive/fällige
+SQL-Abfragen, Spielertrennung und die inklusive Fälligkeitsgrenze.
+Manipulierte Testschemata prüfen gleichnamige unwirksame Indizes/Trigger und
+fehlende Schlüsselbeziehungen; Formatierung darf gültige Guards nicht ändern.
+
+Der Offline-Importer validiert auch verschachtelte Firmen, Waren, NHM-Profile,
+Quellen und GeoJSON-Objekte vor dem Mapping. Unbekannte Felder oder falsche
+Container brechen beide Modi mit einem Feldpfad ohne Feldwerte ab. Vorhandene
+Stadt-UUIDs und doppelte Standortprojektionen müssen uebereinstimmen.
+Leere/fehlende Feature-Properties bleiben erlaubt; nichtleere Properties werden
+abgewiesen, weil der Routensnapshot sie nicht speichert. Bei fehlendem
+location_snapshot wird eine vorhandene historische hub-Projektion verwendet.
+Diese Tests verwenden ausschließlich temporäre Datenbanken; die bereits
+migrierten Profile werden nicht erneut importiert.

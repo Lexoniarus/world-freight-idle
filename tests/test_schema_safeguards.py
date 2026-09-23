@@ -1,5 +1,6 @@
 """Reject same-name but ineffective schema guards without modifying files."""
 
+import logging
 import sqlite3
 from contextlib import closing
 
@@ -25,6 +26,7 @@ from app.repositories.game_schema import SCHEMA
     ],
 )
 def test_schema_rejects_ineffective_unique_index(tmp_path, definition, caplog):
+    caplog.set_level(logging.ERROR)
     database = SqliteGameDatabase(tmp_path / "guard.db")
     database.initialize()
     with database.connect() as connection:

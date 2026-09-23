@@ -1,4 +1,10 @@
 FUNCTION_TESTS = {
+    "app.repositories.legacy_import_mapping.LegacyFieldError.__init__": "test_import_modes_reject_nested_loss_without_outputs",
+    "app.repositories.legacy_import_mapping.require_legacy_array": "test_nested_cargo_sources_and_arrays_reject_unknown_values",
+    "app.repositories.legacy_import_mapping.read_legacy_source": "test_nested_cargo_sources_and_arrays_reject_unknown_values",
+    "app.repositories.legacy_import_mapping.read_legacy_sources": "test_nested_cargo_sources_and_arrays_reject_unknown_values",
+    "app.repositories.legacy_import_mapping.read_legacy_good": "test_nested_cargo_sources_and_arrays_reject_unknown_values",
+    "app.repositories.legacy_import_mapping.read_legacy_route": "test_legacy_route_rejects_unretained_feature_metadata",
     "app.repositories.game_database.SqliteGameDatabase._validate_keys": "test_schema_rejects_missing_or_changed_ownership_keys",
     "app.repositories.game_database.SqliteGameDatabase._validate_guards": "test_schema_rejects_ineffective_unique_index",
     "app.repositories.game_database.schema_sql_tokens": "test_schema_accepts_formatting_but_preserves_literals",

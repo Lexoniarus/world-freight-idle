@@ -17,7 +17,10 @@ from app.domain.validation import require_finite, require_identity
 from app.domain.world_scopes import WorldScope
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameStateRepository
-from app.repositories.legacy_import_mapping import LegacySnapshotReader
+from app.repositories.legacy_import_mapping import (
+    LegacyFieldError,
+    LegacySnapshotReader,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -141,13 +144,20 @@ class LegacyGameImporter:
             TypeError,
             StopIteration,
         ) as exc:
+            field_path = (
+                exc.path if isinstance(exc, LegacyFieldError) else None
+            )
             LOGGER.error(
                 "Legacy inventory rejected",
-                extra={"event": "state.import_rejected"},
+                extra={
+                    "event": "state.import_rejected",
+                    "data": {"field_path": field_path},
+                },
             )
-            raise PersistenceError(
-                "Legacy inventory invalid; source unchanged."
-            ) from exc
+            message = "Legacy inventory invalid; source unchanged."
+            if field_path is not None:
+                message += " Invalid fields at " + field_path + "."
+            raise PersistenceError(message) from exc
 
     def _read_profile(
         self,

@@ -1,5 +1,15 @@
 # Changelog
 
+## Persistenz-Review-Fixes – 23.09.2026
+
+- Aktive und fällige Transporte werden vor dem Laden der Snapshots in SQL
+  gefiltert; abgeschlossene Historie belastet normale Spielabfragen nicht mehr.
+- Die Startprüfung erkennt unwirksame gleichnamige Transport-Guards und
+  abweichende Primär-/Fremdschlüssel, ohne bestehende Dateien zu reparieren.
+- Der Offline-Importer weist unbekannte verschachtelte Felder und fehlerhafte
+  Container mit sicheren Feldpfaden zurück; bekannte Metadaten bleiben erhalten.
+- Keine Änderung an API-Verträgen, Schema 1.0.0 oder vorhandenen Profilen.
+
 ## Domain und relationale Persistenz – 23.09.2026
 
 - Eine typisierte Laufzeit hinter GameStateRepository/GameUnitOfWork; KV-Spielpfad

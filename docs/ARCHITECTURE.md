@@ -117,9 +117,9 @@ und Ankunft vor der Snapshot-Deserialisierung; der Index `arrivals` unterstützt
 diesen Zugriff. Vollständige Historienabfragen bleiben expliziten
 Bestandsabgleichen vorbehalten. Settlement bleibt atomar.
 
-Die Startpruefung vergleicht Primaer-/Fremdschluessel und die ausfuehrbaren
-Transport-Guards mit dem unterstuetzten Schema, nicht nur deren Namen.
-SQL-Formatierung wird ignoriert, Literalinhalte bleiben unveraendert.
+Die Startprüfung vergleicht Primär-/Fremdschlüssel und die ausführbaren
+Transport-Guards mit dem unterstützten Schema, nicht nur deren Namen.
+SQL-Formatierung wird ignoriert, Literalinhalte bleiben unverändert.
 Abweichungen liefern `UnsupportedGameSchema` und `state.schema_rejected`;
 eine automatische Reparatur bestehender Dateien findet nicht statt.
 Die Schemaversion bleibt 1.0.0.
