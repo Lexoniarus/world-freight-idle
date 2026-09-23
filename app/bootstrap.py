@@ -14,7 +14,7 @@ from app.config import Settings
 from app.domain.game_import import GameStateImporter
 from app.domain.geography_migration import GeographyMigrationStore
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
-from app.domain.read_ports import LeaderboardReader
+from app.domain.read_ports import LeaderboardReader, TrafficReader
 from app.domain.world_scopes import WorldScope
 from app.providers.routing import ValhallaTruckRouter
 from app.repositories.accounts import AccountRepository
@@ -33,7 +33,6 @@ from app.services.game import GameService
 from app.services.map_locations import MapLocationService
 from app.services.market import MarketGenerator
 from app.services.market_scope import MarketScopeResolver
-from app.services.multiplayer_map import MultiplayerMapService
 from app.services.profile_maintenance import ProfileMaintenanceService
 
 
@@ -114,11 +113,11 @@ def build_map_service(game: GameService) -> MapLocationService:
     return MapLocationService(game.world)
 
 
-def build_multiplayer_map_service(
+def build_traffic_reader(
     runtime: GameRuntime,
-) -> MultiplayerMapService:
+) -> TrafficReader:
     """Build the relational cross-player traffic projection."""
-    return MultiplayerMapService(SqliteTrafficReader(runtime.database))
+    return SqliteTrafficReader(runtime.database)
 
 
 def build_leaderboard_reader(runtime: GameRuntime) -> LeaderboardReader:

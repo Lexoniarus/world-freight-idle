@@ -1,6 +1,7 @@
 """Typed public projections independent of account and game write models."""
 
-from typing import Any, Protocol, TypedDict
+from dataclasses import dataclass
+from typing import Protocol, TypedDict
 
 
 class RankingEntry(TypedDict):
@@ -10,7 +11,8 @@ class RankingEntry(TypedDict):
     completed: int
 
 
-class SharedTransport(TypedDict):
+@dataclass(frozen=True, slots=True)
+class SharedTransport:
     """Minimum public transport facts needed by the multiplayer map."""
 
     user_id: str
@@ -21,7 +23,7 @@ class SharedTransport(TypedDict):
     model_name: str
     departed_at: float
     arrives_at: float
-    route_geojson: dict[str, Any]
+    coordinates: tuple[tuple[float, float], ...]
 
 
 class LeaderboardReader(Protocol):

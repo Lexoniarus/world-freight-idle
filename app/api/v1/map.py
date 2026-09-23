@@ -1,16 +1,19 @@
 """Authenticated location projection for the map-first interface."""
 
+import time
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.v1.dependencies import (
     get_current_user,
     get_map_service,
-    get_multiplayer_map_service,
+    get_traffic_reader,
 )
 from app.api.v1.location_projection import project_location
+from app.api.v1.traffic_projection import project_traffic
+from app.domain.read_ports import TrafficReader
 from app.domain.world import FacilityQuery
 from app.services.map_locations import MapLocationService
-from app.services.multiplayer_map import MultiplayerMapService
 
 router = APIRouter(prefix="/map", tags=["map"])
 
@@ -51,7 +54,11 @@ def list_map_facilities(
 @router.get("/traffic")
 def list_map_traffic(
     user: dict = Depends(get_current_user),
-    service: MultiplayerMapService = Depends(get_multiplayer_map_service),
+    reader: TrafficReader = Depends(get_traffic_reader),
 ) -> dict:
     """Return the minimal live transport projection visible to all players."""
-    return {"transports": service.list_traffic(user["id"])}
+    return {
+        "transports": project_traffic(
+            reader.list_active_transports(time.time()), user["id"]
+        )
+    }

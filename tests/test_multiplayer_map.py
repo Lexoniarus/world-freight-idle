@@ -4,17 +4,18 @@ from __future__ import annotations
 
 import logging
 import re
+from dataclasses import asdict
 
 from fastapi.testclient import TestClient
 
+from app.api.v1.traffic_projection import player_color, project_traffic
 from app.bootstrap import (
-    build_multiplayer_map_service,
     build_player_service,
+    build_traffic_reader,
 )
 from app.main import create_app
 from app.repositories.accounts import AccountRepository
 from app.repositories.relational_traffic import SqliteTrafficReader
-from app.services.multiplayer_map import player_color
 from tests.test_api import make_settings, make_static_files
 from tests.transport_fixtures import add_transport
 
@@ -59,8 +60,8 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
     repository = SqliteTrafficReader(database)
     assert repository.list_active_transports(now + 200) == ()
     rows = repository.list_active_transports(now)
-    assert [row["id"] for row in rows] == ["alice-trip", "bob-trip"]
-    assert set(rows[0]) == {
+    assert [row.id for row in rows] == ["alice-trip", "bob-trip"]
+    assert set(asdict(rows[0])) == {
         "user_id",
         "username",
         "id",
@@ -69,12 +70,15 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
         "model_name",
         "departed_at",
         "arrives_at",
-        "route_geojson",
+        "coordinates",
     }
 
-    service = build_multiplayer_map_service(runtime)
+    reader = build_traffic_reader(runtime)
     with caplog.at_level(logging.INFO):
-        traffic = service.list_traffic(alice["id"], now=now)
+        traffic = project_traffic(
+            reader.list_active_transports(now), alice["id"]
+        )
+        assert project_traffic((), alice["id"]) == []
 
     assert [item["id"] for item in traffic] == ["alice-trip", "bob-trip"]
     own = next(item for item in traffic if item["id"] == "alice-trip")

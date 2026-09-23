@@ -52,6 +52,9 @@ Accounts besitzen getrennte Spielzustände; dieselbe lokale Fahrzeugkennung
 mehrerer Spieler ist erlaubt. Rangliste und Mehrspielerkarte verwenden eigene
 Leseports. Nur noch aktive fällige Transporte ergänzen die Offline-Rangliste.
 Öffentliche Verkehrsdaten enthalten keine Guthaben, Kosten oder Zugangsdaten.
+TrafficReader liefert unveränderliche SharedTransport-Werte mit Koordinaten.
+Spielerfarben, Eigentumsmarkierung und GeoJSON entstehen erst in der API-
+Projektion; ein zusätzlicher durchreichender Mehrspieler-Service entfällt.
 
 ## Referenzwelt und Markt
 

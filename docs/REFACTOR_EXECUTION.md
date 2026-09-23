@@ -485,3 +485,12 @@ Backups außerhalb von data. .dockerignore schließt jetzt backups sowie
 SQLite-/Backup-Dateien unabhängig vom Ablageort aus; die beiden Referenzkataloge
 bleiben gezielte Ausnahmen. Die Muster und Dockerfile-COPY-Grenze wurden manuell
 geprüft. Ein Docker-Build wurde mangels lokalem Docker nicht ausgeführt.
+
+Der anschließende Gesamtlauf bestand mit 252 Python-Tests und 100 % der
+2.995 Core-Statements, 54 Frontendtests und Build. Alle zehn Browserszenarien
+bestanden. Das abschließende Grenzreview erkannte danach noch öffentliche
+JSON-/Farbprojektionen im Mehrspieler-Service. Diese liegen jetzt im API-Modul;
+TrafficReader liefert unveränderliche SharedTransport-Werte mit Koordinaten.
+Der überflüssige Service wurde entfernt. Alle 17 betroffenen Tests einschließlich
+Manifest und Architektur bestehen. Das finale Gate und E2E laufen deshalb noch
+einmal auf diesem bereinigten Stand.

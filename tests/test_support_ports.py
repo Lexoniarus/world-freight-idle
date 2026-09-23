@@ -1,6 +1,6 @@
 """Relational public reads and provider cache boundaries."""
 
-from dataclasses import replace
+from dataclasses import asdict, replace
 
 import pytest
 
@@ -49,13 +49,13 @@ def test_relational_public_reads_preserve_privacy_and_offline_progress(
     bob.save_transport(replace(trip, id="bob-live", arrives_at=30))
     rows = traffic.list_active_transports(12)
     assert len(rows) == 2
-    assert {row["user_id"] for row in rows} == {"alice", "bob"}
+    assert {row.user_id for row in rows} == {"alice", "bob"}
     for row in rows:
         assert {"contract", "password_hash", "cash", "payout_eur"}.isdisjoint(
-            row
+            asdict(row)
         )
-        assert row["vehicle_id"] == vehicle.id
-        assert row["route_geojson"]["coordinates"] == [[1, 1], [2, 2]]
+        assert row.vehicle_id == vehicle.id
+        assert row.coordinates == ((1, 1), (2, 2))
     assert ranking.list_ranking(21)[0] == {"username": "Alice", "completed": 6}
     assert len(traffic.list_active_transports(21)) == 1
     with relational.transaction():

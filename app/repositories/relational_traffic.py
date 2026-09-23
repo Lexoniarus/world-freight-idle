@@ -41,8 +41,5 @@ def project_traffic_row(row: dict) -> SharedTransport:
         model_name=row["model_name"],
         departed_at=trip.departed_at,
         arrives_at=trip.arrives_at,
-        route_geojson={
-            "type": "LineString",
-            "coordinates": [list(point) for point in trip.route.coordinates],
-        },
+        coordinates=trip.route.coordinates,
     )
