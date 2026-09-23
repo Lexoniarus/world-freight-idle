@@ -5,6 +5,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 STANDARD_RATE = 0.18
+ENERGY_RESERVE_FRACTION = 0.1
+DIESEL_STOP_MINUTES = 10.0
 
 
 @dataclass(frozen=True, slots=True)

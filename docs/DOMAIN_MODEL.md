@@ -10,7 +10,7 @@ Domainobjekte kennen keine Persistenzformate.
 | Objekt | Verantwortung |
 | --- | --- |
 | PlayerState | Validierte ganzzahlige Geld-/Fortschrittswerte; debit, complete_delivery, replace_cash |
-| OwnedVehicle | Stabile lokale ID, Kaufwerte, Status und Facility-UID; validate_dispatch, start_trip, arrive, apply_model |
+| OwnedVehicle | Stabile lokale ID, Kaufwerte, Energiecheckpoint, Status und Facility-UID; validate_dispatch, start_trip, arrive, apply_model, consume_energy, refill_energy |
 | ContractOffer | Angebot mit validierten Mengen, Konditionen, Endpunkten und Verfügbarkeit |
 | ActiveTransport | Historischer Auftrag, Fahrzeug, Route, Kosten, Auszahlung und genau einmaliges Settlement |
 
@@ -77,6 +77,19 @@ Routing und öffentliche Leseprojektionen besitzen explizite Ports.
 
 Hub, Minimal-Contract, CargoType, CargoProfile und RouteResult sind entfernt.
 Es gibt keine KV-Spielstandzugriffe, Domain-to_dict/from_dict-Methoden oder
-parallele Alt-/Neulaufzeit. Nur das isolierte Offline-Importwerkzeug kennt die
-alten Dokumente. Konkrete Persistenz und Serialisierung liegen im Repository,
+parallele Alt-/Neulaufzeit. Nur explizite Offline-Werkzeuge kennen frühere
+Formate. Konkrete Persistenz und Serialisierung liegen im Repository,
 öffentliche JSON-Projektionen im API-Bereich.
+
+## Energie und Fahrtplan
+
+`EnergyProfile` ist ein unveränderlicher Kaufwert. `JourneyPlan` komponiert
+Fahrabschnitte und stationäre Tank-/Ladepausen. Die reine Planung begrenzt
+die Geschwindigkeit, wahrt 10 % Reserve und skaliert Fahrt und Pause gleich.
+`progress_at(elapsed_seconds)` interpoliert Bewegung und Verbrauch; erst
+am Pausenende wird aufgefüllt. Domaincode liest keine Uhr und keine DB.
+Ungemessene historische Fahrten behalten einen einzelnen Fahrabschnitt ohne
+Energieabrechnung. OwnedVehicle speichert den Ausgangsfüllstand; während
+der Fahrt berechnet ActiveTransport den aktuellen Stand aus seinem Snapshot.
+Settlement speichert Endfüllstand, Standort, Auszahlung und Status atomar.
+Modellwechsel sind nur im Stand zulässig und erhalten den bisherigen Füllgrad.

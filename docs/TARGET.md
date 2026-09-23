@@ -121,10 +121,12 @@ ist keine pauschale Freigabe künftiger Architektur oder des gesamten M1.
 
 - 14 Modelle aus dem vorhandenen Referenzkatalog, getrennte technische Daten
   und Spielwerte; Katalog wird mit ausgeliefert und nur lesend geöffnet.
-- Neue Spielstände: 175.000 € plus kostenlosem DB-IVECO S-Way. Keine automatische Gutschrift
-  oder Umwandlung alter Flotten; alte Modelle bleiben disponierbar.
+- Neue Spielstände: 175.000 € plus kostenlosem DB-IVECO S-Way. Bestehende
+  Kaufwerte bleiben erhalten; Energieprofile werden ausschließlich über das
+  explizite Offline-Upgrade ergänzt. Unbekannte Modellzuordnungen brechen es ab.
 - Kaufpreis, Nutzlast, Reputationsfreigabe und individuelle Kilometerkosten aktiv.
-- Wartung, Reichweitenbeschränkungen, Energiehalte und Zuverlässigkeit bleiben offen.
+- Konstante Verbrauchswerte, Restmengen und reichweitenabhängige Energiehalte
+  sind aktiv. Wartung, Stationssuche, Ladekurven und Zuverlässigkeit bleiben offen.
 - Kauf-/Quote-Validierung, verspätete Antworten und Fehlerfälle besitzen
   Regressionstests. Tatsächliche Prüfergebnisse stehen im Qualitätsbericht.
 - M1 insgesamt bleibt wegen Unternehmen/eigener Depots weiterhin in Arbeit.
@@ -192,7 +194,7 @@ bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATAL
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.0.0) und
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
 WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).

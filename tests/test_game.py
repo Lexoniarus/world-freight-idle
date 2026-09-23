@@ -14,7 +14,9 @@ from app.api.v1.game_projection import (
     project_transport,
     project_vehicle,
 )
+from app.domain.energy import EnergyProfile
 from app.domain.game import OwnedVehicle, PlayerState
+from app.domain.journeys import unmetered_journey
 from app.domain.pricing import PriceQuote
 from app.domain.results import ContractQuote
 from app.domain.transports import RouteSnapshot
@@ -118,7 +120,10 @@ def test_reconcile_arrival_moves_vehicle_and_pays(game: GameService):
         0.62,
     )
     trip = game._build_trip(
-        game._find_contract(contract["id"]), "truck_01", quote, 1.0, 1.0
+        game._find_contract(contract["id"]),
+        "truck_01",
+        replace(quote, journey=unmetered_journey(300, 1)),
+        1.0,
     )
     game.state_repository.save_transport(trip)
     vehicle = game.state_repository.list_vehicles()[0]
@@ -221,7 +226,12 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
         ({"mode": "ship"}, "Fahrzeugtyp"),
         ({"status": "enroute"}, "verfügbar"),
     ):
-        invalid = OwnedVehicle(**{**base, **changes})
+        invalid = OwnedVehicle(
+            **{**base, **changes},
+            energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+            energy_level=100,
+            top_speed_kmh=90,
+        )
         with pytest.raises(ValueError, match=message):
             game._validate_dispatch(
                 invalid, game._find_contract(contract["id"])
@@ -238,8 +248,15 @@ def test_build_trip_contains_tracking_timestamps(game: GameService):
         0.62,
     )
     trip = game._build_trip(
-        game._find_contract(contract["id"]), "truck_01", quote, 1000.0, 50.0
+        game._find_contract(contract["id"]),
+        "truck_01",
+        replace(quote, journey=unmetered_journey(10, 50)),
+        1000.0,
     )
+    with pytest.raises(ValueError, match="energy plan"):
+        game._build_trip(
+            game._find_contract(contract["id"]), "truck_01", quote, 1000
+        )
     assert trip.departed_at == 1000.0
     assert trip.arrives_at == 1050.0
     assert trip.payout_eur - trip.operating_cost_eur == 70

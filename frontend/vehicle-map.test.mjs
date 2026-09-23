@@ -171,6 +171,10 @@ test("shared traffic projects players, model names and private route lines separ
     username: "Alice",
     player_color: "#e45756",
     is_own: true,
+    journey: {
+      distance_km: 100,
+      segments: [{ phase: "driving", starts_at: 0, ends_at: 10, start_km: 0, end_km: 100 }],
+    },
     departed_at: 0,
     arrives_at: 10,
     route_geojson: {
@@ -240,6 +244,10 @@ test("unsupported public vehicle models keep the player-colored fallback", () =>
         username: "Alice",
         player_color: "#123456",
         is_own: true,
+        journey: {
+          distance_km: 100,
+          segments: [{ phase: "driving", starts_at: 0, ends_at: 10, start_km: 0, end_km: 100 }],
+        },
         departed_at: 0,
         arrives_at: 10,
         route_geojson: {

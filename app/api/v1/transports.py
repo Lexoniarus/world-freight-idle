@@ -14,7 +14,8 @@ def list_transports(game: GameService = Depends(get_game_service)) -> dict:
     """Return active and recent transport state for the MVP."""
     return {
         "transports": [
-            project_transport(item) for item in game.list_transports()
+            project_transport(item, game.now())
+            for item in game.list_transports()
         ]
     }
 
@@ -26,6 +27,6 @@ def get_transport(
 ) -> dict:
     """Return one live transport including route geometry and timestamps."""
     try:
-        return project_transport(game.get_transport(transport_id))
+        return project_transport(game.get_transport(transport_id), game.now())
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from exc

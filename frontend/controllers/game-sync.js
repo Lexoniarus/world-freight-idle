@@ -1,4 +1,5 @@
 import { requiredElement, html } from "../ui/dom.js";
+import { energyDisplay } from "../ui/vehicle-energy.js";
 import { money } from "../format.js";
 import { progressDisplay } from "../views/transports.js";
 
@@ -59,6 +60,13 @@ export class GameSync {
 
   updateProgress() {
     if (this.disposed || !this.state.data) return;
+    this.updateEnergyMeters();
+    document.querySelectorAll("[data-phase-trip]").forEach((element) => {
+      const trip = this.state.data.transports.find(
+        (item) => item.id === element.getAttribute("data-phase-trip"),
+      );
+      if (trip) element.textContent = progressDisplay(trip, this.state.now()).phase;
+    });
     document.querySelectorAll("[data-trip]").forEach((element) => {
       const trip = this.state.data.transports.find(
         (item) => item.id === element.getAttribute("data-trip"),
@@ -68,6 +76,20 @@ export class GameSync {
       requiredElement(".eta", element).textContent = eta;
       requiredElement(".percentage", element).textContent = percent + "%";
       element.querySelector("progress").value = percent;
+    });
+  }
+
+  /** Update only meter values and text, preserving vehicle image nodes. */
+  updateEnergyMeters() {
+    document.querySelectorAll("[data-energy-vehicle]").forEach((element) => {
+      const vehicle = this.state.data.vehicles.find(
+        (item) => item.id === element.getAttribute("data-energy-vehicle"),
+      );
+      if (!vehicle) return;
+      const trip = this.state.data.transports.find((item) => item.vehicle_id === vehicle.id);
+      const display = energyDisplay(vehicle, trip, this.state.now());
+      element.querySelector("meter").value = display.level;
+      requiredElement(".energy-value", element).textContent = display.text;
     });
   }
 

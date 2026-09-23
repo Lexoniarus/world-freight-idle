@@ -9,11 +9,12 @@ from collections.abc import Callable, Sequence
 from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.errors import CatalogueError
 from app.domain.game import OwnedVehicle, PlayerState
+from app.domain.journeys import plan_journey
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
 from app.domain.pricing import calculate_price
 from app.domain.results import ContractQuote, GameSnapshot
 from app.domain.state_ports import GameUnitOfWork
-from app.domain.transports import ActiveTransport
+from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.domain.world import FacilityQuery
 from app.services.fleet import (
     create_starter_vehicle,
@@ -141,18 +142,13 @@ class GameService:
         """Route snapshot coordinates and calculate simulated economics."""
         self.reconcile_arrival()
         contract = self._find_contract(contract_id)
-        cost_per_km = 0.62
+        vehicle: OwnedVehicle | None = None
         if vehicle_id is not None:
             vehicle = self._find_vehicle(
                 list(self.state_repository.list_vehicles()),
                 vehicle_id,
             )
             self._validate_dispatch(vehicle, contract)
-            cost_per_km = (
-                0.62
-                if vehicle.operating_cost_eur_per_km is None
-                else vehicle.operating_cost_eur_per_km
-            )
         origin = contract.origin
         destination = contract.destination
         if origin.coordinates is None or destination.coordinates is None:
@@ -163,12 +159,12 @@ class GameService:
             destination.coordinates.latitude,
             destination.coordinates.longitude,
         )
-        economics = calculate_price(
-            contract.tons,
-            route.distance_km,
-            cost_per_km,
-            contract.rate_eur_per_km_ton,
+        if self._find_contract(contract_id) != contract:
+            raise ValueError("Auftrag wurde während der Kalkulation geändert.")
+        vehicle = (
+            self.get_vehicle(vehicle_id) if vehicle_id is not None else None
         )
+        quote = self._calculate_quote(contract, route, vehicle)
         LOGGER.info(
             "Contract quoted",
             extra={
@@ -182,9 +178,7 @@ class GameService:
                 },
             },
         )
-        return ContractQuote(
-            contract, route, economics, vehicle_id, cost_per_km
-        )
+        return quote
 
     async def dispatch(
         self,
@@ -213,31 +207,14 @@ class GameService:
             list(self.state_repository.list_vehicles()), vehicle_id
         )
         self._validate_dispatch(vehicle, contract)
-        economics = calculate_price(
-            contract.tons,
-            quote.route.distance_km,
-            0.62
-            if vehicle.operating_cost_eur_per_km is None
-            else vehicle.operating_cost_eur_per_km,
-            contract.rate_eur_per_km_ton,
-        )
-        quote = ContractQuote(
-            contract,
-            quote.route,
-            economics,
-            vehicle_id,
-            vehicle.operating_cost_eur_per_km
-            if vehicle.operating_cost_eur_per_km is not None
-            else 0.62,
-        )
+        quote = self._calculate_quote(contract, quote.route, vehicle)
         player = self._get_player()
-        player.debit(economics.operating_cost_eur)
+        player.debit(quote.economics.operating_cost_eur)
         trip = self._build_trip(
             contract,
             vehicle_id,
             quote,
             self.now(),
-            quote.route.duration_seconds / self.time_scale,
         )
         vehicle.start_trip()
         self.state_repository.save_player(player)
@@ -252,6 +229,8 @@ class GameService:
                     "trip_id": trip.id,
                     "contract_id": contract_id,
                     "vehicle_id": vehicle_id,
+                    "energy_stop_count": trip.journey.stop_count,
+                    "journey_seconds": trip.journey.duration_seconds,
                     "origin_facility_uid": trip.origin.facility_uid,
                     "destination_facility_uid": trip.destination.facility_uid,
                 },
@@ -277,7 +256,12 @@ class GameService:
         vehicle = self._find_vehicle(
             list(self.state_repository.list_vehicles()), trip.vehicle_id
         )
-        vehicle.arrive(trip.destination)
+        if trip.journey.energy is not None and (
+            vehicle.energy != trip.journey.energy
+            or vehicle.energy_level != trip.journey.segments[0].start_energy
+        ):
+            raise ValueError("Vehicle energy checkpoint differs from trip.")
+        vehicle.arrive(trip.destination, trip.journey.segments[-1].end_energy)
         player = self._get_player()
         player.complete_delivery(trip.payout_eur)
         self.state_repository.save_vehicle(vehicle)
@@ -471,9 +455,10 @@ class GameService:
         vehicle_id: str,
         quote: ContractQuote,
         departed_at: float,
-        duration_real_seconds: float,
     ) -> ActiveTransport:
         """Create the immutable dispatch snapshot used for tracking."""
+        if quote.journey is None:
+            raise ValueError("Dispatch requires a vehicle energy plan.")
         trip = ActiveTransport(
             id=str(uuid.uuid4()),
             vehicle_id=vehicle_id,
@@ -482,8 +467,44 @@ class GameService:
             destination=contract.destination,
             route=quote.route,
             departed_at=departed_at,
-            arrives_at=departed_at + duration_real_seconds,
+            arrives_at=departed_at + quote.journey.duration_seconds,
+            journey=quote.journey,
             payout_eur=quote.economics.payout_eur,
             operating_cost_eur=quote.economics.operating_cost_eur,
         )
         return trip
+
+    def _calculate_quote(
+        self,
+        contract: ContractOffer,
+        route: RouteSnapshot,
+        vehicle: OwnedVehicle | None,
+    ) -> ContractQuote:
+        """Calculate economics and energy from current purchased values."""
+        journey = None
+        cost_per_km = 0.62
+        if vehicle is not None:
+            self._validate_dispatch(vehicle, contract)
+            if vehicle.operating_cost_eur_per_km is not None:
+                cost_per_km = vehicle.operating_cost_eur_per_km
+            journey = plan_journey(
+                route.distance_km,
+                route.duration_seconds,
+                vehicle.top_speed_kmh,
+                vehicle.energy,
+                vehicle.energy_level,
+                self.time_scale,
+            )
+        return ContractQuote(
+            contract,
+            route,
+            calculate_price(
+                contract.tons,
+                route.distance_km,
+                cost_per_km,
+                contract.rate_eur_per_km_ton,
+            ),
+            vehicle.id if vehicle is not None else None,
+            cost_per_km,
+            journey,
+        )

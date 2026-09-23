@@ -10,7 +10,7 @@ aktuell noch kein Satellitenprovider integriert.
 | Koordinaten | gespeicherte Quellen und `facility_geocoding_evidence` | 352 routbar; 79 verifiziert, 273 ausdrücklich für die Simulation geschätzt |
 | Lkw-Straßenroute | Valhalla / OpenStreetMap | Geometrie, Kilometer und Fahrzeit |
 | Basiskarte | OpenStreetMap Standard via MapLibre GL JS | Rastertiles; Straßen, Orte, Gebäude und POIs; keine Routingquelle |
-| Fahrzeugmodelle | `data/world_freight_vehicle_catalog.sqlite3`, Schema 2.0.0 | 14 Modelle, acht Hersteller, technische Quellen in `sources`/`vehicle_sources` |
+| Fahrzeugmodelle | `data/world_freight_vehicle_catalog.sqlite3`, Schema 2.1.0 | 14 Modelle, acht Hersteller, technische Quellen in `sources`/`vehicle_sources` |
 | Fahrzeug-Spielwerte | `vehicle_balance` im Katalog | fiktive Preise, Nutzlast, Reputation und Kilometerkosten; keine realen Angebote |
 | NHM-Waren und Facility-Verhalten | `nhm_codes`, `facility_nhm_profiles`, `facility_handled_goods_nhm` | 15.099 NHM-Codes; belegte und transparent derived IN/OUT/BOTH-Profile; keine generische Standardfracht |
 | Beziehungen, Mengen und Aufträge | MarketGenerator, `app/simulation.py` | simulierte Einzelereignisse; DB-nutzlastabhängige Mengen, 0,18 €/km/t |
@@ -73,3 +73,16 @@ und lesbare Länderbezeichnungen. Die Zuordnung ist keine zusätzliche Quelle
 für verifizierte Koordinaten; die bisherige Evidence-Klassifikation bleibt
 unverändert. Das alte Referenzschema wird nur vom expliziten Offline-Werkzeug
 zur Erstellung einer neuen Katalogdatei gelesen.
+
+## Fahrzeugenergie
+
+Katalogschema 2.1.0 / Datenstand 2.2.0 ergänzt für alle 14 Modelle Verbrauch,
+Einheit, Tank-/nutzbare Batteriekapazität und Höchstgeschwindigkeit. Quellen-
+notizen unterscheiden Test-/Referenzwerte von repräsentativen Spielannahmen.
+Der Runtime-Leser validiert diese Daten als EnergyProfile; der technische
+Anschluss behauptet keine zusätzliche externe Quellenverifizierung. Diesel-
+pausen (10 Minuten) und Reserve (10 %) sind zentrale Simulationswerte. Gas
+verwendet 25, Elektro 35 Minuten aus dem Katalog. Fahrverbrauch und Pausen
+sind als begrenzte erste Simulation aktiv. Verbrauch bleibt konstant;
+Zusatzkosten entstehen nicht. Tankstellen und Ladepunkte werden nicht
+recherchiert, sondern als Positionen entlang der gespeicherten Route simuliert.

@@ -193,5 +193,25 @@ die öffentliche Standortprojektion bleibt kompakt.
 
 Der normale Server akzeptiert ausschließlich das relationale Spielstandschema.
 Der Offline-Importer ist kein Endpoint und wird nicht beim Start ausgeführt.
-Nach einem Import ist eine erneute Anmeldung erforderlich, weil alte Sessions
-ausdrücklich nicht übernommen werden.
+Nach dem KV-Altformatimport ist eine erneute Anmeldung erforderlich, weil dieser
+Sessions nicht übernimmt. Das separate Energie-Upgrade von Schema 1.0.0 nach
+1.1.0 bewahrt dagegen vorhandene Sessions. Beide Werkzeuge bleiben offline.
+
+
+## Fahrzeugenergie und Fahrtpläne
+
+Katalog und Flotte ergänzen `energy` (kind, unit, capacity,
+consumption_per_100km, stop_minutes, reserve_fraction) und `top_speed_kmh`.
+Eigene Fahrzeuge liefern `energy_level` für den Zeitpunkt der Abfrage; während
+einer Fahrt wird dieser Wert aus dem unveränderlichen Fahrtplan berechnet.
+
+Fahrzeugquotes ergänzen `journey`, `energy_consumption`, `energy_stop_count`,
+`driving_seconds`, `pause_seconds` und `total_duration_seconds`. Die drei neuen
+Dauern sind bereits mit dem Spielzeitfaktor skaliert. `duration_seconds` bleibt
+die unveränderte Valhalla-Fahrzeit. Ohne Fahrzeug sind die Planungsfelder null.
+
+Eigene Transporte enthalten den gespeicherten Plan sowie zeitabhängiges
+`progress` (Phase, Entfernung, Bruchteil, Energiestand, Phasenrestzeit).
+Intervalle verwenden Zeiten relativ zur Abfahrt. Die öffentliche Karte bekommt
+unter `journey` nur Entfernung sowie Phasen-, Zeit- und Streckenintervalle;
+keine Energieinhalte, Verbrauchsprofile, Auftrags- oder Wirtschaftsdaten.

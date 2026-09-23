@@ -1,8 +1,8 @@
 # Relationale Spielpersistenz und Transaktionsgrenzen
 
-Status: Relationales Schema 1.0.0, direkte Port-Verdrahtung und getrennte
-Persistenz-/HTTP-Projektionen sind implementiert. Der Offline-Importer ist der
-einzige Leser alter Spielzustände. Aktuelle Prüfergebnisse:
+Status: Relationales Schema 1.1.0, direkte Port-Verdrahtung und getrennte
+Persistenz-/HTTP-Projektionen sind implementiert. Frühere Formate werden nur
+von expliziten Offline-Werkzeugen gelesen. Aktuelle Prüfergebnisse:
 [Qualitätsbericht](../QUALITY_REPORT.md).
 
 ## Fachliche Grenzen
@@ -23,12 +23,13 @@ Provideraufrufe finden nie innerhalb einer Schreibtransaktion statt.
 
 Die Schema-Versionierung unterscheidet explizit frische Datenbanken vom alten
 KV-Spielstand. Der normale Start weist alte oder unbekannte Schemata ab, ohne
-sie zu ändern. Der separate Offline-Importer ist der einzige Altformatweg.
+sie zu ändern. Nur der separate Offline-Importer liest KV-Altformate;
+die Energieübernahme liest ausschließlich das relationale Schema 1.0.0.
 
 | Tabelle | Schlüssel | Relationale Werte |
 | --- | --- | --- |
 | player_states | user_id | Guthaben, Reputation, Lieferzähler |
-| owned_vehicles | user_id, vehicle_id | Modell, Name, Modus, Nutzlast, Kostensatz, Status, Facility-UID |
+| owned_vehicles | user_id, vehicle_id | Modell, Name, Modus, Nutzlast, Kostensatz, Status, Facility-UID, Energieprofil/-inhalt, Höchstgeschwindigkeit |
 | contract_offers | user_id, contract_id | Origin-/Destination-UID, Erstellung, Ablauf, Marktmodell |
 | transports | user_id, transport_id | Fahrzeug, Auftrag, Status, Start, Ankunft, Settlement, Kosten, Auszahlung |
 
@@ -50,11 +51,11 @@ in Domain/Services. API-Projektionen bleiben ein eigener Adapter.
 - Initialisierung: fehlenden Spieler und Startfahrzeug gemeinsam anlegen.
 - Kauf: Guthaben/Reputation lesen, prüfen, abbuchen, Fahrzeug speichern.
 - Disposition: zunächst Angebot/Fahrzeug lesen und Route extern bestimmen;
-  danach Angebot, Zeit, Eigentum, Kapazität, Kostensatz und Guthaben unter
-  Schreibsperre erneut prüfen, abbuchen, Fahrzeug reservieren, Angebot
+  danach Angebot, Zeit, Eigentum, Kapazität, Energieprofil/-inhalt, Kostensatz
+  und Guthaben unter Schreibsperre erneut prüfen, abbuchen, Fahrzeug reservieren, Angebot
   entfernen und den Transport samt Snapshots speichern.
-- Ankunft: nur fällige aktive Transporte lesen, Fahrzeug bewegen, Guthaben
-  und Zähler erhöhen und Settlement speichern. Erneutes Lesen findet keinen
+- Ankunft: nur fällige aktive Transporte lesen, Endfüllstand speichern, Fahrzeug
+  bewegen, Guthaben und Zähler erhöhen und Settlement speichern. Erneutes Lesen findet keinen
   aktiven Transport mehr. Nachfolgende Markterzeugung liegt außerhalb dieser
   Transaktion und kann die Auszahlung nicht zurückrollen.
 - Profilpflege: Modellübernahmen und optionale Guthabenänderung atomar, ohne
@@ -86,9 +87,10 @@ Vergleich übernommen.
 
 ## Ergänzende Ports und Leseadapter
 
-Die Profilpflege erhält eine Factory für GameUnitOfWork und liest aktive Lasten
-als ActiveTransport-Objekte. AuthService erhält AccountStore und PasswordVerifier
-explizit; SQLite-Konflikte werden im Account-Adapter zu DuplicateAccountError.
+Die Profilpflege erhält eine Factory für GameUnitOfWork und erlaubt
+Modelländerungen ausschließlich an freien Fahrzeugen. AuthService erhält
+AccountStore und PasswordVerifier explizit; SQLite-Konflikte werden im
+Account-Adapter zu DuplicateAccountError.
 Provider benutzen den ProviderCache-Port. Der SQLite-Cache
 protokolliert beschädigte JSON-Einträge als Cache-Miss und erlaubt anschließend
 einen echten Providerabruf; es werden keine Routendaten erfunden.
@@ -108,5 +110,27 @@ Auftrag und die Transportendpunkte bleiben eigenständige gespeicherte Fakten.
 Das Repository dekodiert verschachtelte Werte und unveränderliche Tupel;
 fehlende Pflichtfelder und unbekannte Felder werden abgewiesen. HTTP-Felder
 werden unabhängig davon im API-Bereich projiziert. Diese Dokumentversion ist
-Teil des relationalen Schemas 1.0.0; alte KV-Spielstände
+Teil des relationalen Schemas 1.1.0; alte KV-Spielstände
 werden weiterhin nicht im normalen Serverstart gelesen.
+
+
+## Explizite Energieübernahme nach 1.1.0
+
+Schema 1.1.0 ergänzt `energy_snapshot`, `energy_level` und `top_speed_kmh`
+am eigenen Fahrzeug. Transportsnapshots verwenden Version 2 und enthalten
+`JourneyPlan`; Standort- und Auftragssnapshots bleiben Version 1. Normales
+Starten führt keine Migration aus und weist Schema 1.0.0 ab.
+
+`python scripts/upgrade_vehicle_energy.py --source <old.db> --check`
+prüft den Altbestand ausschließlich lesend. Ausführung erfordert zusätzlich
+`--backup <backup.db> --output <new.db>` statt `--check`. Alle Pfade müssen
+verschieden sein und die Ausgabe darf nicht existieren. Erst nach erfolgreichem
+Backup wird dessen Inhalt übernommen. Ein vollständiger Quellen-/Zielvergleich
+bewahrt auch Konten, Sessions, alte Kaufwerte und wirtschaftliche Fakten.
+
+Bekannte Modelle erhalten einmalig ein vollständiges Energieprofil und einen
+vollen Vorrat. Alte Transporte bekommen einen ungemessenen Fahrtplan mit genau
+ihren bisherigen Zeiten, ohne zusätzliche Halte oder Energieabrechnung.
+Fehler entfernen die neue Zieldatei; die Quelle bleibt unangetastet. Das Werkzeug
+aktiviert keine Datei und startet keinen Server. Profilpflege ist nur für freie
+Fahrzeuge zulässig und überträgt den Füllgrad auf die neue Kapazität.

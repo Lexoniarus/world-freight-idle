@@ -19,6 +19,7 @@ from app.api.v1.game_projection import (
     project_vehicle,
 )
 from app.bootstrap import build_fleet_service, build_player_service
+from app.domain.energy import EnergyProfile
 from app.domain.errors import CatalogueError
 from app.domain.game import OwnedVehicle, PlayerState
 from app.main import create_app
@@ -166,6 +167,9 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
         original.facility_uid,
         original.status,
         location=original.location,
+        energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+        energy_level=100,
+        top_speed_kmh=90,
     )
     game.state_repository.save_vehicle(legacy)
     contract = first_berlin_contract(game)
@@ -210,6 +214,9 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
             "idle",
             model_id=model_id,
             location=original.location,
+            energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+            energy_level=100,
+            top_speed_kmh=90,
         )
         game.state_repository.save_vehicle(legacy)
         game.ensure_initial_state()

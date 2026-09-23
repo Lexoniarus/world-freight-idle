@@ -1,5 +1,21 @@
 # Changelog
 
+## Fahrzeugenergie und automatische Pausen – 23.09.2026
+
+- Angereicherten Katalog 2.1.0 mit allen 14 Energieprofilen angebunden;
+  technische Quellen und Bildmetadaten bleiben erhalten.
+- Persistente Restmengen, 10 % Reserve, automatische Tank-/Ladepausen und
+  Höchstgeschwindigkeit. Unveränderte Providerdaten und Kilometerkosten.
+- Unveränderliche Fahrtpläne steuern eigene und öffentliche Kartenbewegung;
+  während Pausen bleiben Fahrzeuge stehen. Private Energieinhalte bleiben privat.
+- Flotte, Shop, Auftragsdetails und Transporte zeigen Energie und Pausen;
+  bestehende Bildknoten und lokale Assets bleiben erhalten.
+- Schema 1.1.0 mit explizitem Offline-Upgrade nach Backup in eine neue Datei.
+  Bestehende Fahrten behalten Zeiten, Route und Auszahlungen ohne Energieabzug.
+  Konten, Sessions und bisherige Kaufwerte bleiben erhalten.
+- Prüfungen, tatsächliche Bestandsübernahme und Abnahmegrenzen:
+  [Qualitätsbericht](QUALITY_REPORT.md).
+
 ## Dokumentation und Fahrzeugassets – 23.09.2026
 
 - Alle 134 SVGs bytegleich nach den 14 Katalogmodellen geordnet; 42 aktive

@@ -17,6 +17,9 @@ Python schreibt JSON-Logs. Relevante Domain-Events:
 - `state.import_rejected`, `state.import_rolled_back`
 - `state.import_completed` (Anzahlen übernommener und ausgeschlossener Daten)
 - `state.import_demo_excluded` (ausdrücklich freigegebener Backup-only-Demostand)
+- `state.energy_upgraded` (Quell-/Zielversion und Anzahlen, keine Datensätze)
+- `state.energy_upgrade_rejected` (ungültiges Quellschema oder Integrität)
+- `state.energy_upgrade_rolled_back` (fehlgeschlagene Zieldatei entfernt)
 - `world.geography_migrated`, `world.geography_migration_failed`
   (Katalog-/Mappingversion und Anzahlen, keine Zugangsdaten)
 
@@ -24,6 +27,11 @@ Passwörter und Session-Tokens erscheinen nicht in Domain-Logs. Nutzer-IDs
 sind pseudonyme interne IDs; öffentliche Spielernamen werden nicht geloggt.
 Passwort-Hashes werden ebenfalls weder geloggt noch im Importbericht ausgegeben.
 Personenbezogene Importberichte und Backups bleiben außerhalb von Git.
+
+`trip.dispatch` ergänzt `energy_stop_count` und `journey_seconds` zur vorhandenen
+Fahrzeug-/Auftragskennung. Bewegung und Auffüllen benötigen keine Logeinträge
+oder Schreibzugriffe pro Animationstakt; `trip.complete` markiert das atomare
+Settlement. Die reine Fahrtplanberechnung erzeugt selbst keine Seiteneffekte.
 
 ## Trace-ID
 

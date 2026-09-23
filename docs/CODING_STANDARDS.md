@@ -83,8 +83,9 @@ entbindet öffentliche Komponenten nicht von ihren Parameterverträgen.
   ebenfalls dem Function-Test-Manifest und 100 % Core-Statement-Coverage.
 - Nach externen Await-Punkten werden auch veränderliche Fahrzeugkostensätze für
   den Start erneut gelesen und kalkuliert, bevor das Guthaben geprüft wird.
-- Profilpflege, Katalognormalisierung und Offline-Spielstandimport sind zusätzlich
-  zu Core und Einstiegspunkt in mypy enthalten.
+- Profilpflege, Katalognormalisierung, Offline-Spielstandimport und
+  Energie-Schemaübernahme sind zusätzlich zu Core und Einstiegspunkt in mypy
+  enthalten.
 
 WorldCatalogue-Regeln: Domain-Port und unveränderliche Referenzmodelle, SQL
 ausschließlich im Repository, konkrete Verdrahtung im Composition Root.

@@ -14,6 +14,7 @@ from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.game_import import ExcludedOffer, GameImportReport
 from app.domain.transports import ActiveTransport
 from app.domain.validation import require_finite, require_identity
+from app.domain.vehicles import VehicleModel
 from app.domain.world_scopes import WorldScope
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameStateRepository
@@ -78,10 +79,11 @@ class LegacyGameImporter:
         source: Path,
         world: WorldScope,
         market_model: str,
+        models: tuple[VehicleModel, ...],
         exclude_global_demo: bool = False,
     ) -> None:
         self.source = source.resolve()
-        self.reader = LegacySnapshotReader(world)
+        self.reader = LegacySnapshotReader(world, models)
         self.market_model = market_model
         self.exclude_global_demo = exclude_global_demo
 

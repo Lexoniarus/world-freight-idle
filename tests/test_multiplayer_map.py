@@ -71,6 +71,15 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
         "departed_at",
         "arrives_at",
         "coordinates",
+        "distance_km",
+        "segments",
+    }
+    assert set(asdict(rows[0].segments[0])) == {
+        "phase",
+        "starts_at",
+        "ends_at",
+        "start_km",
+        "end_km",
     }
 
     reader = build_traffic_reader(runtime)

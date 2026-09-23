@@ -7,7 +7,11 @@ from app.api.v1.dependencies import (
     get_game_service,
     get_vehicle_catalogue,
 )
-from app.api.v1.game_projection import project_catalogue, project_vehicle
+from app.api.v1.game_projection import (
+    project_catalogue,
+    project_fleet,
+    project_vehicle,
+)
 from app.api.v1.schemas import PurchaseRequest
 from app.api.v1.vehicle_presentation import present_vehicles
 from app.domain.errors import CatalogueError
@@ -52,7 +56,7 @@ def list_fleet(
     """Return all player vehicles with their current real-world hub."""
     return {
         "vehicles": present_vehicles(
-            [project_vehicle(item) for item in game.list_vehicles()], catalogue
+            project_fleet(game.dashboard()), catalogue
         )
     }
 
@@ -65,8 +69,10 @@ def get_vehicle(
 ) -> dict:
     """Return one player vehicle."""
     try:
-        return present_vehicles(
-            [project_vehicle(game.get_vehicle(vehicle_id))], catalogue
-        )[0]
+        vehicles = project_fleet(game.dashboard())
+        vehicle = next((v for v in vehicles if v["id"] == vehicle_id), None)
+        if vehicle is None:
+            raise KeyError("Fahrzeug nicht gefunden")
+        return present_vehicles([vehicle], catalogue)[0]
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from exc

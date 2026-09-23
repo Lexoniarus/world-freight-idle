@@ -20,10 +20,12 @@ from app.bootstrap import (
     build_player_service,
     build_profile_maintenance_service,
 )
+from app.domain.energy import EnergyProfile
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.world_scopes import WorldScope
 from app.repositories.accounts import AccountRepository
 from app.repositories.database_backup import backup_database
+from app.services.fleet import build_owned_vehicle
 from scripts.update_test_profile import main, parse_assignments
 from tests.test_api import make_settings
 from tests.test_game import first_berlin_contract
@@ -47,6 +49,17 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
     other = accounts.create_user("Untouched", "not-a-real-hash")
     other_game = build_player_service(runtime, other["id"])
     add_transport(selected, payout=123, arrives_at=9999999999, tons=24)
+    selected_location = selected.get_vehicle("truck_01").location
+    assert selected_location is not None
+    selected.state_repository.save_vehicle(
+        build_owned_vehicle(
+            catalogue.list_models()[0],
+            "free",
+            selected_location,
+        )
+    )
+    with pytest.raises(ValueError, match="idle"):
+        service.update_profile("Selected", {"truck_01": "iveco_sway_500"})
     before = [
         asdict(item)
         for item in selected.state_repository.list_transports()
@@ -59,7 +72,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
     for _ in range(2):
         result = service.update_profile(
             "Selected",
-            {"truck_01": "iveco_sway_500"},
+            {"free": "iveco_sway_500"},
             175000,
         )
         assert result["cash"] == 175000
@@ -69,7 +82,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
         if item.status == "active"
     ] == before
     assert (
-        project_vehicle(selected.get_vehicle("truck_01"))["model_id"]
+        project_vehicle(selected.get_vehicle("free"))["model_id"]
         == "iveco_sway_500"
     )
     assert project_player(other_game._get_player()) == other_before
@@ -78,7 +91,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
     )
     service.update_profile(
         "Selected",
-        {"truck_01": "iveco_sway_500"},
+        {"free": "iveco_sway_500"},
         None,
     )
     assert selected._get_player().cash == 12345
@@ -91,7 +104,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
     with pytest.raises(ValueError):
         service.update_profile(
             "Selected",
-            {"truck_01": "mercedes_eactros_600"},
+            {"free": "missing"},
             1,
         )
     assert selected._get_player().cash == 12345
@@ -168,7 +181,6 @@ def test_maintenance_write_failure_rolls_back_and_retains_unselected(
     hamburg = WorldScope(selected.world.read()).facility("hamburg_cta")
     vehicle.start_trip()
     vehicle.arrive(hamburg.location_snapshot())
-    vehicle.start_trip()
     other = OwnedVehicle(
         "other",
         "Untouched",
@@ -179,6 +191,9 @@ def test_maintenance_write_failure_rolls_back_and_retains_unselected(
         model_id=vehicle.model_id,
         operating_cost_eur_per_km=vehicle.operating_cost_eur_per_km,
         location=hamburg.location_snapshot(),
+        energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+        energy_level=100,
+        top_speed_kmh=90,
     )
     vehicles = [project_vehicle(vehicle), project_vehicle(other)]
     selected.state_repository.save_vehicle(vehicle)
@@ -203,7 +218,7 @@ def test_maintenance_write_failure_rolls_back_and_retains_unselected(
     after = [project_vehicle(item) for item in repository.list_vehicles()]
     assert after[1] == vehicles[1]
     assert (
-        after[0]["status"] == "enroute"
+        after[0]["status"] == "idle"
         and after[0]["hub_id"] == hamburg.facility_uid
     )
     assert after[0]["id"] == "truck_01"

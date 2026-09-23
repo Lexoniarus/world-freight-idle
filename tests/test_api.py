@@ -10,6 +10,7 @@ from app.api.v1.dependencies import get_game_service
 from app.config import Settings
 from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.game import PlayerState
+from app.domain.journeys import unmetered_journey
 from app.domain.pricing import PriceQuote
 from app.domain.results import ContractQuote, GameSnapshot
 from app.domain.transports import ActiveTransport, RouteSnapshot
@@ -33,7 +34,11 @@ class FakeGame:
             21,
             1000,
             100,
+            journey=unmetered_journey((self.route).distance_km, (21) - (1)),
         )
+
+    def now(self):
+        return 1
 
     def dashboard(self):
         return GameSnapshot(
@@ -209,6 +214,9 @@ def test_v1_resource_endpoints_and_error_mapping(tmp_path: Path, game):
             == "truck_01"
         )
         assert client.get("/api/v1/fleet/missing").status_code == 404
+        assert (
+            client.get("/api/v1/fleet/truck_01").json()["energy_level"] == 1010
+        )
         assert (
             client.get("/api/v1/transports").json()["transports"][0]["id"]
             == "trip1"

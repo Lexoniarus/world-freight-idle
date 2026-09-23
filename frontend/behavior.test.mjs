@@ -16,7 +16,7 @@ import { VehicleAnimator } from "./map/vehicle-animator.js";
 import { OverlayData, previewFeatures } from "./map/overlay-data.js";
 import { GameApplication } from "./application.js";
 import { money, number } from "./format.js";
-import { formatDuration, routeProgress } from "./time.js";
+import { formatDuration } from "./time.js";
 
 const hub = {
   id: "berlin",
@@ -46,6 +46,16 @@ const vehicle = {
   hub_id: hub.id,
   hub,
   capacity_tons: 24,
+  energy: {
+    kind: "diesel",
+    unit: "l",
+    capacity: 100,
+    consumption_per_100km: 20,
+    stop_minutes: 10,
+    reserve_fraction: 0.1,
+  },
+  energy_level: 100,
+  top_speed_kmh: 90,
 };
 const quote = {
   vehicle_id: vehicle.id,
@@ -70,6 +80,10 @@ const trip = {
   origin: hub,
   destination: contract.destination,
   contract,
+  journey: {
+    distance_km: 100,
+    segments: [{ phase: "driving", starts_at: 0, ends_at: 100, start_km: 0, end_km: 100 }],
+  },
   departed_at: 0,
   arrives_at: 100,
 };
@@ -128,10 +142,6 @@ test("migrated display helpers preserve money, measurement and time behavior", (
   assert.equal(number(12.5), "12,5");
   assert.equal(formatDuration(3660), "1 h 1 min");
   assert.equal(formatDuration(90061), "1 T 1 h 1 min");
-  assert.equal(routeProgress(5, 10, 20), 0);
-  assert.equal(routeProgress(15, 10, 20), 0.5);
-  assert.equal(routeProgress(25, 10, 20), 1);
-  assert.equal(routeProgress(5, 10, 10), 1);
 });
 
 test("API client sends credentials only to API v1 and aborts pending transport", async () => {
@@ -408,6 +418,7 @@ test("map projections derive relevant locations, discard invalid hubs and remove
     username: "driver",
     player_color: "#123456",
     is_own: true,
+    journey: trip.journey,
     departed_at: trip.departed_at,
     arrives_at: trip.arrives_at,
     route_geojson: trip.route_geojson,
@@ -550,6 +561,8 @@ test("all feature views render active, empty, unavailable and shop states", () =
         unlock_reputation: 0,
         operating_cost_eur_per_km: 0.49,
         powertrain: "combustion",
+        energy: vehicle.energy,
+        top_speed_kmh: 90,
       },
     ],
   };
@@ -650,6 +663,8 @@ test("catalogue reputations gate offers independently of funds", () => {
         unlock_reputation: 5,
         operating_cost_eur_per_km: 0.49,
         powertrain: "combustion",
+        energy: vehicle.energy,
+        top_speed_kmh: 90,
       },
     ],
   };

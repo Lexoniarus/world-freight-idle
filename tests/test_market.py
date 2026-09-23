@@ -10,6 +10,7 @@ from app.api.v1.game_projection import (
     project_transport,
 )
 from app.domain.contracts import ContractOffer, ContractOfferSnapshot
+from app.domain.energy import EnergyProfile
 from app.domain.errors import WorldCatalogueError
 from app.domain.game import OwnedVehicle
 from app.domain.world import FacilityQuery
@@ -187,6 +188,9 @@ def test_market_scope_combines_idle_trucks_and_zoomed_viewport(
             capacity_tons=24,
             facility_uid=berlin.facility_uid,
             status="idle",
+            energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+            energy_level=100,
+            top_speed_kmh=90,
         ),
         OwnedVehicle(
             id="busy",
@@ -195,6 +199,9 @@ def test_market_scope_combines_idle_trucks_and_zoomed_viewport(
             capacity_tons=24,
             facility_uid="ignored",
             status="enroute",
+            energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+            energy_level=100,
+            top_speed_kmh=90,
         ),
     ]
     query = FacilityQuery.parse("-10,35,30,60")

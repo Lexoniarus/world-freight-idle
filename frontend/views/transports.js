@@ -1,9 +1,11 @@
+import { phaseLabel, transportProgress } from "../journey.js";
+import { renderEnergyMeter } from "../ui/vehicle-energy.js";
 import { html } from "../ui/dom.js";
 import { renderVehicleImage } from "../ui/vehicle-image.js";
 import { icon } from "../ui/illustrations.js";
 import { actionButton, emptyState, metric, routeLink } from "../ui/components.js";
 import { money, number } from "../format.js";
-import { formatDuration, routeProgress } from "../time.js";
+import { formatDuration, formatCountdown } from "../time.js";
 
 /** Render active transports or one selected transport.
  * @param {import('../types.js').PanelView} view
@@ -32,7 +34,9 @@ function renderTransportCard(trip, now) {
   return routeLink(
     "/transports/" + trip.id,
     html`<div class="card-kicker">
-        <span class="badge green">Unterwegs</span><span>${number(trip.distance_km)} km</span>
+        <span class="badge green" data-phase-trip="${trip.id}"
+          >${progressDisplay(trip, now).phase}</span
+        ><span>${number(trip.distance_km)} km</span>
       </div>
       <h3>${trip.origin.city} ${icon("arrow", 16)} ${trip.destination.city}</h3>
       ${renderProgress(trip, now)}
@@ -47,12 +51,13 @@ function renderTransportCard(trip, now) {
 function renderTransportDetails(trip, now, vehicle) {
   return html`${routeLink("/transports", [icon("back", 16), " Alle Transporte"], "back-link")}
     <div class="dispatch-banner">
-      <span class="badge green">Transport läuft</span
+      <span class="badge green" data-phase-trip="${trip.id}"
+        >${progressDisplay(trip, now).phase}</span
       >${renderVehicleImage(vehicle || { name: "Lkw", capacity_tons: 24 })}
     </div>
     <h2>${trip.origin.city} ${icon("arrow", 22)} ${trip.destination.city}</h2>
     <p>${trip.contract.cargo} · ${number(trip.contract.tons, 2)} t</p>
-    ${renderProgress(trip, now)}
+    ${renderProgress(trip, now)} ${vehicle ? renderEnergyMeter(vehicle, trip, now) : null}
     <div class="metrics">
       ${metric("Strecke", number(trip.distance_km) + " km")}${metric("Erlös bei Ankunft", money(trip.payout_eur))}${metric("Betriebskosten", money(trip.operating_cost_eur))}${metric("Gewinn", money(trip.profit_eur), "profit")}
     </div>
@@ -68,12 +73,19 @@ function renderTransportDetails(trip, now, vehicle) {
  * @param {number} now
  */
 export function progressDisplay(trip, now) {
+  const progress = transportProgress(trip, now);
+  const paused = ["refuelling", "charging"].includes(progress.phase);
   return {
-    percent: Math.round(routeProgress(now, trip.departed_at, trip.arrives_at) * 100),
+    phase: phaseLabel(progress.phase),
+    percent: Math.round(progress.fraction * 100),
     eta:
-      now >= trip.arrives_at
+      progress.phase === "arrived"
         ? "Ankunft wird bestätigt …"
-        : "Ankunft in " + formatDuration(trip.arrives_at - now),
+        : paused
+          ? phaseLabel(progress.phase) +
+            " · Weiter in " +
+            formatCountdown(progress.remainingSeconds)
+          : "Ankunft in " + formatDuration(trip.arrives_at - now),
   };
 }
 

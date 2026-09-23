@@ -5,8 +5,13 @@ from dataclasses import replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from fastapi import Depends
+
+from app.api.v1.dependencies import get_game_service
 from app.config import Settings
+from app.domain.energy import EnergyProfile
 from app.main import create_app, lifespan
+from app.services.game import GameService
 from tests.conftest import FakeRouter
 
 temporary = TemporaryDirectory(prefix="world-freight-browser-")
@@ -27,3 +32,23 @@ async def browser_lifespan(application):
 
 
 app.router.lifespan_context = browser_lifespan
+
+
+@app.post("/__tests__/energy-fixture")
+def prepare_energy_fixture(
+    game: GameService = Depends(get_game_service),
+) -> dict:
+    """Configure short-range test energy solely inside the isolated server."""
+    vehicle = game.get_vehicle("truck_01")
+    model = next(
+        m for m in game.catalogue.list_models() if m.id == vehicle.model_id
+    )
+    vehicle.apply_model(
+        replace(
+            model, energy=EnergyProfile("electric", "kWh", 100, 100, 35, 0.1)
+        )
+    )
+    vehicle.consume_energy(90)
+    with game.unit_of_work.transaction():
+        game.state_repository.save_vehicle(vehicle)
+    return {"vehicle_id": vehicle.id}

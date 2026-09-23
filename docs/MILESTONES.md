@@ -45,8 +45,10 @@ simuliert. Später FAF und UN Comtrade für weitere Regionen.
 ## M3 – Fleet Management
 
 Vorgezogen: 14 reale Modellprofile, DB-Kauf, Reputationsfreigaben und
-fahrzeugbezogene Spiel-Kilometerkosten. Geplant bleiben Verbrauchssimulation,
-Alter, Wartung, Energiehalte, zusätzliche Depots, Leerfahrten und Rückfracht.
+fahrzeugbezogene Spiel-Kilometerkosten. Konstanter Verbrauch, 10 % Reserve,
+Geschwindigkeitsgrenze und automatische Energiehalte sind als erste Simulation
+umgesetzt. Geplant bleiben Last-/Wettereinflüsse, Stationssuche, Ladekurven,
+Alter, Wartung, zusätzliche Depots, Leerfahrten und Rückfracht.
 
 ## M4 – Multiplayer Economy
 
@@ -135,7 +137,7 @@ Die gemeinsame Asset-Zuordnung und Modellordner ändern keine Spielmechanik.
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.0.0) und
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
 WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).

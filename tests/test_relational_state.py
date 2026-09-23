@@ -9,8 +9,10 @@ from dataclasses import replace
 import pytest
 
 from app.domain.contracts import HistoricalContractSnapshot
+from app.domain.energy import EnergyProfile
 from app.domain.errors import PersistenceError, UnsupportedGameSchema
 from app.domain.game import OwnedVehicle, PlayerState
+from app.domain.journeys import unmetered_journey
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import (
@@ -127,6 +129,7 @@ def test_relational_entities_roundtrip_isolate_and_protect_history(
         110,
         500,
         100,
+        journey=unmetered_journey((route).distance_km, (110) - (10)),
     )
     for repository in (alice, bob):
         repository.save_player(PlayerState(1000, 0, 0))
@@ -171,7 +174,15 @@ def test_relational_entities_roundtrip_isolate_and_protect_history(
     assert bob.list_offers() == (offer,)
     alice.save_vehicle(
         OwnedVehicle(
-            "legacy", "Old", "truck", 12, offer.origin.facility_uid, "idle"
+            "legacy",
+            "Old",
+            "truck",
+            12,
+            offer.origin.facility_uid,
+            "idle",
+            energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+            energy_level=100,
+            top_speed_kmh=90,
         )
     )
     assert alice.list_vehicles()[-1].location is None
@@ -223,6 +234,10 @@ def test_snapshot_envelopes_and_corrupt_records_fail_explicitly(
         2,
         5,
         1,
+        journey=unmetered_journey(
+            1,
+            (2) - (1),
+        ),
     )
     repository.save_transport(trip)
     with relational.connect() as connection:
@@ -301,6 +316,10 @@ def test_transport_queries_filter_before_decoding(relational, game):
         110,
         500,
         100,
+        journey=unmetered_journey(
+            400,
+            (110) - (10),
+        ),
     )
     for repository in (alice, bob):
         repository.save_player(PlayerState(1000, 0, 0))
@@ -313,10 +332,17 @@ def test_transport_queries_filter_before_decoding(relational, game):
         capacity_tons=vehicle.capacity_tons,
         facility_uid=vehicle.facility_uid,
         status="idle",
+        energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+        energy_level=100,
+        top_speed_kmh=90,
     )
     alice.save_vehicle(future_vehicle)
     future = replace(
-        trip, id="future", vehicle_id=future_vehicle.id, arrives_at=111
+        trip,
+        id="future",
+        vehicle_id=future_vehicle.id,
+        arrives_at=111,
+        journey=unmetered_journey(400, 101),
     )
     alice.save_transport(future)
     for index in range(100):

@@ -7,14 +7,19 @@ from contextlib import closing
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from app.domain.energy import EnergyKind, EnergyProfile, EnergyUnit
 from app.domain.errors import CatalogueError
 from app.domain.vehicles import VehicleImage, VehicleModel
+from app.simulation import DIESEL_STOP_MINUTES, ENERGY_RESERVE_FRACTION
 
 LOGGER = logging.getLogger(__name__)
 QUERY = """
 SELECT m.vehicle_id AS id,
        maker.name || ' ' || m.model || ' ' || m.variant AS name,
-       maker.name AS manufacturer, m.powertrain,
+       maker.name AS manufacturer, m.powertrain, m.top_speed_kmh,
+       m.consumption_value, m.consumption_unit,
+       m.fuel_tank_capacity_l, m.fuel_tank_capacity_kg,
+       m.battery_usable_kwh, b.energy_stop_minutes_game,
        b.payload_t_game AS capacity_tons,
        b.purchase_price_eur_game AS price_eur,
        b.operating_cost_eur_per_km_game AS operating_cost_eur_per_km,
@@ -55,7 +60,7 @@ class SqliteVehicleCatalogue:
                     "SELECT value FROM catalog_metadata "
                     "WHERE key = 'schema_version'"
                 ).fetchone()
-                if not version or version[0] != "2.0.0":
+                if not version or version[0] != "2.1.0":
                     raise ValueError("Unsupported catalogue schema")
                 if connection.execute("PRAGMA foreign_key_check").fetchone():
                     raise ValueError("Broken catalogue references")
@@ -80,6 +85,7 @@ class SqliteVehicleCatalogue:
     def _read_model(self, row: sqlite3.Row) -> VehicleModel:
         """Reject incomplete or invalid gameplay values before projection."""
         values = dict(row)
+        energy = read_energy_profile(values)
         image_values = {
             key.removeprefix("image_"): values.pop(key)
             for key in list(values)
@@ -100,7 +106,9 @@ class SqliteVehicleCatalogue:
             or values["operating_cost_eur_per_km"] < 0
         ):
             raise ValueError("Invalid catalogue range")
-        return VehicleModel(**values, image=self._read_image(image_values))
+        return VehicleModel(
+            **values, energy=energy, image=self._read_image(image_values)
+        )
 
     def _read_image(self, values: dict) -> VehicleImage | None:
         """Use only complete HTTPS Wikimedia/Creative Commons records."""
@@ -128,3 +136,40 @@ class SqliteVehicleCatalogue:
             )
             return None
         return VehicleImage(**values)
+
+
+def read_energy_profile(values: dict) -> EnergyProfile:
+    """Extract and validate energy columns from one catalogue record."""
+    specification: dict[str, tuple[EnergyKind, EnergyUnit, str]] = {
+        "combustion": ("diesel", "l", "fuel_tank_capacity_l"),
+        "gas": ("gas", "kg", "fuel_tank_capacity_kg"),
+        "battery_electric": ("electric", "kWh", "battery_usable_kwh"),
+    }
+    if values["powertrain"] not in specification:
+        raise ValueError("Unsupported vehicle energy kind.")
+    kind, unit, capacity_field = specification[values["powertrain"]]
+    capacities = {
+        key: values.pop(key)
+        for key in (
+            "fuel_tank_capacity_l",
+            "fuel_tank_capacity_kg",
+            "battery_usable_kwh",
+        )
+    }
+    if any(
+        value is not None
+        for key, value in capacities.items()
+        if key != capacity_field
+    ):
+        raise ValueError("Conflicting energy capacities.")
+    if values.pop("consumption_unit") != unit + "/100km":
+        raise ValueError("Consumption unit differs from energy kind.")
+    stop = values.pop("energy_stop_minutes_game")
+    return EnergyProfile(
+        kind=kind,
+        unit=unit,
+        capacity=capacities[capacity_field],
+        consumption_per_100km=values.pop("consumption_value"),
+        stop_minutes=DIESEL_STOP_MINUTES if kind == "diesel" else stop,
+        reserve_fraction=ENERGY_RESERVE_FRACTION,
+    )

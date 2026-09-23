@@ -1,5 +1,5 @@
 import { collection, pointFeature, prepareRoute, routePose, unwrapRoute } from "../geometry.js";
-import { routeProgress } from "../time.js";
+import { transportProgress } from "../journey.js";
 import { vehicleIconId } from "./vehicle-assets.js";
 
 export const routeGeometry = (route) => (route.type === "Feature" ? route.geometry : route);
@@ -112,8 +112,7 @@ export class OverlayData {
       this.state.traffic.flatMap((trip) => {
         if (trip.is_own !== isOwn) return [];
         const route = this.trafficRoutes.get(trip.id);
-        const pose =
-          route && routePose(route, routeProgress(now, trip.departed_at, trip.arrives_at));
+        const pose = route && routePose(route, transportProgress(trip, now).fraction);
         if (!pose) return [];
         const iconImage = vehicleIconId(trip.model_id, trip.player_color);
         const hasIcon = Boolean(iconImage && this.availableVehicleIcons.has(iconImage));
