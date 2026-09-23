@@ -116,3 +116,10 @@ Transporte über typisierte Repository-Methoden. SQL filtert Besitzer, Status
 und Ankunft vor der Snapshot-Deserialisierung; der Index `arrivals` unterstützt
 diesen Zugriff. Vollständige Historienabfragen bleiben expliziten
 Bestandsabgleichen vorbehalten. Settlement bleibt atomar.
+
+Die Startpruefung vergleicht Primaer-/Fremdschluessel und die ausfuehrbaren
+Transport-Guards mit dem unterstuetzten Schema, nicht nur deren Namen.
+SQL-Formatierung wird ignoriert, Literalinhalte bleiben unveraendert.
+Abweichungen liefern `UnsupportedGameSchema` und `state.schema_rejected`;
+eine automatische Reparatur bestehender Dateien findet nicht statt.
+Die Schemaversion bleibt 1.0.0.
