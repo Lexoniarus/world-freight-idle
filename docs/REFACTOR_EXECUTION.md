@@ -286,3 +286,13 @@ Account-/Cache-/Architekturprüfungen erfolgreich. Pyright und mypy waren grün;
 Ruff/Format werden für den Commit geprüft. Keine erneute vollständige Projekt-
 oder Browserabnahme in diesem Zwischenschritt. Persistenz-/API-Mapping im Core
 bleibt der nächste fachliche Umbau; die echte game.db bleibt unangetastet.
+
+## B: typisierter Markt
+
+Schritt 0 ist als 161bf9b committet. MarketGenerator erzeugt und verarbeitet
+jetzt ContractOffer-Objekte. Die interne Marktauffrischung des GameService
+speichert diese direkt; der Dict-Roundtrip zwischen Generator und Repository
+ist entfernt. HTTP-Projektionen bleiben unverändert. Die noch vorhandene
+Darstellung am Service-Ausgang wird im folgenden Mapping-Schritt verlagert.
+34 betroffene Markt-/Spiel-/Port-/Manifesttests bestanden; ein zusätzlicher
+Gegentest verbietet Serialisierung während Generierung und Wiederverwendung.

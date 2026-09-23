@@ -91,16 +91,16 @@ class GameService:
                 )
                 contracts = retained
             self._store_market(contracts, len(origins))
-            return contracts
+            return [offer.to_dict() for offer in contracts]
 
     def _current_market_for_scope(
         self, origin_ids: tuple[str, ...]
-    ) -> list[dict[str, Any]]:
-        """Project fresh scoped offers for the transitional market API."""
+    ) -> list[ContractOffer]:
+        """Select fresh typed offers for the requested facility scope."""
         now = self.now()
         scope = set(origin_ids)
         return [
-            offer.to_dict()
+            offer
             for offer in self.state_repository.list_offers()
             if offer.expires_at > now + 60
             and offer.market_model == self.market.model_id
@@ -111,8 +111,8 @@ class GameService:
         self,
         origin_ids: tuple[str, ...],
         vehicles: list[OwnedVehicle],
-        retained: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
+        retained: list[ContractOffer],
+    ) -> list[ContractOffer]:
         """Generate and persist one already-resolved market scope."""
         return self.market.generate(
             self.now(),
@@ -122,10 +122,10 @@ class GameService:
         )
 
     def _store_market(
-        self, contracts: list[dict[str, Any]], origin_count: int
+        self, contracts: list[ContractOffer], origin_count: int
     ) -> None:
         """Persist changed typed offers in the already-open unit of work."""
-        offers = tuple(ContractOffer.from_dict(item) for item in contracts)
+        offers = tuple(contracts)
         if offers == self.state_repository.list_offers():
             return
         self.state_repository.replace_offers(offers)

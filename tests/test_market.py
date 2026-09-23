@@ -1,7 +1,7 @@
 import random
 from dataclasses import FrozenInstanceError, replace
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -28,14 +28,16 @@ def test_market_generate_guarantees_origin_and_real_addresses_are_external(
         [model.capacity_tons for model in catalogue.list_models()]
     )
     assert len(contracts) == 4
-    assert contracts[0]["origin_facility_uid"] == berlin.facility_uid
+    assert contracts[0].origin.facility_uid == berlin.facility_uid
     for contract in contracts:
-        assert contract["origin_hub_id"] != contract["destination_hub_id"]
-        assert contract["relationship_simulated"] is True
-        assert contract["market_model"] == "nhm_v1"
-        assert contract["cargo_system"] == "NHM2026"
-        assert contract["origin"]["coordinate_evidence"]
-        assert contract["destination"]["coordinate_evidence"]
+        assert (
+            contract.origin.facility_uid != contract.destination.facility_uid
+        )
+        assert contract.relationship_simulated is True
+        assert contract.market_model == "nhm_v1"
+        assert contract.cargo_system == "NHM2026"
+        assert contract.origin.coordinate_evidence
+        assert contract.destination.coordinate_evidence
 
 
 def test_build_contract_has_expiry_and_valid_nhm_cargo(
@@ -102,7 +104,7 @@ def test_market_contract_count_can_extend_small_valid_market(
         contract_count=3,
     )
     assert len(contracts) == 3
-    assert {contract["origin_facility_uid"] for contract in contracts} == {
+    assert {contract.origin.facility_uid for contract in contracts} == {
         first.facility_uid,
         second.facility_uid,
     }
@@ -130,26 +132,26 @@ def test_every_routable_facility_has_nhm_work_without_generic_freight(
     ]
     contracts = market.generate(1000, origin_ids)
     network = market.trade_network
-    assert {contract["origin_facility_uid"] for contract in contracts} == {
+    assert {contract.origin.facility_uid for contract in contracts} == {
         facility.facility_uid
         for facility in facilities
         if facility.is_routable()
     }
-    assert all(contract["market_model"] == "nhm_v1" for contract in contracts)
-    assert all(contract["cargo_system"] == "NHM2026" for contract in contracts)
+    assert all(contract.market_model == "nhm_v1" for contract in contracts)
+    assert all(contract.cargo_system == "NHM2026" for contract in contracts)
     assert all(
-        contract["cargo_code"] != "simulated_standard"
-        and "Standardfracht" not in contract["cargo"]
+        contract.cargo.code != "simulated_standard"
+        and "Standardfracht" not in contract.cargo.name
         for contract in contracts
     )
     for contract in contracts:
-        origin = contract["origin_cargo_evidence"]
-        destination = contract["destination_cargo_evidence"]
+        origin = contract.origin_cargo_evidence
+        destination = contract.destination_cargo_evidence
         assert (
-            origin["nhm_row_id"] in destination["ancestor_row_ids"]
-            or destination["nhm_row_id"] in origin["ancestor_row_ids"]
+            origin.nhm_row_id in destination.ancestor_row_ids
+            or destination.nhm_row_id in origin.ancestor_row_ids
         )
-        assert contract["cargo_basis"] in {"documented", "derived"}
+        assert contract.cargo_basis in {"documented", "derived"}
     remaining = contracts[1:]
     refilled = market.generate(
         1001,
@@ -158,10 +160,7 @@ def test_every_routable_facility_has_nhm_work_without_generic_freight(
     )
     assert refilled[: len(remaining)] == remaining
     assert len(refilled) == len(contracts)
-    assert (
-        refilled[-1]["origin_facility_uid"]
-        == contracts[0]["origin_facility_uid"]
-    )
+    assert refilled[-1].origin.facility_uid == contracts[0].origin.facility_uid
     assert (
         market.generate(1002, origin_ids, existing_contracts=refilled)
         == refilled
@@ -254,18 +253,17 @@ def test_every_payload_can_work_at_every_facility_and_refill_keeps_ids(
         local = [
             contract
             for contract in contracts
-            if contract["origin_hub_id"] == facility.facility_uid
+            if contract.origin.facility_uid == facility.facility_uid
         ]
-        assert {contract["payload_band"] for contract in local} == {
+        assert {contract.payload_band for contract in local} == {
             "light",
             "medium",
             "heavy",
         }
         for capacity in capacities:
-            assert any(0 < contract["tons"] <= capacity for contract in local)
-        assert not all(contract["tons"] <= 1.1 for contract in local)
-    legacy = {**contracts[0], "id": "unchanged", "tons": 24}
-    legacy.pop("payload_band")
+            assert any(0 < contract.tons <= capacity for contract in local)
+        assert not all(contract.tons <= 1.1 for contract in local)
+    legacy = replace(contracts[0], id="unchanged", tons=24, payload_band="")
     retained = [legacy, *contracts[1:]]
     refilled = market.generate(
         1001,
@@ -281,7 +279,7 @@ def test_every_payload_can_work_at_every_facility_and_refill_keeps_ids(
         existing_contracts=refilled,
     )
     assert len(
-        [contract for contract in tiny if contract["tons"] == 0.01]
+        [contract for contract in tiny if contract.tons == 0.01]
     ) == len(facilities)
     vehicles.list_models.return_value = [SimpleNamespace(capacity_tons=24)]
     legacy_fleet = market.generate(
@@ -290,7 +288,7 @@ def test_every_payload_can_work_at_every_facility_and_refill_keeps_ids(
         owned_capacities=[12],
     )
     assert len(legacy_fleet) == len(facilities) * 2
-    assert {contract["payload_band"] for contract in legacy_fleet} == {
+    assert {contract.payload_band for contract in legacy_fleet} == {
         "medium",
         "heavy",
     }
@@ -362,3 +360,26 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
     assert {item["origin_hub_id"] for item in refilled} == {destination_id}
     previous_ids = {item["id"] for item in remaining}
     assert all(item["id"] not in previous_ids for item in refilled)
+
+
+def test_market_generation_never_serializes_domain_objects(game):
+    origin = game.state_repository.list_vehicles()[0].hub_id
+    with (
+        patch.object(
+            ContractOfferSnapshot,
+            "to_dict",
+            side_effect=AssertionError("snapshot serialization"),
+        ),
+        patch.object(
+            ContractOffer,
+            "to_dict",
+            side_effect=AssertionError("offer serialization"),
+        ),
+    ):
+        offers = game.market.generate(1000, [origin])
+        assert all(isinstance(offer, ContractOffer) for offer in offers)
+        assert (
+            game.market.generate(1001, [origin], existing_contracts=offers)
+            == offers
+        )
+        assert game.market.generate(1001, ["unknown"]) == []
