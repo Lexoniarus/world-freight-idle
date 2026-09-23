@@ -284,7 +284,7 @@ test("starter game assets survive polling and changed transport panel content", 
   const figure = page.locator(".vehicle-photo").first();
   await expect(figure).toHaveClass(/vehicle-game-asset/);
   await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
-  await expect(figure.locator("img").first()).toHaveAttribute("src", "/assets/iveco_sway_500_front.svg");
+  await expect(figure.locator("img").first()).toHaveAttribute("src", "/assets/vehicles/iveco_sway_500/front.svg");
   await page.waitForResponse(response => response.url().endsWith("/api/v1/fleet"), { timeout: 15000 });
   await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
   const headers = { "X-Freight-Request": "1" };

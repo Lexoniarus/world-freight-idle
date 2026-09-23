@@ -2,7 +2,7 @@ import "./test-dom.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
-import { vehicleCardAssetPaths } from "./vehicle-card-assets.js";
+import { getVehicleAssets } from "./vehicle-assets.js";
 import { renderVehicleImage } from "./ui/vehicle-image.js";
 import { InputController } from "./controllers/input-controller.js";
 
@@ -109,7 +109,7 @@ test("all catalogue models use real distinct front and side assets", () => {
   ];
 
   for (const modelId of modelIds) {
-    const assets = vehicleCardAssetPaths(modelId);
+    const assets = getVehicleAssets(modelId);
     assert.ok(assets, modelId);
     const frontUrl = new URL(`..${assets.front}`, import.meta.url);
     const sideUrl = new URL(`..${assets.side}`, import.meta.url);
@@ -133,8 +133,8 @@ test("local cards render bounded front and side views without remote image state
 
   const images = [...document.querySelectorAll("img[data-local-vehicle-asset]")];
   assert.equal(images.length, 2);
-  assert.equal(images[0].getAttribute("src"), "/assets/iveco_sway_500_front.svg");
-  assert.equal(images[1].getAttribute("src"), "/assets/iveco_sway_500_side_left.svg");
+  assert.equal(images[0].getAttribute("src"), "/assets/vehicles/iveco_sway_500/front.svg");
+  assert.equal(images[1].getAttribute("src"), "/assets/vehicles/iveco_sway_500/side-left.svg");
   assert.equal(document.querySelectorAll("img[data-vehicle-photo]").length, 0);
   assert.equal(document.querySelector("[data-image-state]"), null);
   assert.match(document.body.textContent, /Frontansicht/);

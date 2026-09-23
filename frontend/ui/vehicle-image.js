@@ -1,4 +1,4 @@
-import { vehicleCardAssetPaths } from "../vehicle-card-assets.js";
+import { getVehicleAssets } from "../vehicle-assets.js";
 import { html } from "./dom.js";
 import { truckIllustration } from "./illustrations.js";
 
@@ -8,7 +8,7 @@ import { truckIllustration } from "./illustrations.js";
  */
 export function renderVehicleImage(vehicle) {
   const modelId = vehicle.model_id ?? vehicle.id;
-  const localAssets = vehicleCardAssetPaths(modelId);
+  const localAssets = getVehicleAssets(modelId);
 
   if (localAssets) {
     return html`<figure class="vehicle-photo vehicle-game-asset">
