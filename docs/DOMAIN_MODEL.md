@@ -394,6 +394,11 @@ Bereits als Runtime-Spielentities umgesetzt:
 - `OwnedVehicle`
 - `ContractOffer`
 
+`ActiveTransport` und `RouteSnapshot` sind ebenfalls typisiert. Der
+Transport-Lifecycle verwendet explizite Zeitparameter und active/settled;
+Persistenzmapping erfolgt im Adapter. Die alte KV-Aktivliste und isolierte
+Legacy-Transportauflösung entfallen mit der Repository-/Importumstellung.
+
 Ihre Persistenz- und API-Projektionen bleiben in dieser Stufe
 JSON-kompatibel; die Repository- und explizite API-DTO-Grenze folgen später.
 

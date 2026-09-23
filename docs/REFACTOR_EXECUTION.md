@@ -26,3 +26,13 @@ alten Dict-Argumenten an bereits typisierten Methoden. Der neue Offer-Typ
 validiert Identität, endliche Mengen/Konditionen, Zeitreihenfolge und getrennte
 Endpunkte. Persistenz-/API-Mapping verbleibt nur bis Abschnitt B übergangsweise
 an den bestehenden Grenzen.
+
+## A: ActiveTransport
+
+Transporte besitzen typisierte, unveränderliche Route-/Endpunktsnapshots und
+die Zustände active/settled. Der Aufrufer liefert die Zeit; die Entity erlaubt
+Settlement ausschließlich ab Ankunft und genau einmal je Zustandsversion.
+Die Datenbanktransaktion bleibt für konkurrierende Abrechnung verantwortlich.
+Die aktuelle KV-Stufe entfernt abgewickelte Reisen noch aus der Aktivliste;
+das relationale Repository in B wird den Settlement-Zustand dauerhaft speichern.
+Historische Legacy-Transporte bleiben bis zum separaten Import kompatibel.

@@ -11,8 +11,10 @@ from app.domain.contracts import ContractOffer
 from app.domain.errors import CatalogueError
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
+from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.domain.world import FacilityLocationSnapshot, FacilityQuery
 from app.repositories.sqlite_store import SqliteStore
+from app.repositories.transport_mapping import dump_transport, load_transport
 from app.services.fleet import (
     create_starter_vehicle,
     resolve_delivery_facility,
@@ -339,22 +341,18 @@ class GameService:
             for item in self.store.get_json("vehicles", [])
         ]
         vehicle = self._find_vehicle(vehicles, trip["vehicle_id"])
-        raw_destination = (
-            trip.get("destination_snapshot")
-            or trip.get("destination")
-            or self.world.read()
-            .get_facility(trip["contract"]["destination_hub_id"])
-            .location_snapshot()
-            .to_dict()
-        )
-        destination = FacilityLocationSnapshot.from_dict(raw_destination)
+        if trip["contract"].get("market_model") == self.market.model_id:
+            transport = load_transport(trip).settle(self.now())
+            destination = transport.destination
+            payout = transport.payout_eur
+        else:
+            # Removed from runtime when the isolated offline importer lands.
+            destination = self._legacy_trip_destination(trip)
+            payout = int(trip["payout_eur"])
         vehicle.arrive(destination)
         player = PlayerState.from_dict(self.store.get_json("player"))
-        player.complete_delivery(int(trip["payout_eur"]))
-        self.store.set_json(
-            "vehicles",
-            [item.to_dict() for item in vehicles],
-        )
+        player.complete_delivery(payout)
+        self.store.set_json("vehicles", [item.to_dict() for item in vehicles])
         self.store.set_json("player", player.to_dict())
         LOGGER.info(
             "Trip completed",
@@ -363,6 +361,20 @@ class GameService:
                 "data": {"trip_id": trip["id"]},
             },
         )
+
+    def _legacy_trip_destination(
+        self, trip: dict[str, Any]
+    ) -> FacilityLocationSnapshot:
+        """Keep the old trip path isolated until the offline import step."""
+        raw_destination = (
+            trip.get("destination_snapshot")
+            or trip.get("destination")
+            or self.world.read()
+            .get_facility(trip["contract"]["destination_hub_id"])
+            .location_snapshot()
+            .to_dict()
+        )
+        return FacilityLocationSnapshot.from_dict(raw_destination)
 
     def state(self) -> dict[str, Any]:
         """Return the complete client-facing game state."""
@@ -520,6 +532,7 @@ class GameService:
                 for item in self.store.get_json("contracts", [])
                 if item["id"] == contract_id
                 and item.get("market_model") == self.market.model_id
+                and item["expires_at"] > self.now()
             ),
             None,
         )
@@ -565,24 +578,28 @@ class GameService:
         duration_real_seconds: float,
     ) -> dict[str, Any]:
         """Create the immutable persisted trip snapshot used for tracking."""
-        return {
-            "id": str(uuid.uuid4()),
-            "contract": contract.to_dict(),
-            "vehicle_id": vehicle_id,
-            "origin": quote["origin"],
-            "destination": quote["destination"],
-            "origin_snapshot": contract.origin.to_dict(),
-            "destination_snapshot": contract.destination.to_dict(),
-            "route_geojson": quote["route_geojson"],
-            "distance_km": quote["distance_km"],
-            "routing_duration_seconds": quote["duration_seconds"],
-            "provider": quote["provider"],
-            "departed_at": departed_at,
-            "arrives_at": departed_at + duration_real_seconds,
-            "payout_eur": quote["payout_eur"],
-            "operating_cost_eur": quote["operating_cost_eur"],
-            "profit_eur": quote["profit_eur"],
-        }
+        geometry = quote["route_geojson"]
+        geometry = geometry.get("geometry", geometry)
+        trip = ActiveTransport(
+            id=str(uuid.uuid4()),
+            vehicle_id=vehicle_id,
+            contract=contract,
+            origin=contract.origin,
+            destination=contract.destination,
+            route=RouteSnapshot(
+                coordinates=tuple(
+                    (point[0], point[1]) for point in geometry["coordinates"]
+                ),
+                distance_km=quote["distance_km"],
+                duration_seconds=quote["duration_seconds"],
+                provider=quote["provider"],
+            ),
+            departed_at=departed_at,
+            arrives_at=departed_at + duration_real_seconds,
+            payout_eur=quote["payout_eur"],
+            operating_cost_eur=quote["operating_cost_eur"],
+        )
+        return dump_transport(trip)
 
     def _expand_vehicle(
         self,

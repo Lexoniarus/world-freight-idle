@@ -196,7 +196,8 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(game):
         )
         trip = await game.dispatch(contract["id"], "truck_01")
         cash = game.store.get_json("player")["cash"]
-        trip["arrives_at"] = 0
+        trip["departed_at"] = 0
+        trip["arrives_at"] = 1
         game.store.set_json("active_trips", [trip])
         assert game.reconcile_arrival()
         assert (

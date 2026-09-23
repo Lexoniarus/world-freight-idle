@@ -336,7 +336,8 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
 
     trip = await game.dispatch(first_berlin_contract(game)["id"], "truck_01")
     remaining = game.store.get_json("contracts")
-    trip["arrives_at"] = 0
+    trip["departed_at"] = 0
+    trip["arrives_at"] = 1
     game.store.set_json("active_trips", [trip])
     cash = game.store.get_json("player")["cash"]
     with patch.object(

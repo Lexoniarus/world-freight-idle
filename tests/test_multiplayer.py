@@ -142,7 +142,8 @@ async def test_parallel_transports_and_offline_settlement(game, catalogue):
     assert len(game.list_transports()) == 2
     before = game.state()["player"]["cash"]
     for trip in (first, second):
-        trip["arrives_at"] = 0
+        trip["departed_at"] = 0
+        trip["arrives_at"] = 1
     game.store.set_json("active_trips", [first, second])
     assert game.reconcile_arrival()
     assert not game.reconcile_arrival()

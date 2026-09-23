@@ -95,7 +95,8 @@ def test_reconcile_arrival_moves_vehicle_and_pays(game: GameService):
     trip = game._build_trip(
         ContractOffer.from_dict(contract), "truck_01", quote, 1.0, 1.0
     )
-    trip["arrives_at"] = 0
+    trip["departed_at"] = 0
+    trip["arrives_at"] = 1
     game.store.set_json("active_trips", [trip])
     vehicles = game.store.get_json("vehicles")
     vehicles[0]["status"] = "enroute"
@@ -134,6 +135,10 @@ def test_find_contract_returns_match_and_raises(game: GameService):
     assert game._find_contract(contract["id"]).id == contract["id"]
     with pytest.raises(KeyError):
         game._find_contract("missing")
+    future = {**contract, "created_at": game.now() + 100}
+    game.store.set_json("contracts", [future])
+    with pytest.raises(KeyError):
+        game._find_contract(contract["id"])
 
 
 def test_refresh_market_drops_legacy_offers_but_keeps_active_trips(
