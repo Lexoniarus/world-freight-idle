@@ -1,11 +1,12 @@
 FUNCTION_TESTS = {
+    "app.repositories.game_state.SqliteGameStateRepository.list_active_transports": "test_transport_queries_filter_before_decoding",
+    "app.repositories.game_state.SqliteGameStateRepository.list_due_transports": "test_transport_queries_filter_before_decoding",
     "app.domain.transports.RouteSnapshot.__post_init__": "test_route_snapshot_rejects_invalid_measurements_and_geometry",
     "app.domain.transports.ActiveTransport.__post_init__": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
     "app.domain.transports.ActiveTransport.is_due": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
     "app.domain.transports.ActiveTransport.settle": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
     "app.repositories.transport_mapping.load_transport": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
     "app.services.game.GameService._get_player": "test_relational_game_use_cases_preserve_atomic_settlement",
-    "app.services.game.GameService._active_transports": "test_relational_game_use_cases_preserve_atomic_settlement",
     "app.domain.contracts.ContractOffer.__post_init__": "test_contract_offer_domain_rules",
     "app.domain.validation.require_finite": "test_domain_value_validators_reject_invalid_values",
     "app.domain.validation.require_integer": "test_domain_value_validators_reject_invalid_values",

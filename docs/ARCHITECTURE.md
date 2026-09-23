@@ -108,3 +108,11 @@ Auszahlung und Katalogzugriff. Persistenzfehler werden an Adaptergrenzen
 normalisiert; HTTP 503 enthält weder SQL noch private Daten. Migrationsberichte
 mit Spielerbezug, Datenbanken, Backups und Prüfarbeitsdateien bleiben außerhalb
 von Git. Werkzeugnachweise und manuelles Review stehen im Qualitätsbericht.
+
+### Begrenzte Transportabfragen
+
+Normale Spielabfragen laden ausschließlich aktive beziehungsweise fällige
+Transporte über typisierte Repository-Methoden. SQL filtert Besitzer, Status
+und Ankunft vor der Snapshot-Deserialisierung; der Index `arrivals` unterstützt
+diesen Zugriff. Vollständige Historienabfragen bleiben expliziten
+Bestandsabgleichen vorbehalten. Settlement bleibt atomar.
