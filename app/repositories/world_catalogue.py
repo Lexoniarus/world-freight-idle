@@ -17,6 +17,8 @@ _REQUIRED_WORLD_TABLES = {
     "facilities",
     "facility_nhm_profiles",
     "nhm_codes",
+    "countries",
+    "cities",
 }
 _REQUIRED_PROFILE_SYSTEM = "NHM 2026 via facility_nhm_profiles -> nhm_codes"
 
@@ -63,7 +65,7 @@ class SqliteWorldCatalogue:
 def validate_world_schema(connection: sqlite3.Connection) -> str:
     """Validate the NHM-capable schema and cross-table invariants."""
     metadata = dict(connection.execute("SELECT key,value FROM metadata"))
-    if metadata.get("schema_version") != "3.0.0":
+    if metadata.get("schema_version") != "4.0.0":
         raise ValueError("Unsupported world schema")
     if metadata.get("operational_profile_system") != _REQUIRED_PROFILE_SYSTEM:
         raise ValueError("Missing NHM profile capability")
@@ -388,7 +390,8 @@ def read_world_snapshot(connection: sqlite3.Connection) -> WorldSnapshot:
             version,
         )
         for row in connection.execute("""
-        SELECT f.*,t.code AS type_code FROM facilities f
+        SELECT f.*,t.code AS type_code,g.name AS city,g.country_code
+        FROM facilities f JOIN cities g USING(city_uid)
         JOIN facility_types t USING(facility_type_id) ORDER BY facility_uid
     """)
     )

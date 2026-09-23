@@ -204,7 +204,6 @@ FUNCTION_TESTS.update(
     {
         "app.api.v1.map.list_map_facilities": "test_map_endpoint_requires_session_and_uses_game_provider",
         "app.bootstrap.build_world_catalogue": "test_world_migration_repository_rolls_back_and_cli_requires_backup",
-        "app.bootstrap.build_world_maintenance_service": "test_world_preparation_is_atomic_idempotent_and_enforces_identity",
         "app.bootstrap.build_world_state_migration_service": "test_world_migration_repository_rolls_back_and_cli_requires_backup",
         "app.domain.cargo.NhmProduct.is_compatible_with": "test_nhm_cargo_profiles_follow_parent_hierarchy",
         "app.domain.world.Facility.has_verified_location": "test_world_snapshot_identity_provenance_and_query",
@@ -231,23 +230,10 @@ FUNCTION_TESTS.update(
         "app.repositories.world_catalogue.source_reference": "test_world_repository_rejects_incompatible_data",
         "app.repositories.world_catalogue.validate_uid": "test_world_repository_rejects_incompatible_data",
         "app.repositories.world_catalogue.validate_world_schema": "test_world_repository_rejects_incompatible_data",
-        "app.repositories.world_maintenance.WorldMaintenanceRepository.__init__": "test_world_preparation_is_atomic_idempotent_and_enforces_identity",
-        "app.repositories.world_maintenance.WorldMaintenanceRepository.upgrade": "test_world_preparation_is_atomic_idempotent_and_enforces_identity",
-        "app.repositories.world_maintenance.add_world_identities": "test_world_preparation_is_atomic_idempotent_and_enforces_identity",
-        "app.repositories.world_maintenance.insert_documented_goods": "test_world_preparation_is_atomic_idempotent_and_enforces_identity",
-        "app.repositories.world_maintenance.insert_terminal_nhm_profiles": "test_world_preparation_is_atomic_idempotent_and_enforces_identity",
-        "app.repositories.world_maintenance.insert_facility_evidence": "test_world_preparation_is_atomic_idempotent_and_enforces_identity",
-        "app.repositories.world_maintenance.insert_legacy_facility": "test_world_preparation_is_atomic_idempotent_and_enforces_identity",
-        "app.repositories.world_maintenance.insert_reference_company": "test_world_preparation_is_atomic_idempotent_and_enforces_identity",
-        "app.repositories.world_maintenance.insert_reference_facility": "test_world_preparation_is_atomic_idempotent_and_enforces_identity",
-        "app.repositories.world_maintenance.insert_world_source": "test_world_preparation_is_atomic_idempotent_and_enforces_identity",
         "app.repositories.world_state_migration.WorldStateMigrationRepository.__init__": "test_world_migration_repository_rolls_back_and_cli_requires_backup",
         "app.repositories.world_state_migration.WorldStateMigrationRepository.transform": "test_world_migration_repository_rolls_back_and_cli_requires_backup",
         "app.services.fleet.resolve_delivery_facility": "test_delivery_requires_verified_catalogue_endpoint",
         "app.services.map_locations.MapLocationService.list_facilities": "test_map_hubs_resolve_and_preserve_partial_failures",
-        "app.services.world_maintenance.WorldMaintenanceService.__init__": "test_world_preparation_is_atomic_idempotent_and_enforces_identity",
-        "app.services.world_maintenance.WorldMaintenanceService.prepare": "test_world_preparation_is_atomic_idempotent_and_enforces_identity",
-        "app.services.world_maintenance.validate_legacy_evidence": "test_world_evidence_rejects_unverified_candidates",
         "app.services.world_state_migration.WorldStateMigrationService.__init__": "test_world_migration_repository_rolls_back_and_cli_requires_backup",
         "app.services.world_state_migration.WorldStateMigrationService.migrate": "test_world_migration_repository_rolls_back_and_cli_requires_backup",
         "app.services.world_state_migration.WorldStateMigrationService.migrate.convert": "test_world_migration_repository_rolls_back_and_cli_requires_backup",
@@ -371,5 +357,23 @@ FUNCTION_TESTS.update(
         "app.domain.cargo.FacilityNhmProfile.__post_init__": "test_nhm_entities_reject_invalid_hierarchies_and_weights",
         "app.repositories.snapshot_mapping.load_profile": "test_canonical_snapshots_preserve_facts_and_reject_public_documents",
         "app.api.v1.game_projection.project_nhm_profile": "test_nhm_profile_projection_retains_fields_without_mutating_products",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.geography.Coordinates.__post_init__": "test_geography_values_reject_invalid_coordinates_and_identities",
+        "app.domain.geography.Country.__post_init__": "test_geography_values_reject_invalid_coordinates_and_identities",
+        "app.domain.geography.City.__post_init__": "test_geography_values_reject_invalid_coordinates_and_identities",
+        "app.domain.geography.Address.display_text": "test_geography_values_reject_invalid_coordinates_and_identities",
+        "app.services.world_geography.validate_geography_mapping": "test_geography_mapping_rejects_duplicate_or_changed_assignments",
+        "app.bootstrap.build_geography_migration": "test_geography_migration_reconciles_identity_and_is_idempotent",
+        "app.repositories.world_geography.WorldGeographyRepository.__init__": "test_geography_migration_reconciles_identity_and_is_idempotent",
+        "app.repositories.world_geography.WorldGeographyRepository.normalize": "test_geography_migration_rolls_back_and_requires_backup",
+        "app.repositories.world_geography.catalogue_identities": "test_geography_migration_reconciles_identity_and_is_idempotent",
+        "app.repositories.world_geography.validate_source_geography": "test_geography_mapping_rejects_duplicate_or_changed_assignments",
+        "app.repositories.world_geography.normalize_geography_tables": "test_geography_migration_rolls_back_and_requires_backup",
+        "app.repositories.world_geography.rebuild_geographical_table": "test_geography_migration_rolls_back_and_requires_backup",
+        "app.repositories.world_geography.validate_normalized_geography": "test_geography_migration_reconciles_identity_and_is_idempotent",
     }
 )

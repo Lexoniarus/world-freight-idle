@@ -46,14 +46,6 @@ class WorldCatalogue(Protocol):
         ...
 
 
-class WorldMaintenanceStore(Protocol):
-    """Offline atomic reference maintenance boundary."""
-
-    def upgrade(self, entries: list[dict[str, Any]]) -> None:
-        """Preserve identity and reject incomplete upgrades."""
-        ...
-
-
 class WorldStateStore(Protocol):
     """Atomic transformation boundary for existing player records."""
 

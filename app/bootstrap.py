@@ -9,6 +9,7 @@ from pathlib import Path
 import httpx
 
 from app.config import Settings
+from app.domain.geography_migration import GeographyMigrationStore
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
 from app.domain.read_ports import LeaderboardReader
 from app.providers.routing import ValhallaTruckRouter
@@ -21,7 +22,7 @@ from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.relational_traffic import SqliteTrafficReader
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.repositories.world_catalogue import SqliteWorldCatalogue
-from app.repositories.world_maintenance import WorldMaintenanceRepository
+from app.repositories.world_geography import WorldGeographyRepository
 from app.repositories.world_state_migration import (
     WorldStateMigrationRepository,
 )
@@ -33,7 +34,6 @@ from app.services.market_scope import MarketScopeResolver
 from app.services.multiplayer_map import MultiplayerMapService
 from app.services.pricing import PricingService
 from app.services.profile_maintenance import ProfileMaintenanceService
-from app.services.world_maintenance import WorldMaintenanceService
 from app.services.world_state_migration import WorldStateMigrationService
 from app.simulation import LEGACY_CARGO_TYPES
 
@@ -158,9 +158,11 @@ def build_world_catalogue(settings: Settings) -> CachedWorldCatalogue:
     return CachedWorldCatalogue(source)
 
 
-def build_world_maintenance_service(path: Path) -> WorldMaintenanceService:
-    """Assemble explicit offline maintenance, never from an endpoint."""
-    return WorldMaintenanceService(WorldMaintenanceRepository(path))
+def build_geography_migration(
+    backup: Path, target: Path
+) -> GeographyMigrationStore:
+    """Bind offline normalization to its immutable backup and new output."""
+    return WorldGeographyRepository(backup, target)
 
 
 def build_world_state_migration_service(

@@ -339,7 +339,9 @@ def test_world_repository_rejects_half_null_coordinates(world_catalogue):
         connection,
     ):
         connection.executescript(
-            "DROP TRIGGER coordinate_pair_update; UPDATE facilities SET latitude=NULL WHERE longitude IS NOT NULL"
+            "DROP TRIGGER coordinate_pair_update; "
+            "PRAGMA ignore_check_constraints=ON; "
+            "UPDATE facilities SET latitude=NULL WHERE longitude IS NOT NULL"
         )
     with pytest.raises(WorldCatalogueError):
         world_catalogue.read()

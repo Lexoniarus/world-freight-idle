@@ -1,6 +1,6 @@
 # WorldCatalogue: Referenzen und Spielzustand
 
-Stand: 20.09.2026. UI First, FastAPI, native ES-Module, OSM und
+Stand: 23.09.2026. UI First, FastAPI, native ES-Module, OSM und
 `python main.py` bleiben Grundlage. Reale Referenzunternehmen sind keine
 Spielerunternehmen; öffentliche Facilities sind keine eigenen Depots.
 
@@ -190,3 +190,27 @@ globale `/map/facilities`-Abfrage gehört nicht mehr zum Browserstart.
 Facility-Texte werden nicht dauerhaft als Canvas-Labels erzeugt, sondern nur
 bei Hover als textContent-basierte DOM-Popups angezeigt.
 
+
+
+## Normalisierte Geografie
+
+Schema 4.0.0 enthält 25 Länder und 304 Städte. Facilities referenzieren eine
+verpflichtende Stadt-UUID; redundante Stadt-/Region-/Landspalten entfallen.
+Companies referenzieren Länder, ohne einer einzelnen Stadt untergeordnet zu
+werden. Company-/Facility-UUIDs bleiben unverändert. Der Runtime-Reader
+akzeptiert ausschließlich das normalisierte Schema und öffnet es read-only.
+
+`docs/data/world-geography-v4.json` ordnet alle 352 Facility-UUIDs ausdrücklich
+festen Stadt-UUIDs zu. Die Identitäten wurden einmalig erzeugt und werden nicht
+bei Migration oder Lookup aus Namen abgeleitet. Neun Gruppen mit fehlenden
+Regionsangaben wurden anhand der vorhandenen Standortkoordinaten abgeglichen.
+Namen, Koordinatenqualität und Quellen bleiben erhalten; Normalisierung ist
+keine neue geografische Verifizierung.
+
+Offline-Aufbereitung: `scripts/normalize_world_catalogue.py --catalogue SOURCE
+--backup BACKUP --output TARGET --mapping docs/data/world-geography-v4.json`.
+Quelle, Backup und Ziel müssen getrennte Dateien sein. Nach erfolgreichem
+SQLite-Backup entsteht ein transaktional normalisiertes Ziel; Identitäten,
+Stadtzuordnungen, Fremdschlüssel und Integrität werden abgeglichen. Ein bereits
+passendes Ziel wird ohne Neuschreiben akzeptiert, fremde Ziele werden abgewiesen.
+Die frühere In-place-Aufbereitung von Schema 2 auf 3 wurde entfernt.

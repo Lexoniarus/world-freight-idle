@@ -354,3 +354,22 @@ API-Evidenzfelder bleiben kompatibel. Historische Dokumente speichern beide
 Konzepte getrennt; DocumentedGood und Quellen bleiben eigenständige Werte.
 Die NHM-/Markt-/Snapshot-/Manifesttests und unmittelbar abhängigen Spiel-,
 Transport-, Repository- und API-Tests bestanden; mypy und Pyright sind grün.
+
+## C: Referenzkatalog auf Schema 4 normalisiert
+
+Der ausgelieferte Katalog enthält jetzt Länder, Städte mit dauerhaft
+festgelegten UUIDs und verpflichtende Facility-Zuordnungen. Alle bestehenden
+Referenzwerte außerhalb der aufgeteilten Geografiespalten wurden vor Aktivierung
+vollständig verglichen; Company-/Facility-UUIDs blieben erhalten. Vorher wurde
+ein SQLite-Backup erstellt. Eine vorhandene Katalog-View musste ebenfalls auf
+Stadt-Joins umgestellt werden; ein neuer Regressionstest deckt dies ab.
+
+Die alte Schema-2-Aufbereitung ist entfernt. Das neue Offline-Werkzeug erstellt
+eine separate Datei und prüft Manifest, Identitäten und Integrität. Im
+betroffenen Testlauf scheiterte nur die bisherige Korruptionsfixture an dem
+nun stärkeren Koordinaten-CHECK; die Fixture erzeugt absichtlich beschädigte
+Daten mit abgeschalteten CHECKs, damit der Runtime-Reader weiterhin geprüft
+wird. Der Nachlauf mit diesem Fall und den drei Migrationstests bestand.
+mypy/Pyright, Ruff und Formatprüfung sind grün. Die Zusammensetzung der
+Facility-Domain aus Address/City/Country/Coordinates folgt als nächster Schritt.
+Die echte game.db ist weiterhin unangetastet.

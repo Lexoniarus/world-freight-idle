@@ -58,3 +58,12 @@ Der Datenstand ist eine kuratierte Referenz, kein Live-Nachweis aktueller
 Geschäftsbeziehungen oder Wareneingänge. Keine allgemeine Freigabe fremder
 Bilder/Marken und keine vollständige rechtliche Prüfung für öffentlichen Betrieb.
 Technische Regeln und Migration: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).
+
+
+Geografie-Normalisierung (Schema 4.0.0): Die versionierte Zuordnung in
+`docs/data/world-geography-v4.json` erhält vorhandene Company-/Facility-UUIDs,
+Koordinaten, Waren und Quellen. Sie ergänzt administrative Stadtidentitäten
+und lesbare Länderbezeichnungen. Die Zuordnung ist keine zusätzliche Quelle
+für verifizierte Koordinaten; die bisherige Evidence-Klassifikation bleibt
+unverändert. Das alte Referenzschema wird nur vom expliziten Offline-Werkzeug
+zur Erstellung einer neuen Katalogdatei gelesen.

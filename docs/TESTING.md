@@ -180,7 +180,7 @@ Neue Meldungen in diesem Modus müssen vor Integration behoben werden.
 
 ## WorldCatalogue-Gegentests
 
-Neue Suiten test_world_catalogue.py, test_world_maintenance.py und
+Neue Suiten test_world_catalogue.py, test_geography_migration.py und
 test_world_migration.py prüfen readonly/Cleanup, Quellen, Koordinaten, UIDs
 bei PK-Änderungen, wiederholte Aufbereitung, Backupfehler, transaktionalen
 Rollback und historische Transportwerte. Marktprüfungen sichern Same-City,
@@ -235,3 +235,10 @@ globale `/map/facilities`-Abfrage gehört nicht mehr zum Browserstart.
 Facility-Texte werden nicht dauerhaft als Canvas-Labels erzeugt, sondern nur
 bei Hover als textContent-basierte DOM-Popups angezeigt.
 
+
+
+Geografie-Migration: Tests verwenden isolierte Schema-3-Fixtures und neue
+Zieldateien. Geprüft werden dauerhafte Stadt-UUIDs, exakte Facility-Zuordnungen,
+Pflichtfelder/Fremdschlüssel, Erhalt von Quellen und Views, wiederholte
+Ausführung, unveränderte Quelle sowie Rollback und Backupfehler. Das alte
+Schema-2-In-place-Werkzeug und seine spezifischen Tests sind entfernt.
