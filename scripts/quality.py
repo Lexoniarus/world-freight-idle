@@ -16,7 +16,6 @@ COMMANDS = (
         "main.py",
         "scripts/quality.py",
         "scripts/update_test_profile.py",
-        "scripts/migrate_world_state.py",
         "scripts/normalize_world_catalogue.py",
     ),
     (
@@ -30,7 +29,6 @@ COMMANDS = (
         "main.py",
         "scripts/quality.py",
         "scripts/update_test_profile.py",
-        "scripts/migrate_world_state.py",
         "scripts/normalize_world_catalogue.py",
     ),
     (
@@ -40,7 +38,6 @@ COMMANDS = (
         "app",
         "main.py",
         "scripts/update_test_profile.py",
-        "scripts/migrate_world_state.py",
         "scripts/normalize_world_catalogue.py",
     ),
     (

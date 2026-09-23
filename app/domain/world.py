@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from app.domain.cargo import FacilityNhmProfile
 from app.domain.evidence import SourceReference
+from app.domain.geography import Address, City, Coordinates, Country
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,7 +17,7 @@ class Company:
     company_uid: str
     legal_name: str
     display_name: str
-    country: str
+    country: Country
     website: str | None
     sources: tuple[SourceReference, ...]
 
@@ -28,7 +29,7 @@ class CompanyIdentity:
     company_uid: str
     legal_name: str
     display_name: str
-    country: str
+    country: Country
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,11 +49,9 @@ class FacilityLocationSnapshot:
     company: CompanyIdentity | None
     label: str
     facility_type: str
-    city: str
-    country: str
+    city: City
     address: str
-    lat: float | None
-    lon: float | None
+    coordinates: Coordinates | None
     geocoding_status: str
     coordinate_evidence: tuple[SourceReference, ...]
     catalogue_version: str
@@ -71,11 +70,8 @@ class Facility:
     company: Company | None
     label: str
     facility_type: str
-    city: str
-    country: str
-    address: str
-    lat: float | None
-    lon: float | None
+    address: Address
+    coordinates: Coordinates | None
     geocoding_status: str
     sources: tuple[SourceReference, ...]
     coordinate_evidence: tuple[SourceReference, ...]
@@ -91,14 +87,7 @@ class Facility:
             "estimated_for_simulation",
         }:
             return False
-        if (
-            self.lat is None
-            or self.lon is None
-            or not math.isfinite(self.lat)
-            or not math.isfinite(self.lon)
-            or not -90 <= self.lat <= 90
-            or not -180 <= self.lon <= 180
-        ):
+        if self.coordinates is None:
             return False
         public_evidence = any(
             item.url.startswith(("https://", "http://"))
@@ -152,11 +141,9 @@ class Facility:
             company=company,
             label=self.label,
             facility_type=self.facility_type,
-            city=self.city,
-            country=self.country,
-            address=self.address,
-            lat=self.lat,
-            lon=self.lon,
+            city=self.address.city,
+            address=self.address.display_text(),
+            coordinates=self.coordinates,
             geocoding_status=self.geocoding_status,
             coordinate_evidence=self.coordinate_evidence,
             catalogue_version=self.catalogue_version,
@@ -198,13 +185,14 @@ class FacilityQuery:
         if self.bbox is None:
             return True
         west, south, east, north = self.bbox
-        assert facility.lat is not None and facility.lon is not None
+        assert facility.coordinates is not None
+        coordinates = facility.coordinates
         longitude = (
-            west <= facility.lon <= east
+            west <= coordinates.longitude <= east
             if west <= east
-            else facility.lon >= west or facility.lon <= east
+            else coordinates.longitude >= west or coordinates.longitude <= east
         )
-        return south <= facility.lat <= north and longitude
+        return south <= coordinates.latitude <= north and longitude
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,6 +202,8 @@ class WorldSnapshot:
     version: str
     companies: tuple[Company, ...]
     facilities: tuple[Facility, ...]
+    countries: tuple[Country, ...]
+    cities: tuple[City, ...]
 
     def get_facility(self, identifier: str) -> Facility:
         """Resolve a durable UID or explicitly maintained legacy alias."""

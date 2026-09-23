@@ -10,6 +10,7 @@ import pytest
 from app.api.v1.location_projection import project_location
 from app.domain.cargo import NhmProduct
 from app.domain.errors import WorldCatalogueError
+from app.domain.geography import Coordinates
 from app.domain.world import FacilityQuery
 
 
@@ -79,9 +80,7 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
         is None
     )
     for field, value in (
-        ("lat", None),
-        ("lon", float("inf")),
-        ("lat", 91),
+        ("coordinates", None),
         ("coordinate_evidence", ()),
         ("geocoding_status", "candidate"),
     ):
@@ -96,11 +95,13 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
         berlin, nhm_profiles=(replace(inbound, role="output"),)
     ).inbound_profiles()
 
-    assert not FacilityQuery().includes(replace(berlin, lat=None))
+    assert not FacilityQuery().includes(replace(berlin, coordinates=None))
     dateline = FacilityQuery.parse("170,-10,-170,10")
-    assert dateline.includes(replace(berlin, lat=0, lon=179))
-    assert dateline.includes(replace(berlin, lat=0, lon=-179))
-    assert not dateline.includes(replace(berlin, lat=0, lon=0))
+    assert dateline.includes(replace(berlin, coordinates=Coordinates(0, 179)))
+    assert dateline.includes(replace(berlin, coordinates=Coordinates(0, -179)))
+    assert not dateline.includes(
+        replace(berlin, coordinates=Coordinates(0, 0))
+    )
     assert FacilityQuery.parse("13,52,14,53").includes(berlin)
     assert not FacilityQuery.parse("0,0,1,1").includes(berlin)
     for bounds in ("", "0,1,2", "nan,0,1,2", "181,0,1,2", "0,4,1,2"):
@@ -262,7 +263,7 @@ def test_world_coordinates_require_matching_evidence(world_catalogue):
         )
     after = world_catalogue.read().get_facility(berlin.facility_uid)
     assert not after.is_routable()
-    assert after.lat == berlin.lat
+    assert after.coordinates == berlin.coordinates
     assert estimated.is_routable()
     assert not estimated.has_verified_location()
     promoted = replace(estimated, geocoding_status="verified_coordinates")
@@ -391,3 +392,61 @@ def test_world_catalogue_is_packaged_independently_of_player_state(
     )
     with pytest.raises(WorldCatalogueError):
         build_world_catalogue(Settings.from_env(root)).read()
+
+
+def test_world_geography_shares_identities_and_rejects_broken_references(
+    world_catalogue,
+):
+    snapshot = world_catalogue.read()
+    facility = snapshot.get_facility("berlin_westhafen")
+    city = facility.address.city
+    assert city is next(
+        c for c in snapshot.cities if c.city_uid == city.city_uid
+    )
+    assert city.country is next(
+        c for c in snapshot.countries if c.code == "DE"
+    )
+    assert facility.company.country is city.country
+    location = facility.location_snapshot()
+    assert location.city is city
+    assert location.coordinates is facility.coordinates
+    assert location.address == facility.address.display_text()
+    assert project_location(location)["city_uid"] == city.city_uid
+    for table, column, value in (
+        ("countries", "name", ""),
+        ("cities", "city_uid", "not-a-uuid"),
+        ("cities", "country_code", "XX"),
+    ):
+        with closing(sqlite3.connect(world_catalogue.path)) as connection:
+            old = connection.execute(
+                f"SELECT rowid,{column} FROM {table} LIMIT 1"
+            ).fetchone()
+            connection.execute(
+                f"UPDATE {table} SET {column}=? WHERE rowid=?", (value, old[0])
+            )
+            connection.commit()
+            with pytest.raises(WorldCatalogueError):
+                world_catalogue.read()
+            connection.execute(
+                f"UPDATE {table} SET {column}=? WHERE rowid=?",
+                (old[1], old[0]),
+            )
+            connection.commit()
+
+
+def test_world_catalogue_composition_uses_explicit_path_without_game_state(
+    tmp_path,
+):
+    from app.bootstrap import build_world_catalogue
+    from tests.test_api import make_settings
+
+    settings = make_settings(tmp_path)
+    catalogue = build_world_catalogue(settings)
+    assert len(catalogue.read().cities) == 304
+    assert not settings.db_path.exists()
+    missing = build_world_catalogue(
+        replace(settings, world_catalogue_path=None)
+    )
+    with pytest.raises(WorldCatalogueError):
+        missing.read()
+    assert not settings.db_path.exists()

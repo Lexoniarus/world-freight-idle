@@ -1,6 +1,6 @@
 # Domänenmodell
 
-Stand: 21.09.2026.
+Stand: 23.09.2026.
 
 Dieses Dokument beschreibt das fachliche Zielmodell von World Freight Idle.
 Es ist die verbindliche Begriffs- und Objektgrenze für neue Core-Entwicklung.
@@ -442,3 +442,11 @@ Betroffene Tests sind vor jedem Commit grün; die Gesamtprüfung folgt am Ende.
 Jeder Schritt hält das bestehende Verhalten kompatibel, erhält vollständige
 Tests und aktualisiert das Function-Test-Manifest für neue konkrete Core-
 Callables.
+
+
+Referenzgeografie ist jetzt implementiert: Facility komponiert eine Address
+mit City/Country und optionale validierte Coordinates. WorldSnapshot enthält
+die gemeinsamen Länder-/Stadtobjekte. Ein FacilityLocationSnapshot speichert
+seine damalige City/Country-Identität, Koordinaten und den vollständigen
+historischen Adresstext unabhängig von späteren Katalogänderungen. Die
+öffentlichen v1-Felder bleiben flach projiziert und ergänzen city_uid.

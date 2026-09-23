@@ -139,7 +139,7 @@ async def test_quote_rejects_missing_snapshot_coordinates_before_routing(game):
 
     offer = game.state_repository.list_offers()[0]
     game.state_repository.replace_offers(
-        (replace(offer, origin=replace(offer.origin, lat=None)),)
+        (replace(offer, origin=replace(offer.origin, coordinates=None)),)
     )
     game.router.route = AsyncMock()
     with pytest.raises(ValueError, match="Koordinaten"):

@@ -1,7 +1,6 @@
 """Provider interfaces consumed by application services."""
 
-from collections.abc import Callable
-from typing import Any, Protocol
+from typing import Protocol
 
 from app.domain.models import VehicleModel
 from app.domain.transports import RouteSnapshot
@@ -43,15 +42,4 @@ class WorldCatalogue(Protocol):
 
     def read(self) -> "WorldSnapshot":
         """Return validated identities, endpoints and provenance."""
-        ...
-
-
-class WorldStateStore(Protocol):
-    """Atomic transformation boundary for existing player records."""
-
-    def transform(
-        self,
-        convert: Callable[[dict[str, Any]], dict[str, Any]],
-    ) -> int:
-        """Apply the complete transformation or preserve all prior records."""
         ...

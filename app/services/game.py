@@ -160,12 +160,13 @@ class GameService:
             )
         origin = contract.origin
         destination = contract.destination
-        if None in (origin.lat, origin.lon, destination.lat, destination.lon):
+        if origin.coordinates is None or destination.coordinates is None:
             raise ValueError("Auftrag enthält keine routbaren Koordinaten.")
-        assert origin.lat is not None and origin.lon is not None
-        assert destination.lat is not None and destination.lon is not None
         route = await self.router.route(
-            origin.lat, origin.lon, destination.lat, destination.lon
+            origin.coordinates.latitude,
+            origin.coordinates.longitude,
+            destination.coordinates.latitude,
+            destination.coordinates.longitude,
         )
         economics = self.pricing.quote(
             contract.cargo.name,

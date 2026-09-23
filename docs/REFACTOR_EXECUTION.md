@@ -373,3 +373,22 @@ wird. Der Nachlauf mit diesem Fall und den drei Migrationstests bestand.
 mypy/Pyright, Ruff und Formatprüfung sind grün. Die Zusammensetzung der
 Facility-Domain aus Address/City/Country/Coordinates folgt als nächster Schritt.
 Die echte game.db ist weiterhin unangetastet.
+
+## C: Facilities komponieren Geografie
+
+Facilities besitzen Address/City/Country und validierte Coordinates. Länder
+und Städte werden pro Kataloglesung gemeinsam geladen; Company ist weiterhin
+unabhängig von einer einzelnen Stadt. Historische Endpunkte bewahren City,
+Country, Coordinates und ihren damaligen vollständigen Adresstext. Die API
+projiziert die bisherigen Felder und ergänzt city_uid. Domain und Services
+bauen daraus keine Persistenz-Dicts.
+
+Die obsolete In-place-KV-Weltmigration wurde bei der Aufruferumstellung
+entfernt, statt ihr einen weiteren Kompatibilitätsmapper zu geben. Relevante
+Snapshot-/Katalogausfalltests stehen jetzt in test_world_snapshots.py. Die
+separate Übernahme der Testprofile folgt weiterhin erst in F.
+
+68 betroffene Fälle bestanden zunächst; ein verwaister Manifest-Verweis auf
+den entfernten Migrationstest wurde durch einen eigenen Katalogverdrahtungs-
+Gegentest ersetzt. Der Nachlauf einschließlich API-/Fahrzeugregression bestand
+mit 25 Fällen. mypy, Pyright, Ruff und Formatprüfung bestanden.

@@ -23,9 +23,6 @@ from app.repositories.relational_traffic import SqliteTrafficReader
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.repositories.world_geography import WorldGeographyRepository
-from app.repositories.world_state_migration import (
-    WorldStateMigrationRepository,
-)
 from app.services.fleet import FleetService
 from app.services.game import GameService
 from app.services.map_locations import MapLocationService
@@ -34,7 +31,6 @@ from app.services.market_scope import MarketScopeResolver
 from app.services.multiplayer_map import MultiplayerMapService
 from app.services.pricing import PricingService
 from app.services.profile_maintenance import ProfileMaintenanceService
-from app.services.world_state_migration import WorldStateMigrationService
 from app.simulation import LEGACY_CARGO_TYPES
 
 
@@ -163,13 +159,3 @@ def build_geography_migration(
 ) -> GeographyMigrationStore:
     """Bind offline normalization to its immutable backup and new output."""
     return WorldGeographyRepository(backup, target)
-
-
-def build_world_state_migration_service(
-    settings: Settings,
-) -> WorldStateMigrationService:
-    """Assemble the explicit offline profile migration."""
-    return WorldStateMigrationService(
-        build_world_catalogue(settings),
-        WorldStateMigrationRepository(settings.db_path),
-    )

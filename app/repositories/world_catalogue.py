@@ -9,7 +9,9 @@ from pathlib import Path
 from app.domain.cargo import FacilityNhmProfile, NhmProduct
 from app.domain.errors import WorldCatalogueError
 from app.domain.evidence import SourceReference
+from app.domain.geography import Address, City, Coordinates, Country
 from app.domain.world import Company, DocumentedGood, Facility, WorldSnapshot
+from app.repositories.world_geography_reader import read_cities, read_countries
 
 LOGGER = logging.getLogger(__name__)
 
@@ -149,7 +151,9 @@ def source_reference(row: sqlite3.Row) -> SourceReference:
     return SourceReference(url, row["source_role"], row["verified_at"])
 
 
-def read_companies(connection: sqlite3.Connection) -> dict[int, Company]:
+def read_companies(
+    connection: sqlite3.Connection, countries: dict[str, Country]
+) -> dict[int, Company]:
     """Resolve internal foreign keys into immutable company projections."""
     sources: dict[int, list[SourceReference]] = {}
     for row in connection.execute("SELECT * FROM company_sources"):
@@ -159,7 +163,7 @@ def read_companies(connection: sqlite3.Connection) -> dict[int, Company]:
             validate_uid(row["company_uid"]),
             row["legal_name"],
             row["display_name"],
-            row["country_code"],
+            countries[row["country_code"]],
             row["website_url"],
             tuple(sources.get(row["company_id"], [])),
         )
@@ -264,6 +268,7 @@ def read_facility(
     connection: sqlite3.Connection,
     row: sqlite3.Row,
     companies: dict[int, Company],
+    cities: dict[str, City],
     cargo: tuple[FacilityNhmProfile, ...],
     version: str,
 ) -> Facility:
@@ -321,27 +326,22 @@ def read_facility(
             (uid,),
         )
     )
-    address = ", ".join(
-        str(row[key])
-        for key in (
-            "street",
-            "house_number",
-            "postcode",
-            "city",
-            "country_code",
-        )
-        if row[key]
-    )
     return Facility(
         uid,
         companies.get(row["company_id"]),
         row["name"],
         row["type_code"],
-        row["city"],
-        row["country_code"],
-        address,
-        row["latitude"],
-        row["longitude"],
+        Address(
+            cities[row["city_uid"]],
+            row["street"],
+            row["house_number"],
+            row["postcode"],
+        ),
+        (
+            Coordinates(row["latitude"], row["longitude"])
+            if row["latitude"] is not None
+            else None
+        ),
         row["geocoding_status"],
         sources,
         tuple(evidence),
@@ -379,19 +379,21 @@ def read_handled_goods(
 def read_world_snapshot(connection: sqlite3.Connection) -> WorldSnapshot:
     """Read one complete revision and report the routability boundary."""
     version = validate_world_schema(connection)
-    companies = read_companies(connection)
+    countries = read_countries(connection)
+    cities = read_cities(connection, countries)
+    companies = read_companies(connection, countries)
     cargo = read_cargo(connection)
     facilities = tuple(
         read_facility(
             connection,
             row,
             companies,
+            cities,
             tuple(cargo.get(row["facility_id"], [])),
             version,
         )
         for row in connection.execute("""
-        SELECT f.*,t.code AS type_code,g.name AS city,g.country_code
-        FROM facilities f JOIN cities g USING(city_uid)
+        SELECT f.*,t.code AS type_code FROM facilities f
         JOIN facility_types t USING(facility_type_id) ORDER BY facility_uid
     """)
     )
@@ -421,4 +423,10 @@ def read_world_snapshot(connection: sqlite3.Connection) -> WorldSnapshot:
             },
         },
     )
-    return WorldSnapshot(version, tuple(companies.values()), facilities)
+    return WorldSnapshot(
+        version,
+        tuple(companies.values()),
+        facilities,
+        tuple(countries.values()),
+        tuple(cities.values()),
+    )

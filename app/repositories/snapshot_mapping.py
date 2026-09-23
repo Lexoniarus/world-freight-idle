@@ -5,6 +5,7 @@ from typing import Any
 from app.domain.cargo import FacilityNhmProfile, NhmProduct
 from app.domain.contracts import ContractOffer
 from app.domain.evidence import SourceReference
+from app.domain.geography import City, Coordinates, Country
 from app.domain.world import CompanyIdentity, FacilityLocationSnapshot
 
 
@@ -13,8 +14,19 @@ def load_location(value: dict[str, Any]) -> FacilityLocationSnapshot:
     return FacilityLocationSnapshot(
         **{
             **value,
+            "city": load_city(value["city"]),
+            "coordinates": (
+                Coordinates(**value["coordinates"])
+                if value["coordinates"] is not None
+                else None
+            ),
             "company": (
-                CompanyIdentity(**value["company"])
+                CompanyIdentity(
+                    **{
+                        **value["company"],
+                        "country": Country(**value["company"]["country"]),
+                    }
+                )
                 if value["company"] is not None
                 else None
             ),
@@ -65,3 +77,8 @@ def load_offer(value: dict[str, Any]) -> ContractOffer:
             ),
         }
     )
+
+
+def load_city(value: dict[str, Any]) -> City:
+    """Restore a historical city and country without current-catalogue IO."""
+    return City(**{**value, "country": Country(**value["country"])})

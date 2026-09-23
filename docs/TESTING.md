@@ -181,7 +181,7 @@ Neue Meldungen in diesem Modus müssen vor Integration behoben werden.
 ## WorldCatalogue-Gegentests
 
 Neue Suiten test_world_catalogue.py, test_geography_migration.py und
-test_world_migration.py prüfen readonly/Cleanup, Quellen, Koordinaten, UIDs
+test_world_snapshots.py prüfen readonly/Cleanup, Quellen, Koordinaten, UIDs
 bei PK-Änderungen, wiederholte Aufbereitung, Backupfehler, transaktionalen
 Rollback und historische Transportwerte. Marktprüfungen sichern Same-City,
 Same-Company, Standardwaren und mögliche Folgeaufträge. Ein Provider-Spy

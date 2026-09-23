@@ -18,7 +18,8 @@ async def test_map_hubs_resolve_and_preserve_partial_failures(game):
     assert len(result) == 352
     assert all(hub.resolution_status == "resolved" for hub in result)
     berlin = next(h for h in result if "berlin_westhafen" in h.aliases)
-    assert berlin.lat == 52.5374096
+    assert berlin.coordinates is not None
+    assert berlin.coordinates.latitude == 52.5374096
     projection = service.list_facilities(FacilityQuery.parse("13,52,14,53"))
     assert berlin in projection.facilities
     assert projection.unavailable_count == 0

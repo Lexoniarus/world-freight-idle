@@ -14,14 +14,24 @@ def project_location(location: FacilityLocationSnapshot) -> dict[str, Any]:
         "company_uid": (
             location.company.company_uid if location.company else None
         ),
-        "company": asdict(location.company) if location.company else None,
+        "company": (
+            {
+                **asdict(location.company),
+                "country": location.company.country.code,
+            }
+            if location.company
+            else None
+        ),
         "label": location.label,
         "facility_type": location.facility_type,
-        "city": location.city,
-        "country": location.country,
+        "city": location.city.name,
+        "city_uid": location.city.city_uid,
+        "country": location.city.country.code,
         "address": location.address,
-        "lat": location.lat,
-        "lon": location.lon,
+        "lat": location.coordinates.latitude if location.coordinates else None,
+        "lon": location.coordinates.longitude
+        if location.coordinates
+        else None,
         "geocoding_status": location.geocoding_status,
         "coordinate_evidence": [
             asdict(item) for item in location.coordinate_evidence
