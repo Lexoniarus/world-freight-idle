@@ -178,7 +178,9 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
         assert game.store.get_json("player")["cash"] == 25000
         assert game.get_vehicle("truck_01")["model_id"] == model_id
     # Already running transport economics are independent of the catalogue.
-    trip["arrives_at"] = 0
+    trip["departed_at"] = 0
+    trip["arrives_at"] = 1
+    vehicle["status"] = "enroute"
     game.store.set_json("vehicles", [vehicle])
     game.store.set_json("active_trips", [trip])
     assert game.reconcile_arrival()

@@ -13,6 +13,7 @@ import pytest
 
 from app.bootstrap import build_world_state_migration_service
 from app.domain.errors import WorldCatalogueError
+from app.domain.game import OwnedVehicle
 from app.repositories.world_state_migration import (
     WorldStateMigrationRepository,
 )
@@ -195,7 +196,8 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(game):
         )
         trip = await game.dispatch(contract["id"], "truck_01")
         cash = game.store.get_json("player")["cash"]
-        trip["arrives_at"] = 0
+        trip["departed_at"] = 0
+        trip["arrives_at"] = 1
         game.store.set_json("active_trips", [trip])
         assert game.reconcile_arrival()
         assert (
@@ -215,10 +217,20 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(game):
 
 
 def test_legacy_projections_require_explicit_aliases(game):
-    legacy = {"hub_id": "berlin_westhafen"}
+    legacy = OwnedVehicle.from_dict(
+        {
+            "id": "legacy",
+            "name": "Legacy",
+            "mode": "truck",
+            "capacity_tons": 12,
+            "hub_id": "berlin_westhafen",
+            "status": "idle",
+        }
+    )
     expanded = game._expand_vehicle(legacy)
     assert expanded["hub"]["facility_uid"]
-    assert "hub" not in legacy
+    assert legacy.hub_id == "berlin_westhafen"
+
     contract = {
         "origin_hub_id": "berlin_westhafen",
         "destination_hub_id": "hamburg_cta",
@@ -228,8 +240,19 @@ def test_legacy_projections_require_explicit_aliases(game):
         expanded["origin"]["facility_uid"]
         != expanded["destination"]["facility_uid"]
     )
+
+    unknown = OwnedVehicle.from_dict(
+        {
+            "id": "unknown",
+            "name": "Unknown",
+            "mode": "truck",
+            "capacity_tons": 12,
+            "hub_id": "unknown",
+            "status": "idle",
+        }
+    )
     with pytest.raises(KeyError):
-        game._expand_vehicle({"hub_id": "unknown"})
+        game._expand_vehicle(unknown)
 
 
 async def test_runtime_never_geocodes_facilities(game):

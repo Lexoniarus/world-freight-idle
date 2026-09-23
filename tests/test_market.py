@@ -1,11 +1,13 @@
 import random
-from dataclasses import replace
+from dataclasses import FrozenInstanceError, replace
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
+from app.domain.contracts import ContractOfferSnapshot
 from app.domain.errors import WorldCatalogueError
+from app.domain.game import OwnedVehicle
 from app.domain.world import FacilityQuery
 from app.services.contract_factory import ContractFactory
 from app.services.market import MarketGenerator
@@ -52,15 +54,21 @@ def test_build_contract_has_expiry_and_valid_nhm_cargo(
         1000,
         PayloadBand("heavy", 24),
     )
-    assert contract["expires_at"] == 22600
-    assert contract["cargo_code"] == option.cargo.code
-    assert contract["cargo"] == option.cargo.name
-    assert 8 <= contract["tons"] <= 24
-    assert contract["rate_eur_per_km_ton"] == 0.18
-    assert contract["destination_facility_uid"] != origin.facility_uid
-    assert contract["trade_match_type"] in {"exact", "ancestor"}
-    assert "cargo" not in contract["origin"]
-    assert "handled_goods" not in contract["origin"]
+    assert isinstance(contract, ContractOfferSnapshot)
+    assert contract.expires_at == 22600
+    assert contract.cargo.code == option.cargo.code
+    assert contract.cargo.name == option.cargo.name
+    assert 8 <= contract.tons <= 24
+    assert contract.rate_eur_per_km_ton == 0.18
+    assert contract.destination.facility_uid != origin.facility_uid
+    assert contract.trade_match_type in {"exact", "ancestor"}
+    with pytest.raises(FrozenInstanceError):
+        setattr(contract, "tons", 1)
+
+    payload = contract.to_dict()
+    assert payload["cargo_code"] == option.cargo.code
+    assert "cargo" not in payload["origin"]
+    assert "handled_goods" not in payload["origin"]
     with pytest.raises(WorldCatalogueError):
         TradeNetwork._build_trade_options(
             replace(origin, cargo=()),
@@ -167,12 +175,27 @@ def test_market_scope_combines_idle_trucks_and_zoomed_viewport(
     resolver = MarketScopeResolver(world_catalogue)
     berlin = world_catalogue.read().get_facility("berlin_westhafen")
     vehicles = [
-        {
-            "hub_id": berlin.facility_uid,
-            "facility_uid": berlin.facility_uid,
-            "status": "idle",
-        },
-        {"hub_id": "ignored", "status": "enroute"},
+        OwnedVehicle.from_dict(
+            {
+                "id": "idle",
+                "name": "Idle",
+                "mode": "truck",
+                "capacity_tons": 24,
+                "hub_id": berlin.facility_uid,
+                "facility_uid": berlin.facility_uid,
+                "status": "idle",
+            }
+        ),
+        OwnedVehicle.from_dict(
+            {
+                "id": "busy",
+                "name": "Busy",
+                "mode": "truck",
+                "capacity_tons": 24,
+                "hub_id": "ignored",
+                "status": "enroute",
+            }
+        ),
     ]
     query = FacilityQuery.parse("-10,35,30,60")
 
@@ -313,7 +336,8 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
 
     trip = await game.dispatch(first_berlin_contract(game)["id"], "truck_01")
     remaining = game.store.get_json("contracts")
-    trip["arrives_at"] = 0
+    trip["departed_at"] = 0
+    trip["arrives_at"] = 1
     game.store.set_json("active_trips", [trip])
     cash = game.store.get_json("player")["cash"]
     with patch.object(

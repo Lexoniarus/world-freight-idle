@@ -31,6 +31,16 @@ class Company:
 
 
 @dataclass(frozen=True, slots=True)
+class CompanyIdentity:
+    """Compact immutable company identity for runtime projections."""
+
+    company_uid: str
+    legal_name: str
+    display_name: str
+    country: str
+
+
+@dataclass(frozen=True, slots=True)
 class CargoProfile:
     """One NHM facility behavior profile with explicit evidence quality."""
 
@@ -43,6 +53,33 @@ class CargoProfile:
     priority_score: float
     ancestor_row_ids: tuple[int, ...]
     source: SourceReference | None
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> CargoProfile:
+        """Hydrate persisted NHM evidence for a contract offer."""
+        raw_source = value.get("source")
+        source = (
+            SourceReference(
+                url=str(raw_source["url"]),
+                role=str(raw_source["role"]),
+                verified_at=raw_source.get("verified_at"),
+                precision=raw_source.get("precision"),
+                provider=raw_source.get("provider"),
+            )
+            if isinstance(raw_source, dict)
+            else None
+        )
+        return cls(
+            nhm_row_id=int(value["nhm_row_id"]),
+            code=str(value["code"]),
+            name=str(value["name"]),
+            role=str(value["role"]),
+            evidence_type=str(value["evidence_type"]),
+            confidence=float(value["confidence"]),
+            priority_score=float(value["priority_score"]),
+            ancestor_row_ids=tuple(value["ancestor_row_ids"]),
+            source=source,
+        )
 
     def is_compatible_with(self, other: CargoProfile) -> bool:
         """Match equal NHM nodes or profiles on the same ancestor chain."""
@@ -59,6 +96,106 @@ class DocumentedGood:
     description: str
     cargo_code: str | None
     source: SourceReference
+
+
+@dataclass(frozen=True, slots=True)
+class FacilityLocationSnapshot:
+    """Compact immutable routing and display projection."""
+
+    facility_uid: str
+    company: CompanyIdentity | None
+    label: str
+    facility_type: str
+    city: str
+    country: str
+    address: str
+    lat: float | None
+    lon: float | None
+    geocoding_status: str
+    coordinate_evidence: tuple[SourceReference, ...]
+    catalogue_version: str
+    aliases: tuple[str, ...]
+    resolution_status: str
+    location_verified: bool
+    snapshot_version: int = 1
+    location_kind: str = "public_facility"
+
+    @classmethod
+    def from_dict(
+        cls,
+        value: dict[str, Any],
+    ) -> FacilityLocationSnapshot:
+        """Hydrate a persisted compact or legacy-compatible snapshot."""
+        raw_company = value.get("company")
+        company = (
+            CompanyIdentity(
+                company_uid=str(raw_company["company_uid"]),
+                legal_name=str(raw_company["legal_name"]),
+                display_name=str(raw_company["display_name"]),
+                country=str(raw_company["country"]),
+            )
+            if isinstance(raw_company, dict)
+            else None
+        )
+        evidence = tuple(
+            SourceReference(
+                url=str(item["url"]),
+                role=str(item["role"]),
+                verified_at=item.get("verified_at"),
+                precision=item.get("precision"),
+                provider=item.get("provider"),
+            )
+            for item in value.get("coordinate_evidence", [])
+        )
+        return cls(
+            facility_uid=str(value.get("facility_uid") or value["id"]),
+            company=company,
+            label=str(value["label"]),
+            facility_type=str(value.get("facility_type", "")),
+            city=str(value["city"]),
+            country=str(value["country"]),
+            address=str(value["address"]),
+            lat=value.get("lat"),
+            lon=value.get("lon"),
+            geocoding_status=str(value.get("geocoding_status", "")),
+            coordinate_evidence=evidence,
+            catalogue_version=str(value.get("catalogue_version", "")),
+            aliases=tuple(value.get("aliases", ())),
+            resolution_status=str(
+                value.get("resolution_status", "unavailable")
+            ),
+            location_verified=bool(value.get("location_verified", False)),
+            snapshot_version=int(value.get("snapshot_version", 1)),
+            location_kind=str(value.get("location_kind", "public_facility")),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the compact snapshot at an external boundary."""
+        return {
+            "facility_uid": self.facility_uid,
+            "id": self.facility_uid,
+            "company_uid": (
+                self.company.company_uid if self.company else None
+            ),
+            "company": asdict(self.company) if self.company else None,
+            "label": self.label,
+            "facility_type": self.facility_type,
+            "city": self.city,
+            "country": self.country,
+            "address": self.address,
+            "lat": self.lat,
+            "lon": self.lon,
+            "geocoding_status": self.geocoding_status,
+            "coordinate_evidence": [
+                asdict(item) for item in self.coordinate_evidence
+            ],
+            "catalogue_version": self.catalogue_version,
+            "aliases": list(self.aliases),
+            "resolution_status": self.resolution_status,
+            "location_verified": self.location_verified,
+            "snapshot_version": self.snapshot_version,
+            "location_kind": self.location_kind,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,44 +266,37 @@ class Facility:
             item for item in self.cargo if item.role in {"output", "both"}
         )
 
-    def location_snapshot(self) -> dict[str, Any]:
-        """Project only routing and display facts needed at runtime."""
-        return {
-            "facility_uid": self.facility_uid,
-            "id": self.facility_uid,
-            "company_uid": (
-                self.company.company_uid if self.company else None
-            ),
-            "company": (
-                {
-                    "company_uid": self.company.company_uid,
-                    "legal_name": self.company.legal_name,
-                    "display_name": self.company.display_name,
-                    "country": self.company.country,
-                }
-                if self.company
-                else None
-            ),
-            "label": self.label,
-            "facility_type": self.facility_type,
-            "city": self.city,
-            "country": self.country,
-            "address": self.address,
-            "lat": self.lat,
-            "lon": self.lon,
-            "geocoding_status": self.geocoding_status,
-            "coordinate_evidence": [
-                asdict(item) for item in self.coordinate_evidence
-            ],
-            "catalogue_version": self.catalogue_version,
-            "aliases": list(self.aliases),
-            "resolution_status": (
+    def location_snapshot(self) -> FacilityLocationSnapshot:
+        """Project typed routing and display facts needed at runtime."""
+        company = (
+            CompanyIdentity(
+                company_uid=self.company.company_uid,
+                legal_name=self.company.legal_name,
+                display_name=self.company.display_name,
+                country=self.company.country,
+            )
+            if self.company
+            else None
+        )
+        return FacilityLocationSnapshot(
+            facility_uid=self.facility_uid,
+            company=company,
+            label=self.label,
+            facility_type=self.facility_type,
+            city=self.city,
+            country=self.country,
+            address=self.address,
+            lat=self.lat,
+            lon=self.lon,
+            geocoding_status=self.geocoding_status,
+            coordinate_evidence=self.coordinate_evidence,
+            catalogue_version=self.catalogue_version,
+            aliases=self.aliases,
+            resolution_status=(
                 "resolved" if self.is_routable() else "unavailable"
             ),
-            "location_verified": self.has_verified_location(),
-            "snapshot_version": 1,
-            "location_kind": "public_facility",
-        }
+            location_verified=self.has_verified_location(),
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """Make an independent full endpoint snapshot and legacy projection."""

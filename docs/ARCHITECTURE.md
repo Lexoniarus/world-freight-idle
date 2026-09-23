@@ -329,3 +329,43 @@ globale `/map/facilities`-Abfrage gehört nicht mehr zum Browserstart.
 Facility-Texte werden nicht dauerhaft als Canvas-Labels erzeugt, sondern nur
 bei Hover als textContent-basierte DOM-Popups angezeigt.
 
+## Typisierte Runtime-Snapshots (21.09.2026)
+
+`Facility.location_snapshot()` liefert ein immutable
+`FacilityLocationSnapshot` statt eines unstrukturierten Dictionaries.
+`ContractFactory.build()` liefert entsprechend ein immutable
+`ContractOfferSnapshot`. Map-, Market-, Migrations- und Persistenzgrenzen
+serialisieren diese Objekte explizit mit `to_dict()`. Das öffentliche
+JSON-Format bleibt in diesem Schritt kompatibel; Player-, Vehicle-,
+Contract- und Transportzustand werden erst in der folgenden Migrationsstufe
+vollständig typisiert.
+
+## Typisierte Spielerentities (22.09.2026)
+
+`PlayerState` kapselt Guthaben, Lieferzähler und Reputation sowie Debit- und
+Settlement-Invarianten. `OwnedVehicle` kapselt Identität, Modell-Snapshot,
+Kapazität, Status, Standortwechsel und Dispatch-Validierung. `GameService`,
+`FleetService`, `MarketScopeResolver` und die Profilpflege verwenden diese
+Entities innerhalb ihrer Use Cases und serialisieren erst an der bestehenden
+KV-Grenze zurück in das kompatible JSON-Format. Die öffentlichen Entity-
+Eigenschaften sind schreibgeschützt; Mutationen erfolgen über validierte
+Methoden. Persistenz-/API-Mapping der Spielerentities wird in Abschnitt B
+aus dem Domainmodell in Adapter verschoben.
+
+## Typisierte Contract Offers (22.09.2026)
+
+`ContractOffer` ist die Spiel-Entity für aktuelle Marktangebote.
+Persistierte JSON-Angebote werden an der bestehenden KV-Grenze hydriert;
+Quote- und Dispatch-Logik arbeiten anschließend gegen das typisierte
+Domainobjekt. Die öffentliche `/api/v1`-Projektion bleibt unverändert und
+wird weiterhin explizit serialisiert. `ActiveTransport` komponiert einen
+historischen Auftrag, Endpunkte und `RouteSnapshot`, ohne von einem Angebot
+zu erben. Settlement verwendet vom Aufrufer gelieferte Zeitpunkte und weist
+vorzeitige oder wiederholte Zustandswechsel ab. Die KV-Stufe entfernt
+abgerechnete Transporte noch; dauerhafte Settlement-Datensätze folgen in B.
+
+Der Architekturreview für Abschnitt A bestätigt die Entity-Kapselung und die
+Abwesenheit von IO/Systemzeit in den neuen Domainregeln. Konkrete Store-
+Abhängigkeiten der Services, Domain-JSON-Mapping und Legacy-Hydrierung sind
+noch ausdrücklich offen und Bestandteil der Abschnitte B/E. Abschnitt A ist
+deshalb keine Abnahme der endgültigen Persistenzarchitektur.

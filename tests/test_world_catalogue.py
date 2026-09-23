@@ -48,19 +48,22 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
     with pytest.raises(FrozenInstanceError):
         setattr(berlin, "label", "changed")
     location = berlin.location_snapshot()
-    assert location["id"] == berlin.facility_uid
-    assert location["coordinate_evidence"]
-    assert location["company"] == {
-        "company_uid": berlin.company.company_uid,
-        "legal_name": berlin.company.legal_name,
-        "display_name": berlin.company.display_name,
-        "country": berlin.company.country,
-    }
-    assert location["company_uid"] == berlin.company.company_uid
-    assert "sources" not in location["company"]
-    assert "website" not in location["company"]
-    assert "cargo" not in location
-    assert "handled_goods" not in location
+    assert location.facility_uid == berlin.facility_uid
+    assert location.coordinate_evidence
+    assert location.company is not None
+    assert location.company.company_uid == berlin.company.company_uid
+    assert location.company.display_name == berlin.company.display_name
+    with pytest.raises(FrozenInstanceError):
+        setattr(location, "label", "changed")
+
+    location_payload = location.to_dict()
+    assert type(location).from_dict(location_payload) == location
+    assert location_payload["id"] == berlin.facility_uid
+    assert location_payload["company_uid"] == berlin.company.company_uid
+    assert "sources" not in location_payload["company"]
+    assert "website" not in location_payload["company"]
+    assert "cargo" not in location_payload
+    assert "handled_goods" not in location_payload
 
     serialized = berlin.to_dict()
     serialized["company"]["display_name"] = "changed"
@@ -326,7 +329,18 @@ def test_delivery_requires_verified_catalogue_endpoint(world_catalogue):
     from app.services.fleet import resolve_delivery_facility
 
     snapshot = world_catalogue.read()
-    assert resolve_delivery_facility(world_catalogue)["handled_goods"]
+    delivery = resolve_delivery_facility(world_catalogue)
+    berlin = snapshot.get_facility("berlin_westhafen")
+    assert delivery.facility_uid == berlin.facility_uid
+    assert delivery.resolution_status == "resolved"
+    assert delivery.coordinate_evidence
+    assert delivery.company is not None
+    assert delivery.company.company_uid == berlin.company.company_uid
+    payload = delivery.to_dict()
+    assert "handled_goods" not in payload
+    assert "cargo" not in payload
+    assert "sources" not in payload
+
     for facilities in (
         (),
         (

@@ -4,6 +4,8 @@ import time
 
 import pytest
 
+from app.domain.contracts import ContractOffer
+from app.domain.game import OwnedVehicle
 from app.domain.world import FacilityQuery
 from app.services.game import GameService
 from tests.conftest import BERLIN_UID
@@ -90,8 +92,11 @@ def test_reconcile_arrival_moves_vehicle_and_pays(game: GameService):
         "operating_cost_eur": 200,
         "profit_eur": 800,
     }
-    trip = game._build_trip(contract, "truck_01", quote, 1.0, 1.0)
-    trip["arrives_at"] = 0
+    trip = game._build_trip(
+        ContractOffer.from_dict(contract), "truck_01", quote, 1.0, 1.0
+    )
+    trip["departed_at"] = 0
+    trip["arrives_at"] = 1
     game.store.set_json("active_trips", [trip])
     vehicles = game.store.get_json("vehicles")
     vehicles[0]["status"] = "enroute"
@@ -127,9 +132,13 @@ def test_reset_restores_playable_state(game: GameService):
 
 def test_find_contract_returns_match_and_raises(game: GameService):
     contract = first_berlin_contract(game)
-    assert game._find_contract(contract["id"])["id"] == contract["id"]
+    assert game._find_contract(contract["id"]).id == contract["id"]
     with pytest.raises(KeyError):
         game._find_contract("missing")
+    future = {**contract, "created_at": game.now() + 100}
+    game.store.set_json("contracts", [future])
+    with pytest.raises(KeyError):
+        game._find_contract(contract["id"])
 
 
 def test_refresh_market_drops_legacy_offers_but_keeps_active_trips(
@@ -155,10 +164,12 @@ def test_refresh_market_drops_legacy_offers_but_keeps_active_trips(
 
 
 def test_find_vehicle_returns_match_and_raises(game: GameService):
-    vehicles = game.store.get_json("vehicles")
-    assert (
-        game._find_vehicle(vehicles, "truck_01")["name"]
-        == "IVECO S-Way 500 XC13"
+    vehicles = [
+        OwnedVehicle.from_dict(item)
+        for item in game.store.get_json("vehicles")
+    ]
+    assert game._find_vehicle(vehicles, "truck_01").name == (
+        "IVECO S-Way 500 XC13"
     )
     with pytest.raises(ValueError):
         game._find_vehicle(vehicles, "missing")
@@ -168,24 +179,35 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
     game: GameService,
 ):
     contract = first_berlin_contract(game)
-    vehicle = game.store.get_json("vehicles")[0]
-    game._validate_dispatch(vehicle, contract)
+    vehicle = OwnedVehicle.from_dict(game.store.get_json("vehicles")[0])
+    game._validate_dispatch(vehicle, ContractOffer.from_dict(contract))
 
-    wrong_location = {**vehicle, "hub_id": "hamburg_cta"}
+    wrong_location = OwnedVehicle.from_dict(
+        {
+            **vehicle.to_dict(),
+            "hub_id": "hamburg_cta",
+            "facility_uid": "hamburg_cta",
+            "location_snapshot": None,
+        }
+    )
     with pytest.raises(ValueError, match="Abholadresse"):
-        game._validate_dispatch(wrong_location, contract)
+        game._validate_dispatch(
+            wrong_location, ContractOffer.from_dict(contract)
+        )
 
-    too_small = {**vehicle, "capacity_tons": 0.1}
+    too_small = OwnedVehicle.from_dict(
+        {**vehicle.to_dict(), "capacity_tons": 0.1}
+    )
     with pytest.raises(ValueError, match="kapazität"):
-        game._validate_dispatch(too_small, contract)
+        game._validate_dispatch(too_small, ContractOffer.from_dict(contract))
 
-    wrong_mode = {**vehicle, "mode": "ship"}
+    wrong_mode = OwnedVehicle.from_dict({**vehicle.to_dict(), "mode": "ship"})
     with pytest.raises(ValueError, match="Fahrzeugtyp"):
-        game._validate_dispatch(wrong_mode, contract)
+        game._validate_dispatch(wrong_mode, ContractOffer.from_dict(contract))
 
-    busy = {**vehicle, "status": "enroute"}
+    busy = OwnedVehicle.from_dict({**vehicle.to_dict(), "status": "enroute"})
     with pytest.raises(ValueError, match="verfügbar"):
-        game._validate_dispatch(busy, contract)
+        game._validate_dispatch(busy, ContractOffer.from_dict(contract))
 
 
 def test_build_trip_contains_tracking_timestamps(game: GameService):
@@ -204,7 +226,9 @@ def test_build_trip_contains_tracking_timestamps(game: GameService):
         "operating_cost_eur": 30,
         "profit_eur": 70,
     }
-    trip = game._build_trip(contract, "truck_01", quote, 1000.0, 50.0)
+    trip = game._build_trip(
+        ContractOffer.from_dict(contract), "truck_01", quote, 1000.0, 50.0
+    )
     assert trip["departed_at"] == 1000.0
     assert trip["arrives_at"] == 1050.0
     assert trip["profit_eur"] == 70
@@ -291,7 +315,9 @@ def test_list_get_and_expand_vehicles(game: GameService):
     )
     assert game.get_vehicle("truck_01")["hub"]["city"] == HUBS[0].city
     assert (
-        game._expand_vehicle(game.store.get_json("vehicles")[0])["hub"]["id"]
+        game._expand_vehicle(
+            OwnedVehicle.from_dict(game.store.get_json("vehicles")[0])
+        )["hub"]["id"]
         == BERLIN_UID
     )
     with pytest.raises(KeyError):

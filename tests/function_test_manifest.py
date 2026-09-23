@@ -1,4 +1,15 @@
 FUNCTION_TESTS = {
+    "app.domain.transports.RouteSnapshot.__post_init__": "test_route_snapshot_rejects_invalid_measurements_and_geometry",
+    "app.domain.transports.ActiveTransport.__post_init__": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
+    "app.domain.transports.ActiveTransport.is_due": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
+    "app.domain.transports.ActiveTransport.settle": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
+    "app.repositories.transport_mapping.load_transport": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
+    "app.repositories.transport_mapping.dump_transport": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
+    "app.services.game.GameService._legacy_trip_destination": "test_legacy_transport_settlement_keeps_saved_location",
+    "app.domain.contracts.ContractOffer.__post_init__": "test_contract_offer_domain_rules",
+    "app.domain.validation.require_finite": "test_domain_value_validators_reject_invalid_values",
+    "app.domain.validation.require_integer": "test_domain_value_validators_reject_invalid_values",
+    "app.domain.validation.require_identity": "test_domain_value_validators_reject_invalid_values",
     "app.simulation.build_payload_bands": "test_payload_bands_cover_catalogue_and_reject_invalid_capacities",
     "app.api.v1.map.list_map_hubs": "test_map_endpoint_requires_session_and_uses_game_provider",
     "app.services.map_locations.MapLocationService.list_hubs": "test_map_hubs_resolve_and_preserve_partial_failures",
@@ -66,6 +77,24 @@ FUNCTION_TESTS = {
     "app.services.game.GameService.refresh_market": "test_refresh_market_reuses_fresh_market_and_can_force",
     "app.services.game.GameService.reset": "test_reset_restores_playable_state",
     "app.services.game.GameService.state": "test_state_expands_contract_addresses",
+    "app.domain.contracts.ContractOffer.from_snapshot": "test_contract_offer_domain_rules",
+    "app.domain.contracts.ContractOffer.from_dict": "test_contract_offer_domain_rules",
+    "app.domain.contracts.ContractOffer.to_dict": "test_contract_offer_domain_rules",
+    "app.domain.contracts.ContractOffer.is_available": "test_contract_offer_domain_rules",
+    "app.domain.world.CargoProfile.from_dict": "test_contract_offer_domain_rules",
+    "app.domain.contracts.ContractOfferSnapshot.to_dict": "test_build_contract_has_expiry_and_valid_nhm_cargo",
+    "app.domain.world.FacilityLocationSnapshot.from_dict": "test_world_snapshot_identity_provenance_and_query",
+    "app.domain.game.PlayerState.from_dict": "test_player_state_domain_rules",
+    "app.domain.game.PlayerState.to_dict": "test_player_state_domain_rules",
+    "app.domain.game.PlayerState.debit": "test_player_state_domain_rules",
+    "app.domain.game.PlayerState.complete_delivery": "test_player_state_domain_rules",
+    "app.domain.game.OwnedVehicle.from_dict": "test_owned_vehicle_domain_rules",
+    "app.domain.game.OwnedVehicle.to_dict": "test_owned_vehicle_domain_rules",
+    "app.domain.game.OwnedVehicle.validate_dispatch": "test_owned_vehicle_domain_rules",
+    "app.domain.game.OwnedVehicle.start_trip": "test_owned_vehicle_domain_rules",
+    "app.domain.game.OwnedVehicle.arrive": "test_owned_vehicle_domain_rules",
+    "app.domain.game.OwnedVehicle.apply_model": "test_owned_vehicle_domain_rules",
+    "app.domain.world.FacilityLocationSnapshot.to_dict": "test_world_snapshot_identity_provenance_and_query",
     "app.services.contract_factory.ContractFactory.build": "test_build_contract_has_expiry_and_valid_nhm_cargo",
     "app.services.market.MarketGenerator._select_trade_option": "test_build_contract_has_expiry_and_valid_nhm_cargo",
     "app.services.trade_network.TradeNetwork.__init__": "test_build_contract_has_expiry_and_valid_nhm_cargo",
@@ -167,7 +196,7 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.services.fleet.build_vehicle_snapshot": "test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts",
+        "app.services.fleet.build_owned_vehicle": "test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts",
         "app.services.fleet.create_starter_vehicle": "test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts",
     }
 )
@@ -182,7 +211,6 @@ FUNCTION_TESTS.update(
         "app.services.profile_maintenance.ProfileMaintenanceService.update_profile": "test_maintenance_write_failure_rolls_back_and_retains_unselected",
         "app.services.profile_maintenance.validate_assignments": "test_maintenance_validation_preserves_state",
         "app.services.profile_maintenance.validate_active_load": "test_profile_update_preserves_other_players_and_trip_snapshots",
-        "app.services.profile_maintenance.apply_vehicle_model": "test_maintenance_write_failure_rolls_back_and_retains_unselected",
         "app.services.game.GameService.ensure_initial_state": "test_initialization_direct_failure_is_atomic",
         "app.main.lifespan": "test_lifespan_cleans_up_partial_start_and_shutdown",
     }
@@ -261,5 +289,26 @@ FUNCTION_TESTS.update(
         "app.services.multiplayer_map.MultiplayerMapService.__init__": "test_multiplayer_map_projects_shared_active_traffic_without_private_economy",
         "app.services.multiplayer_map.MultiplayerMapService.list_traffic": "test_multiplayer_map_projects_shared_active_traffic_without_private_economy",
         "app.services.multiplayer_map.player_color": "test_player_color_is_stable_and_changes_between_users",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.game.PlayerState.__init__": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.PlayerState.replace_cash": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.__init__": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.PlayerState.cash": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.PlayerState.completed": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.PlayerState.reputation": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.id": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.name": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.mode": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.capacity_tons": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.hub_id": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.status": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.model_id": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.operating_cost_eur_per_km": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.facility_uid": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.location": "test_entity_construction_and_mutation_are_guarded",
     }
 )

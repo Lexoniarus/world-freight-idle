@@ -55,7 +55,7 @@ def endpoint_snapshot(identifier: str, world: WorldSnapshot) -> dict[str, Any]:
     facility = world.get_facility(identifier)
     if not facility.is_routable():
         raise ValueError("Unroutable migration endpoint")
-    return facility.to_dict()
+    return facility.location_snapshot().to_dict()
 
 
 def migrate_contract(contract: dict[str, Any], world: WorldSnapshot) -> None:

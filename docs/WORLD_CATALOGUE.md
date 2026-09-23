@@ -158,8 +158,10 @@ daraus erzeugte unveränderliche `WorldSnapshot`-Revision anschließend gecacht.
 Runtime-Reads sind dadurch Speicherzugriffe und keine wiederholten
 15.099-NHM-/352-Facility-Rekonstruktionen.
 
-Map- und Contract-Payloads verwenden `Facility.location_snapshot()`. Diese
-Projektion enthält stabile Facility-Identität, eine kompakte Firmenidentität
+Map- und Contract-Payloads verwenden `Facility.location_snapshot()`. Die
+Methode liefert ein immutable `FacilityLocationSnapshot`, das an API- und
+Persistenzgrenzen explizit serialisiert wird. Die Projektion enthält stabile
+Facility-Identität, eine kompakte Firmenidentität
 (`company_uid`, `legal_name`, `display_name`, `country`), Adresse,
 Koordinatenstatus und Koordinaten-Evidence. Vollständige NHM-Profile,
 `handled_goods`, Company-Quellen, Websites und weitere schwere Referenzdaten

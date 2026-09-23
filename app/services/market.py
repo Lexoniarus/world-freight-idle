@@ -97,7 +97,7 @@ class MarketGenerator:
                     self.trade_network.options_for(origin.facility_uid)
                 )
                 contracts.append(
-                    self.contract_factory.build(option, now, band)
+                    self.contract_factory.build(option, now, band).to_dict()
                 )
                 covered.add(coverage_key)
 
@@ -114,7 +114,7 @@ class MarketGenerator:
                     option,
                     now,
                     self.rng.choice(bands),
-                )
+                ).to_dict()
             )
             scoped_count += 1
         return contracts
