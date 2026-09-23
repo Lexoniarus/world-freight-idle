@@ -381,3 +381,29 @@ FUNCTION_TESTS.update(
 FUNCTION_TESTS["app.services.pricing.calculate_price"] = (
     "test_pricing_quote_uses_distance_and_cargo_rate"
 )
+
+FUNCTION_TESTS.update(
+    {
+        "app.bootstrap.build_game_importer": "test_import_cli_requires_backup_and_separate_paths",
+        "app.repositories.legacy_game_import.read_legacy_json": "test_offline_import_rejects_corruption_and_unknown_state",
+        "app.repositories.legacy_game_import.validate_profile_links": "test_offline_import_rejects_corruption_and_unknown_state",
+        "app.repositories.legacy_game_import.summarize_import": "test_offline_import_preserves_profiles_history_and_settles_once",
+        "app.repositories.legacy_game_import.reconcile_import": "test_import_reconciliation_detects_retained_value_changes",
+        "app.repositories.legacy_game_import.LegacyGameImporter.__init__": "test_offline_import_rejects_corruption_and_unknown_state",
+        "app.repositories.legacy_game_import.LegacyGameImporter.inspect": "test_offline_import_rejects_corruption_and_unknown_state",
+        "app.repositories.legacy_game_import.LegacyGameImporter._read_profiles": "test_offline_import_rejects_corruption_and_unknown_state",
+        "app.repositories.legacy_game_import.LegacyGameImporter._read_profile": "test_offline_import_rejects_corruption_and_unknown_state",
+        "app.repositories.legacy_game_import.LegacyGameImporter.import_to": "test_import_rolls_back_reconciliation_and_write_failures",
+        "app.repositories.legacy_game_import.LegacyGameImporter._write_profiles": "test_import_rolls_back_reconciliation_and_write_failures",
+        "app.repositories.legacy_import_mapping.LegacySnapshotReader.__init__": "test_legacy_snapshot_decoding_rejects_conflicting_facts",
+        "app.repositories.legacy_import_mapping.LegacySnapshotReader.location": "test_legacy_snapshot_decoding_rejects_conflicting_facts",
+        "app.repositories.legacy_import_mapping.LegacySnapshotReader.vehicle": "test_legacy_snapshot_decoding_rejects_conflicting_facts",
+        "app.repositories.legacy_import_mapping.LegacySnapshotReader.offer": "test_legacy_snapshot_decoding_rejects_conflicting_facts",
+        "app.repositories.legacy_import_mapping.LegacySnapshotReader.transport": "test_legacy_snapshot_decoding_rejects_conflicting_facts",
+        "app.repositories.legacy_import_mapping.read_legacy_profile": "test_legacy_snapshot_decoding_rejects_conflicting_facts",
+    }
+)
+
+FUNCTION_TESTS[
+    "app.repositories.legacy_import_mapping.reject_unknown_fields"
+] = "test_legacy_snapshot_decoding_rejects_conflicting_facts"

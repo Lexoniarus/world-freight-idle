@@ -415,3 +415,14 @@ die übergebenen Snapshotwerte.
 korrigiert (fehlendes temporäres Verzeichnis und direkter Cache-Verbindungszugriff).
 Beide bestanden im Nachlauf zusammen mit Manifest- und Architekturprüfungen.
 mypy, Pyright und Ruff bestanden. Keine echte Spielstanddatei wurde gelesen.
+
+## F: Offline-Importer gegen Fixtures abgesichert
+
+Ein ausschließlich offline verwendeter Repository-Importer inventarisiert KV-
+Dokumente und überführt sie unmittelbar in die relationalen Repositories.
+Kein Runtime-Aufrufer liest Altformate. Die neue Datei wird exklusiv angelegt,
+atomar befüllt und vollständig abgeglichen. Unbekannte Zustände werden abgewiesen.
+Fehlgeschlagene Kopien und Imports hinterlassen keine halbfertige Ausgabe.
+
+Zwölf betroffene Import-/Backup-/Manifest-/Architekturfälle bestanden. mypy,
+Pyright und Ruff bestanden. Die echte Profilübernahme folgt nach diesem Commit.

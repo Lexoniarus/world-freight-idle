@@ -9,15 +9,18 @@ from pathlib import Path
 import httpx
 
 from app.config import Settings
+from app.domain.game_import import GameStateImporter
 from app.domain.geography_migration import GeographyMigrationStore
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
 from app.domain.read_ports import LeaderboardReader
+from app.domain.world_scopes import WorldScope
 from app.providers.routing import ValhallaTruckRouter
 from app.repositories.accounts import AccountRepository
 from app.repositories.cached_world_catalogue import CachedWorldCatalogue
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.leaderboard import SqliteLeaderboardReader
+from app.repositories.legacy_game_import import LegacyGameImporter
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.relational_traffic import SqliteTrafficReader
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
@@ -154,3 +157,12 @@ def build_geography_migration(
 ) -> GeographyMigrationStore:
     """Bind offline normalization to its immutable backup and new output."""
     return WorldGeographyRepository(backup, target)
+
+
+def build_game_importer(source: Path, settings: Settings) -> GameStateImporter:
+    """Assemble the explicit offline importer without opening runtime state."""
+    return LegacyGameImporter(
+        source,
+        WorldScope(build_world_catalogue(settings).read()),
+        MarketGenerator.model_id,
+    )

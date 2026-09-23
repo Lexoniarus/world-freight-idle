@@ -248,3 +248,12 @@ Domain/Services ohne SQL, konkrete Repositories oder HTTP-Clients; Domain ohne
 Persistenzserialisierung; keine KV-Spielpfade. Relative Imports, Re-Exports und
 statisch bestimmbare dynamische Imports werden mit Negativbeispielen geprüft.
 Der API-Aufruf des Composition Root bleibt die vorgesehene Verdrahtungsgrenze.
+
+Offline-Import: `python scripts/import_legacy_game.py --source OLD --check`
+prüft ausschließlich lesend. Ausführung erfordert `--backup BACKUP --output NEW`
+und drei getrennte Pfade. Vorhandene Ausgaben werden abgewiesen. Das Werkzeug
+aktiviert keine Datei automatisch. Tests prüfen vollständigen Vergleich,
+Passwort-Hash-Erhalt ohne Ausgabe, gemeinsame lokale IDs, einmaliges Settlement,
+veränderte/defekte Dokumente, Rollback und Backupfehler einschließlich Cleanup.
+Sessions und Provider-Caches werden nicht übernommen. Intakte abgelaufene
+Angebote erscheinen ausdrücklich im Bericht; beschädigte Daten brechen ab.
