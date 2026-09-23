@@ -3,6 +3,7 @@
 import copy
 import math
 from typing import Any
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -199,3 +200,24 @@ def test_route_validation_rejects_non_object_cache_document():
     payload: Any = []
     with pytest.raises(ValueError, match="route object"):
         validate_route(payload)
+
+
+async def test_unreadable_route_cache_is_refetched_and_repaired(cache):
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json=ROUTE)
+        )
+    ) as client:
+        router = ValhallaTruckRouter(
+            cache, client, "https://route.test", "test"
+        )
+        with patch.object(
+            cache, "get_route", side_effect=ValueError("invalid")
+        ):
+            assert (await router.route(52, 13, 53, 14)).distance_km == 100
+        assert (
+            cache.get_route(router._build_cache_key(52, 13, 53, 14))[
+                "distance_km"
+            ]
+            == 100
+        )

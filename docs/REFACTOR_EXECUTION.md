@@ -471,3 +471,11 @@ Verzeichnisses in der neuen API-Fehlerfixture. mypy und Pyright bestanden.
 
 Die Hauptdokumente werden als Ist-Beschreibung konsolidiert. Vollständiges Gate,
 Coverage, Browserlauf und abschließendes Review folgen jetzt gemeinsam.
+
+Der erste vollständige Python-Lauf bestand mit 249 Tests, erreichte jedoch
+nur 99,5 % Statement-Coverage. Zusätzliche Gegentests prüfen nun beschädigte
+Integritäts-/Fremdschlüsselbefunde, unbekannte Importschemata, widersprüchliche
+Fahrzeugstandorte, ausgeschlossene alte Angebote und unlesbare Routing-Caches.
+Alle 59 betroffenen Fälle bestehen. Der Frontend-Gesamtlauf besteht einschließlich
+54 Verhaltenstests und Produktionsbuild. Gesamt-Coverage und Browserregression
+werden nach diesen Ergänzungen erneut vollständig geprüft.

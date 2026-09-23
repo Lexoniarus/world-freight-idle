@@ -4,13 +4,18 @@ import copy
 import json
 import sqlite3
 from contextlib import closing
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from app.bootstrap import build_geography_migration
 from app.repositories.database_backup import backup_database
-from app.repositories.world_geography import rebuild_geographical_table
+from app.repositories.world_geography import (
+    catalogue_identities,
+    rebuild_geographical_table,
+    validate_normalized_geography,
+    validate_source_geography,
+)
 from app.services.world_geography import validate_geography_mapping
 from scripts.normalize_world_catalogue import main
 
@@ -141,6 +146,7 @@ def test_geography_mapping_rejects_duplicate_or_changed_assignments(
         {"source_city": "elsewhere"},
         {"city_uid": "unknown"},
         {"facility_uid": "12"},
+        {"facility_uid": "F0000000-0000-4000-8000-000000000001"},
         {"source_region": "unreviewed"},
     ):
         broken = copy.deepcopy(document)
@@ -212,3 +218,35 @@ def test_geography_migration_rolls_back_and_requires_backup(
     main()
     assert backup.exists() and target.exists()
     assert source.read_bytes() == before
+
+
+def test_geography_rejects_broken_references_and_failed_integrity(
+    geography_source, tmp_path
+):
+    source, document = geography_source
+    mapping = validate_geography_mapping(document)
+    target = tmp_path / "normalized.sqlite3"
+    build_geography_migration(source, target).normalize(mapping)
+    for path, normalized in ((source, False), (target, True)):
+        with closing(sqlite3.connect(path)) as db:
+            identities = catalogue_identities(db)
+            db.execute("UPDATE evidence SET facility_id=999")
+            with pytest.raises(ValueError, match="broken references"):
+                if normalized:
+                    validate_normalized_geography(db, mapping, identities)
+                else:
+                    validate_source_geography(db, mapping)
+            db.rollback()
+    with closing(sqlite3.connect(target)) as real:
+        connection = MagicMock(wraps=real)
+
+        def execute(sql, *args):
+            if sql == "PRAGMA integrity_check":
+                result = MagicMock()
+                result.fetchone.return_value = ("damaged index",)
+                return result
+            return real.execute(sql, *args)
+
+        connection.execute.side_effect = execute
+        with pytest.raises(ValueError, match="integrity check failed"):
+            validate_normalized_geography(connection, mapping, identities)

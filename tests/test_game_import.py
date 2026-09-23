@@ -222,6 +222,19 @@ def test_offline_import_rejects_corruption_and_unknown_state(
         ("vehicles", state["vehicles"] * 2),
         ("vehicles", [{**state["vehicles"][0], "id": "missing"}]),
         ("vehicles", [{**state["vehicles"][0], "capacity_tons": 0.01}]),
+        (
+            "vehicles",
+            [
+                {
+                    **state["vehicles"][0],
+                    "facility_uid": state["contracts"][0][
+                        "destination_facility_uid"
+                    ],
+                    "hub_id": state["contracts"][0]["destination_hub_id"],
+                    "location_snapshot": state["contracts"][0]["destination"],
+                }
+            ],
+        ),
         ("vehicles", [{**state["vehicles"][0], "status": "idle"}]),
         ("active_trips", []),
         ("active_trips", state["active_trips"] * 2),
@@ -239,6 +252,38 @@ def test_offline_import_rejects_corruption_and_unknown_state(
     with pytest.raises(ValueError):
         read_legacy_json([("key", 1), ("key", 2)])
     assert read_legacy_json([("key", 1)]) == {"key": 1}
+
+
+def test_import_rejects_unknown_tables_and_failed_integrity(legacy_source):
+    from unittest.mock import MagicMock
+
+    path, importer, _, now, _ = legacy_source
+    with closing(sqlite3.connect(path)) as connection, connection:
+        connection.execute("CREATE TABLE unknown(value TEXT)")
+    with pytest.raises(PersistenceError):
+        importer.inspect(now)
+    with closing(sqlite3.connect(path)) as connection, connection:
+        connection.execute("DROP TABLE unknown")
+    original = path.read_bytes()
+    with closing(sqlite3.connect(path)) as real:
+        connection = MagicMock(wraps=real)
+
+        def execute(sql, *args):
+            if sql == "PRAGMA integrity_check":
+                result = MagicMock()
+                result.fetchall.return_value = [("damaged index",)]
+                return result
+            return real.execute(sql, *args)
+
+        connection.execute.side_effect = execute
+        with patch(
+            "app.repositories.legacy_game_import.sqlite3.connect",
+            return_value=connection,
+        ):
+            with pytest.raises(PersistenceError):
+                importer.inspect(now)
+        connection.close.assert_called_once()
+    assert path.read_bytes() == original
 
 
 def test_legacy_snapshot_decoding_rejects_conflicting_facts(legacy_source):
@@ -389,6 +434,15 @@ def test_import_reconciliation_detects_retained_value_changes(
                 reconcile_import(database, profiles)
         reconcile_import(database, profiles)
 
+    with database.connect() as connection:
+        connection.execute("PRAGMA foreign_keys=OFF")
+        connection.execute(
+            "CREATE TABLE corrupt_link(owner TEXT REFERENCES users(id))"
+        )
+        connection.execute("INSERT INTO corrupt_link VALUES('unknown')")
+    with pytest.raises(PersistenceError, match="integrity check failed"):
+        reconcile_import(database, profiles)
+
 
 def test_backup_failure_removes_only_its_own_incomplete_output(tmp_path):
     from unittest.mock import MagicMock
@@ -488,6 +542,13 @@ def test_old_reference_documents_and_retired_offers_are_explicitly_handled(
     ):
         offer.pop(key)
     offer.update(cargo="Metals", cargo_code="10", cargo_evidence=goods)
+    path, _, _, now, _ = legacy_source
+    update_legacy(path, "user:a:contracts", [offer])
+    report = importer.inspect(now)
+    assert any(
+        item.user_id == "a" and item.reason == "obsolete_goods_model"
+        for item in report.excluded_offers
+    )
     offer["origin"]["cargo"] = [
         goods,
         state["contracts"][0]["origin_cargo_evidence"],
@@ -550,6 +611,10 @@ def test_global_demo_exclusion_requires_explicit_choice(
         importer.market_model,
         exclude_global_demo=True,
     )
+    assert explicit.inspect(now).accounts == 3
+    obsolete = copy.deepcopy(state["contracts"][0])
+    obsolete.pop("market_model")
+    update_legacy(path, "contracts", [obsolete])
     assert explicit.inspect(now).accounts == 3
     explicit.import_to(tmp_path / "selected.db", now)
     update_legacy(path, "active_trips", state["active_trips"])
