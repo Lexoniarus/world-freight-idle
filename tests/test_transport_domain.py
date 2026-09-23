@@ -70,6 +70,8 @@ def test_route_snapshot_rejects_invalid_measurements_and_geometry():
     assert len(route.coordinates) == 2
     for changes in (
         {"coordinates": ()},
+        {"coordinates": [[0, 0], [1, 1]]},
+        {"coordinates": ([0, 0], [1, 1])},
         {"coordinates": ((181, 1), (0, 0))},
         {"coordinates": ((0, 91), (0, 0))},
         {"coordinates": ((float("nan"), 1), (0, 0))},
@@ -93,6 +95,9 @@ def test_legacy_transport_settlement_keeps_saved_location(game):
         "arrives_at": 0,
         "payout_eur": 50,
     }
+    vehicles = game.store.get_json("vehicles")
+    vehicles[0]["status"] = "enroute"
+    game.store.set_json("vehicles", vehicles)
     game.store.set_json("active_trips", [legacy])
     assert game.reconcile_arrival()
     assert game.store.get_json("player")["cash"] == 175050

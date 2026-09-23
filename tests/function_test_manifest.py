@@ -291,3 +291,24 @@ FUNCTION_TESTS.update(
         "app.services.multiplayer_map.player_color": "test_player_color_is_stable_and_changes_between_users",
     }
 )
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.game.PlayerState.__init__": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.PlayerState.replace_cash": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.__init__": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.PlayerState.cash": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.PlayerState.completed": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.PlayerState.reputation": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.id": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.name": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.mode": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.capacity_tons": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.hub_id": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.status": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.model_id": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.operating_cost_eur_per_km": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.facility_uid": "test_entity_construction_and_mutation_are_guarded",
+        "app.domain.game.OwnedVehicle.location": "test_entity_construction_and_mutation_are_guarded",
+    }
+)

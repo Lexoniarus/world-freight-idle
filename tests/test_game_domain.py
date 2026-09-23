@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import Any
 
 import pytest
 
@@ -141,6 +142,10 @@ def test_contract_offer_domain_rules(game):
     with pytest.raises(ValueError, match="Cargo code"):
         ContractOffer.from_dict(broken)
 
+    for field in ("tons", "rate_eur_per_km_ton", "created_at", "expires_at"):
+        with pytest.raises(ValueError):
+            ContractOffer.from_dict({**payload, field: True})
+
     for changes in (
         {"id": ""},
         {"tons": 0},
@@ -177,3 +182,74 @@ def test_domain_value_validators_reject_invalid_values():
     for value in (None, "", "  "):
         with pytest.raises(ValueError):
             require_identity(value, "id")
+
+
+def test_entity_construction_and_mutation_are_guarded(
+    world_catalogue, catalogue
+):
+    location = (
+        world_catalogue.read()
+        .get_facility("berlin_westhafen")
+        .location_snapshot()
+    )
+    player = PlayerState(100, 2, 3)
+    assert (player.cash, player.completed, player.reputation) == (100, 2, 3)
+    player.replace_cash(90)
+    assert player.cash == 90
+    for field in ("cash", "completed", "reputation"):
+        with pytest.raises(AttributeError):
+            setattr(player, field, 5)
+    invalid_values: list[Any] = [-1, True, 1.5]
+    for value in invalid_values:
+        with pytest.raises(ValueError):
+            PlayerState(value, 0, 0)
+        with pytest.raises(ValueError):
+            player.replace_cash(value)
+        with pytest.raises(ValueError):
+            player.debit(value)
+        with pytest.raises(ValueError):
+            player.complete_delivery(value)
+    with pytest.raises(ValueError):
+        PlayerState(1, -1, 0)
+    with pytest.raises(ValueError):
+        PlayerState(1, 0, -1)
+    base: dict[str, Any] = dict(
+        id="v",
+        name="Truck",
+        mode="truck",
+        capacity_tons=12,
+        hub_id=location.facility_uid,
+        status="idle",
+        facility_uid=location.facility_uid,
+        location=location,
+        model_id="legacy",
+        operating_cost_eur_per_km=0.62,
+    )
+    vehicle = OwnedVehicle(**base)
+    for field, expected in base.items():
+        assert getattr(vehicle, field) == expected
+        with pytest.raises(AttributeError):
+            setattr(vehicle, field, expected)
+    for changes in (
+        {"id": ""},
+        {"name": ""},
+        {"mode": ""},
+        {"hub_id": ""},
+        {"capacity_tons": float("nan")},
+        {"status": "unknown"},
+        {"operating_cost_eur_per_km": -1},
+        {"facility_uid": "other"},
+        {"location": replace(location, facility_uid="other")},
+    ):
+        with pytest.raises(ValueError):
+            OwnedVehicle(**{**base, **changes})
+    with pytest.raises(ValueError, match="travelling"):
+        vehicle.arrive(location)
+    with pytest.raises(ValueError):
+        vehicle.validate_dispatch("truck", location.facility_uid, float("nan"))
+    original = vehicle.to_dict()
+    model = catalogue.list_models()[0]
+    for changes in ({"capacity_tons": 0}, {"operating_cost_eur_per_km": -1}):
+        with pytest.raises(ValueError):
+            vehicle.apply_model(replace(model, **changes))
+        assert vehicle.to_dict() == original

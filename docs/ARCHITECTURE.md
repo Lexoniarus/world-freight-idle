@@ -347,8 +347,10 @@ Settlement-Invarianten. `OwnedVehicle` kapselt Identität, Modell-Snapshot,
 Kapazität, Status, Standortwechsel und Dispatch-Validierung. `GameService`,
 `FleetService`, `MarketScopeResolver` und die Profilpflege verwenden diese
 Entities innerhalb ihrer Use Cases und serialisieren erst an der bestehenden
-KV-Grenze zurück in das kompatible JSON-Format. `ContractOffer` und
-`ActiveTransport` folgen in der zweiten Hälfte dieser Migrationsstufe.
+KV-Grenze zurück in das kompatible JSON-Format. Die öffentlichen Entity-
+Eigenschaften sind schreibgeschützt; Mutationen erfolgen über validierte
+Methoden. Persistenz-/API-Mapping der Spielerentities wird in Abschnitt B
+aus dem Domainmodell in Adapter verschoben.
 
 ## Typisierte Contract Offers (22.09.2026)
 
@@ -356,5 +358,14 @@ KV-Grenze zurück in das kompatible JSON-Format. `ContractOffer` und
 Persistierte JSON-Angebote werden an der bestehenden KV-Grenze hydriert;
 Quote- und Dispatch-Logik arbeiten anschließend gegen das typisierte
 Domainobjekt. Die öffentliche `/api/v1`-Projektion bleibt unverändert und
-wird weiterhin explizit serialisiert. `ActiveTransport` folgt separat, bevor
-die Persistenz hinter `GameStateRepository` verschoben wird.
+wird weiterhin explizit serialisiert. `ActiveTransport` komponiert einen
+historischen Auftrag, Endpunkte und `RouteSnapshot`, ohne von einem Angebot
+zu erben. Settlement verwendet vom Aufrufer gelieferte Zeitpunkte und weist
+vorzeitige oder wiederholte Zustandswechsel ab. Die KV-Stufe entfernt
+abgerechnete Transporte noch; dauerhafte Settlement-Datensätze folgen in B.
+
+Der Architekturreview für Abschnitt A bestätigt die Entity-Kapselung und die
+Abwesenheit von IO/Systemzeit in den neuen Domainregeln. Konkrete Store-
+Abhängigkeiten der Services, Domain-JSON-Mapping und Legacy-Hydrierung sind
+noch ausdrücklich offen und Bestandteil der Abschnitte B/E. Abschnitt A ist
+deshalb keine Abnahme der endgültigen Persistenzarchitektur.

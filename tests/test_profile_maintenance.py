@@ -148,7 +148,13 @@ def test_maintenance_write_failure_rolls_back_and_retains_unselected(
 ):
     _, service, selected, _ = maintenance
     vehicles = selected.store.get_json("vehicles")
-    vehicles[0].update(status="enroute", hub_id="hamburg_cta")
+    hamburg = selected.world.read().get_facility("hamburg_cta")
+    vehicles[0].update(
+        status="enroute",
+        hub_id=hamburg.facility_uid,
+        facility_uid=hamburg.facility_uid,
+        location_snapshot=hamburg.location_snapshot().to_dict(),
+    )
     vehicles.append({**vehicles[0], "id": "other", "name": "Untouched"})
     selected.store.set_json("vehicles", vehicles)
     store = selected.store
@@ -172,7 +178,8 @@ def test_maintenance_write_failure_rolls_back_and_retains_unselected(
     after = store.get_json("vehicles")
     assert after[1] == vehicles[1]
     assert (
-        after[0]["status"] == "enroute" and after[0]["hub_id"] == "hamburg_cta"
+        after[0]["status"] == "enroute"
+        and after[0]["hub_id"] == hamburg.facility_uid
     )
     assert after[0]["id"] == "truck_01"
     assert (

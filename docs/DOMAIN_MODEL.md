@@ -402,9 +402,11 @@ Legacy-Transportauflösung entfallen mit der Repository-/Importumstellung.
 Ihre Persistenz- und API-Projektionen bleiben in dieser Stufe
 JSON-kompatibel; die Repository- und explizite API-DTO-Grenze folgen später.
 
-Noch überwiegend dynamisches JSON/dict:
-
-- Active Transports
+`PlayerState` und `OwnedVehicle` besitzen schreibgeschützte öffentliche
+Eigenschaften. Geldmutation, Disposition, Ankunft und Modellübernahme erfolgen
+über benannte Methoden mit Validierung vor der Mutation. Ein Standort-Snapshot
+muss zur gespeicherten Standortidentität passen. Legacy-Payloads werden bis zur
+Persistenzumstellung weiterhin an der Übergangsgrenze hydriert.
 
 Legacy-/Übergangskonzepte:
 

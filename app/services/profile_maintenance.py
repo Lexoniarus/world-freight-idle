@@ -56,7 +56,7 @@ class ProfileMaintenanceService:
                 validate_active_load(vehicle.id, model, trips)
                 vehicle.apply_model(model)
             if cash is not None:
-                player.cash = cash
+                player.replace_cash(cash)
             store.set_json("vehicles", [item.to_dict() for item in vehicles])
             store.set_json("player", player.to_dict())
         LOGGER.info(

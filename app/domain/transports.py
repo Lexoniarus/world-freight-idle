@@ -26,6 +26,10 @@ class RouteSnapshot:
         require_finite(self.distance_km, "Distance", 0.000001)
         require_finite(self.duration_seconds, "Duration", 0.000001)
         require_identity(self.provider, "Route provider")
+        if not isinstance(self.coordinates, tuple) or any(
+            not isinstance(point, tuple) for point in self.coordinates
+        ):
+            raise ValueError("Route coordinates must be immutable tuples.")
         if len(self.coordinates) < 2:
             raise ValueError("A route requires at least two coordinates.")
         for longitude, latitude in self.coordinates:

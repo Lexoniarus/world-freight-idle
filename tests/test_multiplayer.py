@@ -206,6 +206,9 @@ def test_leaderboard_counts_offline_arrivals_without_double_counting(game):
     service.store.set_json(
         "player", {"cash": 175000, "completed": 2, "reputation": 2}
     )
+    vehicles = service.store.get_json("vehicles")
+    vehicles[0]["status"] = "enroute"
+    service.store.set_json("vehicles", vehicles)
     service.store.set_json(
         "active_trips",
         [
@@ -359,6 +362,9 @@ def test_legacy_trip_migrates_without_loss(game):
 def test_concurrent_arrivals_pay_once(game):
     alice = build_player_service(game, "arrival")
     other = build_player_service(game, "arrival")
+    vehicles = alice.store.get_json("vehicles")
+    vehicles[0]["status"] = "enroute"
+    alice.store.set_json("vehicles", vehicles)
     alice.store.set_json(
         "active_trips",
         [

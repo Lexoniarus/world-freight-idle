@@ -36,3 +36,13 @@ Die Datenbanktransaktion bleibt für konkurrierende Abrechnung verantwortlich.
 Die aktuelle KV-Stufe entfernt abgewickelte Reisen noch aus der Aktivliste;
 das relationale Repository in B wird den Settlement-Zustand dauerhaft speichern.
 Historische Legacy-Transporte bleiben bis zum separaten Import kompatibel.
+
+## A: Entity-Invarianten
+
+PlayerState und OwnedVehicle kapseln ihre veränderlichen Werte. Öffentliche
+Eigenschaften sind schreibgeschützt; Konstruktion und benannte Mutationen
+weisen ungültige Zahlen, Statuswechsel und widersprüchliche Standortidentitäten
+ab. Die Profilpflege ersetzt Guthaben über eine validierte Entity-Methode.
+Modellwerte werden vollständig geprüft, bevor ein Fahrzeug geändert wird.
+Tests verwenden konsistente Standorte und setzen vor Ankunft einen tatsächlich
+fahrenden Fahrzeugstatus. Der Schutz der Zustandswechsel wird separat geprüft.

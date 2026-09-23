@@ -183,7 +183,12 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
     game._validate_dispatch(vehicle, ContractOffer.from_dict(contract))
 
     wrong_location = OwnedVehicle.from_dict(
-        {**vehicle.to_dict(), "hub_id": "hamburg_cta"}
+        {
+            **vehicle.to_dict(),
+            "hub_id": "hamburg_cta",
+            "facility_uid": "hamburg_cta",
+            "location_snapshot": None,
+        }
     )
     with pytest.raises(ValueError, match="Abholadresse"):
         game._validate_dispatch(

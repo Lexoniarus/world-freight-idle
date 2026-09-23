@@ -180,6 +180,7 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
     # Already running transport economics are independent of the catalogue.
     trip["departed_at"] = 0
     trip["arrives_at"] = 1
+    vehicle["status"] = "enroute"
     game.store.set_json("vehicles", [vehicle])
     game.store.set_json("active_trips", [trip])
     assert game.reconcile_arrival()
