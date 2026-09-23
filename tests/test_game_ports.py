@@ -30,6 +30,7 @@ def relational_game(game, tmp_path):
         market=game.market,
         catalogue=game.catalogue,
         market_scope=game.market_scope,
+        clock=game.now,
     )
     return service
 

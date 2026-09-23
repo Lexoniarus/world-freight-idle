@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import random
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -46,6 +48,7 @@ class GameRuntime:
     catalogue: VehicleCatalogue
     market_scope: MarketScopeResolver
     time_scale: float
+    clock: Callable[[], float] = time.time
 
 
 def build_game_runtime(
@@ -85,6 +88,7 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
         catalogue=runtime.catalogue,
         market_scope=runtime.market_scope,
         time_scale=runtime.time_scale,
+        clock=runtime.clock,
     )
     game.ensure_initial_state()
     return game
@@ -99,7 +103,7 @@ def build_vehicle_catalogue(settings: Settings) -> SqliteVehicleCatalogue:
 
 
 def build_fleet_service(game: GameService, settings: Settings) -> FleetService:
-    """Assemble purchasing against the authenticated player's store."""
+    """Assemble purchasing against the authenticated player's unit of work."""
     return FleetService(
         game.unit_of_work, build_vehicle_catalogue(settings), game.world
     )

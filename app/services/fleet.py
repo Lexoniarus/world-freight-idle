@@ -5,10 +5,10 @@ import uuid
 
 from app.domain.errors import CatalogueError, WorldCatalogueError
 from app.domain.game import OwnedVehicle
-from app.domain.models import VehicleModel
 from app.domain.ports import VehicleCatalogue, WorldCatalogue
 from app.domain.results import FleetCatalogue
 from app.domain.state_ports import GameUnitOfWork
+from app.domain.vehicles import VehicleModel
 from app.domain.world import FacilityLocationSnapshot
 from app.domain.world_scopes import WorldScope
 

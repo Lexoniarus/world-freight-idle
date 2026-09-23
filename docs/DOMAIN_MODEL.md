@@ -1,471 +1,81 @@
 # Domänenmodell
 
-Stand: 23.09.2026.
+Stand: 23.09.2026. Dieses Dokument beschreibt die implementierte Struktur.
+Entscheidungsgründe stehen in ADR 0005, Fortschrittshistorie in
+REFACTOR_EXECUTION.md. Domainobjekte kennen keine Persistenzformate.
 
-Dieses Dokument beschreibt das fachliche Zielmodell von World Freight Idle.
-Es ist die verbindliche Begriffs- und Objektgrenze für neue Core-Entwicklung.
-Bestehende JSON-/KV-Strukturen werden schrittweise migriert; dieses Dokument
-behauptet nicht, dass alle Zielobjekte bereits implementiert sind.
+## Spielerzustand
 
-## Grundsätze
+| Objekt | Verantwortung |
+| --- | --- |
+| PlayerState | Validierte ganzzahlige Geld-/Fortschrittswerte; debit, complete_delivery, replace_cash |
+| OwnedVehicle | Stabile lokale ID, Kaufwerte, Status und Facility-UID; validate_dispatch, start_trip, arrive, apply_model |
+| ContractOffer | Angebot mit validierten Mengen, Konditionen, Endpunkten und Verfügbarkeit |
+| ActiveTransport | Historischer Auftrag, Fahrzeug, Route, Kosten, Auszahlung und genau einmaliges Settlement |
 
-- Domainobjekte bilden fachliche Konzepte ab, keine Tabellen oder API-JSON.
-- Entities besitzen eine stabile Identität und einen eigenen Lebenszyklus.
-- Value Objects besitzen keine eigene Identität und schützen ihre Invarianten.
-- Beziehungen werden bevorzugt durch Komposition modelliert.
-- Vererbung wird nur bei einem echten `is-a`-Verhältnis mit gemeinsamem
-  Verhalten eingesetzt.
-- Persistenz- und API-Snapshots sind eigene immutable Projektionen.
-- Services orchestrieren Use Cases; fachliche Invarianten gehören in die
-  zuständigen Domainobjekte.
-- SQL, KV-Schlüssel und konkrete Repositoryklassen sind keine Domainkonzepte.
+Identitäten sind innerhalb eines Spielers eindeutig. Ein Fahrzeug besitzt genau
+ eine facility_uid und einen historischen Standort; `hub_id` existiert nur in
+ öffentlichen API-Projektionen. Modellkennung und Kilometerkostensatz bleiben
+ bei älteren gekauften Fahrzeugen optional, damit keine Werte erfunden werden.
+
+Entities schützen fachliche Invarianten und besitzen benannte Zustandswechsel.
+Zeitabhängige Regeln erhalten Zeitpunkte vom Aufrufer. Guthaben ist ganzzahlig;
+Mengen, Strecken und Zeiten müssen endlich und zulässig sein. ActiveTransport
+wechselt nur von active nach settled und bewahrt den Settlement-Zeitpunkt.
+
+## Werte und Snapshots
+
+- ContractOfferSnapshot enthält die unveränderlichen erzeugten Angebotswerte.
+  ContractOffer.from_snapshot übernimmt sie unter Prüfung der Angebotsregeln.
+- HistoricalContractSnapshot enthält die vereinbarten Transportwerte. Er ist
+  kein verfügbares Angebot und erbt nicht von ContractOffer. Aktuelle Angebote
+  werden bei Disposition explizit in diesen Snapshot überführt.
+- RouteSnapshot enthält validierte Koordinaten, Strecke, Fahrzeit und Provider.
+- FacilityLocationSnapshot hält damalige Facility-/Stadtidentitäten, Namen,
+  Adresse, Koordinaten und Evidenz unabhängig vom späteren Katalog. Historische
+  Quellen, Warenbelege und Handling-Evidence werden mitbewahrt. Die HTTP-
+  Darstellung bleibt kompakt und expandiert diese Referenzaggregate nicht.
+- CompanyIdentity enthält bekannte historische Firmenangaben. Bei früher nur
+  gespeicherter company_uid bleiben nicht aufgezeichnete Namen unbekannt.
+- DocumentedCargo bewahrt eine historische Warenbeschreibung ohne nachträglich
+  eine NHM-Identität zu behaupten. Neue Angebote verwenden NhmProduct.
+- PriceQuote und calculate_price sind reine Wirtschaftswerte/-berechnung.
+  VehicleModel und VehicleImage beschreiben Referenzangebote und Bildprovenienz.
 
 ## Referenzwelt
 
-Die reale Referenzwelt ist immutable und unabhängig vom Spielerzustand.
+Country besitzt Code und Namen. City besitzt dauerhaft gespeicherte city_uid,
+Namen, Country und optionale Region. Address komponiert City mit Straße,
+Hausnummer und Postleitzahl. Coordinates validiert endliche WGS84-Werte.
+Facility komponiert Address/Coordinates, Company-Bezug, Quellen und Warenprofile.
+Eine Company kann Facilities in mehreren Städten und Ländern besitzen.
 
-```text
-WorldSnapshot
-├── Country
-├── City
-├── Company
-├── Facility
-├── NhmProduct
-└── FacilityNhmProfile
-```
+NhmProduct beschreibt Warenidentität und die gespeicherte NHM-Hierarchie.
+FacilityNhmProfile komponiert ein Produkt mit input/output/both, Confidence,
+Priorität und Evidenz. DocumentedGood enthält den unabhängigen recherchierten
+Warenhinweis samt Quelle. Reale Fakten behaupten keine simulierte Lieferbeziehung.
 
-### Country
-
-Entity/Referenzobjekt für ein Land.
-
-Zielattribute:
-
-- `code`
-- `name`
-- optional `iso3`
-
-Ein Land enthält keine Spielerlogik. Länderregeln wie Maut, Währung oder
-Grenzlogik können später über separate Regelobjekte angebunden werden.
-
-### City
-
-Entity/Referenzobjekt für eine Stadt.
-
-Zielattribute:
-
-- `city_uid`
-- `name`
-- `country`
-- optional administrative Region
-- optional Referenzkoordinaten
-
-Eine Stadt gehört genau zu einem Land. Companies gehören nicht exklusiv zu
-einer Stadt; sie werden über ihre Facilities einer oder mehreren Städten
-zugeordnet.
-
-### Company
-
-Immutable Referenzunternehmen, niemals Spielerunternehmen.
-
-Aktuell existiert `Company` bereits mit stabiler `company_uid`, Namen,
-Land, Website und Quellen.
-
-Die Company besitzt Facilities. Für Runtime-Snapshots wird nicht das komplette
-Company-Objekt eingebettet, sondern `CompanyIdentity`.
-
-### Facility
-
-Öffentlicher realer Frachtstandort mit stabiler `facility_uid`.
-
-Zielbeziehungen:
-
-```text
-Facility
-├── company: Company | None
-├── address: Address
-├── coordinates: Coordinates
-├── nhm_profiles: FacilityNhmProfile[]
-├── documented_goods: DocumentedGood[]
-└── evidence: SourceReference[]
-```
-
-Eine Facility ist kein Depot und kein Spielerbesitz.
-
-### NhmProduct
-
-Immutable Referenzobjekt für einen Eintrag aus der NHM-Systematik.
-
-Zielattribute:
-
-- `nhm_row_id`
-- `code`
-- `name`
-- Hierarchiebeziehung
-
-`NhmProduct` beschreibt die Warenidentität selbst. Es enthält keine
-Facility-spezifische Rolle, Confidence oder Priorität.
-
-### FacilityNhmProfile
-
-Beziehung zwischen einer Facility und einem `NhmProduct`.
-
-Zielattribute:
-
-- `product`
-- `role`
-- `evidence_type`
-- `confidence`
-- `priority_score`
-- optionale Quelle
-
-Damit werden NHM-Produktidentität und standortspezifische operative Fähigkeit
-als zwei getrennte Konzepte modelliert.
-
-### DocumentedGood
-
-Konkreter belegter Warenhinweis aus einer Quelle.
-
-`DocumentedGood` bleibt bewusst getrennt von `FacilityNhmProfile`:
-belegte Realität und abgeleitete Simulationsfähigkeit dürfen nicht
-stillschweigend vermischt werden.
-
-Eine Facility kann daher beispielsweise gleichzeitig besitzen:
+WorldSnapshot ist eine konsistente unveränderliche Katalogrevision. WorldScope,
+CountryScope, CityScope und CompanyScope sind immutable Filteransichten:
 
 ```python
-facility.documented_goods
-facility.nhm_profiles
+world = WorldScope(snapshot)
+berlin = world.country("DE").city("Berlin")
+facilities = berlin.company(company_uid).facilities
 ```
 
-`documented_goods` bezeichnet recherchierte reale Warenhinweise.
-`nhm_profiles` beschreibt das operative NHM-Verhalten der Facility.
-
-## Value Objects
-
-### Coordinates
-
-Immutable WGS84-Koordinaten.
-
-```text
-Coordinates
-├── latitude
-└── longitude
-```
-
-Das Objekt validiert selbst endliche Werte und gültige Wertebereiche.
-
-### Address
-
-Strukturierte Adresse.
-
-```text
-Address
-├── street
-├── house_number
-├── postal_code
-└── city: City
-```
-
-Das Land ergibt sich über `Address.city.country`. Convenience-Zugriffe dürfen
-diese Beziehung delegieren, aber keine widersprüchliche Kopie erzeugen.
-
-### CompanyIdentity
-
-Kompakte Firmenidentität für Runtime-Projektionen:
-
-- `company_uid`
-- `legal_name`
-- `display_name`
-- `country`
-
-Quellen, Website und weitere Referenzdetails gehören nicht in diesen Snapshot.
-
-### FacilityLocationSnapshot
-
-Immutable Standortprojektion für Contracts, Vehicles, Map und Transporte.
-
-Sie enthält ausschließlich die für Identität, Anzeige und Routing nötigen
-Daten, insbesondere:
-
-- `facility_uid`
-- `company: CompanyIdentity | None`
-- `address`
-- `coordinates`
-- `facility_type`
-- Koordinatenstatus/-evidence
-- Katalog-/Snapshotversion
-
-Vollständige NHM-Profile, documented goods und Company-Quellen werden nicht
-eingebettet.
-
-### RouteResult und PriceQuote
-
-`RouteResult` und `PriceQuote` bleiben Value Objects.
-
-Routing beschreibt eine Providerroute. `PriceQuote` beschreibt eine
-serverseitige Kalkulation; beide besitzen keine eigene fachliche Identität.
-
-## Spiel-Domain
-
-```text
-PlayerState
-├── OwnedVehicle[]
-├── ContractOffer[]
-└── ActiveTransport[]
-```
-
-### PlayerState
-
-Zielobjekt für:
-
-- Guthaben
-- abgeschlossene Lieferungen
-- Reputation
-
-Später kann daraus ein eigenständiges `PlayerCompany`-Aggregat entstehen.
-
-### OwnedVehicle
-
-Spiel-Entity mit stabiler Fahrzeug-ID.
-
-```text
-OwnedVehicle
-├── vehicle_id
-├── model_id
-├── gameplay snapshot values
-├── location: FacilityLocationSnapshot
-└── status
-```
-
-Ein `OwnedVehicle` ist kein `VehicleModel`. Es referenziert beziehungsweise
-snapshottet freigegebene Modellwerte.
-
-### VehicleModel
-
-Immutable Referenz-/Katalogobjekt für ein kaufbares Fahrzeugmodell.
-
-Es besitzt keine Spieleridentität und keinen Standort.
-
-### ContractOffer
-
-Spiel-Entity für ein noch verfügbares Frachtangebot.
-
-Zielbeziehungen:
-
-```text
-ContractOffer
-├── contract_id
-├── origin: FacilityLocationSnapshot
-├── destination: FacilityLocationSnapshot
-├── product: NhmProduct
-├── NHM evidence
-├── quantity
-├── commercial terms
-├── created_at
-└── expires_at
-```
-
-`ContractOffer` ersetzt langfristig das veraltete Minimalmodell `Contract`
-aus `app/domain/models.py` und die heutigen untypisierten Contract-Dicts.
-
-### ActiveTransport
-
-Spiel-Entity, die aus einem angenommenen ContractOffer entsteht.
-
-```text
-ActiveTransport
-├── transport_id
-├── vehicle_id
-├── contract snapshot
-├── route snapshot
-├── cost/payout snapshot
-├── departed_at
-└── arrives_at
-```
-
-Ein `ActiveTransport` erbt nicht von `ContractOffer`; er enthält dessen
-historischen Snapshot.
-
-## Query- und Navigationsmodell
-
-Der normalisierte Objektgraph wird durch navigierbare Scope-Objekte ergänzt.
-
-Zielbeispiele:
-
-```python
-world.country("DE")
-world.country("DE").city("Berlin")
-world.country("DE").city("Berlin").company("BEHALA")
-world.country("DE").city("Berlin").company("BEHALA").facilities
-```
-
-Gemeinsame Scope-Abfragen:
-
-```text
-WorldScope
-├── CountryScope
-├── CityScope
-└── CompanyScope
-```
-
-Scopes dürfen gemeinsames Query-Verhalten kapseln, beispielsweise:
-
-- `facilities`
-- `companies`
-- `documented_goods`
-- `nhm_products`
-
-Die Scopes verändern die normalisierten Beziehungen nicht. Eine Company wird
-nicht fachlich Kind einer City; der Scope filtert lediglich ihre Facilities.
-
-## Vererbung und Komposition
-
-Bevorzugte Komposition:
-
-```text
-Company ──owns/reference──► Facility
-Facility ────────────────► Address
-Address ─────────────────► City
-City ────────────────────► Country
-Facility ────────────────► FacilityNhmProfile
-FacilityNhmProfile ──────► NhmProduct
-OwnedVehicle ────────────► FacilityLocationSnapshot
-ActiveTransport ─────────► Contract snapshot
-```
-
-Vererbung ist nur vorgesehen, wenn mehrere Typen wirklich dasselbe Basiskonzept
-mit gemeinsamem Verhalten darstellen. Query-Scopes sind ein möglicher
-Anwendungsfall. Reine Datenähnlichkeit reicht nicht als Begründung.
-
-## Persistenzgrenze
-
-Zielrichtung:
-
-```text
-GameService
-    │
-    ▼
-GameStateRepository
-    │
-    ▼
-SqliteGameStateRepository
-    │
-    ▼
-SqliteStore
-```
-
-Services sollen langfristig weder konkrete SQLite-Klassen noch KV-Schlüssel
-wie `player`, `vehicles`, `contracts` oder `active_trips` kennen.
-
-Repositories serialisieren Domainobjekte und Snapshots. Domainobjekte kennen
-keine SQL- oder JSON-Persistenzdetails.
-
-## Aktueller Migrationsstand
-
-Bereits als echte immutable Domainobjekte vorhanden:
-
-- `Company`
-- `Facility`
-- `NhmProduct`
-- `FacilityNhmProfile`
-- `DocumentedGood`
-- `SourceReference`
-- `WorldSnapshot`
-- `FacilityQuery`
-- `RouteResult`
-- `PriceQuote`
-- `VehicleImage`
-- `VehicleModel`
-
-`NhmProduct` enthält Code, Namen und die unveränderliche self-to-root-
-Hierarchie. `FacilityNhmProfile` komponiert es mit Rolle, Confidence,
-Priorität und Evidenz. Mehrere Profile einer Kataloglesung teilen dasselbe
-Produktobjekt. DocumentedGood bleibt ein separater Quellenhinweis.
-
-Bereits typisierte Runtime-Snapshots:
-
-- `CompanyIdentity`
-- `FacilityLocationSnapshot`
-- `ContractOfferSnapshot`
-
-`Facility.location_snapshot()` und `ContractFactory.build()` liefern damit
-immutable Objekte. An den bestehenden API-/Persistenzgrenzen wird weiterhin
-explizit in das kompatible JSON-Format serialisiert.
-
-Bereits als Runtime-Spielentities umgesetzt:
-
-- `PlayerState`
-- `OwnedVehicle`
-- `ContractOffer`
-
-`ActiveTransport` und `RouteSnapshot` sind ebenfalls typisiert. Der
-Transport-Lifecycle verwendet explizite Zeitparameter und active/settled;
-Persistenzmapping erfolgt im Adapter. Die alte KV-Aktivliste und isolierte
-Legacy-Transportauflösung entfallen mit der Repository-/Importumstellung.
-
-Relationale Repositories speichern Entities und versionierte historische
-Dokumente. Öffentliche JSON-Projektionen liegen im API-Bereich; Domainobjekte
-kennen weder Persistenzformate noch from_dict-/to_dict-Methoden.
-
-`PlayerState` und `OwnedVehicle` besitzen schreibgeschützte öffentliche
-Eigenschaften. Geldmutation, Disposition, Ankunft und Modellübernahme erfolgen
-über benannte Methoden mit Validierung vor der Mutation. Ein Standort-Snapshot
-muss zur gespeicherten Standortidentität passen. Normale Spielabläufe
-verwenden keine Legacy-Hydrierung; die separate Offline-Datenübernahme
-steht noch aus.
-
-Legacy-/Übergangskonzepte:
-
-- `Hub`
-- `CargoType`
-- das alte Minimalmodell `Contract`
-
-Diese werden nach vollständiger Umstellung ihrer Aufrufer entfernt.
-Betroffene Tests sind vor jedem Commit grün; die Gesamtprüfung folgt am Ende.
-
-## Migrationsreihenfolge
-
-1. Ziel-Domainmodell und ADR verbindlich dokumentieren.
-2. Runtime-Snapshots typisieren: `CompanyIdentity`,
-   `FacilityLocationSnapshot` und `ContractOfferSnapshot`.
-3. `PlayerState`, `OwnedVehicle`, `ContractOffer` und `ActiveTransport`
-   als echte Spiel-Domainobjekte einführen.
-4. `GameStateRepository` als Port einziehen und konkrete SQLite-Persistenz
-   aus Services entfernen.
-5. Referenzwelt normalisieren und navigierbar machen: `Country`, `City`,
-   `Address`, `Coordinates`, `NhmProduct`, `FacilityNhmProfile` sowie
-   World-/Country-/City-/Company-Scopes.
-6. `Hub`, altes `Contract`, `CargoProfile` und nicht mehr benötigte
-   Legacy-Modelle entfernen.
-7. Architekturtests verschärfen und Architektur-/API-Dokumentation auf die
-   endgültige Ist-Struktur konsolidieren.
-
-Jeder Schritt hält das bestehende Verhalten kompatibel, erhält vollständige
-Tests und aktualisiert das Function-Test-Manifest für neue konkrete Core-
-Callables.
-
-
-Referenzgeografie ist jetzt implementiert: Facility komponiert eine Address
-mit City/Country und optionale validierte Coordinates. WorldSnapshot enthält
-die gemeinsamen Länder-/Stadtobjekte. Ein FacilityLocationSnapshot speichert
-seine damalige City/Country-Identität, Koordinaten und den vollständigen
-historischen Adresstext unabhängig von späteren Katalogänderungen. Die
-öffentlichen v1-Felder bleiben flach projiziert und ergänzen city_uid.
-
-WorldScope bietet unveränderliche Country-, City- und Company-Ansichten.
-Zum Beispiel: `WorldScope(snapshot).country("DE").city("Berlin")`
-`.company("BEHALA").facilities`. Company-Zuordnung erfolgt über die
-Facilities; ihr rechtlicher Sitz wird dadurch nicht verändert. Namen müssen
-im gewählten Scope eindeutig sein, sonst folgt AmbiguousWorldReference.
-UID-Abfragen haben Vorrang. Die bisherigen WorldSnapshot-Lookups entfallen.
-
-Legacy-Abbau: Hub, Minimal-Contract, CargoType und RouteResult sind entfernt.
-OwnedVehicle besitzt genau eine facility_uid. Das historische HTTP-Feld
-hub_id wird nur im API-Mapper projiziert. calculate_price ist eine reine
-Berechnung mit gespeicherten Konditionen; keine namensabhängige Cargo-Tabelle.
-
-ActiveTransport komponiert einen HistoricalContractSnapshot, keine verfügbare
-ContractOffer-Entity. Historische Waren können als dokumentierte Beschreibung
-vorliegen, ohne NHM-Identität zu behaupten. Quellen, dokumentierte Waren und
-damalige Handling-Evidenz bleiben typisierte Standort-Snapshotwerte.
-CompanyIdentity erlaubt bei früheren kompakten Endpunkten eine bekannte UID
-ohne nachträglich erfundene Namen.
+UIDs sind eindeutig; Namensabfragen benötigen einen eindeutigen Treffer im
+gewählten Scope. Sonst entsteht AmbiguousWorldReference. Firmen werden über
+Facilities gefiltert und nicht als Kinder einer einzelnen Stadt gespeichert.
+
+## Ports und entfernte Strukturen
+
+GameStateRepository liefert typisierte Spieler, Fahrzeuge, Angebote und
+Transporte; GameUnitOfWork besitzt die Transaktion. Accounts, Cache, Kataloge,
+Routing und öffentliche Leseprojektionen besitzen explizite Ports.
+
+Hub, Minimal-Contract, CargoType, CargoProfile und RouteResult sind entfernt.
+Es gibt keine KV-Spielstandzugriffe, Domain-to_dict/from_dict-Methoden oder
+parallele Alt-/Neulaufzeit. Nur das isolierte Offline-Importwerkzeug kennt die
+alten Dokumente. Konkrete Persistenz und Serialisierung liegen im Repository,
+öffentliche JSON-Projektionen im API-Bereich.

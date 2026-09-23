@@ -265,3 +265,17 @@ def test_concurrent_units_serialize_player_debits(relational):
             True,
         ]
     assert unit.repository.get_player() == PlayerState(20, 0, 0)
+
+
+def test_corrupt_player_values_are_normalized_at_repository_boundary(
+    relational,
+):
+    repository = SqliteGameStateRepository(relational, "alice")
+    repository.save_player(PlayerState(100, 0, 0))
+    with relational.connect() as connection:
+        connection.execute("PRAGMA ignore_check_constraints=ON")
+        connection.execute(
+            "UPDATE player_states SET cash=-1 WHERE user_id='alice'"
+        )
+    with pytest.raises(PersistenceError, match="Spielerwerte"):
+        repository.get_player()

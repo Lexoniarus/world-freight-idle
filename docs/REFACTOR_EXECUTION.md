@@ -458,3 +458,16 @@ Tests eine unnötige Vergrößerung der öffentlichen Standortprojektion. Diese
 bleibt kompakt, während die Persistenz sämtliche historischen Quellen hält.
 Der Nachlauf mit allen drei Fällen, Import und Manifest bestand (15 Fälle).
 Backup, Originaldateien und private Abgleichberichte sind ausgeschlossen von Git.
+
+## G: Abschließende Modul- und Lebenszyklusbereinigung
+
+Vehicle-Referenzwerte und reine Preisberechnung liegen in eigenen Domainmodulen;
+das allgemeine models-Modul und die zustandslose PricingService-Struktur
+entfallen. GameService erhält seine Zeitquelle explizit. Der Marktcache erkennt
+Referenzänderungen auch bei unveränderten Facility-UIDs. Gespeicherte ungültige
+Spielerwerte ergeben definierte Persistenzfehler und eine neutrale HTTP-503-
+Antwort. Betroffene Tests bestanden nach Ergänzung des fehlenden statischen
+Verzeichnisses in der neuen API-Fehlerfixture. mypy und Pyright bestanden.
+
+Die Hauptdokumente werden als Ist-Beschreibung konsolidiert. Vollständiges Gate,
+Coverage, Browserlauf und abschließendes Review folgen jetzt gemeinsam.

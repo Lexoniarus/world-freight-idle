@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.pricing import calculate_price
+from app.domain.pricing import calculate_price
 
 
 def test_pricing_quote_uses_distance_and_cargo_rate():

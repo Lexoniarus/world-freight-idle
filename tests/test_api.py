@@ -10,7 +10,7 @@ from app.api.v1.dependencies import get_game_service
 from app.config import Settings
 from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.game import PlayerState
-from app.domain.models import PriceQuote
+from app.domain.pricing import PriceQuote
 from app.domain.results import ContractQuote, GameSnapshot
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.main import create_app
@@ -238,3 +238,21 @@ def test_product_pages_are_distinct_routes(tmp_path: Path):
             response = client.get(route)
             assert response.status_code == 200
             assert "world-map-shell" in response.text
+
+
+def test_persistence_outage_does_not_expose_database_details(tmp_path):
+    from app.domain.errors import PersistenceError
+
+    (tmp_path / "static").mkdir()
+    app = create_app(make_settings(tmp_path))
+
+    def unavailable():
+        raise PersistenceError("private database path and contents")
+
+    app.dependency_overrides[get_game_service] = unavailable
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.get("/api/v1/dashboard")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Spielstand derzeit nicht verfügbar."}
+    assert "private" not in response.text
+    assert response.headers["x-trace-id"]

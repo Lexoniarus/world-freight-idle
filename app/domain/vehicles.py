@@ -1,4 +1,4 @@
-"""Domain data models."""
+"""Vehicle reference values and ownership status."""
 
 from __future__ import annotations
 
@@ -6,15 +6,6 @@ from dataclasses import dataclass
 from typing import Literal
 
 VehicleStatus = Literal["idle", "enroute"]
-
-
-@dataclass(frozen=True, slots=True)
-class PriceQuote:
-    """Commercial calculation for one routed contract."""
-
-    payout_eur: int
-    operating_cost_eur: int
-    profit_eur: int
 
 
 @dataclass(frozen=True, slots=True)

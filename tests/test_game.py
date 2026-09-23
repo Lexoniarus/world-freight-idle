@@ -15,7 +15,7 @@ from app.api.v1.game_projection import (
     project_vehicle,
 )
 from app.domain.game import OwnedVehicle, PlayerState
-from app.domain.models import PriceQuote
+from app.domain.pricing import PriceQuote
 from app.domain.results import ContractQuote
 from app.domain.transports import RouteSnapshot
 from app.domain.world import FacilityQuery

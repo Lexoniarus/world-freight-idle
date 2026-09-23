@@ -17,6 +17,7 @@ COMMANDS = (
         "scripts/quality.py",
         "scripts/update_test_profile.py",
         "scripts/normalize_world_catalogue.py",
+        "scripts/import_legacy_game.py",
     ),
     (
         sys.executable,
@@ -30,6 +31,7 @@ COMMANDS = (
         "scripts/quality.py",
         "scripts/update_test_profile.py",
         "scripts/normalize_world_catalogue.py",
+        "scripts/import_legacy_game.py",
     ),
     (
         sys.executable,
@@ -39,6 +41,7 @@ COMMANDS = (
         "main.py",
         "scripts/update_test_profile.py",
         "scripts/normalize_world_catalogue.py",
+        "scripts/import_legacy_game.py",
     ),
     (
         "node",

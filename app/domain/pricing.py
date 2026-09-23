@@ -1,7 +1,17 @@
 """Pure economics from the offer and purchased vehicle snapshots."""
 
-from app.domain.models import PriceQuote
+from dataclasses import dataclass
+
 from app.domain.validation import require_finite
+
+
+@dataclass(frozen=True, slots=True)
+class PriceQuote:
+    """Commercial calculation for one routed contract."""
+
+    payout_eur: int
+    operating_cost_eur: int
+    profit_eur: int
 
 
 def calculate_price(

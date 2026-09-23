@@ -2,8 +2,8 @@
 
 from typing import Protocol
 
-from app.domain.models import VehicleModel
 from app.domain.transports import RouteSnapshot
+from app.domain.vehicles import VehicleModel
 from app.domain.world import WorldSnapshot
 
 

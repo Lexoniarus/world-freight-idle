@@ -382,3 +382,29 @@ def test_market_generation_never_serializes_domain_objects(game):
             == offers
         )
         assert game.market.generate(1001, ["unknown"]) == []
+
+
+def test_market_cache_tracks_reference_facts_without_changing_identities(
+    world_catalogue, catalogue
+):
+    snapshot = world_catalogue.read()
+    source = Mock()
+    source.read.return_value = snapshot
+    market = MarketGenerator(source, random.Random(5), catalogue)
+    origin = WorldScope(snapshot).facility("berlin_westhafen")
+    first = market.generate(1000, [origin.facility_uid])
+    network = market.trade_network
+    market.generate(1001, [origin.facility_uid])
+    assert market.trade_network is network
+    updated = replace(origin, label="Updated historical source label")
+    source.read.return_value = replace(
+        snapshot,
+        facilities=tuple(
+            updated if f.facility_uid == origin.facility_uid else f
+            for f in snapshot.facilities
+        ),
+    )
+    second = market.generate(1002, [origin.facility_uid])
+    assert market.trade_network is not network
+    assert all(o.origin.label == updated.label for o in second)
+    assert all(o.origin.label == origin.label for o in first)

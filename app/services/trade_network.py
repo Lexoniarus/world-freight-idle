@@ -36,9 +36,6 @@ class TradeNetwork:
         )
         if len(candidates) < 2:
             raise WorldCatalogueError("Zu wenige geeignete Frachtstandorte.")
-        self.facility_uids = tuple(
-            facility.facility_uid for facility in candidates
-        )
         inbound_by_row, inbound_by_ancestor = self._index_inbound_profiles(
             candidates
         )

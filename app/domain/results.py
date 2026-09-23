@@ -4,8 +4,9 @@ from dataclasses import dataclass
 
 from app.domain.contracts import ContractOffer
 from app.domain.game import OwnedVehicle, PlayerState
-from app.domain.models import PriceQuote, VehicleModel
+from app.domain.pricing import PriceQuote
 from app.domain.transports import ActiveTransport, RouteSnapshot
+from app.domain.vehicles import VehicleModel
 from app.domain.world import FacilityLocationSnapshot
 
 

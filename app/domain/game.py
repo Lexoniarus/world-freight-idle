@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.domain.models import VehicleModel, VehicleStatus
 from app.domain.validation import (
     require_finite,
     require_identity,
     require_integer,
 )
+from app.domain.vehicles import VehicleModel, VehicleStatus
 from app.domain.world import FacilityLocationSnapshot
 
 

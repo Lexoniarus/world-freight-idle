@@ -1,7 +1,7 @@
 """Generate NHM contracts only for explicitly requested origins."""
 
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import ClassVar
 
 from app.domain.contracts import ContractOffer
@@ -25,6 +25,9 @@ class MarketGenerator:
     vehicles: VehicleCatalogue
     trade_network: TradeNetwork | None = None
     contract_factory: ContractFactory | None = None
+    _reference_facilities: tuple[Facility, ...] = field(
+        default=(), init=False, repr=False
+    )
 
     def generate(
         self,
@@ -41,14 +44,12 @@ class MarketGenerator:
             for facility in snapshot.facilities
             if facility.is_routable()
         )
-        candidate_uids = tuple(
-            facility.facility_uid for facility in candidates
-        )
         if (
             self.trade_network is None
-            or self.trade_network.facility_uids != candidate_uids
+            or self._reference_facilities != candidates
         ):
             self.trade_network = TradeNetwork(candidates)
+            self._reference_facilities = candidates
         if self.contract_factory is None:
             self.contract_factory = ContractFactory(self.rng)
 

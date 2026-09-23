@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+import time
 from pathlib import Path
 
 import pytest
@@ -73,6 +74,7 @@ def game(database, catalogue, world_catalogue) -> GameService:
         market_scope=MarketScopeResolver(world_catalogue),
         catalogue=catalogue,
         time_scale=1.0,
+        clock=time.time,
     )
     service.ensure_initial_state()
     service.refresh_market(force=True)

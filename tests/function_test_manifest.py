@@ -53,7 +53,6 @@ FUNCTION_TESTS = {
     "app.services.game.GameService.list_contracts": "test_list_and_get_contracts_return_real_addresses",
     "app.services.game.GameService.list_transports": "test_list_and_get_transports",
     "app.services.game.GameService.list_vehicles": "test_list_get_and_expand_vehicles",
-    "app.services.game.GameService.now": "test_now_returns_wall_clock",
     "app.services.game.GameService.quote_contract": "test_quote_contract_geocodes_routes_and_prices",
     "app.services.game.GameService.reconcile_arrival": "test_reconcile_arrival_moves_vehicle_and_pays",
     "app.services.game.GameService.refresh_contracts": "test_list_and_get_contracts_return_real_addresses",
@@ -378,7 +377,7 @@ FUNCTION_TESTS.update(
     }
 )
 
-FUNCTION_TESTS["app.services.pricing.calculate_price"] = (
+FUNCTION_TESTS["app.domain.pricing.calculate_price"] = (
     "test_pricing_quote_uses_distance_and_cargo_rate"
 )
 
@@ -420,4 +419,8 @@ FUNCTION_TESTS.update(
         "app.repositories.legacy_import_mapping.LegacySnapshotReader.validate_obsolete_offer": "test_old_reference_documents_and_retired_offers_are_explicitly_handled",
         "app.repositories.legacy_game_import.LegacyGameImporter._exclude_global_demo": "test_global_demo_exclusion_requires_explicit_choice",
     }
+)
+
+FUNCTION_TESTS["app.main.persistence_error"] = (
+    "test_persistence_outage_does_not_expose_database_details"
 )

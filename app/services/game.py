@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import logging
-import time
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.errors import CatalogueError
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
+from app.domain.pricing import calculate_price
 from app.domain.results import ContractQuote, GameSnapshot
 from app.domain.state_ports import GameUnitOfWork
 from app.domain.transports import ActiveTransport
@@ -21,7 +21,6 @@ from app.services.fleet import (
 )
 from app.services.market import MarketGenerator
 from app.services.market_scope import MarketScopeResolver
-from app.services.pricing import calculate_price
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,6 +36,7 @@ class GameService:
         market: MarketGenerator,
         catalogue: VehicleCatalogue,
         market_scope: MarketScopeResolver,
+        clock: Callable[[], float],
         time_scale: float = 1.0,
     ) -> None:
         self.unit_of_work = unit_of_work
@@ -47,10 +47,7 @@ class GameService:
         self.time_scale = max(0.001, time_scale)
         self.catalogue = catalogue
         self.market_scope = market_scope
-
-    def now(self) -> float:
-        """Return the current wall-clock timestamp."""
-        return time.time()
+        self.now = clock
 
     def ensure_initial_state(self) -> None:
         """Atomically create missing state, including for direct callers."""

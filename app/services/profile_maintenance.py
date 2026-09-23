@@ -6,10 +6,10 @@ from typing import Any
 
 from app.domain.account_ports import AccountStore
 from app.domain.game import OwnedVehicle
-from app.domain.models import VehicleModel
 from app.domain.ports import VehicleCatalogue
 from app.domain.state_ports import GameUnitOfWork
 from app.domain.transports import ActiveTransport
+from app.domain.vehicles import VehicleModel
 
 LOGGER = logging.getLogger(__name__)
 
