@@ -80,3 +80,14 @@ Es gibt keine KV-Spielstandzugriffe, Domain-to_dict/from_dict-Methoden oder
 parallele Alt-/Neulaufzeit. Nur das isolierte Offline-Importwerkzeug kennt die
 alten Dokumente. Konkrete Persistenz und Serialisierung liegen im Repository,
 öffentliche JSON-Projektionen im API-Bereich.
+
+## Energie und Fahrtplan
+
+`EnergyProfile` ist ein unveränderlicher Kaufwert. `JourneyPlan` komponiert
+Fahrabschnitte und stationäre Tank-/Ladepausen. Die reine Planung begrenzt
+die Geschwindigkeit, wahrt 10 % Reserve und skaliert Fahrt und Pause gleich.
+`progress_at(elapsed_seconds)` interpoliert Bewegung und Verbrauch; erst
+am Pausenende wird aufgefüllt. Domaincode liest keine Uhr und keine DB.
+Ungemessene historische Fahrten behalten einen einzelnen Fahrabschnitt ohne
+Energieabrechnung. Die Anbindung an Besitz, Persistenz und Dispatch folgt im
+nächsten Arbeitsschritt; bestehende Laufzeittransporte bleiben unverändert.

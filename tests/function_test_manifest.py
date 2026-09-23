@@ -443,3 +443,17 @@ FUNCTION_TESTS.update(
         "app.repositories.vehicle_catalogue.read_energy_profile": "test_catalogue_rejects_incomplete_energy",
     }
 )
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.journeys.JourneySegment.__post_init__": "test_journey_rejects_inconsistent_intervals_and_energy",
+        "app.domain.journeys.JourneyPlan.__post_init__": "test_journey_rejects_inconsistent_intervals_and_energy",
+        "app.domain.journeys.JourneyPlan._validate_segment_energy": "test_journey_rejects_inconsistent_intervals_and_energy",
+        "app.domain.journeys.JourneyPlan.duration_seconds": "test_journey_reserve_stops_and_speed_limits",
+        "app.domain.journeys.JourneyPlan.driving_seconds": "test_journey_reserve_stops_and_speed_limits",
+        "app.domain.journeys.JourneyPlan.stop_count": "test_journey_reserve_stops_and_speed_limits",
+        "app.domain.journeys.JourneyPlan.progress_at": "test_journey_progress_and_shared_timeline_boundaries",
+        "app.domain.journeys.plan_journey": "test_journey_reserve_stops_and_speed_limits",
+        "app.domain.journeys.unmetered_journey": "test_journey_progress_and_shared_timeline_boundaries",
+    }
+)

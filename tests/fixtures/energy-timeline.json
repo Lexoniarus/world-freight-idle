@@ -1,0 +1,19 @@
+{
+  "input": {
+    "distance_km": 500,
+    "provider_seconds": 18000,
+    "top_speed_kmh": 100,
+    "start_level": 100,
+    "time_scale": 10
+  },
+  "samples": [
+    {"elapsed": -5, "phase": "driving", "fraction": 0, "energy": 100},
+    {"elapsed": 810, "phase": "driving", "fraction": 0.45, "energy": 55},
+    {"elapsed": 1620, "phase": "refuelling", "fraction": 0.9, "energy": 10},
+    {"elapsed": 1650, "phase": "refuelling", "fraction": 0.9, "energy": 10},
+    {"elapsed": 1680, "phase": "driving", "fraction": 0.9, "energy": 100},
+    {"elapsed": 1770, "phase": "driving", "fraction": 0.95, "energy": 95},
+    {"elapsed": 1860, "phase": "arrived", "fraction": 1, "energy": 90},
+    {"elapsed": 5000, "phase": "arrived", "fraction": 1, "energy": 90}
+  ]
+}
