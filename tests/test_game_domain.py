@@ -10,6 +10,7 @@ import pytest
 from app.api.v1.game_projection import project_player, project_vehicle
 from app.api.v1.location_projection import project_location
 from app.domain.contracts import ContractOffer, ContractOfferSnapshot
+from app.domain.energy import EnergyProfile
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.world_scopes import WorldScope
 
@@ -51,6 +52,9 @@ def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
         facility_uid=berlin.facility_uid,
         location=location,
         status="idle",
+        energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+        energy_level=100,
+        top_speed_kmh=90,
     )
 
     assert vehicle.location == location
@@ -97,6 +101,9 @@ def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
         capacity_tons=12,
         facility_uid=berlin.facility_uid,
         status="idle",
+        energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+        energy_level=100,
+        top_speed_kmh=90,
     )
     assert project_vehicle(legacy)["model_id"] is None
     assert "location_snapshot" not in project_vehicle(legacy)
@@ -214,7 +221,12 @@ def test_entity_construction_and_mutation_are_guarded(
         model_id="legacy",
         operating_cost_eur_per_km=0.62,
     )
-    vehicle = OwnedVehicle(**base)
+    vehicle = OwnedVehicle(
+        **base,
+        energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+        energy_level=100,
+        top_speed_kmh=90,
+    )
     for field, expected in base.items():
         assert getattr(vehicle, field) == expected
         with pytest.raises(AttributeError):
@@ -231,7 +243,12 @@ def test_entity_construction_and_mutation_are_guarded(
         {"location": replace(location, facility_uid="other")},
     ):
         with pytest.raises(ValueError):
-            OwnedVehicle(**{**base, **changes})
+            OwnedVehicle(
+                **{**base, **changes},
+                energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+                energy_level=100,
+                top_speed_kmh=90,
+            )
     with pytest.raises(ValueError, match="travelling"):
         vehicle.arrive(location)
     with pytest.raises(ValueError):

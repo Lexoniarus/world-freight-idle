@@ -12,6 +12,7 @@ from app.api.v1.game_projection import (
     project_transport,
     project_vehicle,
 )
+from app.domain.energy import EnergyProfile
 from app.domain.errors import WorldCatalogueError
 from app.domain.game import OwnedVehicle
 from tests.test_game import first_berlin_contract
@@ -64,7 +65,15 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
 
 def test_api_projection_never_invents_missing_vehicle_locations(game):
     vehicle = OwnedVehicle(
-        "unknown", "Unknown", "truck", 12, "unknown", "idle"
+        "unknown",
+        "Unknown",
+        "truck",
+        12,
+        "unknown",
+        "idle",
+        energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+        energy_level=100,
+        top_speed_kmh=90,
     )
     with patch.object(
         game.world, "read", side_effect=AssertionError("lookup")

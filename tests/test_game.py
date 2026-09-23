@@ -14,6 +14,7 @@ from app.api.v1.game_projection import (
     project_transport,
     project_vehicle,
 )
+from app.domain.energy import EnergyProfile
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.pricing import PriceQuote
 from app.domain.results import ContractQuote
@@ -221,7 +222,12 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
         ({"mode": "ship"}, "Fahrzeugtyp"),
         ({"status": "enroute"}, "verfügbar"),
     ):
-        invalid = OwnedVehicle(**{**base, **changes})
+        invalid = OwnedVehicle(
+            **{**base, **changes},
+            energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+            energy_level=100,
+            top_speed_kmh=90,
+        )
         with pytest.raises(ValueError, match=message):
             game._validate_dispatch(
                 invalid, game._find_contract(contract["id"])

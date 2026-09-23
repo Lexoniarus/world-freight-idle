@@ -4,6 +4,7 @@ from contextlib import AbstractContextManager
 from dataclasses import asdict, replace
 
 from app.domain.contracts import ContractOffer
+from app.domain.energy import EnergyProfile
 from app.domain.errors import PersistenceError
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.state_ports import GameStateRepository
@@ -73,7 +74,7 @@ class SqliteGameStateRepository:
         with self._database.connect() as connection:
             connection.execute(
                 """INSERT INTO owned_vehicles VALUES
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(user_id, vehicle_id) DO UPDATE SET
                     name=excluded.name, mode=excluded.mode,
                     model_id=excluded.model_id,
@@ -82,7 +83,10 @@ class SqliteGameStateRepository:
                         excluded.operating_cost_eur_per_km,
                     status=excluded.status,
                     facility_uid=excluded.facility_uid,
-                    location_snapshot=excluded.location_snapshot""",
+                    location_snapshot=excluded.location_snapshot,
+                    energy_snapshot=excluded.energy_snapshot,
+                    energy_level=excluded.energy_level,
+                    top_speed_kmh=excluded.top_speed_kmh""",
                 (
                     self._user_id,
                     vehicle.id,
@@ -94,6 +98,9 @@ class SqliteGameStateRepository:
                     vehicle.status,
                     vehicle.facility_uid,
                     location,
+                    encode_snapshot("energy", asdict(vehicle.energy)),
+                    vehicle.energy_level,
+                    vehicle.top_speed_kmh,
                 ),
             )
 
@@ -245,6 +252,11 @@ def load_vehicle_record(row: dict) -> OwnedVehicle:
     try:
         return OwnedVehicle(
             id=row["vehicle_id"],
+            energy=EnergyProfile(
+                **decode_snapshot("energy", row["energy_snapshot"])
+            ),
+            energy_level=row["energy_level"],
+            top_speed_kmh=row["top_speed_kmh"],
             name=row["name"],
             mode=row["mode"],
             model_id=row["model_id"],

@@ -3,6 +3,7 @@
 from dataclasses import replace
 
 from app.domain.contracts import HistoricalContractSnapshot
+from app.domain.journeys import unmetered_journey
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.services.game import GameService
 
@@ -34,6 +35,10 @@ def add_transport(
         arrives_at,
         payout,
         200,
+        journey=unmetered_journey(
+            400,
+            (arrives_at) - (departed_at),
+        ),
     )
     with game.unit_of_work.transaction():
         game.state_repository.save_vehicle(vehicle)

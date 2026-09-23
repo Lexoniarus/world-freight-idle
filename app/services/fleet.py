@@ -92,6 +92,9 @@ def build_owned_vehicle(
         facility_uid=location.facility_uid,
         location=location,
         status="idle",
+        energy=model.energy,
+        energy_level=model.energy.capacity,
+        top_speed_kmh=model.top_speed_kmh,
     )
 
 

@@ -9,6 +9,7 @@ from collections.abc import Callable, Sequence
 from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.errors import CatalogueError
 from app.domain.game import OwnedVehicle, PlayerState
+from app.domain.journeys import unmetered_journey
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
 from app.domain.pricing import calculate_price
 from app.domain.results import ContractQuote, GameSnapshot
@@ -483,6 +484,9 @@ class GameService:
             route=quote.route,
             departed_at=departed_at,
             arrives_at=departed_at + duration_real_seconds,
+            journey=unmetered_journey(
+                quote.route.distance_km, duration_real_seconds
+            ),
             payout_eur=quote.economics.payout_eur,
             operating_cost_eur=quote.economics.operating_cost_eur,
         )

@@ -19,6 +19,7 @@ from app.domain.world_scopes import WorldScope
 from app.providers.routing import ValhallaTruckRouter
 from app.repositories.accounts import AccountRepository
 from app.repositories.cached_world_catalogue import CachedWorldCatalogue
+from app.repositories.energy_upgrade import VehicleEnergyUpgradeRepository
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.leaderboard import SqliteLeaderboardReader
@@ -170,5 +171,15 @@ def build_game_importer(
         source,
         WorldScope(build_world_catalogue(settings).read()),
         MarketGenerator.model_id,
+        build_vehicle_catalogue(settings).list_models(),
         exclude_global_demo=exclude_global_demo,
+    )
+
+
+def build_energy_upgrade(
+    source: Path, settings: Settings
+) -> VehicleEnergyUpgradeRepository:
+    """Inject catalogue snapshots into the explicit offline state upgrade."""
+    return VehicleEnergyUpgradeRepository(
+        source, build_vehicle_catalogue(settings).list_models()
     )

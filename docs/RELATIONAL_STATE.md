@@ -110,3 +110,25 @@ fehlende Pflichtfelder und unbekannte Felder werden abgewiesen. HTTP-Felder
 werden unabhängig davon im API-Bereich projiziert. Diese Dokumentversion ist
 Teil des relationalen Schemas 1.0.0; alte KV-Spielstände
 werden weiterhin nicht im normalen Serverstart gelesen.
+
+
+## Explizite Energieübernahme nach 1.1.0
+
+Schema 1.1.0 ergänzt `energy_snapshot`, `energy_level` und `top_speed_kmh`
+am eigenen Fahrzeug. Transportsnapshots verwenden Version 2 und enthalten
+`JourneyPlan`; Standort- und Auftragssnapshots bleiben Version 1. Normales
+Starten führt keine Migration aus und weist Schema 1.0.0 ab.
+
+`python scripts/upgrade_vehicle_energy.py --source <old.db> --check`
+prüft den Altbestand ausschließlich lesend. Ausführung erfordert zusätzlich
+`--backup <backup.db> --output <new.db>` statt `--check`. Alle Pfade müssen
+verschieden sein und die Ausgabe darf nicht existieren. Erst nach erfolgreichem
+Backup wird dessen Inhalt übernommen. Ein vollständiger Quellen-/Zielvergleich
+bewahrt auch Konten, Sessions, alte Kaufwerte und wirtschaftliche Fakten.
+
+Bekannte Modelle erhalten einmalig ein vollständiges Energieprofil und einen
+vollen Vorrat. Alte Transporte bekommen einen ungemessenen Fahrtplan mit genau
+ihren bisherigen Zeiten, ohne zusätzliche Halte oder Energieabrechnung.
+Fehler entfernen die neue Zieldatei; die Quelle bleibt unangetastet. Das Werkzeug
+aktiviert keine Datei und startet keinen Server. Profilpflege ist nur für freie
+Fahrzeuge zulässig und überträgt den Füllgrad auf die neue Kapazität.

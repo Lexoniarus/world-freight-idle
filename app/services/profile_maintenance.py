@@ -8,7 +8,6 @@ from app.domain.account_ports import AccountStore
 from app.domain.game import OwnedVehicle
 from app.domain.ports import VehicleCatalogue
 from app.domain.state_ports import GameUnitOfWork
-from app.domain.transports import ActiveTransport
 from app.domain.vehicles import VehicleModel
 
 LOGGER = logging.getLogger(__name__)
@@ -48,16 +47,10 @@ class ProfileMaintenanceService:
             if player is None or not vehicles:
                 raise ValueError("Profile has no initialized game state")
             validate_assignments(list(vehicles), assignments, models)
-            trips = tuple(
-                trip
-                for trip in repository.list_transports()
-                if trip.status == "active"
-            )
             for vehicle in vehicles:
                 if vehicle.id not in assignments:
                     continue
                 model = models[assignments[vehicle.id]]
-                validate_active_load(vehicle.id, model, trips)
                 vehicle.apply_model(model)
             if cash is not None:
                 player.replace_cash(cash)
@@ -95,15 +88,3 @@ def validate_assignments(
         or not set(assignments.values()) <= models.keys()
     ):
         raise ValueError("Unknown vehicle or model, or empty assignment")
-
-
-def validate_active_load(
-    vehicle_id: str, model: VehicleModel, trips: tuple[ActiveTransport, ...]
-) -> None:
-    """Require the replacement model to carry every existing active load."""
-    if any(
-        trip.vehicle_id == vehicle_id
-        and trip.contract.tons > model.capacity_tons
-        for trip in trips
-    ):
-        raise ValueError("New vehicle cannot carry its active load")

@@ -7,6 +7,7 @@ import pytest
 from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.errors import DuplicateAccountError, PersistenceError
 from app.domain.game import PlayerState
+from app.domain.journeys import unmetered_journey
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.repositories.accounts import AccountRepository
 from app.repositories.game_database import SqliteGameDatabase
@@ -39,6 +40,7 @@ def test_relational_public_reads_preserve_privacy_and_offline_progress(
         20,
         1234,
         100,
+        journey=unmetered_journey((route).distance_km, (20) - (10)),
     )
     alice = SqliteGameStateRepository(relational, "alice")
     bob = SqliteGameStateRepository(relational, "bob")
@@ -46,7 +48,14 @@ def test_relational_public_reads_preserve_privacy_and_offline_progress(
         repository.save_player(PlayerState(5000, 5, 5))
         repository.save_vehicle(vehicle)
     alice.save_transport(trip)
-    bob.save_transport(replace(trip, id="bob-live", arrives_at=30))
+    bob.save_transport(
+        replace(
+            trip,
+            id="bob-live",
+            arrives_at=30,
+            journey=unmetered_journey(3, 20),
+        )
+    )
     rows = traffic.list_active_transports(12)
     assert len(rows) == 2
     assert {row.user_id for row in rows} == {"alice", "bob"}

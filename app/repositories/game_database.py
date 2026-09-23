@@ -119,6 +119,9 @@ class SqliteGameDatabase:
                 "operating_cost_eur_per_km",
                 "facility_uid",
                 "location_snapshot",
+                "energy_snapshot",
+                "energy_level",
+                "top_speed_kmh",
             },
             "contract_offers": {
                 "user_id",

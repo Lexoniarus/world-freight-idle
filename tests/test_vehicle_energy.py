@@ -89,3 +89,44 @@ def test_catalogue_requires_non_diesel_stop_time(catalogue):
         )
     with pytest.raises(CatalogueError):
         catalogue.list_models()
+
+
+def test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction(
+    game,
+):
+    vehicle = game.state_repository.list_vehicles()[0]
+    original = vehicle.energy
+    assert vehicle.energy_level == original.capacity
+    assert vehicle.top_speed_kmh == 90
+    vehicle.consume_energy(original.capacity / 2)
+    assert vehicle.energy_level == original.capacity / 2
+    for amount in (-1, math.inf, original.capacity):
+        with pytest.raises(ValueError):
+            vehicle.consume_energy(amount)
+    model = next(
+        m for m in game.catalogue.list_models() if m.energy.kind == "electric"
+    )
+    vehicle.apply_model(model)
+    assert vehicle.energy == model.energy
+    assert vehicle.energy_level == model.energy.capacity / 2
+    game.state_repository.save_vehicle(vehicle)
+    loaded = game.state_repository.list_vehicles()[0]
+    assert loaded == vehicle
+    vehicle.refill_energy()
+    assert vehicle.energy_level == model.energy.capacity
+    vehicle.start_trip()
+    for operation in (
+        lambda: vehicle.consume_energy(1),
+        vehicle.refill_energy,
+        lambda: vehicle.apply_model(model),
+    ):
+        with pytest.raises(ValueError):
+            operation()
+    with pytest.raises(ValueError):
+        vehicle.arrive(vehicle.location, model.energy.capacity + 1)
+    assert vehicle.status == "enroute"
+    vehicle.arrive(vehicle.location, 60)
+    assert vehicle.energy_level == 60
+    for name in ("energy", "energy_level", "top_speed_kmh"):
+        with pytest.raises(AttributeError):
+            setattr(vehicle, name, None)

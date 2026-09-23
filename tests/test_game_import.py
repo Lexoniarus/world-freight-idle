@@ -22,6 +22,7 @@ from app.bootstrap import (
 from app.config import Settings
 from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.errors import PersistenceError
+from app.domain.journeys import unmetered_journey
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.domain.world_scopes import WorldScope
 from app.repositories.database_backup import backup_database
@@ -59,6 +60,10 @@ def legacy_source(tmp_path, game):
         now - 1,
         987,
         142,
+        journey=unmetered_journey(
+            100,
+            (now - 1) - (now - 120),
+        ),
     )
     vehicle.start_trip()
     expired = replace(
@@ -96,7 +101,10 @@ CREATE TABLE route_cache(cache_key TEXT,payload TEXT,updated_at REAL);
         )
         connection.commit()
     importer = LegacyGameImporter(
-        path, WorldScope(game.world.read()), game.market.model_id
+        path,
+        WorldScope(game.world.read()),
+        game.market.model_id,
+        game.catalogue.list_models(),
     )
     return path, importer, state, now, password_hash
 
@@ -138,7 +146,10 @@ def test_offline_import_preserves_profiles_history_and_settles_once(
     target = tmp_path / "target.db"
     backup_database(path, backup)
     importer = LegacyGameImporter(
-        backup, importer.reader.world, importer.market_model
+        backup,
+        importer.reader.world,
+        importer.market_model,
+        tuple(importer.reader.models.values()),
     )
     assert importer.import_to(target, now) == report
     database = SqliteGameDatabase(target)
@@ -609,6 +620,7 @@ def test_global_demo_exclusion_requires_explicit_choice(
         path,
         importer.reader.world,
         importer.market_model,
+        tuple(importer.reader.models.values()),
         exclude_global_demo=True,
     )
     assert explicit.inspect(now).accounts == 3

@@ -185,7 +185,6 @@ FUNCTION_TESTS.update(
         "app.services.profile_maintenance.ProfileMaintenanceService.__init__": "test_profile_update_preserves_other_players_and_trip_snapshots",
         "app.services.profile_maintenance.ProfileMaintenanceService.update_profile": "test_maintenance_write_failure_rolls_back_and_retains_unselected",
         "app.services.profile_maintenance.validate_assignments": "test_maintenance_validation_preserves_state",
-        "app.services.profile_maintenance.validate_active_load": "test_profile_update_preserves_other_players_and_trip_snapshots",
         "app.services.game.GameService.ensure_initial_state": "test_initialization_direct_failure_is_atomic",
         "app.main.lifespan": "test_lifespan_cleans_up_partial_start_and_shutdown",
     }
@@ -455,5 +454,26 @@ FUNCTION_TESTS.update(
         "app.domain.journeys.JourneyPlan.progress_at": "test_journey_progress_and_shared_timeline_boundaries",
         "app.domain.journeys.plan_journey": "test_journey_reserve_stops_and_speed_limits",
         "app.domain.journeys.unmetered_journey": "test_journey_progress_and_shared_timeline_boundaries",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.game.OwnedVehicle.consume_energy": "test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction",
+        "app.domain.game.OwnedVehicle.refill_energy": "test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction",
+        "app.domain.game.OwnedVehicle.energy": "test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction",
+        "app.domain.game.OwnedVehicle.energy_level": "test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction",
+        "app.domain.game.OwnedVehicle.top_speed_kmh": "test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction",
+        "app.domain.transports.ActiveTransport.progress_at": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
+        "app.repositories.transport_mapping.load_journey": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
+        "app.bootstrap.build_energy_upgrade": "test_energy_upgrade_builder_requires_catalogue",
+        "app.repositories.energy_upgrade.VehicleEnergyUpgradeRepository.__init__": "test_energy_upgrade_rejects_invalid_source_without_output",
+        "app.repositories.energy_upgrade.VehicleEnergyUpgradeRepository.inspect": "test_energy_upgrade_rejects_invalid_source_without_output",
+        "app.repositories.energy_upgrade.VehicleEnergyUpgradeRepository.upgrade_to": "test_energy_upgrade_reconciliation_failure_removes_target",
+        "app.repositories.energy_upgrade.VehicleEnergyUpgradeRepository._read_source": "test_energy_upgrade_rejects_invalid_source_without_output",
+        "app.repositories.energy_upgrade.VehicleEnergyUpgradeRepository._validate_source_schema": "test_energy_upgrade_rejects_invalid_source_without_output",
+        "app.repositories.energy_upgrade.VehicleEnergyUpgradeRepository._convert_record": "test_energy_upgrade_rejects_invalid_source_without_output",
+        "app.repositories.energy_upgrade.VehicleEnergyUpgradeRepository._write_inventory": "test_energy_upgrade_reconciliation_failure_removes_target",
+        "app.repositories.energy_upgrade.VehicleEnergyUpgradeRepository._verify_inventory": "test_energy_upgrade_reconciliation_failure_removes_target",
     }
 )

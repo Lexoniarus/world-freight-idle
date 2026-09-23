@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.domain.energy import EnergyProfile
 from app.domain.validation import (
     require_finite,
     require_identity,
@@ -81,6 +82,9 @@ class OwnedVehicle:
     _operating_cost_eur_per_km: float | None
     _facility_uid: str
     _location: FacilityLocationSnapshot | None
+    _energy: EnergyProfile
+    _energy_level: float
+    _top_speed_kmh: float
 
     def __init__(
         self,
@@ -93,6 +97,10 @@ class OwnedVehicle:
         model_id: str | None = None,
         operating_cost_eur_per_km: float | None = None,
         location: FacilityLocationSnapshot | None = None,
+        *,
+        energy: EnergyProfile,
+        energy_level: float,
+        top_speed_kmh: float,
     ) -> None:
         """Initialize one coherent owned-vehicle snapshot."""
         require_identity(id, "Vehicle ID")
@@ -106,6 +114,13 @@ class OwnedVehicle:
             raise ValueError("Invalid vehicle status.")
         if location is not None and location.facility_uid != facility_uid:
             raise ValueError("Vehicle location snapshot differs.")
+        if not isinstance(energy, EnergyProfile):
+            raise ValueError("Vehicle energy profile is missing.")
+        energy.validate_level(energy_level)
+        require_finite(top_speed_kmh, "Top speed", 0.000001)
+        self._energy = energy
+        self._energy_level = energy_level
+        self._top_speed_kmh = top_speed_kmh
         self._id = id
         self._name = name
         self._mode = mode
@@ -139,21 +154,34 @@ class OwnedVehicle:
             raise ValueError("Fahrzeug ist nicht verfügbar.")
         self._status = "enroute"
 
-    def arrive(self, location: FacilityLocationSnapshot) -> None:
+    def arrive(
+        self,
+        location: FacilityLocationSnapshot,
+        energy_level: float | None = None,
+    ) -> None:
         """Move the vehicle to an immutable destination snapshot."""
         if self._status != "enroute":
             raise ValueError("Only a travelling vehicle can arrive.")
+        if energy_level is not None:
+            self._energy.validate_level(energy_level)
+            self._energy_level = energy_level
         self._facility_uid = location.facility_uid
         self._location = location
         self._status = "idle"
 
     def apply_model(self, model: VehicleModel) -> None:
         """Replace model gameplay values while retaining vehicle identity."""
+        if self._status != "idle":
+            raise ValueError("Only an idle vehicle can change model.")
         require_identity(model.id, "Model ID")
         require_identity(model.name, "Model name")
         require_identity(model.mode, "Model mode")
         require_finite(model.capacity_tons, "Capacity", 0.01)
         require_finite(model.operating_cost_eur_per_km, "Kilometer cost")
+        fill_fraction = self._energy_level / self._energy.capacity
+        self._energy = model.energy
+        self._energy_level = fill_fraction * model.energy.capacity
+        self._top_speed_kmh = model.top_speed_kmh
         self._model_id = model.id
         self._name = model.name
         self._mode = model.mode
@@ -204,3 +232,31 @@ class OwnedVehicle:
     def location(self) -> FacilityLocationSnapshot | None:
         """Expose the current location without a writable field."""
         return self._location
+
+    def consume_energy(self, amount: float) -> None:
+        """Consume idle vehicle energy without allowing negative reserves."""
+        require_finite(amount, "Energy consumption")
+        if self._status != "idle" or amount > self._energy_level:
+            raise ValueError("Vehicle cannot consume this energy amount.")
+        self._energy_level -= amount
+
+    def refill_energy(self) -> None:
+        """Fill an idle vehicle; moving vehicles use the saved itinerary."""
+        if self._status != "idle":
+            raise ValueError("Only an idle vehicle can be refilled.")
+        self._energy_level = self._energy.capacity
+
+    @property
+    def energy(self) -> EnergyProfile:
+        """Expose the immutable purchased energy specification."""
+        return self._energy
+
+    @property
+    def energy_level(self) -> float:
+        """Return the persisted departure or settlement energy checkpoint."""
+        return self._energy_level
+
+    @property
+    def top_speed_kmh(self) -> float:
+        """Return the purchased speed limit."""
+        return self._top_speed_kmh

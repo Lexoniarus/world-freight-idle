@@ -10,6 +10,7 @@ from app.api.v1.dependencies import get_game_service
 from app.config import Settings
 from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.game import PlayerState
+from app.domain.journeys import unmetered_journey
 from app.domain.pricing import PriceQuote
 from app.domain.results import ContractQuote, GameSnapshot
 from app.domain.transports import ActiveTransport, RouteSnapshot
@@ -33,6 +34,7 @@ class FakeGame:
             21,
             1000,
             100,
+            journey=unmetered_journey((self.route).distance_km, (21) - (1)),
         )
 
     def dashboard(self):

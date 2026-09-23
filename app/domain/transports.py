@@ -1,9 +1,11 @@
 """Transport lifecycle independent of persistence, clocks and providers."""
 
 from dataclasses import dataclass, replace
+from math import isclose
 from typing import Literal
 
 from app.domain.contracts import HistoricalContractSnapshot
+from app.domain.journeys import JourneyPlan, JourneyProgress
 from app.domain.validation import (
     require_finite,
     require_identity,
@@ -53,6 +55,7 @@ class ActiveTransport:
     arrives_at: float
     payout_eur: int
     operating_cost_eur: int
+    journey: JourneyPlan
     status: Literal["active", "settled"] = "active"
     settled_at: float | None = None
 
@@ -72,6 +75,13 @@ class ActiveTransport:
             != self.contract.destination.facility_uid
         ):
             raise ValueError("Transport endpoints differ from its contract.")
+        if self.journey.distance_km != self.route.distance_km or not isclose(
+            self.journey.duration_seconds,
+            self.arrives_at - self.departed_at,
+            rel_tol=1e-9,
+            abs_tol=1e-6,
+        ):
+            raise ValueError("Transport and journey timeline differ.")
         if self.status == "active":
             if self.settled_at is not None:
                 raise ValueError("Active transport cannot be settled.")
@@ -92,3 +102,8 @@ class ActiveTransport:
         if not self.is_due(now):
             raise ValueError("Transport is not due for settlement.")
         return replace(self, status="settled", settled_at=now)
+
+    def progress_at(self, now: float) -> JourneyProgress:
+        """Evaluate the historical journey at caller-supplied server time."""
+        require_finite(now, "Current time")
+        return self.journey.progress_at(now - self.departed_at)

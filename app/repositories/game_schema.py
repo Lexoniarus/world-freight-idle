@@ -1,9 +1,9 @@
 """Relational game-state schema, independent of reference catalogues."""
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 SCHEMA = """
 CREATE TABLE game_schema (version TEXT NOT NULL);
-INSERT INTO game_schema VALUES ('1.0.0');
+INSERT INTO game_schema VALUES ('1.1.0');
 CREATE TABLE users (
     id TEXT PRIMARY KEY,
     username TEXT NOT NULL COLLATE NOCASE UNIQUE,
@@ -29,6 +29,9 @@ CREATE TABLE owned_vehicles (
     status TEXT NOT NULL CHECK(status IN ('idle', 'enroute')),
     facility_uid TEXT NOT NULL,
     location_snapshot TEXT,
+    energy_snapshot TEXT NOT NULL,
+    energy_level REAL NOT NULL CHECK(energy_level >= 0),
+    top_speed_kmh REAL NOT NULL CHECK(top_speed_kmh > 0),
     PRIMARY KEY (user_id, vehicle_id)
 );
 CREATE INDEX vehicles_location ON owned_vehicles(user_id, facility_uid);

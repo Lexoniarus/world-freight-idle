@@ -8,8 +8,10 @@ from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.evidence import SourceReference
 from app.domain.game import OwnedVehicle
 from app.domain.geography import City, Coordinates
+from app.domain.journeys import unmetered_journey
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.domain.validation import require_finite, require_identity
+from app.domain.vehicles import VehicleModel
 from app.domain.world import (
     CompanyIdentity,
     DocumentedGood,
@@ -29,8 +31,11 @@ class LegacyFieldError(ValueError):
 class LegacySnapshotReader:
     """Resolve new city identities while preserving saved historical facts."""
 
-    def __init__(self, world: WorldScope) -> None:
+    def __init__(
+        self, world: WorldScope, models: tuple[VehicleModel, ...]
+    ) -> None:
         self.world = world
+        self.models = {model.id: model for model in models}
 
     def location(
         self, value: dict[str, Any], path: str = "location"
@@ -154,7 +159,11 @@ class LegacySnapshotReader:
                 raise ValueError(
                     f"Conflicting historical location at {path}.hub"
                 )
+        model = self.models[value["model_id"]]
         return OwnedVehicle(
+            energy=model.energy,
+            energy_level=model.energy.capacity,
+            top_speed_kmh=model.top_speed_kmh,
             id=value["id"],
             name=value["name"],
             mode=value["mode"],
@@ -341,6 +350,10 @@ class LegacySnapshotReader:
             ),
             departed_at=value["departed_at"],
             arrives_at=value["arrives_at"],
+            journey=unmetered_journey(
+                value["distance_km"],
+                value["arrives_at"] - value["departed_at"],
+            ),
             payout_eur=value["payout_eur"],
             operating_cost_eur=value["operating_cost_eur"],
             status=value.get("status", "active"),

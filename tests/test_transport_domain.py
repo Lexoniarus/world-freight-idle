@@ -9,6 +9,7 @@ from app.api.v1.game_projection import (
 )
 from app.api.v1.location_projection import project_location
 from app.domain.contracts import HistoricalContractSnapshot
+from app.domain.journeys import unmetered_journey
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.repositories.transport_mapping import load_transport
 
@@ -27,7 +28,11 @@ def test_transport_lifecycle_rejects_invalid_and_duplicate_settlement(game):
         110,
         500,
         200,
+        journey=unmetered_journey((route).distance_km, (110) - (10)),
     )
+    assert trip.progress_at(60).fraction == 0.5
+    with pytest.raises(ValueError):
+        trip.progress_at(float("nan"))
     assert not trip.is_due(109)
     assert trip.is_due(110)
     with pytest.raises(ValueError, match="not due"):
