@@ -10,11 +10,10 @@ export function formatDuration(seconds) {
     .join(" ");
 }
 
-/** @param {number} nowSeconds
- * @param {number} departedAt
- * @param {number} arrivesAt
- * @returns {number} */
-export function routeProgress(nowSeconds, departedAt, arrivesAt) {
-  if (arrivesAt <= departedAt) return 1;
-  return Math.max(0, Math.min(1, (nowSeconds - departedAt) / (arrivesAt - departedAt)));
+/** Format remaining pause time, retaining seconds for accelerated games.
+ * @param {number} seconds
+ * @returns {string}
+ */
+export function formatCountdown(seconds) {
+  return seconds < 60 ? `${Math.max(0, Math.ceil(seconds))} s` : formatDuration(seconds);
 }

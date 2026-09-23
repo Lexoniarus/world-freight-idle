@@ -2,7 +2,7 @@
 
 import json
 import math
-from dataclasses import replace
+from dataclasses import asdict, replace
 from pathlib import Path
 
 import pytest
@@ -64,6 +64,7 @@ def test_journey_progress_and_shared_timeline_boundaries():
         (Path(__file__).parent / "fixtures/energy-timeline.json").read_text()
     )
     plan = plan_journey(**{**fixture["input"], "energy": PROFILE})
+    assert json.loads(json.dumps(asdict(plan))) == fixture["journey"]
     for expected in fixture["samples"]:
         progress = plan.progress_at(expected["elapsed"])
         assert progress.phase == expected["phase"]

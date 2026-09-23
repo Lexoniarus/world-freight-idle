@@ -98,3 +98,13 @@ unbekannte/fehlende Modelle und unveränderliche Zuordnungen sind Gegenfälle.
 Dateihash sowie 404 für alte oder fehlende Pfade, mit temporärem Spielstand.
 Kartenverhalten (Farbmaske, Orientierung, Rasterisierung, Cache und Cleanup)
 und Bildstabilität bleiben durch die vorhandenen Regressionen abgesichert.
+
+
+Energietests verwenden `tests/fixtures/energy-timeline.json` gemeinsam in Python
+und JavaScript: Bewegung, Pausenanfang/-ende und Ankunft stimmen an denselben
+Grenzen überein. Browserregression prüft Desktop und Mobil mit einem ausdrücklich
+synthetischen Kurzstrecken-Energieprofil im isolierten Testserver. Dessen
+Fixture-Endpoint existiert ausschließlich in `tests.browser_server`, niemals
+im Produktions-Einstieg. Echte Katalogwerte werden separat für alle 14 Modelle
+geprüft. Tank-/Ladepausen, Logout/Offline-Ankunft, verbleibende Energie sowie
+stabile Bildknoten werden im Browser beobachtet.

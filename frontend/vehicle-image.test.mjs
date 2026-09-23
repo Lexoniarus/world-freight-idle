@@ -9,6 +9,16 @@ import { InputController } from "./controllers/input-controller.js";
 const vehicle = {
   name: "IVECO",
   capacity_tons: 24.2,
+  energy: {
+    kind: "diesel",
+    unit: "l",
+    capacity: 1010,
+    consumption_per_100km: 24.5,
+    stop_minutes: 10,
+    reserve_fraction: 0.1,
+  },
+  energy_level: 1010,
+  top_speed_kmh: 90,
   image: {
     url: "https://upload.wikimedia.org/example.jpg",
     source_url: "https://commons.wikimedia.org/wiki/File:example.jpg",

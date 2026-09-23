@@ -95,8 +95,9 @@ function renderQuote({ quote, state, busy }) {
       ${actionButton("quote", busy ? "Route wird berechnet …" : "Route & Ertrag berechnen", busy)}
     </div>`;
   return html`<div class="metrics">
-      ${metric("Strecke", number(quote.distance_km) + " km")}${metric("Fahrzeit im Spiel", formatDuration(quote.duration_seconds / state.time_scale))}${metric("Erlös", money(quote.payout_eur))}${metric("Betriebskosten", money(quote.operating_cost_eur))}${metric("Dein Gewinn", money(quote.profit_eur), "profit wide")}
+      ${metric("Strecke", number(quote.distance_km) + " km")}${metric("Gesamtdauer im Spiel", formatDuration(quote.total_duration_seconds ?? quote.duration_seconds / state.time_scale))}${metric("Erlös", money(quote.payout_eur))}${metric("Betriebskosten", money(quote.operating_cost_eur))}${metric("Dein Gewinn", money(quote.profit_eur), "profit wide")}
     </div>
+    ${quote.journey ? html`<p class="footnote">${quote.energy_stop_count} Tank-/Ladepausen · ${formatDuration(quote.pause_seconds)} Pause insgesamt · Verbrauch ${number(quote.energy_consumption, 1)} ${quote.journey.energy.unit}. Haltepositionen sind simuliert.</p>` : null}
     ${actionButton("focus-quote", [icon("target", 17), " Route anzeigen"], false, "quiet")}`;
 }
 

@@ -18,6 +18,7 @@ COMMANDS = (
         "scripts/update_test_profile.py",
         "scripts/normalize_world_catalogue.py",
         "scripts/import_legacy_game.py",
+        "scripts/upgrade_vehicle_energy.py",
     ),
     (
         sys.executable,
@@ -32,6 +33,7 @@ COMMANDS = (
         "scripts/update_test_profile.py",
         "scripts/normalize_world_catalogue.py",
         "scripts/import_legacy_game.py",
+        "scripts/upgrade_vehicle_energy.py",
     ),
     (
         sys.executable,
@@ -42,6 +44,7 @@ COMMANDS = (
         "scripts/update_test_profile.py",
         "scripts/normalize_world_catalogue.py",
         "scripts/import_legacy_game.py",
+        "scripts/upgrade_vehicle_energy.py",
     ),
     (
         "node",

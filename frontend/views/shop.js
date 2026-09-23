@@ -1,3 +1,4 @@
+import { renderEnergySpecification } from "../ui/vehicle-energy.js";
 import { html } from "../ui/dom.js";
 import { renderVehicleImage } from "../ui/vehicle-image.js";
 import { icon } from "../ui/illustrations.js";
@@ -41,6 +42,7 @@ function renderOffer(model, deliveryHub, cash, reputation, busy) {
       ${number(model.operating_cost_eur_per_km, 2)} € / km ·
       ${model.powertrain === "battery_electric" ? "Elektro" : model.powertrain === "gas" ? "Gas" : "Diesel"}
     </p>
+    ${renderEnergySpecification(model)}
     <p class="footnote">Freigabe ab Reputation ${model.unlock_reputation}</p>
     <div class="purchase-row"><strong>${money(model.price_eur)}</strong><span>einmalig</span></div>
     ${actionButton("buy", !unlocked ? "Reputation reicht nicht" : affordable ? ["Fahrzeug kaufen ", icon("arrow", 18)] : "Guthaben reicht nicht", busy || !affordable || !unlocked, "primary", model.id)}

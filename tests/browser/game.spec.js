@@ -50,7 +50,7 @@ test("desktop: registration, map, quote, dispatch, purchase, arrival, logout and
   await page.screenshot({ animations: "disabled", path: screenshot("dispatch") });
   await page.getByRole("button", { name: "Transport starten" }).click();
   await expect(page).toHaveURL(/transports\//);
-  await expect(page.getByText("Transport läuft", { exact: true })).toBeVisible();
+  await expect(page.locator("[data-phase-trip]")).toBeVisible();
   await page.getByRole("link", { name: "Fahrzeugshop", exact: true }).first().click();
   await page.locator(".shop-card").filter({ hasText: "S-Way" }).getByRole("button", { name: "Fahrzeug kaufen" }).click();
   await expect(page.locator("#fleet-count")).toHaveText("2");
@@ -58,7 +58,7 @@ test("desktop: registration, map, quote, dispatch, purchase, arrival, logout and
   await expect(page.locator("#panel")).toBeHidden();
   await page.goBack();
   await expect(page.locator("#panel")).toBeVisible();
-  // The accelerated, server-authoritative test trip arrives after 16 seconds.
+  // The speed-limited accelerated trip arrives after approximately 18 seconds.
   await expect(page.locator("#reputation")).toHaveText("1", { timeout: 35000 });
   const cash = await page.locator("#cash").textContent();
   await page.getByRole("button", { name: "Abmelden" }).click();
@@ -343,3 +343,41 @@ test("facility identities, lazy market scope and catalogue outages preserve the 
   await page.getByRole("link", { name: "Flotte", exact: true }).click();
   await expect(page.locator(".vehicle-card")).toContainText("Berlin Westhafen");
 });
+
+for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile", {width:390,height:844}]]) {
+  test(`${device}: energy pauses retain images, offline arrival retains energy`, async ({page}) => {
+    await page.setViewportSize(viewport);
+    const username = await register(page);
+    const prepared = await page.request.post("/__tests__/energy-fixture", {headers:{"X-Freight-Request":"1"}});
+    expect(prepared.ok()).toBeTruthy();
+    await page.reload();
+    await page.getByRole("link", {name:"Aufträge",exact:true}).click();
+    await page.locator(".job-card").filter({hasText:"Lkw bereit"}).first().click();
+    await page.getByRole("button", {name:"Route & Ertrag berechnen"}).click();
+    await expect(page.getByText(/5 Tank-\/Ladepausen/)).toBeVisible();
+    await page.getByRole("button", {name:"Transport starten"}).click();
+    await expect(page).toHaveURL(/transports\//);
+    await expect(page.locator("[data-phase-trip]")).toHaveText("Lädt");
+    await expect(page.locator(".eta")).toContainText("Weiter in");
+    const image = await page.locator("#panel img").first().elementHandle();
+    const meter = page.locator("meter");
+    await expect(meter).toHaveAttribute("value", "10");
+    await meter.scrollIntoViewIfNeeded();
+    await page.screenshot({path:screenshot(`energy-${device}`),animations:"disabled"});
+    await expect(page.locator("[data-phase-trip]")).toHaveText("Unterwegs");
+    expect(await image.evaluate(node => node.isConnected)).toBeTruthy();
+    const fleet = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
+    expect(fleet[0].energy_level).toBeGreaterThan(10);
+    await page.getByRole("button", {name:"Abmelden"}).click();
+    // Stay logged out past the authoritative arrival; no background settlement job.
+    await page.waitForTimeout(31000);
+    await page.getByLabel("Spielername", {exact:true}).fill(username);
+    await page.getByLabel("Passwort", {exact:true}).fill(password);
+    await page.getByRole("button", {name:"Anmelden",exact:true}).last().click();
+    await expect(page.locator("#reputation")).toHaveText("1");
+    const arrived = (await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
+    expect(arrived.status).toBe("idle");
+    expect(arrived.energy_level).toBeCloseTo(60);
+    expect((await (await page.request.get("/api/v1/dashboard")).json()).player.completed).toBe(1);
+  });
+}

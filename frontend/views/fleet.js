@@ -1,3 +1,5 @@
+import { renderEnergyMeter, renderEnergySpecification } from "../ui/vehicle-energy.js";
+import { phaseLabel, transportProgress } from "../journey.js";
 import { matchesFacility } from "../geometry.js";
 import { html } from "../ui/dom.js";
 import { renderVehicleImage } from "../ui/vehicle-image.js";
@@ -9,7 +11,7 @@ import { number } from "../format.js";
  * @param {import('../types.js').PanelView} view
  * @returns {DocumentFragment}
  */
-export function renderFleet({ state, url }) {
+export function renderFleet({ state, url, now }) {
   const hubId = url.searchParams.get("hub");
   const vehicles = state.vehicles.filter((vehicle) => matchesFacility(vehicle.hub, hubId));
   return html`${fleetTabs()}
@@ -24,6 +26,7 @@ export function renderFleet({ state, url }) {
               renderVehicle(
                 vehicle,
                 state.transports.find((trip) => trip.vehicle_id === vehicle.id),
+                now,
               ),
             )
           : emptyState(
@@ -35,14 +38,16 @@ export function renderFleet({ state, url }) {
 }
 
 /** Render one vehicle and its current location or transport. */
-function renderVehicle(vehicle, trip) {
+function renderVehicle(vehicle, trip, now) {
   return html`<article class="vehicle-card">
     <div class="card-kicker">
-      <span class="badge ${trip ? "gold" : "green"}">${trip ? "Unterwegs" : "Einsatzbereit"}</span
+      <span class="badge ${trip ? "gold" : "green"}" data-phase-trip="${trip?.id ?? ""}"
+        >${trip ? phaseLabel(transportProgress(trip, now).phase) : "Einsatzbereit"}</span
       ><span>${number(vehicle.capacity_tons, 2)} t</span>
     </div>
     ${renderVehicleImage(vehicle)}
     <h3>${vehicle.name}</h3>
+    ${renderEnergyMeter(vehicle, trip, now)} ${renderEnergySpecification(vehicle)}
     <p>
       ${icon("pin", 15)}
       ${trip ? trip.origin.city + " → " + trip.destination.city : vehicle.hub.label}
