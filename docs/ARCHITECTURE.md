@@ -37,15 +37,15 @@ Domainregeln erhalten Zeitpunkte als Parameter.
 ## Zustand und Atomarität
 
 PlayerState schützt Geld und Fortschritt; OwnedVehicle schützt Status,
-Kapazität und Standort. ContractOffer beschreibt ein verfügbares Angebot.
-ActiveTransport komponiert HistoricalContractSnapshot, Endpunkte und Route
+Kapazität, Energieprofil, Füllstand und Standort. ContractOffer beschreibt ein verfügbares Angebot.
+ActiveTransport komponiert HistoricalContractSnapshot, Endpunkte, Route und Fahrtplan
 und wechselt genau einmal von active zu settled. Historische Werte werden
 nicht bei späteren Katalogänderungen neu aufgelöst.
 
 GameUnitOfWork besitzt BEGIN IMMEDIATE. Kauf, Startinitialisierung, Reset,
 Disposition und Settlement speichern zusammengehörige Mutationen atomar.
 Routing läuft außerhalb der Schreibtransaktion. Danach werden Angebot,
-Fahrzeug, Kosten und Guthaben erneut geprüft. Markterzeugung erfolgt erst nach
+Fahrzeug, Energieausstattung, Startfüllstand, Kosten und Guthaben erneut geprüft. Markterzeugung erfolgt erst nach
 committeter Auszahlung. Details: [RELATIONAL_STATE.md](RELATIONAL_STATE.md).
 
 Accounts besitzen getrennte Spielzustände; dieselbe lokale Fahrzeugkennung
@@ -69,7 +69,7 @@ Transport-Guards mit dem unterstützten Schema, nicht nur deren Namen.
 SQL-Formatierung wird ignoriert, Literalinhalte bleiben unverändert.
 Abweichungen liefern `UnsupportedGameSchema` und `state.schema_rejected`;
 eine automatische Reparatur bestehender Dateien findet nicht statt.
-Die Schemaversion bleibt 1.0.0.
+Die Schemaversion ist 1.1.0; die Energieübernahme erfolgt explizit offline.
 
 ## Referenzwelt und Markt
 
@@ -141,3 +141,20 @@ Auszahlung und Katalogzugriff. Persistenzfehler werden an Adaptergrenzen
 normalisiert; HTTP 503 enthält weder SQL noch private Daten. Migrationsberichte
 mit Spielerbezug, Datenbanken, Backups und Prüfarbeitsdateien bleiben außerhalb
 von Git. Werkzeugnachweise und manuelles Review stehen im Qualitätsbericht.
+
+
+## Energie, Zeit und historische Abläufe
+
+EnergyProfile und JourneyPlan sind unveränderliche Domainwerte. Die reine
+Fahrtplanung erhält Fahrzeug-Snapshot, Route, Ausgangsfüllstand und Zeitfaktor.
+ActiveTransport wertet seinen Plan anhand übergebener Zeit aus; OwnedVehicle
+besitzt ausschließlich den letzten persistenten Energiecheckpoint. Settlement
+schreibt den Endfüllstand atomar mit Auszahlung und Standort. Keine Simulation
+schreibt pro Animationstakt. Public MovementSegment enthält ausschließlich
+Phase, Zeit und Strecke; private Energie- und Wirtschaftsdaten bleiben außerhalb
+der Mehrspielerprojektion. `frontend/journey.js` ist die gemeinsame reine
+Interpolation für Karte und Panels, keine zweite serverseitige Spielplanung.
+
+Die Offline-Energieübernahme kennt das alte relationale Schema ausschließlich
+im Repository `energy_upgrade.py`. CLI und Composition Root orchestrieren
+Backup, Validierung und neue Ausgabe. Die Runtime unterstützt nur Schema 1.1.0.

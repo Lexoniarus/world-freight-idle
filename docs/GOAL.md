@@ -37,7 +37,7 @@ dass sämtliche Funktionen bereits implementiert sind.
 | Eigenständiges Spielerunternehmen | Offen; aktuell Konto mit Spielerkapital und Reputation |
 | Eigenes Depot / Depotkauf | Offen; aktuell öffentliche Facilities und Start in Berlin Westhafen |
 | Fahrzeuge kaufen, Standort und Kapazität | Implementiert; 14 DB-Modelle mit Spiel-Nutzlast, Kaufpreis und Freigaben |
-| Reale Hersteller-/Modell-/Verbrauchsdaten | 14 Modellprofile von acht Herstellern integriert; Spiel-Kilometerkosten aktiv, Verbrauchssimulation offen |
+| Reale Hersteller-/Modell-/Verbrauchsdaten | 14 Modellprofile von acht Herstellern integriert; konstante Verbrauchssimulation, 10 % Reserve und automatische Tank-/Ladepausen aktiv |
 | Reale Adressen, Straßenroute, Distanz, ETA | WorldCatalogue mit 79 verifizierten und 273 ausdrücklich geschätzten Positionen und Valhalla-Truck-Routing; Nominatim nur offline |
 | Aufträge, parallele Transporte, Offline-Auszahlung | Implementiert und auf konkurrierende Zugriffe getestet |
 | Tracking | Alle aktiven Transporte als Layer, Serverzeit und gespeicherte Route |
@@ -1867,7 +1867,7 @@ bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATAL
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.0.0) und
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
 WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).

@@ -718,8 +718,10 @@ Ein Fahrzeugwechsel verwirft die alte Quote. Transportstart erfordert eine
 aktuelle Kalkulation für genau das gewählte Fahrzeug. Kamera, Panelposition,
 Tastaturfokus und mobile Bedienung bleiben erhalten. Neue Spielstände erhalten
 175.000 € und den kostenlosen DB-IVECO S-Way 500 XC13. Altbestände werden
-nur bei ausdrücklich beauftragter Profilpflege umgestellt.
-Wartung/Energie/Reichweite folgen später. UI First, OSM für M1, Satelliten,
+nur bei ausdrücklich beauftragter Profilpflege oder einem Offline-Schemaupgrade
+umgestellt; das Energie-Upgrade bewahrt dabei bisherige Kaufwerte.
+Konstanter Verbrauch, Energieanzeige und automatische Pausen sind umgesetzt;
+Wartung, Stationssuche und Ladekurven folgen später. UI First, OSM für M1, Satelliten,
 Unternehmen und eigene Depots nach der Frontend-Abnahme bleiben verbindlich.
 
 Geladene Fahrzeugbilder bleiben bei Spielstands- und Statusaktualisierungen
@@ -745,10 +747,23 @@ bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATAL
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.0.0) und
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
 WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
 Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).
 Aktuelle Prüfungen und Grenzen stehen im [Qualitätsbericht](../QUALITY_REPORT.md).
 Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abnahme.
+
+
+### Energieoberfläche der ersten Simulation
+
+Shop und Flotte zeigen Kapazität, Einheit, Verbrauch, Höchstgeschwindigkeit und
+Tank-/Ladedauer. Eigene Fahrzeuge besitzen eine beschriftete kompakte Anzeige.
+Auftragsdetails nennen die gesamte Spielzeit inklusive Halten. Transportphasen
+sind „Unterwegs“, „Tankt“ oder „Lädt“; kurze Restpausen erscheinen in Sekunden.
+Karte und Panels interpolieren denselben gespeicherten Fahrtplan. Während eines
+Halts stehen Marker und Streckenfortschritt. Energie wird am Pausenende aufgefüllt.
+Text-/Meterupdates behalten vorhandene Bildknoten; Polling, Spielerfarben,
+World Wrapping und Kameraposition bleiben erhalten. Fremde Fahrzeuge veröffentlichen
+nur die notwendigen Bewegungsintervalle, keine privaten Energieinhalte.

@@ -193,8 +193,9 @@ die öffentliche Standortprojektion bleibt kompakt.
 
 Der normale Server akzeptiert ausschließlich das relationale Spielstandschema.
 Der Offline-Importer ist kein Endpoint und wird nicht beim Start ausgeführt.
-Nach einem Import ist eine erneute Anmeldung erforderlich, weil alte Sessions
-ausdrücklich nicht übernommen werden.
+Nach dem KV-Altformatimport ist eine erneute Anmeldung erforderlich, weil dieser
+Sessions nicht übernimmt. Das separate Energie-Upgrade von Schema 1.0.0 nach
+1.1.0 bewahrt dagegen vorhandene Sessions. Beide Werkzeuge bleiben offline.
 
 
 ## Fahrzeugenergie und Fahrtpläne

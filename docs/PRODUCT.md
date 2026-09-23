@@ -87,9 +87,9 @@ Zusätzliche Seiten: `/login` für Konten und `/leaderboard` für die Rangliste.
 Die Standards-Bereinigung erhält Spielablauf, Erscheinungsbild und URLs.
 Frontend-Komponenten besitzen getrennte Verantwortlichkeiten und geregelte
 Lebenszyklen. Ergänzt sind Katalogkauf und fahrzeugbezogene Kilometerkosten;
-die UI-First-Reihenfolge bleibt bestehen. Wartung, Energiehalte, Reichweite
-und Zuverlässigkeit sind noch keine aktiven Mechaniken. Öffentliche Frachtstandorte bleiben von eigenen
-Depots unterschieden.
+die UI-First-Reihenfolge bleibt bestehen. Konstanter Verbrauch, Restmengen und
+automatische Energiehalte sind aktiv; Wartung und Zuverlässigkeit folgen später.
+Öffentliche Frachtstandorte bleiben von eigenen Depots unterschieden.
 
 Der WorldCatalogue ergänzt reale Referenzunternehmen; dies ist kein Ausbau
 der Spielerunternehmens- oder Depotmechanik. Jeder routbare Standort kann passende Aufträge erhalten;
@@ -123,10 +123,28 @@ auch wenn die Einfärbung eines Fahrzeugs auf kleinem Kartenmaßstab dezent ist.
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.0.0) und
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
 WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
 Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).
 Aktuelle Prüfungen und Grenzen stehen im [Qualitätsbericht](../QUALITY_REPORT.md).
 Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abnahme.
+
+
+## Erste Verbrauchssimulation
+
+Diesel nutzt Liter, Gas Kilogramm und Elektro nutzbare kWh. Verbrauch ist konstant
+nach Katalog je 100 km, ohne Last-/Wetterfaktoren. Neue und explizit übernommene
+Fahrzeuge beginnen einmalig voll; danach bleibt die Restmenge erhalten.
+Automatische Halte sichern 10 % Reserve. Diesel tankt 10, Gas 25, Elektro lädt
+35 Minuten vor Spielzeitbeschleunigung. Erst am Ende wird vollständig aufgefüllt.
+Zielankunft genau mit Reserve erzeugt keinen zusätzlichen Halt. Bei leerem
+Startvorrat ist ein Halt am Ursprung möglich; weitere Halte liegen entlang der
+Route. Diese Positionen behaupten keine realen Tankstellen/Ladestationen.
+
+Fahrzeit vor Beschleunigung ist das Maximum aus Providerzeit und
+Strecke/Höchstgeschwindigkeit. Providerdaten, Kilometerkosten und Erlösformel
+bleiben erhalten. Es gibt keine zusätzlichen Kraftstoffgebühren. Offline-Pausen
+und -Ankunft benötigen keine Hintergrundjobs; beim nächsten Zugriff wird der
+Endfüllstand mit Auszahlung und Settlement atomar gespeichert.

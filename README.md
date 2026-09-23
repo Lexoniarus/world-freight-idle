@@ -16,14 +16,17 @@ freigegebener öffentlicher Produktionsdienst.
 - Aufträge auswählen, Fahrzeug disponieren, parallele Transporte verfolgen,
   Offline-Ankünfte abrechnen und die Flotte erweitern.
 - 14 DB-Fahrzeugmodelle mit Kaufpreis, Nutzlast, Reputationsfreigabe und
-  Kilometerkosten; lokale Karten-, Front- und Seitenbilder für alle Modelle.
+  Kilometerkosten sowie Energieprofilen und Höchstgeschwindigkeit; lokale
+  Karten-, Front- und Seitenbilder für alle Modelle.
   Katalogfotos mit Herkunft/Lizenz bleiben Ersatz für Modelle ohne lokale Grafik.
 - Neue Profile: **175.000 Euro plus kostenloser IVECO S-Way 500 XC13** in Berlin.
   Gekaufte und vergebene Fahrzeugwerte sind gespeicherte Snapshots.
+- Persistenter Tank-/Batterieinhalt, konstanter Verbrauch und automatische
+  Tank-/Ladepausen mit 10 % Reserve. Keine zusätzlichen Kraftstoffgebühren.
 - Permanente Karte, Kontextpanels, mobile Bedienung, Tastatur und Fehlerzustände.
 
 Offen: eigenständige Spielerunternehmen, eigene Depots, gemeinsamer knapper Markt,
-Wartung/Energie/Reichweite und Satelliten. Öffentliche Frachtstandorte sind keine
+Wartung, Stationssuche, Ladeverläufe und Satelliten. Öffentliche Frachtstandorte sind keine
 eigenen Depots. Reale Referenzunternehmen, Facilities, dokumentierte Güter und
 Koordinaten kommen aus dem separaten read-only WorldCatalogue. 352 Facilities
 sind spielbar: 79 mit verifizierten und 273 mit ausdrücklich
@@ -101,11 +104,12 @@ Nur die beiden Referenz-Katalogdateien werden mitgeliefert. Lizenz-/Datenherkunf
 Gezielte lokale Profilpflege: `python scripts/update_test_profile.py --username
 NAME --vehicle ID=MODELL` (als eine Befehlszeile). Sie erstellt zuerst ein SQLite-
 Backup. Ohne --cash bleibt Guthaben erhalten; IDs und Transport-Snapshots bleiben
-bestehen. Keine automatische Migration und kein öffentlicher Pflege-Endpunkt.
+bestehen. Modellwechsel sind nur im Stand möglich und erhalten den Füllgrad.
+Keine automatische Migration und kein öffentlicher Pflege-Endpunkt.
 
 ## Relationale Spielstände und Offline-Übernahme
 
-Der Server verwendet ausschließlich das relationale Schema 1.0.0. Alte KV-
+Der Server verwendet ausschließlich das relationale Schema 1.1.0. Alte KV-
 Datenbanken werden beim Start abgewiesen. Neue leere Datenbanken benötigen
 keine Migration. Für Altbestände den Server stoppen und zuerst prüfen:
 
@@ -196,3 +200,20 @@ nicht. Details: [BRANCHING](docs/BRANCHING.md).
 
 Jeder routbare Standort bietet passende Auftragsmengen für alle vorhandenen
 Fahrzeug-Nutzlastklassen; Details: [WorldCatalogue](docs/WORLD_CATALOGUE.md).
+
+
+### Bestehenden relationalen Spielstand auf Energie umstellen
+
+Server vor der Ausführung stoppen. Quelle, Backup und Ziel müssen getrennte
+Dateien sein; vorhandene Ziele werden nicht überschrieben:
+
+```sh
+python scripts/upgrade_vehicle_energy.py --source data/game.db --check
+python scripts/upgrade_vehicle_energy.py --source data/game.db --backup data/backups/pre-energy.db --output data/game-energy.db
+```
+
+Erst nach erfolgreichem Abgleich die neue Datei als `game.db` aktivieren und mit
+`python main.py` starten. Konten, Sessions und bisherige Kaufwerte bleiben
+unverändert; vorhandene Transporte erhalten keine nachträglichen Pausen oder
+Energieabzüge. Bei unbekannten Modellen bricht die Übernahme ab. Kein automatisches
+Upgrade beim Serverstart. Details: [Persistenz](docs/RELATIONAL_STATE.md).

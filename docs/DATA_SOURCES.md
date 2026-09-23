@@ -83,4 +83,6 @@ Der Runtime-Leser validiert diese Daten als EnergyProfile; der technische
 Anschluss behauptet keine zusätzliche externe Quellenverifizierung. Diesel-
 pausen (10 Minuten) und Reserve (10 %) sind zentrale Simulationswerte. Gas
 verwendet 25, Elektro 35 Minuten aus dem Katalog. Fahrverbrauch und Pausen
-werden im folgenden Domain-/Persistenzschritt aktiviert.
+sind als begrenzte erste Simulation aktiv. Verbrauch bleibt konstant;
+Zusatzkosten entstehen nicht. Tankstellen und Ladepunkte werden nicht
+recherchiert, sondern als Positionen entlang der gespeicherten Route simuliert.
