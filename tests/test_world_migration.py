@@ -11,10 +11,18 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.api.v1.game_projection import (
+    project_contract,
+    project_quote,
+    project_state,
+    project_transport,
+    project_vehicle,
+)
 from app.bootstrap import build_world_state_migration_service
 from app.domain.contracts import ContractOffer
 from app.domain.errors import WorldCatalogueError
 from app.domain.game import OwnedVehicle
+from app.domain.world import FacilityQuery
 from app.repositories.world_state_migration import (
     WorldStateMigrationRepository,
 )
@@ -190,14 +198,16 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
     with patch.object(
         game.world, "read", side_effect=WorldCatalogueError("offline")
     ):
-        quote = await game.quote_contract(contract["id"])
+        quote = project_quote(await game.quote_contract(contract["id"]))
         game.router.route.assert_awaited_once_with(
             contract["origin"]["lat"],
             contract["origin"]["lon"],
             contract["destination"]["lat"],
             contract["destination"]["lon"],
         )
-        trip = await game.dispatch(contract["id"], "truck_01")
+        trip = project_transport(
+            await game.dispatch(contract["id"], "truck_01")
+        )
         cash = game._get_player().to_dict()["cash"]
         monkeypatch.setattr(game, "now", lambda: trip["arrives_at"] + 1)
         assert game.reconcile_arrival()
@@ -205,9 +215,14 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
             game._get_player().to_dict()["cash"] == cash + trip["payout_eur"]
         )
         assert not game.reconcile_arrival()
-        assert game.list_vehicles()[0]["hub"] == trip["destination_snapshot"]
+        assert [project_vehicle(value) for value in game.list_vehicles()][0][
+            "hub"
+        ] == trip["destination_snapshot"]
         with pytest.raises(WorldCatalogueError):
-            game.refresh_market(force=True)
+            [
+                project_contract(value)
+                for value in game.refresh_market(force=True)
+            ]
         expired = [
             item.to_dict() for item in game.state_repository.list_offers()
         ]
@@ -216,48 +231,25 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
         game.state_repository.replace_offers(
             tuple(ContractOffer.from_dict(item) for item in expired)
         )
-        assert game.refresh_market() == []
-        assert game.state()["vehicles"]
+        assert [
+            project_contract(value) for value in game.refresh_market()
+        ] == []
+        assert project_state(game.state())["vehicles"]
     assert quote["origin"] == contract["origin"]
 
 
-def test_legacy_projections_require_explicit_aliases(game):
-    legacy = OwnedVehicle.from_dict(
-        {
-            "id": "legacy",
-            "name": "Legacy",
-            "mode": "truck",
-            "capacity_tons": 12,
-            "hub_id": "berlin_westhafen",
-            "status": "idle",
-        }
+def test_api_projection_never_invents_missing_vehicle_locations(game):
+    vehicle = OwnedVehicle(
+        "unknown", "Unknown", "truck", 12, "unknown", "idle"
     )
-    expanded = game._expand_vehicle(legacy)
-    assert expanded["hub"]["facility_uid"]
-    assert legacy.hub_id == "berlin_westhafen"
-
-    contract = {
-        "origin_hub_id": "berlin_westhafen",
-        "destination_hub_id": "hamburg_cta",
-    }
-    expanded = game._expand_contract(contract)
-    assert (
-        expanded["origin"]["facility_uid"]
-        != expanded["destination"]["facility_uid"]
-    )
-
-    unknown = OwnedVehicle.from_dict(
-        {
-            "id": "unknown",
-            "name": "Unknown",
-            "mode": "truck",
-            "capacity_tons": 12,
-            "hub_id": "unknown",
-            "status": "idle",
-        }
-    )
-    with pytest.raises(KeyError):
-        game._expand_vehicle(unknown)
+    with patch.object(
+        game.world, "read", side_effect=AssertionError("lookup")
+    ):
+        assert project_vehicle(vehicle)["hub"] is None
+        known = game.state_repository.list_vehicles()[0]
+        assert (
+            project_vehicle(known)["hub"]["facility_uid"] == known.facility_uid
+        )
 
 
 async def test_runtime_never_geocodes_facilities(game):
@@ -267,8 +259,12 @@ async def test_runtime_never_geocodes_facilities(game):
         "app.providers.geocoding.NominatimGeocoder.geocode",
         side_effect=AssertionError("runtime geocoder forbidden"),
     ) as geocode:
-        assert await MapLocationService(game.world).list_hubs()
+        assert (
+            MapLocationService(game.world)
+            .list_facilities(FacilityQuery())
+            .facilities
+        )
         contract = first_berlin_contract(game)
-        await game.quote_contract(contract["id"])
-        await game.dispatch(contract["id"], "truck_01")
+        project_quote(await game.quote_contract(contract["id"]))
+        project_transport(await game.dispatch(contract["id"], "truck_01"))
         geocode.assert_not_awaited()

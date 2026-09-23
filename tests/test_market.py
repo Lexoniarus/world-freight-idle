@@ -5,6 +5,10 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from app.api.v1.game_projection import (
+    project_contract,
+    project_transport,
+)
 from app.domain.contracts import ContractOffer, ContractOfferSnapshot
 from app.domain.errors import WorldCatalogueError
 from app.domain.game import OwnedVehicle
@@ -299,7 +303,7 @@ def test_vehicle_catalogue_outage_preserves_only_current_market(
 ):
     from app.domain.errors import CatalogueError
 
-    original = game.refresh_market()
+    original = [project_contract(value) for value in game.refresh_market()]
     legacy = dict(original[0])
     legacy["id"] = "legacy-generic"
     legacy["market_model"] = "previous-market"
@@ -311,20 +315,20 @@ def test_vehicle_catalogue_outage_preserves_only_current_market(
         "list_models",
         Mock(side_effect=CatalogueError("offline")),
     )
-    surviving = game.refresh_market()
+    surviving = [project_contract(value) for value in game.refresh_market()]
     assert all(item.get("market_model") == "nhm_v1" for item in surviving)
     assert all(item["id"] != "legacy-generic" for item in surviving)
     assert [
         item.to_dict() for item in game.state_repository.list_offers()
     ] == surviving
 
-    listed = game.list_contracts()
+    listed = [project_contract(value) for value in game.list_contracts()]
     assert [item["id"] for item in listed] == [
         item["id"] for item in surviving
     ]
 
     with pytest.raises(CatalogueError, match="offline"):
-        game.refresh_market(force=True)
+        [project_contract(value) for value in game.refresh_market(force=True)]
 
 
 @pytest.mark.asyncio
@@ -337,7 +341,9 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
     from app.domain.errors import CatalogueError
     from tests.test_game import first_berlin_contract
 
-    trip = await game.dispatch(first_berlin_contract(game)["id"], "truck_01")
+    trip = project_transport(
+        await game.dispatch(first_berlin_contract(game)["id"], "truck_01")
+    )
     remaining = [
         item.to_dict() for item in game.state_repository.list_offers()
     ]
@@ -354,7 +360,7 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
     assert [
         item.to_dict() for item in game.state_repository.list_offers()
     ] == []
-    refilled = game.refresh_market()
+    refilled = [project_contract(value) for value in game.refresh_market()]
     assert refilled
     destination_id = trip["contract"]["destination_hub_id"]
     assert {item["origin_hub_id"] for item in refilled} == {destination_id}

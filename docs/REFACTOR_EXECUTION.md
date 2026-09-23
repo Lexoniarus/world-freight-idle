@@ -296,3 +296,19 @@ ist entfernt. HTTP-Projektionen bleiben unverändert. Die noch vorhandene
 Darstellung am Service-Ausgang wird im folgenden Mapping-Schritt verlagert.
 34 betroffene Markt-/Spiel-/Port-/Manifesttests bestanden; ein zusätzlicher
 Gegentest verbietet Serialisierung während Generierung und Wiederverwendung.
+
+## B: typisierte Spielabläufe und HTTP-Projektion
+
+Der Markt-Schritt wurde als dec290a committet. Spiel-, Flotten- und Karten-
+Services liefern nun typisierte Ergebnisse statt öffentlicher JSON-Dicts.
+Die v1-Endpunkte projizieren diese explizit; Fahrzeugbild-Präsentation wurde
+vom Service- in den API-Bereich verschoben. Valhalla liefert RouteSnapshot.
+GameService kennt keinen Repository-Mapper und keine Persistenzserialisierung.
+Domain-Serialisierungsmethoden bestehen noch bis zum folgenden Mapping-Schritt.
+
+Prüfung: 150 bestandene Fälle und eine falsche Tuple-/List-Testannahme im
+betroffenen Lauf; diese korrigiert und zusammen mit neuen Gegentests in einem
+Lauf mit 38 bestandenen Fällen geprüft. mypy und Pyright bestehen. Neue
+Gegentests prüfen typisierte Rückgaben, fehlende gespeicherte Koordinaten und
+Angebotsänderung während Routing ohne Abbuchung. Keine vollständige Projekt-
+oder Browserabnahme für diesen Arbeitscommit behauptet.

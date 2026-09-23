@@ -8,7 +8,6 @@ import httpx
 import pytest
 
 from app.domain.errors import GeocodingError, RoutingError
-from app.domain.models import RouteResult
 from app.providers.geocoding import NominatimGeocoder
 from app.providers.routing import ValhallaTruckRouter
 from app.providers.validation import parse_coordinates, validate_route
@@ -51,7 +50,14 @@ def test_coordinate_validation_rejects_invalid_values(point):
 @pytest.mark.parametrize("metric", [-1, 0, math.inf, math.nan, True])
 def test_route_metrics_must_be_finite_and_positive(metric):
     with pytest.raises(ValueError):
-        validate_route(RouteResult(metric, 1, {}, "test"))
+        validate_route(
+            {
+                "distance_km": metric,
+                "duration_seconds": 1,
+                "route_geojson": {},
+                "provider": "test",
+            }
+        )
 
 
 @pytest.mark.parametrize(
@@ -65,7 +71,14 @@ def test_route_metrics_must_be_finite_and_positive(metric):
 )
 def test_route_geometry_must_be_valid(geometry):
     with pytest.raises(ValueError):
-        validate_route(RouteResult(1, 1, geometry, "test"))
+        validate_route(
+            {
+                "distance_km": 1,
+                "duration_seconds": 1,
+                "route_geojson": geometry,
+                "provider": "test",
+            }
+        )
 
 
 @pytest.mark.parametrize(
@@ -117,7 +130,15 @@ async def test_invalid_caches_are_replaced_by_valid_provider_results(store):
             store, client, "https://route.test", "test"
         )
         key = router._build_cache_key(52, 13, 53, 14)
-        store.put_route(key, RouteResult(-1, 60, {}, "broken").to_dict())
+        store.put_route(
+            key,
+            {
+                "distance_km": -1,
+                "duration_seconds": 60,
+                "route_geojson": {},
+                "provider": "broken",
+            },
+        )
         assert (await router.route(52, 13, 53, 14)).distance_km == 100
         assert store.get_route(key)["distance_km"] == 100
         store.put_geocode("hub", 100, 999, "broken")
@@ -169,8 +190,11 @@ async def test_corrupt_json_cache_is_replaced_and_coordinates_are_numeric(
                 (key,),
             )
         route = await router.route(52, 13, 53, 14)
-        assert route.route_geojson["coordinates"] == [
-            [13.0, 52.0],
-            [14.0, 53.0],
-        ]
+        assert route.coordinates == ((13.0, 52.0), (14.0, 53.0))
         assert store.get_route(key)["distance_km"] == 100
+
+
+def test_route_validation_rejects_non_object_cache_document():
+    payload: Any = []
+    with pytest.raises(ValueError, match="route object"):
+        validate_route(payload)

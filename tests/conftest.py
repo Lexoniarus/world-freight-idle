@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from app.bootstrap import GameRuntime
-from app.domain.models import RouteResult
+from app.domain.transports import RouteSnapshot
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.sqlite_store import SqliteStore
@@ -40,17 +40,14 @@ class FakeRouter:
         origin_lon: float,
         destination_lat: float,
         destination_lon: float,
-    ) -> RouteResult:
-        return RouteResult(
+    ) -> RouteSnapshot:
+        return RouteSnapshot(
             distance_km=400.0,
             duration_seconds=14400.0,
-            route_geojson={
-                "type": "LineString",
-                "coordinates": [
-                    [origin_lon, origin_lat],
-                    [destination_lon, destination_lat],
-                ],
-            },
+            coordinates=(
+                (origin_lon, origin_lat),
+                (destination_lon, destination_lat),
+            ),
             provider="fake-router",
         )
 

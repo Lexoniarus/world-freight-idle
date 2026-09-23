@@ -387,3 +387,18 @@ Benutzerbezogene Services erhalten die jeweilige SqliteGameUnitOfWork; Services
 kennen weiterhin ausschließlich deren Domain-Port. Accounts, Provider-Cache,
 Rangliste und Traffic verwenden ihre getrennten relationalen Zugriffe.
 API-/Markt-Mapping und abschließende Verifikation sind innerhalb B noch offen.
+
+## Typisierte Use-Case-Ergebnisse
+
+GameService liefert ContractOffer, OwnedVehicle, ActiveTransport, ContractQuote
+und GameSnapshot; FleetService liefert FleetCatalogue und OwnedVehicle.
+MapLocationService liefert FacilityPage. Die API projiziert diese Ergebnisse
+auf unveränderte öffentliche JSON-Felder. Kein Service importiert hierfür einen
+Persistenzmapper. Valhalla liefert bereits am Provider-Port einen validierten,
+unveränderlichen RouteSnapshot. Cache-JSON bleibt innerhalb des Providers.
+
+Die Quelle eines Quotes wird nach dem Routing mit dem erneut gelesenen Angebot
+verglichen. Geänderte Angebote werden ohne Abbuchung abgewiesen; veränderliche
+Fahrzeugkostensätze werden weiterhin unter Transaktion neu kalkuliert. Die noch
+vorhandenen Domain-Serialisierungsmethoden werden als nächster Mapping-Schritt
+entfernt, nicht als dauerhafte Schnittstelle übernommen.

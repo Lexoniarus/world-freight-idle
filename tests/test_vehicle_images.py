@@ -4,7 +4,7 @@ import sqlite3
 
 import pytest
 
-from app.services.vehicle_presentation import present_vehicles
+from app.api.v1.vehicle_presentation import present_vehicles
 
 
 def test_images_preserve_provenance_and_never_change_gameplay(catalogue):

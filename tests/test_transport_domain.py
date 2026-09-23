@@ -4,6 +4,9 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
+from app.api.v1.game_projection import (
+    project_vehicle,
+)
 from app.domain.contracts import ContractOffer
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.repositories.transport_mapping import dump_transport, load_transport
@@ -94,7 +97,9 @@ def test_transport_settlement_keeps_saved_location_without_catalogue(game):
     trip = add_transport(game, payout=50)
     with patch.object(game.world, "read", side_effect=WorldCatalogueError()):
         assert game.reconcile_arrival()
-        assert game.list_vehicles()[0]["hub"] == trip.destination.to_dict()
+        assert [project_vehicle(value) for value in game.list_vehicles()][0][
+            "hub"
+        ] == trip.destination.to_dict()
     player = game.state_repository.get_player()
     assert player is not None and player.cash == 175050
     assert not game.reconcile_arrival()

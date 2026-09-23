@@ -3,7 +3,8 @@
 from collections.abc import Callable
 from typing import Any, Protocol
 
-from app.domain.models import RouteResult, VehicleModel
+from app.domain.models import VehicleModel
+from app.domain.transports import RouteSnapshot
 from app.domain.world import WorldSnapshot
 
 
@@ -24,7 +25,7 @@ class TruckRouter(Protocol):
         origin_lon: float,
         destination_lat: float,
         destination_lon: float,
-    ) -> RouteResult:
+    ) -> RouteSnapshot:
         """Route one truck trip."""
         ...
 

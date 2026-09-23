@@ -6,14 +6,13 @@ FUNCTION_TESTS = {
     "app.repositories.transport_mapping.load_transport": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
     "app.repositories.transport_mapping.dump_transport": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
     "app.services.game.GameService._get_player": "test_relational_game_use_cases_preserve_atomic_settlement",
-    "app.services.game.GameService._active_transport_payloads": "test_relational_game_use_cases_preserve_atomic_settlement",
+    "app.services.game.GameService._active_transports": "test_relational_game_use_cases_preserve_atomic_settlement",
     "app.domain.contracts.ContractOffer.__post_init__": "test_contract_offer_domain_rules",
     "app.domain.validation.require_finite": "test_domain_value_validators_reject_invalid_values",
     "app.domain.validation.require_integer": "test_domain_value_validators_reject_invalid_values",
     "app.domain.validation.require_identity": "test_domain_value_validators_reject_invalid_values",
     "app.simulation.build_payload_bands": "test_payload_bands_cover_catalogue_and_reject_invalid_capacities",
     "app.api.v1.map.list_map_hubs": "test_map_endpoint_requires_session_and_uses_game_provider",
-    "app.services.map_locations.MapLocationService.list_hubs": "test_map_hubs_resolve_and_preserve_partial_failures",
     "app.api.v1.contracts.accept_contract": "test_v1_resource_endpoints_and_error_mapping",
     "app.api.v1.contracts.get_contract": "test_v1_resource_endpoints_and_error_mapping",
     "app.api.v1.contracts.list_contracts": "test_v1_resource_endpoints_and_error_mapping",
@@ -54,8 +53,6 @@ FUNCTION_TESTS = {
     "app.repositories.sqlite_store.SqliteStore.put_route": "test_store_route_cache_roundtrip",
     "app.repositories.sqlite_store.SqliteStore.set_json": "test_store_json_roundtrip_and_delete",
     "app.services.game.GameService._build_trip": "test_build_trip_contains_tracking_timestamps",
-    "app.services.game.GameService._expand_contract": "test_expand_contract_attaches_hubs",
-    "app.services.game.GameService._expand_vehicle": "test_list_get_and_expand_vehicles",
     "app.services.game.GameService._current_market_for_scope": "test_list_and_get_contracts_return_real_addresses",
     "app.services.game.GameService._generate_scoped_market": "test_list_and_get_contracts_return_real_addresses",
     "app.services.game.GameService._store_market": "test_vehicle_catalogue_outage_preserves_only_current_market",
@@ -190,7 +187,7 @@ FUNCTION_TESTS.update(
         "app.api.v1.dependencies.get_vehicle_catalogue": "test_auth_api_and_private_game_resources",
         "app.domain.models.VehicleImage.to_dict": "test_images_preserve_provenance_and_never_change_gameplay",
         "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue._read_image": "test_images_preserve_provenance_and_never_change_gameplay",
-        "app.services.vehicle_presentation.present_vehicles": "test_images_preserve_provenance_and_never_change_gameplay",
+        "app.api.v1.vehicle_presentation.present_vehicles": "test_images_preserve_provenance_and_never_change_gameplay",
     }
 )
 
@@ -355,5 +352,18 @@ FUNCTION_TESTS.update(
         "app.repositories.provider_cache.SqliteProviderCache.put_geocode": "test_provider_cache_roundtrip_replaces_invalid_documents",
         "app.bootstrap.build_leaderboard_reader": "test_leaderboard_counts_offline_arrivals_without_double_counting",
         "app.api.v1.dependencies.get_leaderboard_reader": "test_auth_api_and_private_game_resources",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.api.v1.game_projection.project_contract": "test_contract_projection_retains_endpoint_snapshots",
+        "app.api.v1.game_projection.project_vehicle": "test_api_projection_never_invents_missing_vehicle_locations",
+        "app.api.v1.game_projection.project_quote": "test_vehicle_quotes_and_legacy_snapshots_remain_compatible",
+        "app.api.v1.game_projection.project_transport": "test_relational_game_use_cases_preserve_atomic_settlement",
+        "app.api.v1.game_projection.project_state": "test_reset_restores_playable_state",
+        "app.api.v1.game_projection.project_dashboard": "test_dashboard_returns_product_projection",
+        "app.api.v1.game_projection.project_catalogue": "test_catalogue_builder_default_path",
+        "app.providers.routing.route_cache_document": "test_route_calls_valhalla_and_caches",
     }
 )

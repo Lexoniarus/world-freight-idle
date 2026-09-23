@@ -1,8 +1,7 @@
-"""Map projection of public catalogue facilities, without geocoding."""
-
-from typing import Any
+"""Query public catalogue locations without HTTP or geocoding knowledge."""
 
 from app.domain.ports import WorldCatalogue
+from app.domain.results import FacilityPage
 from app.domain.world import FacilityQuery
 
 
@@ -12,20 +11,16 @@ class MapLocationService:
     def __init__(self, world: WorldCatalogue) -> None:
         self.world = world
 
-    def list_facilities(self, query: FacilityQuery) -> dict[str, Any]:
-        """Return bounded endpoints and explicit unavailable counts."""
+    def list_facilities(self, query: FacilityQuery) -> FacilityPage:
+        """Return bounded endpoint values and catalogue availability."""
         snapshot = self.world.read()
-        return {
-            "facilities": [
-                facility.location_snapshot().to_dict()
+        return FacilityPage(
+            tuple(
+                facility.location_snapshot()
                 for facility in snapshot.query(query)
-            ],
-            "catalogue_version": snapshot.version,
-            "unavailable_count": sum(
-                not f.is_routable() for f in snapshot.facilities
             ),
-        }
-
-    async def list_hubs(self) -> list[dict[str, Any]]:
-        """Keep the v1 envelope while all IDs now denote facilities."""
-        return self.list_facilities(FacilityQuery())["facilities"]
+            snapshot.version,
+            sum(
+                not facility.is_routable() for facility in snapshot.facilities
+            ),
+        )

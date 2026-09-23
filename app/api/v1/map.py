@@ -19,7 +19,12 @@ async def list_map_hubs(
     service: MapLocationService = Depends(get_map_service),
 ) -> dict:
     """Project verified public facilities without external lookups."""
-    return {"hubs": await service.list_hubs()}
+    return {
+        "hubs": [
+            location.to_dict()
+            for location in service.list_facilities(FacilityQuery()).facilities
+        ]
+    }
 
 
 @router.get("/facilities")
@@ -32,7 +37,12 @@ def list_map_facilities(
         query = FacilityQuery.parse(bbox)
     except ValueError as exc:
         raise HTTPException(422, "Ungültige Bounding Box.") from exc
-    return service.list_facilities(query)
+    page = service.list_facilities(query)
+    return {
+        "facilities": [location.to_dict() for location in page.facilities],
+        "catalogue_version": page.catalogue_version,
+        "unavailable_count": page.unavailable_count,
+    }
 
 
 @router.get("/traffic")

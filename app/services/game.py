@@ -5,16 +5,15 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from typing import Any
 
 from app.domain.contracts import ContractOffer
 from app.domain.errors import CatalogueError
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
+from app.domain.results import ContractQuote, GameSnapshot
 from app.domain.state_ports import GameUnitOfWork
-from app.domain.transports import ActiveTransport, RouteSnapshot
+from app.domain.transports import ActiveTransport
 from app.domain.world import FacilityQuery
-from app.repositories.transport_mapping import dump_transport
 from app.services.fleet import (
     create_starter_vehicle,
     resolve_delivery_facility,
@@ -70,7 +69,7 @@ class GameService:
                 )
             )
 
-    def refresh_market(self, force: bool = False) -> list[dict[str, Any]]:
+    def refresh_market(self, force: bool = False) -> list[ContractOffer]:
         """Synchronize the always-available idle-truck market."""
         vehicles = list(self.state_repository.list_vehicles())
         origins = self.market_scope.resolve(vehicles)
@@ -91,7 +90,7 @@ class GameService:
                 )
                 contracts = retained
             self._store_market(contracts, len(origins))
-            return [offer.to_dict() for offer in contracts]
+            return contracts
 
     def _current_market_for_scope(
         self, origin_ids: tuple[str, ...]
@@ -142,7 +141,7 @@ class GameService:
 
     async def quote_contract(
         self, contract_id: str, vehicle_id: str | None = None
-    ) -> dict[str, Any]:
+    ) -> ContractQuote:
         """Route snapshot coordinates and calculate simulated economics."""
         self.reconcile_arrival()
         contract = self._find_contract(contract_id)
@@ -158,14 +157,14 @@ class GameService:
                 if vehicle.operating_cost_eur_per_km is None
                 else vehicle.operating_cost_eur_per_km
             )
-        expanded = self._expand_contract(contract)
-        origin_geo = expanded["origin"]
-        destination_geo = expanded["destination"]
+        origin = contract.origin
+        destination = contract.destination
+        if None in (origin.lat, origin.lon, destination.lat, destination.lon):
+            raise ValueError("Auftrag enthält keine routbaren Koordinaten.")
+        assert origin.lat is not None and origin.lon is not None
+        assert destination.lat is not None and destination.lon is not None
         route = await self.router.route(
-            origin_geo["lat"],
-            origin_geo["lon"],
-            destination_geo["lat"],
-            destination_geo["lon"],
+            origin.lat, origin.lon, destination.lat, destination.lon
         )
         economics = self.pricing.quote(
             contract.cargo.name,
@@ -182,28 +181,20 @@ class GameService:
                     "contract_id": contract_id,
                     "distance_km": route.distance_km,
                     "duration_seconds": route.duration_seconds,
-                    "origin_facility_uid": origin_geo.get("facility_uid"),
-                    "destination_facility_uid": destination_geo.get(
-                        "facility_uid"
-                    ),
+                    "origin_facility_uid": origin.facility_uid,
+                    "destination_facility_uid": destination.facility_uid,
                 },
             },
         )
-        return {
-            **route.to_dict(),
-            **economics.to_dict(),
-            "vehicle_id": vehicle_id,
-            "operating_cost_eur_per_km": cost_per_km,
-            "origin": origin_geo,
-            "destination": destination_geo,
-            "contract": contract.to_dict(),
-        }
+        return ContractQuote(
+            contract, route, economics, vehicle_id, cost_per_km
+        )
 
     async def dispatch(
         self,
         contract_id: str,
         vehicle_id: str,
-    ) -> dict[str, Any]:
+    ) -> ActiveTransport:
         """Validate and start one real-time delivery."""
         self.reconcile_arrival()
         contract = self._find_contract(contract_id)
@@ -216,10 +207,12 @@ class GameService:
             return self._commit_dispatch(contract_id, vehicle_id, quote)
 
     def _commit_dispatch(
-        self, contract_id: str, vehicle_id: str, quote: dict[str, Any]
-    ) -> dict[str, Any]:
+        self, contract_id: str, vehicle_id: str, quote: ContractQuote
+    ) -> ActiveTransport:
         """Revalidate and atomically reserve the truck and funds."""
         contract = self._find_contract(contract_id)
+        if contract != quote.contract:
+            raise ValueError("Auftrag wurde während der Kalkulation geändert.")
         vehicle = self._find_vehicle(
             list(self.state_repository.list_vehicles()), vehicle_id
         )
@@ -227,13 +220,21 @@ class GameService:
         economics = self.pricing.quote(
             contract.cargo.name,
             contract.tons,
-            quote["distance_km"],
+            quote.route.distance_km,
             0.62
             if vehicle.operating_cost_eur_per_km is None
             else vehicle.operating_cost_eur_per_km,
             contract.rate_eur_per_km_ton,
         )
-        quote = {**quote, **economics.to_dict()}
+        quote = ContractQuote(
+            contract,
+            quote.route,
+            economics,
+            vehicle_id,
+            vehicle.operating_cost_eur_per_km
+            if vehicle.operating_cost_eur_per_km is not None
+            else 0.62,
+        )
         player = self._get_player()
         player.debit(economics.operating_cost_eur)
         trip = self._build_trip(
@@ -241,7 +242,7 @@ class GameService:
             vehicle_id,
             quote,
             self.now(),
-            quote["duration_seconds"] / self.time_scale,
+            quote.route.duration_seconds / self.time_scale,
         )
         vehicle.start_trip()
         self.state_repository.save_player(player)
@@ -261,7 +262,7 @@ class GameService:
                 },
             },
         )
-        return dump_transport(trip)
+        return trip
 
     def reconcile_arrival(self) -> bool:
         """Settle due active transports once, before refreshing the market."""
@@ -310,64 +311,46 @@ class GameService:
             raise ValueError("Spielstand ist nicht initialisiert.")
         return player
 
-    def _active_transport_payloads(self) -> list[dict[str, Any]]:
-        """Project active transports until the API adapter cutover."""
-        return [
-            dump_transport(trip)
+    def _active_transports(self) -> tuple[ActiveTransport, ...]:
+        """Select pending deliveries without exposing settled history."""
+        return tuple(
+            trip
             for trip in self.state_repository.list_transports()
             if trip.status == "active"
-        ]
+        )
 
-    def state(self) -> dict[str, Any]:
-        """Return the complete client-facing game state."""
+    def state(self) -> GameSnapshot:
+        """Synchronize and read the complete player-owned state."""
         arrived = self.reconcile_arrival()
         if not arrived:
             self.refresh_market(force=False)
-        vehicles = [
-            self._expand_vehicle(vehicle)
-            for vehicle in self.state_repository.list_vehicles()
-        ]
-        contracts = [
-            self._expand_contract(contract)
-            for contract in self.state_repository.list_offers()
-        ]
-        return {
-            "server_time": self.now(),
-            "time_scale": self.time_scale,
-            "player": self._get_player().to_dict(),
-            "vehicles": vehicles,
-            "active_trips": self._active_transport_payloads(),
-            "contracts": contracts,
-            "hubs": [vehicle["hub"] for vehicle in vehicles],
-        }
+        with self.unit_of_work.transaction():
+            return GameSnapshot(
+                self.now(),
+                self.time_scale,
+                self._get_player(),
+                self.state_repository.list_vehicles(),
+                self._active_transports(),
+                self.state_repository.list_offers(),
+            )
 
-    def dashboard(self) -> dict[str, Any]:
-        """Return startup state without materializing the contract market."""
+    def dashboard(self) -> GameSnapshot:
+        """Read startup state without generating a contract market."""
         self.reconcile_arrival()
-        vehicles = [
-            self._expand_vehicle(vehicle)
-            for vehicle in self.state_repository.list_vehicles()
-        ]
-        transports = self._active_transport_payloads()
-        return {
-            "server_time": self.now(),
-            "time_scale": self.time_scale,
-            "player": self._get_player().to_dict(),
-            "available_contracts": 0,
-            "idle_vehicles": sum(
-                1 for vehicle in vehicles if vehicle["status"] == "idle"
-            ),
-            "active_transports": len(transports),
-            "featured_contracts": [],
-            "vehicles": vehicles,
-            "transports": transports,
-        }
+        with self.unit_of_work.transaction():
+            return GameSnapshot(
+                self.now(),
+                self.time_scale,
+                self._get_player(),
+                self.state_repository.list_vehicles(),
+                self._active_transports(),
+            )
 
     def list_contracts(
         self,
         query: FacilityQuery | None = None,
         zoom: float | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[ContractOffer]:
         """Synchronize and return the current lazy market scope."""
         self.reconcile_arrival()
         vehicles = list(self.state_repository.list_vehicles())
@@ -387,13 +370,13 @@ class GameService:
                 )
                 contracts = retained
             self._store_market(contracts, len(origins))
-        return [self._expand_contract(item) for item in contracts]
+        return contracts
 
     def refresh_contracts(
         self,
         query: FacilityQuery | None = None,
         zoom: float | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[ContractOffer]:
         """Regenerate the current lazy market scope."""
         self.reconcile_arrival()
         vehicles = list(self.state_repository.list_vehicles())
@@ -405,44 +388,44 @@ class GameService:
                 [],
             )
             self._store_market(contracts, len(origins))
-        return [self._expand_contract(item) for item in contracts]
+        return contracts
 
-    def get_contract(self, contract_id: str) -> dict[str, Any]:
-        """Return one enriched market contract."""
-        return self._expand_contract(self._find_contract(contract_id))
+    def get_contract(self, contract_id: str) -> ContractOffer:
+        """Return one available offer with historical endpoint values."""
+        return self._find_contract(contract_id)
 
-    def list_vehicles(self) -> list[dict[str, Any]]:
-        """Return vehicles enriched with their current real freight hub."""
+    def list_vehicles(self) -> tuple[OwnedVehicle, ...]:
+        """Return owned vehicles after settling any due deliveries."""
         self.reconcile_arrival()
-        return [
-            self._expand_vehicle(vehicle)
-            for vehicle in self.state_repository.list_vehicles()
-        ]
+        return self.state_repository.list_vehicles()
 
-    def get_vehicle(self, vehicle_id: str) -> dict[str, Any]:
-        """Return one enriched vehicle or raise a not-found error."""
-        vehicles = list(self.state_repository.list_vehicles())
+    def get_vehicle(self, vehicle_id: str) -> OwnedVehicle:
+        """Find one owned vehicle or report a missing resource."""
         vehicle = next(
-            (item for item in vehicles if item.id == vehicle_id),
+            (
+                item
+                for item in self.state_repository.list_vehicles()
+                if item.id == vehicle_id
+            ),
             None,
         )
         if vehicle is None:
             raise KeyError("Fahrzeug nicht gefunden")
-        return self._expand_vehicle(vehicle)
+        return vehicle
 
-    def list_transports(self) -> list[dict[str, Any]]:
-        """Return currently active real-time transports."""
+    def list_transports(self) -> tuple[ActiveTransport, ...]:
+        """Return pending deliveries after settling due arrivals."""
         self.reconcile_arrival()
-        return self._active_transport_payloads()
+        return self._active_transports()
 
-    def get_transport(self, transport_id: str) -> dict[str, Any]:
-        """Return one active transport by its stable trip ID."""
+    def get_transport(self, transport_id: str) -> ActiveTransport:
+        """Find a pending transport owned by the current player."""
         self.reconcile_arrival()
         trip = next(
             (
                 item
-                for item in self._active_transport_payloads()
-                if item["id"] == transport_id
+                for item in self._active_transports()
+                if item.id == transport_id
             ),
             None,
         )
@@ -450,7 +433,7 @@ class GameService:
             raise KeyError("Transport nicht gefunden")
         return trip
 
-    def reset(self) -> dict[str, Any]:
+    def reset(self) -> GameSnapshot:
         """Reset game progress while retaining external-provider caches."""
         with self.unit_of_work.transaction():
             self.state_repository.reset()
@@ -503,64 +486,21 @@ class GameService:
         self,
         contract: ContractOffer,
         vehicle_id: str,
-        quote: dict[str, Any],
+        quote: ContractQuote,
         departed_at: float,
         duration_real_seconds: float,
     ) -> ActiveTransport:
         """Create the immutable dispatch snapshot used for tracking."""
-        geometry = quote["route_geojson"]
-        geometry = geometry.get("geometry", geometry)
         trip = ActiveTransport(
             id=str(uuid.uuid4()),
             vehicle_id=vehicle_id,
             contract=contract,
             origin=contract.origin,
             destination=contract.destination,
-            route=RouteSnapshot(
-                coordinates=tuple(
-                    (point[0], point[1]) for point in geometry["coordinates"]
-                ),
-                distance_km=quote["distance_km"],
-                duration_seconds=quote["duration_seconds"],
-                provider=quote["provider"],
-            ),
+            route=quote.route,
             departed_at=departed_at,
             arrives_at=departed_at + duration_real_seconds,
-            payout_eur=quote["payout_eur"],
-            operating_cost_eur=quote["operating_cost_eur"],
+            payout_eur=quote.economics.payout_eur,
+            operating_cost_eur=quote.economics.operating_cost_eur,
         )
         return trip
-
-    def _expand_vehicle(
-        self,
-        vehicle: OwnedVehicle,
-    ) -> dict[str, Any]:
-        """Serialize a vehicle with its current real freight hub."""
-        snapshot = vehicle.location
-        if snapshot is None:
-            snapshot = (
-                self.world.read()
-                .get_facility(vehicle.hub_id)
-                .location_snapshot()
-            )
-        return {**vehicle.to_dict(), "hub": snapshot.to_dict()}
-
-    def _expand_contract(
-        self,
-        contract: ContractOffer | dict[str, Any],
-    ) -> dict[str, Any]:
-        """Serialize current offers or explicitly project a legacy alias."""
-        if isinstance(contract, ContractOffer):
-            return contract.to_dict()
-        if "origin" in contract and "destination" in contract:
-            return contract
-        world = self.world.read()
-        return {
-            **contract,
-            "origin": world.get_facility(contract["origin_hub_id"])
-            .location_snapshot()
-            .to_dict(),
-            "destination": world.get_facility(contract["destination_hub_id"])
-            .location_snapshot()
-            .to_dict(),
-        }

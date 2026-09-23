@@ -3,7 +3,7 @@
 import math
 from typing import Any
 
-from app.domain.models import RouteResult
+from app.domain.transports import RouteSnapshot
 
 
 def parse_coordinates(value: Any) -> tuple[float, float]:
@@ -20,21 +20,26 @@ def parse_coordinates(value: Any) -> tuple[float, float]:
     return lon, lat
 
 
-def validate_route(route: RouteResult) -> RouteResult:
-    """Reject invalid provider metrics and non-LineString geometry."""
-    for value in (route.distance_km, route.duration_seconds):
-        if isinstance(value, bool) or not math.isfinite(value) or value <= 0:
+def validate_route(value: dict[str, Any]) -> RouteSnapshot:
+    """Normalize untrusted cached/provider geometry into an immutable route."""
+    if not isinstance(value, dict):
+        raise ValueError("Expected a route object")
+    for metric in (value["distance_km"], value["duration_seconds"]):
+        if (
+            isinstance(metric, bool)
+            or not math.isfinite(metric)
+            or metric <= 0
+        ):
             raise ValueError("Route metrics must be finite and positive")
-    geometry = route.route_geojson
+    geometry = value["route_geojson"]
     if not isinstance(geometry, dict) or geometry.get("type") != "LineString":
         raise ValueError("Expected a LineString")
     points = geometry.get("coordinates")
     if not isinstance(points, list) or len(points) < 2:
         raise ValueError("Expected at least two route coordinates")
-    normalized = [list(parse_coordinates(point)) for point in points]
-    return RouteResult(
-        distance_km=route.distance_km,
-        duration_seconds=route.duration_seconds,
-        route_geojson={"type": "LineString", "coordinates": normalized},
-        provider=route.provider,
+    return RouteSnapshot(
+        coordinates=tuple(parse_coordinates(point) for point in points),
+        distance_km=value["distance_km"],
+        duration_seconds=value["duration_seconds"],
+        provider=value["provider"],
     )

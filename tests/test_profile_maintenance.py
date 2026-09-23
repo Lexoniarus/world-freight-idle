@@ -10,6 +10,11 @@ from unittest.mock import patch
 
 import pytest
 
+from app.api.v1.game_projection import (
+    project_contract,
+    project_transport,
+    project_vehicle,
+)
 from app.bootstrap import (
     build_player_service,
     build_profile_maintenance_service,
@@ -62,7 +67,10 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
         for item in selected.state_repository.list_transports()
         if item.status == "active"
     ] == before
-    assert selected.get_vehicle("truck_01")["model_id"] == "iveco_sway_500"
+    assert (
+        project_vehicle(selected.get_vehicle("truck_01"))["model_id"]
+        == "iveco_sway_500"
+    )
     assert other_game._get_player().to_dict() == other_before
     selected.state_repository.save_player(
         PlayerState.from_dict({**other_before, "cash": 12345})
@@ -333,7 +341,7 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
     game.state_repository.save_player(
         PlayerState.from_dict({**player, "cash": before})
     )
-    game.refresh_market(force=True)
+    [project_contract(value) for value in game.refresh_market(force=True)]
     contract = first_berlin_contract(game)
     task = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
     await asyncio.wait_for(route_started.wait(), 2)
@@ -347,7 +355,7 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
         assert game.state_repository.list_transports() == ()
         assert game._get_player().to_dict()["cash"] == before
     else:
-        trip = await task
+        trip = project_transport(await task)
         assert trip["operating_cost_eur"] == round(80 + 400 * 0.53)
         assert (
             game._get_player().to_dict()["cash"]

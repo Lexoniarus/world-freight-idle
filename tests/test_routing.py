@@ -42,7 +42,7 @@ async def test_route_calls_valhalla_and_caches(store: SqliteStore):
     finally:
         await client.aclose()
     assert first.distance_km == 100.5
-    assert first.route_geojson["coordinates"][1] == [12.0, 53.0]
+    assert first.coordinates[1] == (12.0, 53.0)
     assert second == first
     assert len(calls) == 1
     assert calls[0].headers["X-Client-Id"] == "client-id"
@@ -131,7 +131,7 @@ def test_extract_route_supports_polyline_duplicate_join_and_malformed(
         }
     }
     result = router._extract_route(data)
-    assert result.route_geojson["coordinates"] == [[0.2, 0.1], [0.3, 0.2]]
+    assert result.coordinates == ((0.2, 0.1), (0.3, 0.2))
     with pytest.raises(RoutingError, match="keine verwertbare"):
         router._extract_route(
             {

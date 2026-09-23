@@ -7,6 +7,7 @@ from app.domain.errors import CatalogueError, WorldCatalogueError
 from app.domain.game import OwnedVehicle
 from app.domain.models import VehicleModel
 from app.domain.ports import VehicleCatalogue, WorldCatalogue
+from app.domain.results import FleetCatalogue
 from app.domain.state_ports import GameUnitOfWork
 from app.domain.world import FacilityLocationSnapshot
 
@@ -27,16 +28,13 @@ class FleetService:
         self.catalogue = catalogue
         self.world = world
 
-    def list_catalogue(self) -> dict:
-        """Return server-owned purchase offers and their delivery hub."""
-        return {
-            "models": [
-                model.to_dict() for model in self.catalogue.list_models()
-            ],
-            "delivery_hub": resolve_delivery_facility(self.world).label,
-        }
+    def list_catalogue(self) -> FleetCatalogue:
+        """Read immutable purchase choices and the fixed delivery location."""
+        return FleetCatalogue(
+            self.catalogue.list_models(), resolve_delivery_facility(self.world)
+        )
 
-    def purchase(self, model_id: str) -> dict:
+    def purchase(self, model_id: str) -> OwnedVehicle:
         """Debit cash and add one vehicle in the same database transaction."""
         model = next(
             (
@@ -74,7 +72,7 @@ class FleetService:
                 "data": {"vehicle_id": vehicle.id, "model_id": model_id},
             },
         )
-        return vehicle.to_dict()
+        return vehicle
 
 
 def build_owned_vehicle(
