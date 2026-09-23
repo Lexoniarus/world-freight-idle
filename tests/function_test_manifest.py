@@ -312,3 +312,34 @@ FUNCTION_TESTS.update(
         "app.domain.game.OwnedVehicle.location": "test_entity_construction_and_mutation_are_guarded",
     }
 )
+
+FUNCTION_TESTS.update(
+    {
+        "app.repositories.game_database.SqliteGameDatabase.__init__": "test_database_schema_rejects_old_and_unknown_files",
+        "app.repositories.game_database.SqliteGameDatabase.connect": "test_database_schema_rejects_old_and_unknown_files",
+        "app.repositories.game_database.SqliteGameDatabase.initialize": "test_database_schema_rejects_old_and_unknown_files",
+        "app.repositories.game_database.SqliteGameDatabase.transaction": "test_unit_of_work_rolls_back_nested_writes_and_closes",
+        "app.repositories.game_state.SqliteGameStateRepository.__init__": "test_unit_of_work_rolls_back_nested_writes_and_closes",
+        "app.repositories.game_state.SqliteGameStateRepository.get_player": "test_unit_of_work_rolls_back_nested_writes_and_closes",
+        "app.repositories.game_state.SqliteGameStateRepository.save_player": "test_unit_of_work_rolls_back_nested_writes_and_closes",
+        "app.repositories.game_state.SqliteGameStateRepository.list_vehicles": "test_relational_entities_roundtrip_isolate_and_protect_history",
+        "app.repositories.game_state.SqliteGameStateRepository.save_vehicle": "test_relational_entities_roundtrip_isolate_and_protect_history",
+        "app.repositories.game_state.SqliteGameStateRepository.list_offers": "test_relational_entities_roundtrip_isolate_and_protect_history",
+        "app.repositories.game_state.SqliteGameStateRepository.replace_offers": "test_relational_entities_roundtrip_isolate_and_protect_history",
+        "app.repositories.game_state.SqliteGameStateRepository.remove_offer": "test_relational_entities_roundtrip_isolate_and_protect_history",
+        "app.repositories.game_state.SqliteGameStateRepository.list_transports": "test_relational_entities_roundtrip_isolate_and_protect_history",
+        "app.repositories.game_state.SqliteGameStateRepository.save_transport": "test_relational_entities_roundtrip_isolate_and_protect_history",
+        "app.repositories.game_state.SqliteGameStateRepository.reset": "test_relational_entities_roundtrip_isolate_and_protect_history",
+        "app.repositories.game_state.SqliteGameUnitOfWork.__init__": "test_unit_of_work_rolls_back_nested_writes_and_closes",
+        "app.repositories.game_state.SqliteGameUnitOfWork.transaction": "test_unit_of_work_rolls_back_nested_writes_and_closes",
+        "app.repositories.game_state.load_vehicle_record": "test_snapshot_envelopes_and_corrupt_records_fail_explicitly",
+        "app.repositories.game_state.load_offer_record": "test_snapshot_envelopes_and_corrupt_records_fail_explicitly",
+        "app.repositories.game_state.load_transport_record": "test_snapshot_envelopes_and_corrupt_records_fail_explicitly",
+        "app.repositories.state_snapshots.encode_snapshot": "test_snapshot_envelopes_and_corrupt_records_fail_explicitly",
+        "app.repositories.state_snapshots.decode_snapshot": "test_snapshot_envelopes_and_corrupt_records_fail_explicitly",
+    }
+)
+
+FUNCTION_TESTS[
+    "app.repositories.game_database.SqliteGameDatabase._validate_structure"
+] = "test_schema_structure_rejects_missing_columns_and_guards"

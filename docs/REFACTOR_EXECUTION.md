@@ -60,3 +60,12 @@ Der Implementierungsvertrag in RELATIONAL_STATE.md beschreibt Tabellen,
 Besitzgrenzen, Snapshotversionierung und atomare Abläufe. Die Implementierung
 beginnt auf refactor/game-state-persistence von integriertem main. Bis zum
 vollständigen Repository-/Service-Umbau gilt die bestehende KV-Laufzeit weiter.
+
+Die eigenständig geprüften relationalen Adapter verwenden Besitzer-Fremdschlüssel,
+einen partiellen Unique-Index für aktive Fahrzeuge und geschützte Settlement-
+Historie. Snapshot-Dokumente tragen Version und Typ; beim Lesen müssen ihre
+Inhalte zu den indizierten Spalten passen. Alte/unbekannte Spielstandschemata
+und fehlende Struktur werden abgewiesen. Acht gezielte Tests inklusive Manifest
+bestehen; die drei neuen ausführbaren Repository-Module erreichen zusammen
+172/172 Statements. Ruff/Format/mypy/Pyright sind ebenfalls grün. Der vollständige
+Anwendungs- und Browserlauf folgt nach der Service-/Composition-Umstellung.

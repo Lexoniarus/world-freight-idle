@@ -1,7 +1,9 @@
 # Relationale Spielpersistenz und Transaktionsgrenzen
 
-Status: vereinbarter Implementierungsvertrag für Abschnitt B, noch kein
-Nachweis einer fertig umgestellten Laufzeit.
+Status: Ports, relationale SQLite-Adapter und deren Verhaltenstests sind
+implementiert. Die bestehende Anwendung verwendet bis zur anschließenden
+Service-/Composition-Umstellung weiterhin die KV-Persistenz. Dies ist noch
+kein Nachweis einer fertig umgestellten Laufzeit.
 
 ## Fachliche Grenzen
 
