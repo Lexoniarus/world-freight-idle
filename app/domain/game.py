@@ -76,11 +76,10 @@ class OwnedVehicle:
     _name: str
     _mode: str
     _capacity_tons: float
-    _hub_id: str
     _status: VehicleStatus
     _model_id: str | None
     _operating_cost_eur_per_km: float | None
-    _facility_uid: str | None
+    _facility_uid: str
     _location: FacilityLocationSnapshot | None
 
     def __init__(
@@ -89,32 +88,28 @@ class OwnedVehicle:
         name: str,
         mode: str,
         capacity_tons: float,
-        hub_id: str,
+        facility_uid: str,
         status: VehicleStatus,
         model_id: str | None = None,
         operating_cost_eur_per_km: float | None = None,
-        facility_uid: str | None = None,
         location: FacilityLocationSnapshot | None = None,
     ) -> None:
         """Initialize one coherent owned-vehicle snapshot."""
         require_identity(id, "Vehicle ID")
         require_identity(name, "Vehicle name")
         require_identity(mode, "Vehicle mode")
-        require_identity(hub_id, "Facility ID")
+        require_identity(facility_uid, "Facility ID")
         require_finite(capacity_tons, "Capacity", 0.01)
         if operating_cost_eur_per_km is not None:
             require_finite(operating_cost_eur_per_km, "Kilometer cost")
         if status not in {"idle", "enroute"}:
             raise ValueError("Invalid vehicle status.")
-        if facility_uid is not None and facility_uid != hub_id:
-            raise ValueError("Vehicle location identities differ.")
-        if location is not None and location.facility_uid != hub_id:
+        if location is not None and location.facility_uid != facility_uid:
             raise ValueError("Vehicle location snapshot differs.")
         self._id = id
         self._name = name
         self._mode = mode
         self._capacity_tons = capacity_tons
-        self._hub_id = hub_id
         self._status = status
         self._model_id = model_id
         self._operating_cost_eur_per_km = operating_cost_eur_per_km
@@ -133,7 +128,7 @@ class OwnedVehicle:
             raise ValueError("Fahrzeug ist nicht verfügbar.")
         if self._mode != contract_mode:
             raise ValueError("Fahrzeugtyp passt nicht zum Auftrag.")
-        if self._hub_id != origin_facility_uid:
+        if self._facility_uid != origin_facility_uid:
             raise ValueError("Fahrzeug steht nicht an der Abholadresse.")
         if self._capacity_tons < tons:
             raise ValueError("Fahrzeugkapazität reicht nicht aus.")
@@ -148,7 +143,6 @@ class OwnedVehicle:
         """Move the vehicle to an immutable destination snapshot."""
         if self._status != "enroute":
             raise ValueError("Only a travelling vehicle can arrive.")
-        self._hub_id = location.facility_uid
         self._facility_uid = location.facility_uid
         self._location = location
         self._status = "idle"
@@ -187,11 +181,6 @@ class OwnedVehicle:
         return self._capacity_tons
 
     @property
-    def hub_id(self) -> str:
-        """Return the location identity used by transitional callers."""
-        return self._hub_id
-
-    @property
     def status(self) -> VehicleStatus:
         """Expose the current status without a writable field."""
         return self._status
@@ -207,8 +196,8 @@ class OwnedVehicle:
         return self._operating_cost_eur_per_km
 
     @property
-    def facility_uid(self) -> str | None:
-        """Return the persistent facility identity, when recorded."""
+    def facility_uid(self) -> str:
+        """Return the persistent facility identity."""
         return self._facility_uid
 
     @property

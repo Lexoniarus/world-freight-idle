@@ -89,7 +89,6 @@ def build_owned_vehicle(
         model_id=model.id,
         operating_cost_eur_per_km=model.operating_cost_eur_per_km,
         capacity_tons=model.capacity_tons,
-        hub_id=location.facility_uid,
         facility_uid=location.facility_uid,
         location=location,
         status="idle",

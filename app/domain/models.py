@@ -3,57 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Literal
 
-TransportMode = Literal["truck"]
 VehicleStatus = Literal["idle", "enroute"]
-
-
-@dataclass(frozen=True, slots=True)
-class Hub:
-    """A real, geocodable freight endpoint."""
-
-    id: str
-    city: str
-    label: str
-    address: str
-    country: str
-
-
-@dataclass(frozen=True, slots=True)
-class CargoType:
-    """A fictional cargo category used by the contract generator."""
-
-    name: str
-    min_tons: float
-    max_tons: float
-    rate_eur_per_km_ton: float
-
-
-@dataclass(frozen=True, slots=True)
-class Contract:
-    """A fictional transport job between real addresses."""
-
-    id: str
-    origin_hub_id: str
-    destination_hub_id: str
-    shipper_name: str
-    consignee_name: str
-    cargo: str
-    tons: float
-    created_at: float
-    expires_at: float
-    mode: TransportMode = "truck"
-
-
-@dataclass(frozen=True, slots=True)
-class RouteResult:
-    """Real route geometry and travel estimate from a routing provider."""
-
-    distance_km: float
-    duration_seconds: float
-    route_geojson: dict[str, Any]
-    provider: str
 
 
 @dataclass(frozen=True, slots=True)

@@ -87,7 +87,7 @@ class SqliteGameStateRepository:
                     vehicle.capacity_tons,
                     vehicle.operating_cost_eur_per_km,
                     vehicle.status,
-                    vehicle.hub_id,
+                    vehicle.facility_uid,
                     location,
                 ),
             )
@@ -225,7 +225,6 @@ def load_vehicle_record(row: dict) -> OwnedVehicle:
             capacity_tons=row["capacity_tons"],
             operating_cost_eur_per_km=row["operating_cost_eur_per_km"],
             status=row["status"],
-            hub_id=row["facility_uid"],
             facility_uid=row["facility_uid"],
             location=(
                 load_location(

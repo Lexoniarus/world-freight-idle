@@ -33,7 +33,7 @@ class MarketScopeResolver:
         for vehicle in vehicles:
             if vehicle.status != "idle":
                 continue
-            identifier = vehicle.facility_uid or vehicle.hub_id
+            identifier = vehicle.facility_uid
             if identifier not in seen:
                 origins.append(identifier)
                 seen.add(identifier)

@@ -163,9 +163,8 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
         original.name,
         original.mode,
         original.capacity_tons,
-        original.hub_id,
+        original.facility_uid,
         original.status,
-        facility_uid=original.facility_uid,
         location=original.location,
     )
     game.state_repository.save_vehicle(legacy)
@@ -207,10 +206,9 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
             original.name,
             original.mode,
             original.capacity_tons,
-            original.hub_id,
+            original.facility_uid,
             "idle",
             model_id=model_id,
-            facility_uid=original.facility_uid,
             location=original.location,
         )
         game.state_repository.save_vehicle(legacy)

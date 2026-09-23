@@ -185,7 +185,6 @@ def test_market_scope_combines_idle_trucks_and_zoomed_viewport(
             name="Idle",
             mode="truck",
             capacity_tons=24,
-            hub_id=berlin.facility_uid,
             facility_uid=berlin.facility_uid,
             status="idle",
         ),
@@ -194,7 +193,7 @@ def test_market_scope_combines_idle_trucks_and_zoomed_viewport(
             name="Busy",
             mode="truck",
             capacity_tons=24,
-            hub_id="ignored",
+            facility_uid="ignored",
             status="enroute",
         ),
     ]
@@ -365,7 +364,7 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
 
 
 def test_market_generation_never_serializes_domain_objects(game):
-    origin = game.state_repository.list_vehicles()[0].hub_id
+    origin = game.state_repository.list_vehicles()[0].facility_uid
     with (
         patch(
             "app.api.v1.game_projection.project_contract",

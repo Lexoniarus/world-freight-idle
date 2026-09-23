@@ -8,11 +8,11 @@ from app.providers.routing import (
     ValhallaTruckRouter,
     decode_polyline6,
 )
-from app.repositories.sqlite_store import SqliteStore
+from app.repositories.provider_cache import SqliteProviderCache
 
 
 @pytest.mark.asyncio
-async def test_route_calls_valhalla_and_caches(store: SqliteStore):
+async def test_route_calls_valhalla_and_caches(cache: SqliteProviderCache):
     calls = []
 
     async def handler(request):
@@ -35,7 +35,7 @@ async def test_route_calls_valhalla_and_caches(store: SqliteStore):
         )
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-    router = ValhallaTruckRouter(store, client, "https://v.test", "client-id")
+    router = ValhallaTruckRouter(cache, client, "https://v.test", "client-id")
     try:
         first = await router.route(52.0, 13.0, 53.0, 12.0)
         second = await router.route(52.0, 13.0, 53.0, 12.0)
@@ -48,9 +48,9 @@ async def test_route_calls_valhalla_and_caches(store: SqliteStore):
     assert calls[0].headers["X-Client-Id"] == "client-id"
 
 
-def test_build_cache_key_is_stable(store: SqliteStore):
+def test_build_cache_key_is_stable(cache: SqliteProviderCache):
     client = httpx.AsyncClient()
-    router = ValhallaTruckRouter(store, client, "https://v.test", "id")
+    router = ValhallaTruckRouter(cache, client, "https://v.test", "id")
     first = router._build_cache_key(1.0, 2.0, 3.0, 4.0)
     second = router._build_cache_key(1.0, 2.0, 3.0, 4.0)
     assert first == second
@@ -60,9 +60,11 @@ def test_build_cache_key_is_stable(store: SqliteStore):
     asyncio.run(client.aclose())
 
 
-def test_extract_route_supports_geojson_and_rejects_empty(store: SqliteStore):
+def test_extract_route_supports_geojson_and_rejects_empty(
+    cache: SqliteProviderCache,
+):
     client = httpx.AsyncClient()
-    router = ValhallaTruckRouter(store, client, "https://v.test", "id")
+    router = ValhallaTruckRouter(cache, client, "https://v.test", "id")
     result = router._extract_route(
         {
             "trip": {
@@ -98,12 +100,12 @@ def test_decode_polyline6_and_invalid_input():
 
 
 @pytest.mark.asyncio
-async def test_route_raises_on_provider_http_error(store: SqliteStore):
+async def test_route_raises_on_provider_http_error(cache: SqliteProviderCache):
     async def handler(_request):
         return httpx.Response(429, text="slow down")
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-    router = ValhallaTruckRouter(store, client, "https://v.test", "client-id")
+    router = ValhallaTruckRouter(cache, client, "https://v.test", "client-id")
     try:
         with pytest.raises(RoutingError, match="HTTP 429"):
             await router.route(1, 2, 3, 4)
@@ -112,10 +114,10 @@ async def test_route_raises_on_provider_http_error(store: SqliteStore):
 
 
 def test_extract_route_supports_polyline_duplicate_join_and_malformed(
-    store: SqliteStore,
+    cache: SqliteProviderCache,
 ):
     client = httpx.AsyncClient()
-    router = ValhallaTruckRouter(store, client, "https://v.test", "id")
+    router = ValhallaTruckRouter(cache, client, "https://v.test", "id")
     data = {
         "trip": {
             "summary": {"length": 5, "time": 60},

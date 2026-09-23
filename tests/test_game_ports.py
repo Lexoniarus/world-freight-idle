@@ -28,7 +28,6 @@ def relational_game(game, tmp_path):
         world=game.world,
         router=game.router,
         market=game.market,
-        pricing=game.pricing,
         catalogue=game.catalogue,
         market_scope=game.market_scope,
     )

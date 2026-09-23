@@ -24,7 +24,6 @@ from app.domain.game import PlayerState
 from app.domain.transports import ActiveTransport
 from app.main import create_app
 from app.repositories.accounts import AccountRepository
-from app.repositories.sqlite_store import SqliteStore
 from app.services.auth import SESSION_COOKIE, AuthService, PasswordHasher
 from app.services.fleet import FleetService
 from tests.conftest import BERLIN_UID, FakeRouter
@@ -77,24 +76,6 @@ def test_auth_sessions_expire_revoke_and_throttle(database):
     with database.connect() as connection:
         connection.execute("UPDATE auth_attempts SET expires_at = 0")
     assert accounts.allow_attempt("peer")
-
-
-def test_transaction_rolls_back_and_namespaces_isolate(store):
-    first = SqliteStore(store.path, "user:first:")
-    second = SqliteStore(store.path, "user:second:")
-    first.set_json("balance", 50)
-    second.set_json("balance", 90)
-    with pytest.raises(RuntimeError):
-        with first.transaction():
-            first.set_json("balance", 1)
-            with first.transaction():
-                first.set_json("fleet", ["truck"])
-            raise RuntimeError("simulated failure")
-    assert first.get_json("balance") == 50
-    assert first.get_json("fleet") is None
-    first.delete_state_keys(("balance",))
-    assert first.get_json("balance") is None
-    assert second.get_json("balance") == 90
 
 
 def test_player_service_isolation_and_atomic_purchases(
@@ -408,12 +389,22 @@ async def test_initialization_does_not_implicitly_import_legacy_trips(
     from app.domain.errors import UnsupportedGameSchema
 
     settings = make_settings(tmp_path)
-    store = SqliteStore(settings.db_path)
-    store.set_json("active_trip", {"id": "old", "arrives_at": 42})
+    import sqlite3
+
+    settings.db_path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(settings.db_path) as connection:
+        connection.execute(
+            "CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT)"
+        )
+        connection.execute(
+            "INSERT INTO kv VALUES (?, ?)",
+            ("active_trip", '{"id":"old","arrives_at":42}'),
+        )
+    original = settings.db_path.read_bytes()
     async with httpx.AsyncClient() as routing_client:
         with pytest.raises(UnsupportedGameSchema):
             build_game_runtime(settings, routing_client)
-    assert store.get_json("active_trip") == {"id": "old", "arrives_at": 42}
+    assert settings.db_path.read_bytes() == original
 
 
 def test_concurrent_arrivals_pay_once(runtime, game):

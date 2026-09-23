@@ -37,16 +37,6 @@ FUNCTION_TESTS = {
     "app.providers.routing.ValhallaTruckRouter._extract_route": "test_extract_route_supports_geojson_and_rejects_empty",
     "app.providers.routing.ValhallaTruckRouter.route": "test_route_calls_valhalla_and_caches",
     "app.providers.routing.decode_polyline6": "test_decode_polyline6_and_invalid_input",
-    "app.repositories.sqlite_store.SqliteStore.connect": "test_store_connect_and_initialize",
-    "app.repositories.sqlite_store.SqliteStore.delete_state_keys": "test_store_json_roundtrip_and_delete",
-    "app.repositories.sqlite_store.SqliteStore.get_geocode": "test_store_geocode_cache_roundtrip",
-    "app.repositories.sqlite_store.SqliteStore.get_json": "test_store_json_roundtrip_and_delete",
-    "app.repositories.sqlite_store.SqliteStore.has_json": "test_store_json_roundtrip_and_delete",
-    "app.repositories.sqlite_store.SqliteStore.get_route": "test_store_route_cache_roundtrip",
-    "app.repositories.sqlite_store.SqliteStore.initialize": "test_store_connect_and_initialize",
-    "app.repositories.sqlite_store.SqliteStore.put_geocode": "test_store_geocode_cache_roundtrip",
-    "app.repositories.sqlite_store.SqliteStore.put_route": "test_store_route_cache_roundtrip",
-    "app.repositories.sqlite_store.SqliteStore.set_json": "test_store_json_roundtrip_and_delete",
     "app.services.game.GameService._build_trip": "test_build_trip_contains_tracking_timestamps",
     "app.services.game.GameService._current_market_for_scope": "test_list_and_get_contracts_return_real_addresses",
     "app.services.game.GameService._generate_scoped_market": "test_list_and_get_contracts_return_real_addresses",
@@ -86,7 +76,6 @@ FUNCTION_TESTS = {
     "app.services.trade_network.TradeNetwork.options_for": "test_build_contract_has_expiry_and_valid_nhm_cargo",
     "app.services.market.MarketGenerator.generate": "test_every_routable_facility_has_nhm_work_without_generic_freight",
     "app.services.market_scope.MarketScopeResolver.resolve": "test_market_scope_combines_idle_trucks_and_zoomed_viewport",
-    "app.services.pricing.PricingService.quote": "test_pricing_quote_uses_distance_and_cargo_rate",
     "app.tracing.TraceIdMiddleware.dispatch": "test_trace_id_middleware_propagates_header_and_context",
     "app.tracing.get_trace_id": "test_get_trace_id_default",
     "app.tracing.new_trace_id": "test_new_trace_id_is_unique_hex",
@@ -120,7 +109,6 @@ FUNCTION_TESTS.update(
         "app.repositories.accounts.AccountRepository.revoke_session": "test_auth_sessions_expire_revoke_and_throttle",
         "app.repositories.accounts.AccountRepository.save_session": "test_auth_sessions_expire_revoke_and_throttle",
         "app.repositories.accounts.AccountRepository.session_user": "test_auth_sessions_expire_revoke_and_throttle",
-        "app.repositories.sqlite_store.SqliteStore.transaction": "test_transaction_rolls_back_and_namespaces_isolate",
         "app.services.auth.AuthService.authenticate": "test_auth_sessions_expire_revoke_and_throttle",
         "app.services.auth.AuthService.issue_session": "test_auth_sessions_expire_revoke_and_throttle",
         "app.services.auth.AuthService.register": "test_auth_sessions_expire_revoke_and_throttle",
@@ -152,7 +140,6 @@ FUNCTION_TESTS.update(
         "app.providers.validation.parse_coordinates": "test_coordinate_validation_rejects_invalid_values",
         "app.providers.validation.validate_route": "test_route_metrics_must_be_finite_and_positive",
         "app.repositories.accounts.AccountRepository.__init__": "test_auth_sessions_expire_revoke_and_throttle",
-        "app.repositories.sqlite_store.SqliteStore.__init__": "test_transaction_rolls_back_and_namespaces_isolate",
         "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue.__init__": "test_catalogue_projects_all_offers_without_writing",
         "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue._read_model": "test_catalogue_failures_are_explicit",
         "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue.list_models": "test_catalogue_projects_all_offers_without_writing",
@@ -161,7 +148,6 @@ FUNCTION_TESTS.update(
         "app.services.fleet.FleetService.list_catalogue": "test_catalogue_api_errors_and_vehicle_quote_validation",
         "app.services.game.GameService.__init__": "test_player_service_isolation_and_atomic_purchases",
         "app.services.map_locations.MapLocationService.__init__": "test_map_hubs_resolve_and_preserve_partial_failures",
-        "app.services.pricing.PricingService.__init__": "test_pricing_quote_uses_distance_and_cargo_rate",
     }
 )
 
@@ -254,7 +240,6 @@ FUNCTION_TESTS.update(
         "app.domain.game.OwnedVehicle.name": "test_entity_construction_and_mutation_are_guarded",
         "app.domain.game.OwnedVehicle.mode": "test_entity_construction_and_mutation_are_guarded",
         "app.domain.game.OwnedVehicle.capacity_tons": "test_entity_construction_and_mutation_are_guarded",
-        "app.domain.game.OwnedVehicle.hub_id": "test_entity_construction_and_mutation_are_guarded",
         "app.domain.game.OwnedVehicle.status": "test_entity_construction_and_mutation_are_guarded",
         "app.domain.game.OwnedVehicle.model_id": "test_entity_construction_and_mutation_are_guarded",
         "app.domain.game.OwnedVehicle.operating_cost_eur_per_km": "test_entity_construction_and_mutation_are_guarded",
@@ -391,4 +376,8 @@ FUNCTION_TESTS.update(
         "app.domain.world_scopes.CityScope.facilities": "test_world_scopes_filter_facilities_without_reparenting_companies",
         "app.domain.world_scopes.CityScope.company": "test_world_scopes_filter_facilities_without_reparenting_companies",
     }
+)
+
+FUNCTION_TESTS["app.services.pricing.calculate_price"] = (
+    "test_pricing_quote_uses_distance_and_cargo_rate"
 )

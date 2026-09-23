@@ -4,8 +4,6 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from app.domain.models import CargoType
-
 STANDARD_RATE = 0.18
 
 
@@ -35,12 +33,3 @@ def build_payload_bands(
         if members:
             bands.append(PayloadBand(name, min(members)))
     return tuple(bands)
-
-
-LEGACY_CARGO_TYPES = (
-    CargoType("Automotive-Komponenten", 8.0, 24.0, 0.21),
-    CargoType("Maschinenbauteile", 8.0, 22.0, 0.19),
-    CargoType("Elektronik", 4.0, 16.0, 0.25),
-    CargoType("Verpackte Lebensmittel", 8.0, 24.0, 0.16),
-    CargoType("Konsumgüter", 7.0, 23.0, 0.17),
-)

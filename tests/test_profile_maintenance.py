@@ -178,7 +178,6 @@ def test_maintenance_write_failure_rolls_back_and_retains_unselected(
         "enroute",
         model_id=vehicle.model_id,
         operating_cost_eur_per_km=vehicle.operating_cost_eur_per_km,
-        facility_uid=hamburg.facility_uid,
         location=hamburg.location_snapshot(),
     )
     vehicles = [project_vehicle(vehicle), project_vehicle(other)]

@@ -48,7 +48,6 @@ def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
         model_id="legacy",
         operating_cost_eur_per_km=0.5,
         capacity_tons=24,
-        hub_id=berlin.facility_uid,
         facility_uid=berlin.facility_uid,
         location=location,
         status="idle",
@@ -76,7 +75,7 @@ def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
         if facility.facility_uid != berlin.facility_uid
     ).location_snapshot()
     vehicle.arrive(destination)
-    assert vehicle.hub_id == destination.facility_uid
+    assert vehicle.facility_uid == destination.facility_uid
     assert vehicle.location == destination
     assert vehicle.status == "idle"
 
@@ -96,7 +95,7 @@ def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
         name="Legacy",
         mode="truck",
         capacity_tons=12,
-        hub_id=berlin.facility_uid,
+        facility_uid=berlin.facility_uid,
         status="idle",
     )
     assert project_vehicle(legacy)["model_id"] is None
@@ -209,9 +208,8 @@ def test_entity_construction_and_mutation_are_guarded(
         name="Truck",
         mode="truck",
         capacity_tons=12,
-        hub_id=location.facility_uid,
-        status="idle",
         facility_uid=location.facility_uid,
+        status="idle",
         location=location,
         model_id="legacy",
         operating_cost_eur_per_km=0.62,
@@ -225,7 +223,7 @@ def test_entity_construction_and_mutation_are_guarded(
         {"id": ""},
         {"name": ""},
         {"mode": ""},
-        {"hub_id": ""},
+        {"facility_uid": ""},
         {"capacity_tons": float("nan")},
         {"status": "unknown"},
         {"operating_cost_eur_per_km": -1},

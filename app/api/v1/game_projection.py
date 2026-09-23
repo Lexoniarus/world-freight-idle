@@ -58,7 +58,7 @@ def project_vehicle(vehicle: OwnedVehicle) -> dict[str, Any]:
         "mode": vehicle.mode,
         "model_id": vehicle.model_id,
         "capacity_tons": vehicle.capacity_tons,
-        "hub_id": vehicle.hub_id,
+        "hub_id": vehicle.facility_uid,
         "status": vehicle.status,
     }
     if vehicle.operating_cost_eur_per_km is not None:

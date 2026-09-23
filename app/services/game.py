@@ -21,7 +21,7 @@ from app.services.fleet import (
 )
 from app.services.market import MarketGenerator
 from app.services.market_scope import MarketScopeResolver
-from app.services.pricing import PricingService
+from app.services.pricing import calculate_price
 
 LOGGER = logging.getLogger(__name__)
 
@@ -35,7 +35,6 @@ class GameService:
         world: WorldCatalogue,
         router: TruckRouter,
         market: MarketGenerator,
-        pricing: PricingService,
         catalogue: VehicleCatalogue,
         market_scope: MarketScopeResolver,
         time_scale: float = 1.0,
@@ -45,7 +44,6 @@ class GameService:
         self.world = world
         self.router = router
         self.market = market
-        self.pricing = pricing
         self.time_scale = max(0.001, time_scale)
         self.catalogue = catalogue
         self.market_scope = market_scope
@@ -168,8 +166,7 @@ class GameService:
             destination.coordinates.latitude,
             destination.coordinates.longitude,
         )
-        economics = self.pricing.quote(
-            contract.cargo.name,
+        economics = calculate_price(
             contract.tons,
             route.distance_km,
             cost_per_km,
@@ -219,8 +216,7 @@ class GameService:
             list(self.state_repository.list_vehicles()), vehicle_id
         )
         self._validate_dispatch(vehicle, contract)
-        economics = self.pricing.quote(
-            contract.cargo.name,
+        economics = calculate_price(
             contract.tons,
             quote.route.distance_km,
             0.62

@@ -402,3 +402,16 @@ abgewiesen; UID-Abfragen bleiben eindeutig. Alte Snapshot-Lookups wurden
 entfernt. Scope-/Katalog-/Marktprüfungen bestanden nach Anpassung des
 Gegentests an den neuen Mehrdeutigkeitsfehler. Weitere 68 direkte
 Aufrufertests bestanden; mypy und Pyright bestanden.
+
+## E: Alte Runtime- und Testpfade entfernt
+
+SqliteStore/KV, obsolete Domainmodelle und doppelte Fahrzeug-Standortkennung
+sind entfernt. Provider-Tests verwenden den aktiven Cache-Adapter. Fachliche
+Isolations-, Transaktions- und Cache-Gegentests bleiben an den relationalen
+Implementierungen erhalten. Die reine Preisberechnung verwendet ausschließlich
+die übergebenen Snapshotwerte.
+
+146 von 148 betroffenen Fällen bestanden zuerst. Zwei Testfixtures wurden
+korrigiert (fehlendes temporäres Verzeichnis und direkter Cache-Verbindungszugriff).
+Beide bestanden im Nachlauf zusammen mit Manifest- und Architekturprüfungen.
+mypy, Pyright und Ruff bestanden. Keine echte Spielstanddatei wurde gelesen.

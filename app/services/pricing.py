@@ -1,36 +1,20 @@
-"""Simple MVP economics for freight contracts."""
+"""Pure economics from the offer and purchased vehicle snapshots."""
 
-from __future__ import annotations
+from app.domain.models import PriceQuote
+from app.domain.validation import require_finite
 
-from app.domain.models import CargoType, PriceQuote
 
-
-class PricingService:
-    """Calculate payout, cost and profit from routed distance and cargo."""
-
-    def __init__(self, cargo_types: tuple[CargoType, ...]) -> None:
-        self._rates = {
-            cargo.name: cargo.rate_eur_per_km_ton for cargo in cargo_types
-        }
-
-    def quote(
-        self,
-        cargo_name: str,
-        tons: float,
-        distance_km: float,
-        operating_cost_eur_per_km: float = 0.62,
-        rate_eur_per_km_ton: float | None = None,
-    ) -> PriceQuote:
-        """Price one contract from its real routed distance."""
-        rate = (
-            self._rates.get(cargo_name, 0.18)
-            if rate_eur_per_km_ton is None
-            else rate_eur_per_km_ton
-        )
-        payout = round(220 + distance_km * tons * rate)
-        operating_cost = round(80 + distance_km * operating_cost_eur_per_km)
-        return PriceQuote(
-            payout_eur=payout,
-            operating_cost_eur=operating_cost,
-            profit_eur=payout - operating_cost,
-        )
+def calculate_price(
+    tons: float,
+    distance_km: float,
+    operating_cost_eur_per_km: float,
+    rate_eur_per_km_ton: float,
+) -> PriceQuote:
+    """Calculate whole game euros without consulting mutable catalogues."""
+    require_finite(tons, "Tonnage", 0.01)
+    require_finite(distance_km, "Distance", 0.000001)
+    require_finite(operating_cost_eur_per_km, "Kilometer cost")
+    require_finite(rate_eur_per_km_ton, "Freight rate")
+    payout = round(220 + distance_km * tons * rate_eur_per_km_ton)
+    operating_cost = round(80 + distance_km * operating_cost_eur_per_km)
+    return PriceQuote(payout, operating_cost, payout - operating_cost)

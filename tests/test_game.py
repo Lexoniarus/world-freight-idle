@@ -22,7 +22,6 @@ from app.domain.world import FacilityQuery
 from app.domain.world_scopes import WorldScope
 from app.services.game import GameService
 from tests.conftest import BERLIN_UID
-from tests.seed_data import HUBS
 from tests.transport_fixtures import add_transport
 
 
@@ -213,11 +212,11 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
         name=vehicle.name,
         mode=vehicle.mode,
         capacity_tons=vehicle.capacity_tons,
-        hub_id=vehicle.hub_id,
+        facility_uid=vehicle.facility_uid,
         status=vehicle.status,
     )
     for changes, message in (
-        ({"hub_id": "hamburg_cta"}, "Abholadresse"),
+        ({"facility_uid": "hamburg_cta"}, "Abholadresse"),
         ({"capacity_tons": 0.1}, "kapazität"),
         ({"mode": "ship"}, "Fahrzeugtyp"),
         ({"status": "enroute"}, "verfügbar"),
@@ -331,7 +330,7 @@ def test_list_get_and_expand_vehicles(game: GameService):
     )
     assert (
         project_vehicle(game.get_vehicle("truck_01"))["hub"]["city"]
-        == HUBS[0].city
+        == "Berlin"
     )
     assert (
         project_vehicle(game.state_repository.list_vehicles()[0])["hub"]["id"]

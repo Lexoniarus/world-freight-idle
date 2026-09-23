@@ -29,9 +29,7 @@ from app.services.map_locations import MapLocationService
 from app.services.market import MarketGenerator
 from app.services.market_scope import MarketScopeResolver
 from app.services.multiplayer_map import MultiplayerMapService
-from app.services.pricing import PricingService
 from app.services.profile_maintenance import ProfileMaintenanceService
-from app.simulation import LEGACY_CARGO_TYPES
 
 
 @dataclass
@@ -42,7 +40,6 @@ class GameRuntime:
     world: WorldCatalogue
     router: TruckRouter
     market: MarketGenerator
-    pricing: PricingService
     catalogue: VehicleCatalogue
     market_scope: MarketScopeResolver
     time_scale: float
@@ -69,7 +66,6 @@ def build_game_runtime(
         world=world,
         router=router,
         market=MarketGenerator(world, random.Random(rng_seed), catalogue),
-        pricing=PricingService(LEGACY_CARGO_TYPES),
         catalogue=catalogue,
         market_scope=MarketScopeResolver(world),
         time_scale=settings.game_time_scale,
@@ -83,7 +79,6 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
         world=runtime.world,
         router=runtime.router,
         market=runtime.market,
-        pricing=runtime.pricing,
         catalogue=runtime.catalogue,
         market_scope=runtime.market_scope,
         time_scale=runtime.time_scale,

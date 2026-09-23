@@ -457,3 +457,8 @@ Zum Beispiel: `WorldScope(snapshot).country("DE").city("Berlin")`
 Facilities; ihr rechtlicher Sitz wird dadurch nicht verändert. Namen müssen
 im gewählten Scope eindeutig sein, sonst folgt AmbiguousWorldReference.
 UID-Abfragen haben Vorrang. Die bisherigen WorldSnapshot-Lookups entfallen.
+
+Legacy-Abbau: Hub, Minimal-Contract, CargoType und RouteResult sind entfernt.
+OwnedVehicle besitzt genau eine facility_uid. Das historische HTTP-Feld
+hub_id wird nur im API-Mapper projiziert. calculate_price ist eine reine
+Berechnung mit gespeicherten Konditionen; keine namensabhängige Cargo-Tabelle.
