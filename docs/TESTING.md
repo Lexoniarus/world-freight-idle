@@ -242,3 +242,9 @@ Zieldateien. Geprüft werden dauerhafte Stadt-UUIDs, exakte Facility-Zuordnungen
 Pflichtfelder/Fremdschlüssel, Erhalt von Quellen und Views, wiederholte
 Ausführung, unveränderte Quelle sowie Rollback und Backupfehler. Das alte
 Schema-2-In-place-Werkzeug und seine spezifischen Tests sind entfernt.
+
+Die finalen Persistenzgrenzen werden in test_persistence_boundaries geprüft:
+Domain/Services ohne SQL, konkrete Repositories oder HTTP-Clients; Domain ohne
+Persistenzserialisierung; keine KV-Spielpfade. Relative Imports, Re-Exports und
+statisch bestimmbare dynamische Imports werden mit Negativbeispielen geprüft.
+Der API-Aufruf des Composition Root bleibt die vorgesehene Verdrahtungsgrenze.
