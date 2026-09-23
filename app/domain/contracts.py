@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.domain.cargo import FacilityNhmProfile, NhmProduct
 from app.domain.validation import require_finite, require_identity
-from app.domain.world import CargoProfile, FacilityLocationSnapshot
+from app.domain.world import FacilityLocationSnapshot
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,9 +20,9 @@ class ContractOfferSnapshot:
     destination: FacilityLocationSnapshot
     shipper_name: str
     consignee_name: str
-    cargo: CargoProfile
-    origin_cargo_evidence: CargoProfile
-    destination_cargo_evidence: CargoProfile
+    cargo: NhmProduct
+    origin_cargo_evidence: FacilityNhmProfile
+    destination_cargo_evidence: FacilityNhmProfile
     cargo_basis: str
     trade_match_type: str
     tons: float
@@ -44,9 +45,9 @@ class ContractOffer:
     destination: FacilityLocationSnapshot
     shipper_name: str
     consignee_name: str
-    cargo: CargoProfile
-    origin_cargo_evidence: CargoProfile
-    destination_cargo_evidence: CargoProfile
+    cargo: NhmProduct
+    origin_cargo_evidence: FacilityNhmProfile
+    destination_cargo_evidence: FacilityNhmProfile
     cargo_basis: str
     trade_match_type: str
     tons: float
@@ -70,8 +71,8 @@ class ContractOffer:
         if self.origin.facility_uid == self.destination.facility_uid:
             raise ValueError("Contract endpoints must differ.")
         if self.cargo.code not in {
-            self.origin_cargo_evidence.code,
-            self.destination_cargo_evidence.code,
+            self.origin_cargo_evidence.product.code,
+            self.destination_cargo_evidence.product.code,
         }:
             raise ValueError("Cargo code does not match contract evidence.")
 

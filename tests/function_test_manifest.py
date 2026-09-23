@@ -82,7 +82,7 @@ FUNCTION_TESTS = {
     "app.services.market.MarketGenerator._select_trade_option": "test_build_contract_has_expiry_and_valid_nhm_cargo",
     "app.services.trade_network.TradeNetwork.__init__": "test_build_contract_has_expiry_and_valid_nhm_cargo",
     "app.services.trade_network.TradeNetwork._build_trade_options": "test_build_contract_has_expiry_and_valid_nhm_cargo",
-    "app.services.trade_network.TradeNetwork._index_inbound_cargo": "test_build_contract_has_expiry_and_valid_nhm_cargo",
+    "app.services.trade_network.TradeNetwork._index_inbound_profiles": "test_build_contract_has_expiry_and_valid_nhm_cargo",
     "app.services.trade_network.TradeNetwork.options_for": "test_build_contract_has_expiry_and_valid_nhm_cargo",
     "app.services.market.MarketGenerator.generate": "test_every_routable_facility_has_nhm_work_without_generic_freight",
     "app.services.market_scope.MarketScopeResolver.resolve": "test_market_scope_combines_idle_trucks_and_zoomed_viewport",
@@ -206,12 +206,12 @@ FUNCTION_TESTS.update(
         "app.bootstrap.build_world_catalogue": "test_world_migration_repository_rolls_back_and_cli_requires_backup",
         "app.bootstrap.build_world_maintenance_service": "test_world_preparation_is_atomic_idempotent_and_enforces_identity",
         "app.bootstrap.build_world_state_migration_service": "test_world_migration_repository_rolls_back_and_cli_requires_backup",
-        "app.domain.world.CargoProfile.is_compatible_with": "test_nhm_cargo_profiles_follow_parent_hierarchy",
+        "app.domain.cargo.NhmProduct.is_compatible_with": "test_nhm_cargo_profiles_follow_parent_hierarchy",
         "app.domain.world.Facility.has_verified_location": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.Facility.location_snapshot": "test_world_snapshot_identity_provenance_and_query",
-        "app.domain.world.Facility.inbound_cargo": "test_world_snapshot_identity_provenance_and_query",
+        "app.domain.world.Facility.inbound_profiles": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.Facility.is_routable": "test_world_snapshot_identity_provenance_and_query",
-        "app.domain.world.Facility.outbound_cargo": "test_world_snapshot_identity_provenance_and_query",
+        "app.domain.world.Facility.outbound_profiles": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.FacilityQuery.includes": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.FacilityQuery.parse": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.WorldSnapshot.get_company": "test_world_snapshot_identity_provenance_and_query",
@@ -353,7 +353,7 @@ FUNCTION_TESTS.update(
 FUNCTION_TESTS.update(
     {
         "app.repositories.snapshot_mapping.load_location": "test_canonical_snapshots_preserve_facts_and_reject_public_documents",
-        "app.repositories.snapshot_mapping.load_cargo": "test_canonical_snapshots_preserve_facts_and_reject_public_documents",
+        "app.repositories.snapshot_mapping.load_product": "test_canonical_snapshots_preserve_facts_and_reject_public_documents",
         "app.repositories.snapshot_mapping.load_offer": "test_canonical_snapshots_preserve_facts_and_reject_public_documents",
     }
 )
@@ -362,5 +362,14 @@ FUNCTION_TESTS.update(
     {
         "app.api.v1.location_projection.project_location": "test_world_snapshot_identity_provenance_and_query",
         "app.api.v1.game_projection.project_player": "test_player_state_domain_rules",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.cargo.NhmProduct.__post_init__": "test_nhm_entities_reject_invalid_hierarchies_and_weights",
+        "app.domain.cargo.FacilityNhmProfile.__post_init__": "test_nhm_entities_reject_invalid_hierarchies_and_weights",
+        "app.repositories.snapshot_mapping.load_profile": "test_canonical_snapshots_preserve_facts_and_reject_public_documents",
+        "app.api.v1.game_projection.project_nhm_profile": "test_nhm_profile_projection_retains_fields_without_mutating_products",
     }
 )

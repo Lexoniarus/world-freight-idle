@@ -8,8 +8,9 @@ from unittest.mock import Mock, patch
 import pytest
 
 from app.api.v1.location_projection import project_location
+from app.domain.cargo import NhmProduct
 from app.domain.errors import WorldCatalogueError
-from app.domain.world import CargoProfile, FacilityQuery
+from app.domain.world import FacilityQuery
 
 
 def test_world_snapshot_identity_provenance_and_query(world_catalogue):
@@ -19,13 +20,13 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
     assert berlin.company is not None
     assert world.get_company(berlin.company.company_uid) is berlin.company
     assert berlin.is_routable() and berlin.has_verified_location()
-    assert berlin.outbound_cargo() and berlin.inbound_cargo()
+    assert berlin.outbound_profiles() and berlin.inbound_profiles()
     assert len(world.facilities) == 352
     assert len(world.query(FacilityQuery())) == 352
     assert any(
         profile.evidence_type == "derived" and profile.source is None
         for facility in world.facilities
-        for profile in facility.cargo
+        for profile in facility.nhm_profiles
     )
 
     estimated = next(
@@ -86,14 +87,14 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
     ):
         assert not replace(berlin, **{field: value}).is_routable()
 
-    outbound = berlin.outbound_cargo()[0]
+    outbound = berlin.outbound_profiles()[0]
     assert not replace(
-        berlin, cargo=(replace(outbound, role="input"),)
-    ).outbound_cargo()
-    inbound = berlin.inbound_cargo()[0]
+        berlin, nhm_profiles=(replace(outbound, role="input"),)
+    ).outbound_profiles()
+    inbound = berlin.inbound_profiles()[0]
     assert not replace(
-        berlin, cargo=(replace(inbound, role="output"),)
-    ).inbound_cargo()
+        berlin, nhm_profiles=(replace(inbound, role="output"),)
+    ).inbound_profiles()
 
     assert not FacilityQuery().includes(replace(berlin, lat=None))
     dateline = FacilityQuery.parse("170,-10,-170,10")
@@ -108,39 +109,9 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
 
 
 def test_nhm_cargo_profiles_follow_parent_hierarchy():
-    parent = CargoProfile(
-        1,
-        "87",
-        "Fahrzeuge",
-        "input",
-        "derived",
-        0.7,
-        0.6,
-        (1, 10),
-        None,
-    )
-    child = CargoProfile(
-        2,
-        "870850",
-        "Triebachsen",
-        "output",
-        "official",
-        1.0,
-        1.0,
-        (2, 3, 1, 10),
-        None,
-    )
-    unrelated = CargoProfile(
-        4,
-        "4011",
-        "Luftreifen",
-        "output",
-        "derived",
-        0.7,
-        0.6,
-        (4, 5, 10),
-        None,
-    )
+    parent = NhmProduct(1, "87", "Fahrzeuge", (1, 10))
+    child = NhmProduct(2, "870850", "Triebachsen", (2, 3, 1, 10))
+    unrelated = NhmProduct(4, "4011", "Luftreifen", (4, 5, 10))
     assert child.is_compatible_with(parent)
     assert parent.is_compatible_with(child)
     assert not child.is_compatible_with(unrelated)

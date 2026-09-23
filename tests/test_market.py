@@ -77,7 +77,7 @@ def test_build_contract_has_expiry_and_valid_nhm_cargo(
     assert "handled_goods" not in payload["origin"]
     with pytest.raises(WorldCatalogueError):
         TradeNetwork._build_trade_options(
-            replace(origin, cargo=()),
+            replace(origin, nhm_profiles=()),
             {},
             {},
         )
@@ -152,8 +152,9 @@ def test_every_routable_facility_has_nhm_work_without_generic_freight(
         origin = contract.origin_cargo_evidence
         destination = contract.destination_cargo_evidence
         assert (
-            origin.nhm_row_id in destination.ancestor_row_ids
-            or destination.nhm_row_id in origin.ancestor_row_ids
+            origin.product.nhm_row_id in destination.product.ancestor_row_ids
+            or destination.product.nhm_row_id
+            in origin.product.ancestor_row_ids
         )
         assert contract.cargo_basis in {"documented", "derived"}
     remaining = contracts[1:]

@@ -78,7 +78,7 @@ class WorldMaintenanceRepository:
                     facility = world.get_facility(entry["alias"])
                     if (
                         not facility.is_routable()
-                        or not facility.outbound_cargo()
+                        or not facility.outbound_profiles()
                     ):
                         raise ValueError("Legacy endpoint is not market ready")
 

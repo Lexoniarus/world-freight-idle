@@ -2,13 +2,10 @@
 
 from typing import Any
 
+from app.domain.cargo import FacilityNhmProfile, NhmProduct
 from app.domain.contracts import ContractOffer
-from app.domain.world import (
-    CargoProfile,
-    CompanyIdentity,
-    FacilityLocationSnapshot,
-    SourceReference,
-)
+from app.domain.evidence import SourceReference
+from app.domain.world import CompanyIdentity, FacilityLocationSnapshot
 
 
 def load_location(value: dict[str, Any]) -> FacilityLocationSnapshot:
@@ -30,12 +27,19 @@ def load_location(value: dict[str, Any]) -> FacilityLocationSnapshot:
     )
 
 
-def load_cargo(value: dict[str, Any]) -> CargoProfile:
-    """Restore one saved NHM profile including its original evidence."""
-    return CargoProfile(
+def load_product(value: dict[str, Any]) -> NhmProduct:
+    """Restore a saved product hierarchy independently of the catalogue."""
+    return NhmProduct(
+        **{**value, "ancestor_row_ids": tuple(value["ancestor_row_ids"])}
+    )
+
+
+def load_profile(value: dict[str, Any]) -> FacilityNhmProfile:
+    """Restore facility-specific handling evidence for a historical product."""
+    return FacilityNhmProfile(
         **{
             **value,
-            "ancestor_row_ids": tuple(value["ancestor_row_ids"]),
+            "product": load_product(value["product"]),
             "source": (
                 SourceReference(**value["source"])
                 if value["source"] is not None
@@ -52,11 +56,11 @@ def load_offer(value: dict[str, Any]) -> ContractOffer:
             **value,
             "origin": load_location(value["origin"]),
             "destination": load_location(value["destination"]),
-            "cargo": load_cargo(value["cargo"]),
-            "origin_cargo_evidence": load_cargo(
+            "cargo": load_product(value["cargo"]),
+            "origin_cargo_evidence": load_profile(
                 value["origin_cargo_evidence"]
             ),
-            "destination_cargo_evidence": load_cargo(
+            "destination_cargo_evidence": load_profile(
                 value["destination_cargo_evidence"]
             ),
         }

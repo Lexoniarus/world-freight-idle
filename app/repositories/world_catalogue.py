@@ -6,15 +6,10 @@ import uuid
 from contextlib import closing
 from pathlib import Path
 
+from app.domain.cargo import FacilityNhmProfile, NhmProduct
 from app.domain.errors import WorldCatalogueError
-from app.domain.world import (
-    CargoProfile,
-    Company,
-    DocumentedGood,
-    Facility,
-    SourceReference,
-    WorldSnapshot,
-)
+from app.domain.evidence import SourceReference
+from app.domain.world import Company, DocumentedGood, Facility, WorldSnapshot
 
 LOGGER = logging.getLogger(__name__)
 
@@ -205,10 +200,11 @@ def read_nhm_ancestors(
 
 def read_cargo(
     connection: sqlite3.Connection,
-) -> dict[int, list[CargoProfile]]:
+) -> dict[int, list[FacilityNhmProfile]]:
     """Read operative NHM facility profiles and preserve evidence quality."""
     ancestors = read_nhm_ancestors(connection)
-    result: dict[int, list[CargoProfile]] = {}
+    result: dict[int, list[FacilityNhmProfile]] = {}
+    products: dict[int, NhmProduct] = {}
     rows = connection.execute("""
         SELECT
             p.facility_id,
@@ -245,15 +241,17 @@ def read_cargo(
             )
         elif row["evidence_type"] != "derived":
             raise ValueError("Missing cargo provenance")
-        profile = CargoProfile(
-            int(row["nhm_row_id"]),
-            row["code"],
-            row["cargo_name"],
+        row_id = int(row["nhm_row_id"])
+        if row_id not in products:
+            products[row_id] = NhmProduct(
+                row_id, row["code"], row["cargo_name"], ancestors[row_id]
+            )
+        profile = FacilityNhmProfile(
+            products[row_id],
             row["cargo_role"],
             row["evidence_type"],
             float(row["confidence"]),
             float(row["priority_score"]),
-            ancestors[int(row["nhm_row_id"])],
             source,
         )
         result.setdefault(int(row["facility_id"]), []).append(profile)
@@ -264,7 +262,7 @@ def read_facility(
     connection: sqlite3.Connection,
     row: sqlite3.Row,
     companies: dict[int, Company],
-    cargo: tuple[CargoProfile, ...],
+    cargo: tuple[FacilityNhmProfile, ...],
     version: str,
 ) -> Facility:
     """Join all endpoint facts into a self-contained immutable reference."""

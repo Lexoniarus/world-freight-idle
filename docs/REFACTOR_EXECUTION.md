@@ -344,3 +344,13 @@ Im betroffenen Lauf bestanden 137 von 138 Fällen. Der verbleibende Test hatte
 beim Aufbau eines reisenden Fahrzeugs start_trip ausgelassen; der korrigierte
 Aufbau und die unmittelbar betroffenen Änderungen bestanden im Nachlauf
 (fünf Fälle). mypy, Pyright und Function-Test-Manifest sind grün.
+
+## C: NHM-Warenidentität und Facility-Evidenz getrennt
+
+NhmProduct und FacilityNhmProfile ersetzen CargoProfile direkt, ohne Alias-
+oder Übergangsklassen. Der Katalogreader komponiert gemeinsame Produkte mit
+standortbezogener Evidenz; TradeNetwork verwendet ihre Produkt-Hierarchien.
+API-Evidenzfelder bleiben kompatibel. Historische Dokumente speichern beide
+Konzepte getrennt; DocumentedGood und Quellen bleiben eigenständige Werte.
+Die NHM-/Markt-/Snapshot-/Manifesttests und unmittelbar abhängigen Spiel-,
+Transport-, Repository- und API-Tests bestanden; mypy und Pyright sind grün.

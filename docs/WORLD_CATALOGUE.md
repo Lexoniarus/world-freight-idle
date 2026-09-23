@@ -130,7 +130,8 @@ Strukturierte Ereignisse wie `world.catalogue_read`,
 
 Der Domain-Port liefert unveränderliche Referenzmodelle. SQL liegt
  ausschließlich im Repository. `MarketGenerator` kennt weder SQLite noch
- konkrete Katalogadapter. `CargoProfile` kapselt NHM-Kompatibilität;
+ konkrete Katalogadapter. `NhmProduct` kapselt Warenidentität und NHM-Kompatibilität;
+ `FacilityNhmProfile` komponiert das Produkt mit Rolle und Evidenz;
  `Facility` kapselt IN-/OUT-Rollen und Routability; der MarketGenerator
  orchestriert TradeOptions und Contract-Snapshots.
 

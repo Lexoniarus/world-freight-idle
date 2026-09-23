@@ -365,7 +365,8 @@ Bereits als echte immutable Domainobjekte vorhanden:
 
 - `Company`
 - `Facility`
-- `CargoProfile`
+- `NhmProduct`
+- `FacilityNhmProfile`
 - `DocumentedGood`
 - `SourceReference`
 - `WorldSnapshot`
@@ -375,8 +376,10 @@ Bereits als echte immutable Domainobjekte vorhanden:
 - `VehicleImage`
 - `VehicleModel`
 
-`CargoProfile` ist dabei ein Übergangsmodell. Es wird schrittweise in
-`NhmProduct` und `FacilityNhmProfile` aufgeteilt.
+`NhmProduct` enthält Code, Namen und die unveränderliche self-to-root-
+Hierarchie. `FacilityNhmProfile` komponiert es mit Rolle, Confidence,
+Priorität und Evidenz. Mehrere Profile einer Kataloglesung teilen dasselbe
+Produktobjekt. DocumentedGood bleibt ein separater Quellenhinweis.
 
 Bereits typisierte Runtime-Snapshots:
 
@@ -399,24 +402,25 @@ Transport-Lifecycle verwendet explizite Zeitparameter und active/settled;
 Persistenzmapping erfolgt im Adapter. Die alte KV-Aktivliste und isolierte
 Legacy-Transportauflösung entfallen mit der Repository-/Importumstellung.
 
-Ihre Persistenz- und API-Projektionen bleiben in dieser Stufe
-JSON-kompatibel; die Repository- und explizite API-DTO-Grenze folgen später.
+Relationale Repositories speichern Entities und versionierte historische
+Dokumente. Öffentliche JSON-Projektionen liegen im API-Bereich; Domainobjekte
+kennen weder Persistenzformate noch from_dict-/to_dict-Methoden.
 
 `PlayerState` und `OwnedVehicle` besitzen schreibgeschützte öffentliche
 Eigenschaften. Geldmutation, Disposition, Ankunft und Modellübernahme erfolgen
 über benannte Methoden mit Validierung vor der Mutation. Ein Standort-Snapshot
-muss zur gespeicherten Standortidentität passen. Legacy-Payloads werden bis zur
-Persistenzumstellung weiterhin an der Übergangsgrenze hydriert.
+muss zur gespeicherten Standortidentität passen. Normale Spielabläufe
+verwenden keine Legacy-Hydrierung; die separate Offline-Datenübernahme
+steht noch aus.
 
 Legacy-/Übergangskonzepte:
 
 - `Hub`
 - `CargoType`
 - das alte Minimalmodell `Contract`
-- `CargoProfile`
 
-Diese werden erst entfernt, wenn alle produktiven Referenzen migriert und die
-Quality Gates grün sind.
+Diese werden nach vollständiger Umstellung ihrer Aufrufer entfernt.
+Betroffene Tests sind vor jedem Commit grün; die Gesamtprüfung folgt am Ende.
 
 ## Migrationsreihenfolge
 

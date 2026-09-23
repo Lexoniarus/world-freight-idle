@@ -4,6 +4,7 @@ from dataclasses import asdict
 from typing import Any
 
 from app.api.v1.location_projection import project_location
+from app.domain.cargo import FacilityNhmProfile
 from app.domain.contracts import ContractOffer, ContractOfferSnapshot
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.results import ContractQuote, FleetCatalogue, GameSnapshot
@@ -16,13 +17,9 @@ def project_contract(
     """Expose an offer using the established v1 field names."""
     origin = project_location(offer.origin)
     destination = project_location(offer.destination)
-    origin_evidence = asdict(offer.origin_cargo_evidence)
-    origin_evidence["ancestor_row_ids"] = list(
-        offer.origin_cargo_evidence.ancestor_row_ids
-    )
-    destination_evidence = asdict(offer.destination_cargo_evidence)
-    destination_evidence["ancestor_row_ids"] = list(
-        offer.destination_cargo_evidence.ancestor_row_ids
+    origin_evidence = project_nhm_profile(offer.origin_cargo_evidence)
+    destination_evidence = project_nhm_profile(
+        offer.destination_cargo_evidence
     )
     return {
         "id": offer.id,
@@ -163,4 +160,17 @@ def project_player(player: PlayerState) -> dict[str, int]:
         "cash": player.cash,
         "completed": player.completed,
         "reputation": player.reputation,
+    }
+
+
+def project_nhm_profile(profile: FacilityNhmProfile) -> dict[str, Any]:
+    """Retain v1 evidence fields while the domain composes product values."""
+    return {
+        **asdict(profile.product),
+        "ancestor_row_ids": list(profile.product.ancestor_row_ids),
+        "role": profile.role,
+        "evidence_type": profile.evidence_type,
+        "confidence": profile.confidence,
+        "priority_score": profile.priority_score,
+        "source": asdict(profile.source) if profile.source else None,
     }

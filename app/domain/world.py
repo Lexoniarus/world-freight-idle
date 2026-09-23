@@ -5,16 +5,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-
-@dataclass(frozen=True, slots=True)
-class SourceReference:
-    """Evidence retained with a reference fact."""
-
-    url: str
-    role: str
-    verified_at: str | None
-    precision: str | None = None
-    provider: str | None = None
+from app.domain.cargo import FacilityNhmProfile
+from app.domain.evidence import SourceReference
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,28 +29,6 @@ class CompanyIdentity:
     legal_name: str
     display_name: str
     country: str
-
-
-@dataclass(frozen=True, slots=True)
-class CargoProfile:
-    """One NHM facility behavior profile with explicit evidence quality."""
-
-    nhm_row_id: int
-    code: str
-    name: str
-    role: str
-    evidence_type: str
-    confidence: float
-    priority_score: float
-    ancestor_row_ids: tuple[int, ...]
-    source: SourceReference | None
-
-    def is_compatible_with(self, other: CargoProfile) -> bool:
-        """Match equal NHM nodes or profiles on the same ancestor chain."""
-        return (
-            self.nhm_row_id in other.ancestor_row_ids
-            or other.nhm_row_id in self.ancestor_row_ids
-        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,7 +79,7 @@ class Facility:
     geocoding_status: str
     sources: tuple[SourceReference, ...]
     coordinate_evidence: tuple[SourceReference, ...]
-    cargo: tuple[CargoProfile, ...]
+    nhm_profiles: tuple[FacilityNhmProfile, ...]
     catalogue_version: str
     aliases: tuple[str, ...] = ()
     handled_goods: tuple[DocumentedGood, ...] = ()
@@ -149,16 +119,20 @@ class Facility:
             and self.is_routable()
         )
 
-    def inbound_cargo(self) -> tuple[CargoProfile, ...]:
+    def inbound_profiles(self) -> tuple[FacilityNhmProfile, ...]:
         """Return NHM profiles that can receive or transship cargo."""
         return tuple(
-            item for item in self.cargo if item.role in {"input", "both"}
+            item
+            for item in self.nhm_profiles
+            if item.role in {"input", "both"}
         )
 
-    def outbound_cargo(self) -> tuple[CargoProfile, ...]:
+    def outbound_profiles(self) -> tuple[FacilityNhmProfile, ...]:
         """Return NHM profiles that can source or transship cargo."""
         return tuple(
-            item for item in self.cargo if item.role in {"output", "both"}
+            item
+            for item in self.nhm_profiles
+            if item.role in {"output", "both"}
         )
 
     def location_snapshot(self) -> FacilityLocationSnapshot:
