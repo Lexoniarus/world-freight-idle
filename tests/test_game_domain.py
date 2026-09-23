@@ -11,6 +11,7 @@ from app.api.v1.game_projection import project_player, project_vehicle
 from app.api.v1.location_projection import project_location
 from app.domain.contracts import ContractOffer, ContractOfferSnapshot
 from app.domain.game import OwnedVehicle, PlayerState
+from app.domain.world_scopes import WorldScope
 
 
 def test_player_state_domain_rules():
@@ -38,7 +39,7 @@ def test_player_state_domain_rules():
 
 
 def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
-    berlin = world_catalogue.read().get_facility("berlin_westhafen")
+    berlin = WorldScope(world_catalogue.read()).facility("berlin_westhafen")
     location = berlin.location_snapshot()
     vehicle = OwnedVehicle(
         id="truck_01",
@@ -178,8 +179,8 @@ def test_entity_construction_and_mutation_are_guarded(
     world_catalogue, catalogue
 ):
     location = (
-        world_catalogue.read()
-        .get_facility("berlin_westhafen")
+        WorldScope(world_catalogue.read())
+        .facility("berlin_westhafen")
         .location_snapshot()
     )
     player = PlayerState(100, 2, 3)

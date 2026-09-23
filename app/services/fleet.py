@@ -10,6 +10,7 @@ from app.domain.ports import VehicleCatalogue, WorldCatalogue
 from app.domain.results import FleetCatalogue
 from app.domain.state_ports import GameUnitOfWork
 from app.domain.world import FacilityLocationSnapshot
+from app.domain.world_scopes import WorldScope
 
 LOGGER = logging.getLogger(__name__)
 
@@ -115,7 +116,7 @@ def resolve_delivery_facility(
 ) -> FacilityLocationSnapshot:
     """Require the reviewed start endpoint before creating a vehicle."""
     try:
-        facility = world.read().get_facility("berlin_westhafen")
+        facility = WorldScope(world.read()).facility("berlin_westhafen")
         if not facility.is_routable():
             raise ValueError("Unroutable delivery facility")
     except (KeyError, ValueError) as exc:

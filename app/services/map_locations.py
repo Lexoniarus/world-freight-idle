@@ -3,6 +3,7 @@
 from app.domain.ports import WorldCatalogue
 from app.domain.results import FacilityPage
 from app.domain.world import FacilityQuery
+from app.domain.world_scopes import WorldScope
 
 
 class MapLocationService:
@@ -17,7 +18,7 @@ class MapLocationService:
         return FacilityPage(
             tuple(
                 facility.location_snapshot()
-                for facility in snapshot.query(query)
+                for facility in WorldScope(snapshot).query(query)
             ),
             snapshot.version,
             sum(

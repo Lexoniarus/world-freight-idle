@@ -212,9 +212,6 @@ FUNCTION_TESTS.update(
         "app.domain.world.Facility.outbound_profiles": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.FacilityQuery.includes": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.FacilityQuery.parse": "test_world_snapshot_identity_provenance_and_query",
-        "app.domain.world.WorldSnapshot.get_company": "test_world_snapshot_identity_provenance_and_query",
-        "app.domain.world.WorldSnapshot.get_facility": "test_world_snapshot_identity_provenance_and_query",
-        "app.domain.world.WorldSnapshot.query": "test_world_snapshot_identity_provenance_and_query",
         "app.main.world_catalogue_error": "test_map_endpoint_requires_session_and_uses_game_provider",
         "app.repositories.cached_world_catalogue.CachedWorldCatalogue.__init__": "test_cached_world_catalogue_reads_source_once",
         "app.repositories.cached_world_catalogue.CachedWorldCatalogue.read": "test_cached_world_catalogue_reads_source_once",
@@ -373,5 +370,25 @@ FUNCTION_TESTS.update(
         "app.repositories.world_geography_reader.read_countries": "test_world_geography_shares_identities_and_rejects_broken_references",
         "app.repositories.world_geography_reader.read_cities": "test_world_geography_shares_identities_and_rejects_broken_references",
         "app.repositories.snapshot_mapping.load_city": "test_canonical_snapshots_preserve_facts_and_reject_public_documents",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.world_scopes.require_unique_reference": "test_world_scopes_report_ambiguity_and_keep_uid_queries_exact",
+        "app.domain.world_scopes.select_city": "test_world_scopes_report_ambiguity_and_keep_uid_queries_exact",
+        "app.domain.world_scopes.select_company": "test_world_scopes_report_ambiguity_and_keep_uid_queries_exact",
+        "app.domain.world_scopes.scope_company": "test_world_scopes_filter_facilities_without_reparenting_companies",
+        "app.domain.world_scopes.WorldScope.facilities": "test_world_scopes_filter_facilities_without_reparenting_companies",
+        "app.domain.world_scopes.WorldScope.facility": "test_world_scopes_report_ambiguity_and_keep_uid_queries_exact",
+        "app.domain.world_scopes.WorldScope.country": "test_world_scopes_report_ambiguity_and_keep_uid_queries_exact",
+        "app.domain.world_scopes.WorldScope.city": "test_world_scopes_report_ambiguity_and_keep_uid_queries_exact",
+        "app.domain.world_scopes.WorldScope.company": "test_world_scopes_report_ambiguity_and_keep_uid_queries_exact",
+        "app.domain.world_scopes.WorldScope.query": "test_world_scopes_filter_facilities_without_reparenting_companies",
+        "app.domain.world_scopes.CountryScope.facilities": "test_world_scopes_filter_facilities_without_reparenting_companies",
+        "app.domain.world_scopes.CountryScope.city": "test_world_scopes_report_ambiguity_and_keep_uid_queries_exact",
+        "app.domain.world_scopes.CountryScope.company": "test_world_scopes_filter_facilities_without_reparenting_companies",
+        "app.domain.world_scopes.CityScope.facilities": "test_world_scopes_filter_facilities_without_reparenting_companies",
+        "app.domain.world_scopes.CityScope.company": "test_world_scopes_filter_facilities_without_reparenting_companies",
     }
 )

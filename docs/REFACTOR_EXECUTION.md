@@ -392,3 +392,13 @@ separate Übernahme der Testprofile folgt weiterhin erst in F.
 den entfernten Migrationstest wurde durch einen eigenen Katalogverdrahtungs-
 Gegentest ersetzt. Der Nachlauf einschließlich API-/Fahrzeugregression bestand
 mit 25 Fällen. mypy, Pyright, Ruff und Formatprüfung bestanden.
+
+## D: Unveränderliche World-Scopes
+
+Standortauflösung, Kartenfilter und Markt verwenden WorldScope. Country-,
+City- und Company-Scopes bewahren die Standortidentitäten und filtern
+Unternehmen über deren Facilities. Mehrdeutige Namen werden ausdrücklich
+abgewiesen; UID-Abfragen bleiben eindeutig. Alte Snapshot-Lookups wurden
+entfernt. Scope-/Katalog-/Marktprüfungen bestanden nach Anpassung des
+Gegentests an den neuen Mehrdeutigkeitsfehler. Weitere 68 direkte
+Aufrufertests bestanden; mypy und Pyright bestanden.

@@ -19,6 +19,7 @@ from app.domain.models import PriceQuote
 from app.domain.results import ContractQuote
 from app.domain.transports import RouteSnapshot
 from app.domain.world import FacilityQuery
+from app.domain.world_scopes import WorldScope
 from app.services.game import GameService
 from tests.conftest import BERLIN_UID
 from tests.seed_data import HUBS
@@ -75,7 +76,9 @@ async def test_quote_contract_geocodes_routes_and_prices(game: GameService):
     quote = project_quote(await game.quote_contract(contract["id"]))
     assert (
         quote["origin"]["address"]
-        == game.world.read().get_facility(BERLIN_UID).address.display_text()
+        == WorldScope(game.world.read())
+        .facility(BERLIN_UID)
+        .address.display_text()
     )
     assert quote["origin"]["coordinate_evidence"]
     assert quote["distance_km"] == 400.0
@@ -95,7 +98,9 @@ async def test_dispatch_builds_persisted_trip_and_debits_cost(
     after_cash = game._get_player().cash
     assert (
         trip["origin"]["address"]
-        == game.world.read().get_facility(BERLIN_UID).address.display_text()
+        == WorldScope(game.world.read())
+        .facility(BERLIN_UID)
+        .address.display_text()
     )
     assert trip["route_geojson"]["type"] == "LineString"
     assert after_cash == before_cash - trip["operating_cost_eur"]
@@ -135,7 +140,9 @@ def test_state_expands_contract_addresses(game: GameService):
     state = project_state(game.state())
     assert (
         state["hubs"][0]["address"]
-        == game.world.read().get_facility(BERLIN_UID).address.display_text()
+        == WorldScope(game.world.read())
+        .facility(BERLIN_UID)
+        .address.display_text()
     )
     assert "origin" in state["contracts"][0]
     assert "address" in state["contracts"][0]["origin"]
@@ -318,7 +325,9 @@ def test_list_get_and_expand_vehicles(game: GameService):
     vehicles = [project_vehicle(value) for value in game.list_vehicles()]
     assert (
         vehicles[0]["hub"]["address"]
-        == game.world.read().get_facility(BERLIN_UID).address.display_text()
+        == WorldScope(game.world.read())
+        .facility(BERLIN_UID)
+        .address.display_text()
     )
     assert (
         project_vehicle(game.get_vehicle("truck_01"))["hub"]["city"]

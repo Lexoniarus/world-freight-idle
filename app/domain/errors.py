@@ -27,3 +27,7 @@ class UnsupportedGameSchema(PersistenceError):
 
 class DuplicateAccountError(ValueError):
     """An account name is already assigned, including registration races."""
+
+
+class AmbiguousWorldReference(ValueError):
+    """A name identifies multiple references within the selected scope."""

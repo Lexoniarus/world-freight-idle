@@ -450,3 +450,10 @@ die gemeinsamen Länder-/Stadtobjekte. Ein FacilityLocationSnapshot speichert
 seine damalige City/Country-Identität, Koordinaten und den vollständigen
 historischen Adresstext unabhängig von späteren Katalogänderungen. Die
 öffentlichen v1-Felder bleiben flach projiziert und ergänzen city_uid.
+
+WorldScope bietet unveränderliche Country-, City- und Company-Ansichten.
+Zum Beispiel: `WorldScope(snapshot).country("DE").city("Berlin")`
+`.company("BEHALA").facilities`. Company-Zuordnung erfolgt über die
+Facilities; ihr rechtlicher Sitz wird dadurch nicht verändert. Namen müssen
+im gewählten Scope eindeutig sein, sonst folgt AmbiguousWorldReference.
+UID-Abfragen haben Vorrang. Die bisherigen WorldSnapshot-Lookups entfallen.

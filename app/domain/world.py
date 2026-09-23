@@ -204,26 +204,3 @@ class WorldSnapshot:
     facilities: tuple[Facility, ...]
     countries: tuple[Country, ...]
     cities: tuple[City, ...]
-
-    def get_facility(self, identifier: str) -> Facility:
-        """Resolve a durable UID or explicitly maintained legacy alias."""
-        matches = tuple(
-            facility
-            for facility in self.facilities
-            if facility.facility_uid == identifier
-            or identifier in facility.aliases
-        )
-        if len(matches) != 1:
-            raise KeyError("Unknown or ambiguous facility")
-        return matches[0]
-
-    def get_company(self, company_uid: str) -> Company:
-        """Resolve a reference company by its public stable UID."""
-        for company in self.companies:
-            if company.company_uid == company_uid:
-                return company
-        raise KeyError("Unknown company")
-
-    def query(self, query: FacilityQuery) -> tuple[Facility, ...]:
-        """Return stable-order map candidates without simulation state."""
-        return tuple(f for f in self.facilities if query.includes(f))

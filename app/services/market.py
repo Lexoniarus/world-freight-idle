@@ -7,6 +7,7 @@ from typing import ClassVar
 from app.domain.contracts import ContractOffer
 from app.domain.ports import VehicleCatalogue, WorldCatalogue
 from app.domain.world import Facility
+from app.domain.world_scopes import WorldScope
 from app.services.contract_factory import ContractFactory
 from app.services.trade_network import TradeNetwork, TradeOption
 from app.simulation import build_payload_bands
@@ -71,7 +72,7 @@ class MarketGenerator:
         planned: set[str] = set()
         for identifier in origin_facility_uids:
             try:
-                facility = snapshot.get_facility(identifier)
+                facility = WorldScope(snapshot).facility(identifier)
             except KeyError:
                 continue
             if (

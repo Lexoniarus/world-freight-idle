@@ -7,6 +7,7 @@ import pytest
 
 from app.bootstrap import GameRuntime
 from app.domain.transports import RouteSnapshot
+from app.domain.world_scopes import WorldScope
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.sqlite_store import SqliteStore
@@ -63,9 +64,8 @@ WORLD_PATH = (
     / "world_freight_company_facility_mvp.sqlite3"
 )
 BERLIN_UID = (
-    SqliteWorldCatalogue(WORLD_PATH)
-    .read()
-    .get_facility("berlin_westhafen")
+    WorldScope(SqliteWorldCatalogue(WORLD_PATH).read())
+    .facility("berlin_westhafen")
     .facility_uid
 )
 

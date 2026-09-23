@@ -13,6 +13,7 @@ from app.domain.contracts import ContractOffer, ContractOfferSnapshot
 from app.domain.errors import WorldCatalogueError
 from app.domain.game import OwnedVehicle
 from app.domain.world import FacilityQuery
+from app.domain.world_scopes import WorldScope
 from app.services.contract_factory import ContractFactory
 from app.services.market import MarketGenerator
 from app.services.market_scope import MarketScopeResolver
@@ -27,7 +28,7 @@ def test_market_generate_guarantees_origin_and_real_addresses_are_external(
     market = MarketGenerator(world_catalogue, random.Random(3), catalogue)
     contracts = market.generate(1000, ["berlin_westhafen", "missing"], 4)
     snapshot = world_catalogue.read()
-    berlin = snapshot.get_facility("berlin_westhafen")
+    berlin = WorldScope(snapshot).facility("berlin_westhafen")
     build_payload_bands(
         [model.capacity_tons for model in catalogue.list_models()]
     )
@@ -49,7 +50,7 @@ def test_build_contract_has_expiry_and_valid_nhm_cargo(
     catalogue,
 ):
     snapshot = world_catalogue.read()
-    origin = snapshot.get_facility("berlin_westhafen")
+    origin = WorldScope(snapshot).facility("berlin_westhafen")
     candidates = tuple(f for f in snapshot.facilities if f.is_routable())
     market = MarketGenerator(world_catalogue, random.Random(3), catalogue)
     network = TradeNetwork(candidates)
@@ -177,7 +178,7 @@ def test_market_scope_combines_idle_trucks_and_zoomed_viewport(
     world_catalogue,
 ):
     resolver = MarketScopeResolver(world_catalogue)
-    berlin = world_catalogue.read().get_facility("berlin_westhafen")
+    berlin = WorldScope(world_catalogue.read()).facility("berlin_westhafen")
     vehicles = [
         OwnedVehicle(
             id="idle",

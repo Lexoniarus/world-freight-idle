@@ -21,6 +21,7 @@ from app.bootstrap import (
     build_profile_maintenance_service,
 )
 from app.domain.game import OwnedVehicle, PlayerState
+from app.domain.world_scopes import WorldScope
 from app.repositories.accounts import AccountRepository
 from app.repositories.database_backup import backup_database
 from scripts.update_test_profile import main, parse_assignments
@@ -164,7 +165,7 @@ def test_maintenance_write_failure_rolls_back_and_retains_unselected(
 ):
     _, service, selected, _ = maintenance
     vehicle = selected.state_repository.list_vehicles()[0]
-    hamburg = selected.world.read().get_facility("hamburg_cta")
+    hamburg = WorldScope(selected.world.read()).facility("hamburg_cta")
     vehicle.start_trip()
     vehicle.arrive(hamburg.location_snapshot())
     vehicle.start_trip()
