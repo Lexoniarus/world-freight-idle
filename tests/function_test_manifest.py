@@ -433,3 +433,13 @@ FUNCTION_TESTS.update(
 FUNCTION_TESTS["app.main.persistence_error"] = (
     "test_persistence_outage_does_not_expose_database_details"
 )
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.energy.EnergyProfile.__post_init__": "test_energy_profile_validates_measurements_and_consumption",
+        "app.domain.energy.EnergyProfile.validate_level": "test_energy_profile_validates_measurements_and_consumption",
+        "app.domain.energy.EnergyProfile.consumption_for": "test_energy_profile_validates_measurements_and_consumption",
+        "app.domain.vehicles.VehicleModel.__post_init__": "test_catalogue_energy_values_match_all_fourteen_models",
+        "app.repositories.vehicle_catalogue.read_energy_profile": "test_catalogue_rejects_incomplete_energy",
+    }
+)

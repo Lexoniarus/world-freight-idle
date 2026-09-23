@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from app.domain.energy import EnergyProfile
+from app.domain.validation import require_finite
+
 VehicleStatus = Literal["idle", "enroute"]
 
 
@@ -33,5 +36,13 @@ class VehicleModel:
     price_eur: int
     operating_cost_eur_per_km: float
     unlock_reputation: int
+    energy: EnergyProfile
+    top_speed_kmh: float
     mode: str = "truck"
     image: VehicleImage | None = None
+
+    def __post_init__(self) -> None:
+        """Require a usable speed limit and typed energy specification."""
+        require_finite(self.top_speed_kmh, "Top speed", 0.000001)
+        if not isinstance(self.energy, EnergyProfile):
+            raise ValueError("Vehicle energy profile is missing.")
