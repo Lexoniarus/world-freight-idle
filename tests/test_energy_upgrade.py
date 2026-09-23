@@ -182,6 +182,7 @@ def test_energy_upgrade_rejects_invalid_source_without_output(
 def test_energy_upgrade_reconciliation_failure_removes_target(
     old_energy_state, tmp_path, fault, caplog
 ):
+    caplog.set_level("ERROR", logger="app.repositories.energy_upgrade")
     source, upgrade, _ = old_energy_state
     original = source.read_bytes()
     output = tmp_path / "failed.db"
