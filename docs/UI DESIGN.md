@@ -734,3 +734,16 @@ Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
 Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
 erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
 bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
+
+
+## Domain-/Persistenzstand, 23.09.2026
+
+Die Spielbasis verwendet typisierte Entities, eine relationale SQLite-Laufzeit
+hinter Repository-/Unit-of-Work-Ports und WorldCatalogue 4.0.0 mit stabilen
+Stadtidentitäten und unveränderlichen World-Scopes. API-Felder, UI, Spielregeln
+und python main.py bleiben erhalten. Historische Transportwerte überleben
+Katalogupdates. Die drei Testkonten sind nach Backup übernommen; Sitzungen
+wurden verworfen. UI First bleibt verbindlich; Unternehmen, eigene Depots,
+Satelliten und neue Wirtschaftsmechaniken gehören weiterhin nicht zu diesem
+Umbau. Abnahme und ausgeführte Nachweise: QUALITY_REPORT.md. Der technische
+Umbau allein behauptet weder eine vollständige MVP- noch reale iPad-Abnahme.

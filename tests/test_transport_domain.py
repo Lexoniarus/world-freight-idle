@@ -1,21 +1,25 @@
 """Transport invariants and transitional adapter behavior."""
 
-from dataclasses import FrozenInstanceError, replace
+from dataclasses import FrozenInstanceError, asdict, replace
 
 import pytest
 
-from app.domain.contracts import ContractOffer
+from app.api.v1.game_projection import (
+    project_vehicle,
+)
+from app.api.v1.location_projection import project_location
+from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.transports import ActiveTransport, RouteSnapshot
-from app.repositories.transport_mapping import dump_transport, load_transport
+from app.repositories.transport_mapping import load_transport
 
 
 def test_transport_lifecycle_rejects_invalid_and_duplicate_settlement(game):
-    offer = ContractOffer.from_dict(game.store.get_json("contracts")[0])
+    offer = game.state_repository.list_offers()[0]
     route = RouteSnapshot(((13.3, 52.5), (9.9, 53.5)), 300, 100, "fake")
     trip = ActiveTransport(
         "trip",
         "truck",
-        offer,
+        HistoricalContractSnapshot.from_offer(offer),
         offer.origin,
         offer.destination,
         route,
@@ -52,14 +56,14 @@ def test_transport_lifecycle_rejects_invalid_and_duplicate_settlement(game):
             replace(trip, **changes)
     with pytest.raises(ValueError):
         trip.is_due(float("nan"))
-    payload = dump_transport(trip)
+    payload = asdict(trip)
     assert load_transport(payload) == trip
-    assert payload["profit_eur"] == 300
-    payload["route_geojson"] = {
-        "type": "Feature",
-        "geometry": payload["route_geojson"],
-    }
-    assert load_transport(payload) == trip
+    assert "profit_eur" not in payload
+    assert "route_geojson" not in payload
+    del payload["status"]
+    with pytest.raises(KeyError):
+        load_transport(payload)
+    payload = asdict(trip)
     payload["arrives_at"] = 9
     with pytest.raises(ValueError):
         load_transport(payload)
@@ -83,32 +87,19 @@ def test_route_snapshot_rejects_invalid_measurements_and_geometry():
             replace(route, **changes)
 
 
-def test_legacy_transport_settlement_keeps_saved_location(game):
-    location = (
-        game.world.read().get_facility("hamburg_cta").location_snapshot()
-    )
-    legacy = {
-        "id": "old-trip",
-        "vehicle_id": "truck_01",
-        "contract": {"destination_hub_id": location.facility_uid},
-        "destination_snapshot": location.to_dict(),
-        "arrives_at": 0,
-        "payout_eur": 50,
-    }
-    vehicles = game.store.get_json("vehicles")
-    vehicles[0]["status"] = "enroute"
-    game.store.set_json("vehicles", vehicles)
-    game.store.set_json("active_trips", [legacy])
-    assert game.reconcile_arrival()
-    assert game.store.get_json("player")["cash"] == 175050
-    assert (
-        game.list_vehicles()[0]["hub"]["facility_uid"] == location.facility_uid
-    )
-    assert (
-        game._legacy_trip_destination({"contract": legacy["contract"]})
-        == location
-    )
-    with pytest.raises(KeyError):
-        game._legacy_trip_destination(
-            {"contract": {"destination_hub_id": "missing"}}
-        )
+def test_transport_settlement_keeps_saved_location_without_catalogue(game):
+    from unittest.mock import patch
+
+    from app.domain.errors import WorldCatalogueError
+    from tests.transport_fixtures import add_transport
+
+    trip = add_transport(game, payout=50)
+    with patch.object(game.world, "read", side_effect=WorldCatalogueError()):
+        assert game.reconcile_arrival()
+        assert [project_vehicle(value) for value in game.list_vehicles()][0][
+            "hub"
+        ] == project_location(trip.destination)
+    player = game.state_repository.get_player()
+    assert player is not None and player.cash == 175050
+    assert not game.reconcile_arrival()
+    assert game.state_repository.list_transports()[0].status == "settled"

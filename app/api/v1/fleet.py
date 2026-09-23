@@ -7,12 +7,13 @@ from app.api.v1.dependencies import (
     get_game_service,
     get_vehicle_catalogue,
 )
+from app.api.v1.game_projection import project_catalogue, project_vehicle
 from app.api.v1.schemas import PurchaseRequest
+from app.api.v1.vehicle_presentation import present_vehicles
 from app.domain.errors import CatalogueError
 from app.domain.ports import VehicleCatalogue
 from app.services.fleet import FleetService
 from app.services.game import GameService
-from app.services.vehicle_presentation import present_vehicles
 
 router = APIRouter(prefix="/fleet", tags=["fleet"])
 
@@ -21,7 +22,7 @@ router = APIRouter(prefix="/fleet", tags=["fleet"])
 def get_catalogue(fleet: FleetService = Depends(get_fleet_service)) -> dict:
     """List simulated vehicle models, prices and the fixed delivery hub."""
     try:
-        return fleet.list_catalogue()
+        return project_catalogue(fleet.list_catalogue())
     except CatalogueError as exc:
         raise HTTPException(503, str(exc)) from exc
 
@@ -40,7 +41,7 @@ def purchase_vehicle(
         raise HTTPException(503, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    return game.get_vehicle(vehicle["id"])
+    return project_vehicle(game.get_vehicle(vehicle.id))
 
 
 @router.get("")
@@ -49,7 +50,11 @@ def list_fleet(
     catalogue: VehicleCatalogue = Depends(get_vehicle_catalogue),
 ) -> dict:
     """Return all player vehicles with their current real-world hub."""
-    return {"vehicles": present_vehicles(game.list_vehicles(), catalogue)}
+    return {
+        "vehicles": present_vehicles(
+            [project_vehicle(item) for item in game.list_vehicles()], catalogue
+        )
+    }
 
 
 @router.get("/{vehicle_id}")
@@ -60,6 +65,8 @@ def get_vehicle(
 ) -> dict:
     """Return one player vehicle."""
     try:
-        return present_vehicles([game.get_vehicle(vehicle_id)], catalogue)[0]
+        return present_vehicles(
+            [project_vehicle(game.get_vehicle(vehicle_id))], catalogue
+        )[0]
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from exc

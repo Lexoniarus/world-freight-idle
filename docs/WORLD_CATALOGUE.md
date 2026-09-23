@@ -1,17 +1,15 @@
 # WorldCatalogue: Referenzen und Spielzustand
 
-Stand: 20.09.2026. UI First, FastAPI, native ES-Module, OSM und
+Stand: 23.09.2026. UI First, FastAPI, native ES-Module, OSM und
 `python main.py` bleiben Grundlage. Reale Referenzunternehmen sind keine
 Spielerunternehmen; öffentliche Facilities sind keine eigenen Depots.
 
 ## Referenzdaten
 
-`data/world_freight_company_facility_mvp.sqlite3` wird mit Schema **3.0.0**
-versioniert ausgeliefert. Die Versionsnummer bleibt aufgrund der bewussten
-Projektentscheidung 3.0.0, obwohl der Katalog inzwischen die operative
-NHM-Erweiterung `facility_nhm_profiles` enthält. Der Runtime-Reader prüft daher
-zusätzlich die erforderlichen Tabellen und Metadaten statt nur die
-Versionsnummer.
+`data/world_freight_company_facility_mvp.sqlite3` wird mit Schema **4.0.0**
+versioniert ausgeliefert: 109 Companies, 352 Facilities, 25 Länder und
+304 dauerhaft identifizierte Städte. Der Reader prüft Schema, Referenzen und
+Provenienz einschließlich NHM-Tabellen.
 
 `WORLD_CATALOGUE_PATH` kann die Datei ersetzen. Laufzeitverbindungen verwenden
 `mode=ro`, `query_only`, Fremdschlüsselprüfung und eine konsistente
@@ -90,8 +88,9 @@ bleibt 0,18 €/km/t. Der NHM-Umbau verändert weder Routing, Pricing noch den
 Transport-Lifecycle.
 
 Alte noch nicht angenommene Marktangebote ohne `market_model=nhm_v1` werden
-beim nächsten Refresh verworfen und können nicht mehr gequotet oder angenommen
-werden. Bereits gestartete `active_trips` bleiben unverändert, fahren mit ihren
+beim expliziten Offline-Import berichtet und ausgeschlossen. Sie können nicht
+mehr gequotet oder angenommen werden. Bereits gestartete Transporte bleiben
+unverändert, fahren mit ihren
 gespeicherten Snapshots zu Ende und werden normal ausgezahlt. Auch bei einem
 temporären Katalogausfall werden Legacy-Angebote nicht wieder sichtbar.
 
@@ -117,7 +116,7 @@ hat `unavailable_count=0`. `GET /api/v1/map/hubs` bleibt die kompatible
 Envelope-Projektion. Beide Pfade verwenden gespeicherte Koordinaten und rufen
 keinen Runtime-Geocoder auf.
 
-Fehlende oder strukturell alte 3.0.0-Kataloge ohne `nhm_codes` und
+Fehlende oder strukturell alte Kataloge ohne `nhm_codes` und
 `facility_nhm_profiles` werden als inkompatibel abgewiesen. Gleiches gilt für
 gebrochene FKs, NHM-Pseudocodes in `cargo_types` oder Facilities ohne
 vollständiges NHM-IN/OUT-Verhalten.
@@ -130,7 +129,8 @@ Strukturierte Ereignisse wie `world.catalogue_read`,
 
 Der Domain-Port liefert unveränderliche Referenzmodelle. SQL liegt
  ausschließlich im Repository. `MarketGenerator` kennt weder SQLite noch
- konkrete Katalogadapter. `CargoProfile` kapselt NHM-Kompatibilität;
+ konkrete Katalogadapter. `NhmProduct` kapselt Warenidentität und NHM-Kompatibilität;
+ `FacilityNhmProfile` komponiert das Produkt mit Rolle und Evidenz;
  `Facility` kapselt IN-/OUT-Rollen und Routability; der MarketGenerator
  orchestriert TradeOptions und Contract-Snapshots.
 
@@ -158,15 +158,11 @@ daraus erzeugte unveränderliche `WorldSnapshot`-Revision anschließend gecacht.
 Runtime-Reads sind dadurch Speicherzugriffe und keine wiederholten
 15.099-NHM-/352-Facility-Rekonstruktionen.
 
-Map- und Contract-Payloads verwenden `Facility.location_snapshot()`. Die
-Methode liefert ein immutable `FacilityLocationSnapshot`, das an API- und
-Persistenzgrenzen explizit serialisiert wird. Die Projektion enthält stabile
-Facility-Identität, eine kompakte Firmenidentität
-(`company_uid`, `legal_name`, `display_name`, `country`), Adresse,
-Koordinatenstatus und Koordinaten-Evidence. Vollständige NHM-Profile,
-`handled_goods`, Company-Quellen, Websites und weitere schwere Referenzdaten
-bleiben bewusst außerhalb des Runtime-Snapshots. Vollständige
-Referenzprojektionen bleiben für Wartung/Migration über `to_dict()` verfügbar.
+Map- und Contract-Payloads projizieren FacilityLocationSnapshot kompakt.
+Historische Persistenz bewahrt zusätzlich aufgezeichnete Quellen, Waren und
+Handling-Evidence. Neue Snapshots expandieren keine gesamten NHM-Profile.
+Domainobjekte besitzen keine to_dict/from_dict-Methoden. API- und Repository-
+Mapping bleiben getrennt; die HTTP-Ansicht verrät kein Speicherformat.
 
 ## Lazy Market Scope und Kartenlebenszyklus
 
@@ -189,3 +185,27 @@ globale `/map/facilities`-Abfrage gehört nicht mehr zum Browserstart.
 Facility-Texte werden nicht dauerhaft als Canvas-Labels erzeugt, sondern nur
 bei Hover als textContent-basierte DOM-Popups angezeigt.
 
+
+
+## Normalisierte Geografie
+
+Schema 4.0.0 enthält 25 Länder und 304 Städte. Facilities referenzieren eine
+verpflichtende Stadt-UUID; redundante Stadt-/Region-/Landspalten entfallen.
+Companies referenzieren Länder, ohne einer einzelnen Stadt untergeordnet zu
+werden. Company-/Facility-UUIDs bleiben unverändert. Der Runtime-Reader
+akzeptiert ausschließlich das normalisierte Schema und öffnet es read-only.
+
+`docs/data/world-geography-v4.json` ordnet alle 352 Facility-UUIDs ausdrücklich
+festen Stadt-UUIDs zu. Die Identitäten wurden einmalig erzeugt und werden nicht
+bei Migration oder Lookup aus Namen abgeleitet. Neun Gruppen mit fehlenden
+Regionsangaben wurden anhand der vorhandenen Standortkoordinaten abgeglichen.
+Namen, Koordinatenqualität und Quellen bleiben erhalten; Normalisierung ist
+keine neue geografische Verifizierung.
+
+Offline-Aufbereitung: `scripts/normalize_world_catalogue.py --catalogue SOURCE
+--backup BACKUP --output TARGET --mapping docs/data/world-geography-v4.json`.
+Quelle, Backup und Ziel müssen getrennte Dateien sein. Nach erfolgreichem
+SQLite-Backup entsteht ein transaktional normalisiertes Ziel; Identitäten,
+Stadtzuordnungen, Fremdschlüssel und Integrität werden abgeglichen. Ein bereits
+passendes Ziel wird ohne Neuschreiben akzeptiert, fremde Ziele werden abgewiesen.
+Die frühere In-place-Aufbereitung von Schema 2 auf 3 wurde entfernt.

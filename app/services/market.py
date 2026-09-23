@@ -1,11 +1,13 @@
 """Generate NHM contracts only for explicitly requested origins."""
 
 import random
-from dataclasses import dataclass
-from typing import Any, ClassVar
+from dataclasses import dataclass, field
+from typing import ClassVar
 
+from app.domain.contracts import ContractOffer
 from app.domain.ports import VehicleCatalogue, WorldCatalogue
 from app.domain.world import Facility
+from app.domain.world_scopes import WorldScope
 from app.services.contract_factory import ContractFactory
 from app.services.trade_network import TradeNetwork, TradeOption
 from app.simulation import build_payload_bands
@@ -23,15 +25,18 @@ class MarketGenerator:
     vehicles: VehicleCatalogue
     trade_network: TradeNetwork | None = None
     contract_factory: ContractFactory | None = None
+    _reference_facilities: tuple[Facility, ...] = field(
+        default=(), init=False, repr=False
+    )
 
     def generate(
         self,
         now: float,
-        origin_hub_ids: list[str],
+        origin_facility_uids: list[str],
         contract_count: int = 6,
-        existing_contracts: list[dict[str, Any]] | None = None,
+        existing_contracts: list[ContractOffer] | None = None,
         owned_capacities: list[float] | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[ContractOffer]:
         """Guarantee payload-band work only for requested valid origins."""
         snapshot = self.world.read()
         candidates = tuple(
@@ -39,14 +44,12 @@ class MarketGenerator:
             for facility in snapshot.facilities
             if facility.is_routable()
         )
-        candidate_uids = tuple(
-            facility.facility_uid for facility in candidates
-        )
         if (
             self.trade_network is None
-            or self.trade_network.facility_uids != candidate_uids
+            or self._reference_facilities != candidates
         ):
             self.trade_network = TradeNetwork(candidates)
+            self._reference_facilities = candidates
         if self.contract_factory is None:
             self.contract_factory = ContractFactory(self.rng)
 
@@ -57,12 +60,10 @@ class MarketGenerator:
         )
         band_by_name = {band.name: band for band in bands}
         covered = {
-            (item["origin_hub_id"], item.get("payload_band"))
+            (item.origin.facility_uid, item.payload_band)
             for item in retained
-            if item.get("payload_band") in band_by_name
-            and 0
-            < item["tons"]
-            <= band_by_name[item["payload_band"]].maximum_tons
+            if item.payload_band in band_by_name
+            and 0 < item.tons <= band_by_name[item.payload_band].maximum_tons
         }
 
         available = {
@@ -70,9 +71,9 @@ class MarketGenerator:
         }
         origins: list[Facility] = []
         planned: set[str] = set()
-        for identifier in origin_hub_ids:
+        for identifier in origin_facility_uids:
             try:
-                facility = snapshot.get_facility(identifier)
+                facility = WorldScope(snapshot).facility(identifier)
             except KeyError:
                 continue
             if (
@@ -97,12 +98,14 @@ class MarketGenerator:
                     self.trade_network.options_for(origin.facility_uid)
                 )
                 contracts.append(
-                    self.contract_factory.build(option, now, band).to_dict()
+                    ContractOffer.from_snapshot(
+                        self.contract_factory.build(option, now, band)
+                    )
                 )
                 covered.add(coverage_key)
 
         scoped_count = sum(
-            item.get("origin_hub_id") in planned for item in contracts
+            item.origin.facility_uid in planned for item in contracts
         )
         while scoped_count < contract_count:
             origin = self.rng.choice(origins)
@@ -110,11 +113,11 @@ class MarketGenerator:
                 self.trade_network.options_for(origin.facility_uid)
             )
             contracts.append(
-                self.contract_factory.build(
-                    option,
-                    now,
-                    self.rng.choice(bands),
-                ).to_dict()
+                ContractOffer.from_snapshot(
+                    self.contract_factory.build(
+                        option, now, self.rng.choice(bands)
+                    )
+                )
             )
             scoped_count += 1
         return contracts

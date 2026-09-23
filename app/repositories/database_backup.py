@@ -13,5 +13,9 @@ def backup_database(db_path: Path, backup_path: Path) -> None:
     ) as source:
         with backup_path.open("xb"):
             pass
-        with closing(sqlite3.connect(backup_path)) as target:
-            source.backup(target)
+        try:
+            with closing(sqlite3.connect(backup_path)) as target:
+                source.backup(target)
+        except BaseException:
+            backup_path.unlink(missing_ok=True)
+            raise

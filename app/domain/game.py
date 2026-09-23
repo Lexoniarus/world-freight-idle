@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
-from app.domain.models import VehicleModel, VehicleStatus
 from app.domain.validation import (
     require_finite,
     require_identity,
     require_integer,
 )
+from app.domain.vehicles import VehicleModel, VehicleStatus
 from app.domain.world import FacilityLocationSnapshot
 
 
@@ -30,23 +29,6 @@ class PlayerState:
         self._cash = cash
         self._completed = completed
         self._reputation = reputation
-
-    @classmethod
-    def from_dict(cls, value: dict[str, Any]) -> PlayerState:
-        """Hydrate one persisted player state."""
-        return cls(
-            cash=value["cash"],
-            completed=value["completed"],
-            reputation=value["reputation"],
-        )
-
-    def to_dict(self) -> dict[str, int]:
-        """Serialize the current player state for persistence or API use."""
-        return {
-            "cash": self._cash,
-            "completed": self._completed,
-            "reputation": self._reputation,
-        }
 
     def debit(self, amount: int) -> None:
         """Debit a non-negative amount without allowing negative cash."""
@@ -94,11 +76,10 @@ class OwnedVehicle:
     _name: str
     _mode: str
     _capacity_tons: float
-    _hub_id: str
     _status: VehicleStatus
     _model_id: str | None
     _operating_cost_eur_per_km: float | None
-    _facility_uid: str | None
+    _facility_uid: str
     _location: FacilityLocationSnapshot | None
 
     def __init__(
@@ -107,80 +88,33 @@ class OwnedVehicle:
         name: str,
         mode: str,
         capacity_tons: float,
-        hub_id: str,
+        facility_uid: str,
         status: VehicleStatus,
         model_id: str | None = None,
         operating_cost_eur_per_km: float | None = None,
-        facility_uid: str | None = None,
         location: FacilityLocationSnapshot | None = None,
     ) -> None:
         """Initialize one coherent owned-vehicle snapshot."""
         require_identity(id, "Vehicle ID")
         require_identity(name, "Vehicle name")
         require_identity(mode, "Vehicle mode")
-        require_identity(hub_id, "Facility ID")
+        require_identity(facility_uid, "Facility ID")
         require_finite(capacity_tons, "Capacity", 0.01)
         if operating_cost_eur_per_km is not None:
             require_finite(operating_cost_eur_per_km, "Kilometer cost")
         if status not in {"idle", "enroute"}:
             raise ValueError("Invalid vehicle status.")
-        if facility_uid is not None and facility_uid != hub_id:
-            raise ValueError("Vehicle location identities differ.")
-        if location is not None and location.facility_uid != hub_id:
+        if location is not None and location.facility_uid != facility_uid:
             raise ValueError("Vehicle location snapshot differs.")
         self._id = id
         self._name = name
         self._mode = mode
         self._capacity_tons = capacity_tons
-        self._hub_id = hub_id
         self._status = status
         self._model_id = model_id
         self._operating_cost_eur_per_km = operating_cost_eur_per_km
         self._facility_uid = facility_uid
         self._location = location
-
-    @classmethod
-    def from_dict(cls, value: dict[str, Any]) -> OwnedVehicle:
-        """Hydrate one persisted vehicle while accepting legacy snapshots."""
-        raw_location = value.get("location_snapshot")
-        location = (
-            FacilityLocationSnapshot.from_dict(raw_location)
-            if isinstance(raw_location, dict)
-            else None
-        )
-        return cls(
-            id=str(value["id"]),
-            name=str(value.get("name", value["id"])),
-            mode=str(value.get("mode", "truck")),
-            capacity_tons=value["capacity_tons"],
-            hub_id=str(value["hub_id"]),
-            status=value.get("status", "idle"),
-            model_id=value.get("model_id"),
-            operating_cost_eur_per_km=value.get("operating_cost_eur_per_km"),
-            facility_uid=value.get("facility_uid"),
-            location=location,
-        )
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize without inventing optional legacy fields."""
-        result: dict[str, Any] = {
-            "id": self._id,
-            "name": self._name,
-            "mode": self._mode,
-            "model_id": self._model_id,
-            "capacity_tons": self._capacity_tons,
-            "hub_id": self._hub_id,
-            "status": self._status,
-        }
-        if self._operating_cost_eur_per_km is not None:
-            result["operating_cost_eur_per_km"] = (
-                self._operating_cost_eur_per_km
-            )
-        if self._facility_uid is not None:
-            result["facility_uid"] = self._facility_uid
-        if self._location is not None:
-            result["location_snapshot"] = self._location.to_dict()
-        return result
 
     def validate_dispatch(
         self,
@@ -194,7 +128,7 @@ class OwnedVehicle:
             raise ValueError("Fahrzeug ist nicht verfügbar.")
         if self._mode != contract_mode:
             raise ValueError("Fahrzeugtyp passt nicht zum Auftrag.")
-        if self._hub_id != origin_facility_uid:
+        if self._facility_uid != origin_facility_uid:
             raise ValueError("Fahrzeug steht nicht an der Abholadresse.")
         if self._capacity_tons < tons:
             raise ValueError("Fahrzeugkapazität reicht nicht aus.")
@@ -209,7 +143,6 @@ class OwnedVehicle:
         """Move the vehicle to an immutable destination snapshot."""
         if self._status != "enroute":
             raise ValueError("Only a travelling vehicle can arrive.")
-        self._hub_id = location.facility_uid
         self._facility_uid = location.facility_uid
         self._location = location
         self._status = "idle"
@@ -248,11 +181,6 @@ class OwnedVehicle:
         return self._capacity_tons
 
     @property
-    def hub_id(self) -> str:
-        """Return the location identity used by transitional callers."""
-        return self._hub_id
-
-    @property
     def status(self) -> VehicleStatus:
         """Expose the current status without a writable field."""
         return self._status
@@ -268,8 +196,8 @@ class OwnedVehicle:
         return self._operating_cost_eur_per_km
 
     @property
-    def facility_uid(self) -> str | None:
-        """Return the persistent facility identity, when recorded."""
+    def facility_uid(self) -> str:
+        """Return the persistent facility identity."""
         return self._facility_uid
 
     @property

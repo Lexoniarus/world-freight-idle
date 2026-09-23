@@ -9,10 +9,10 @@ from typing import Any
 
 import httpx
 
+from app.domain.cache_ports import ProviderCache
 from app.domain.errors import RoutingError
-from app.domain.models import RouteResult
+from app.domain.transports import RouteSnapshot
 from app.providers.validation import validate_route
-from app.repositories.sqlite_store import SqliteStore
 from app.tracing import get_trace_id
 
 LOGGER = logging.getLogger(__name__)
@@ -54,12 +54,12 @@ class ValhallaTruckRouter:
 
     def __init__(
         self,
-        store: SqliteStore,
+        cache: ProviderCache,
         client: httpx.AsyncClient,
         base_url: str,
         client_id: str,
     ) -> None:
-        self.store = store
+        self.cache = cache
         self.client = client
         self.base_url = base_url.rstrip("/")
         self.client_id = client_id
@@ -70,7 +70,7 @@ class ValhallaTruckRouter:
         origin_lon: float,
         destination_lat: float,
         destination_lon: float,
-    ) -> RouteResult:
+    ) -> RouteSnapshot:
         """Normalize transport and malformed-response errors at the port."""
         try:
             return await self._resolve_route(
@@ -85,7 +85,7 @@ class ValhallaTruckRouter:
         origin_lon: float,
         destination_lat: float,
         destination_lon: float,
-    ) -> RouteResult:
+    ) -> RouteSnapshot:
         """Fetch or reuse a real truck route between two coordinates."""
         cache_key = self._build_cache_key(
             origin_lat,
@@ -94,7 +94,7 @@ class ValhallaTruckRouter:
             destination_lon,
         )
         try:
-            cached = self.store.get_route(cache_key)
+            cached = self.cache.get_route(cache_key)
         except ValueError:
             LOGGER.warning(
                 "Unreadable cached route",
@@ -107,7 +107,7 @@ class ValhallaTruckRouter:
                 extra={"event": "route.cache_hit", "data": {"key": cache_key}},
             )
             try:
-                return validate_route(RouteResult(**cached))
+                return validate_route(cached)
             except (ValueError, TypeError, KeyError):
                 LOGGER.warning(
                     "Invalid cached route",
@@ -148,7 +148,7 @@ class ValhallaTruckRouter:
             )
 
         route_result = self._extract_route(response.json())
-        self.store.put_route(cache_key, route_result.to_dict())
+        self.cache.put_route(cache_key, route_cache_document(route_result))
         return route_result
 
     def _build_cache_key(
@@ -166,7 +166,7 @@ class ValhallaTruckRouter:
         )
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
-    def _extract_route(self, data: dict[str, Any]) -> RouteResult:
+    def _extract_route(self, data: dict[str, Any]) -> RouteSnapshot:
         """Normalize Valhalla JSON into the domain route representation."""
         try:
             if not isinstance(data, dict):
@@ -210,13 +210,26 @@ class ValhallaTruckRouter:
         if any(isinstance(summary[key], bool) for key in ("length", "time")):
             raise ValueError("Invalid route metric type")
         return validate_route(
-            RouteResult(
-                distance_km=float(summary["length"]),
-                duration_seconds=float(summary["time"]),
-                route_geojson={
+            {
+                "distance_km": float(summary["length"]),
+                "duration_seconds": float(summary["time"]),
+                "route_geojson": {
                     "type": "LineString",
                     "coordinates": coordinates,
                 },
-                provider="Valhalla / OpenStreetMap (truck)",
-            )
+                "provider": "Valhalla / OpenStreetMap (truck)",
+            }
         )
+
+
+def route_cache_document(route: RouteSnapshot) -> dict[str, Any]:
+    """Encode the provider cache document at its I/O boundary."""
+    return {
+        "distance_km": route.distance_km,
+        "duration_seconds": route.duration_seconds,
+        "provider": route.provider,
+        "route_geojson": {
+            "type": "LineString",
+            "coordinates": [list(point) for point in route.coordinates],
+        },
+    }

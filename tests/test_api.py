@@ -1,38 +1,65 @@
 from __future__ import annotations
 
 import shutil
+from dataclasses import replace
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 from app.api.v1.dependencies import get_game_service
 from app.config import Settings
+from app.domain.contracts import HistoricalContractSnapshot
+from app.domain.game import PlayerState
+from app.domain.pricing import PriceQuote
+from app.domain.results import ContractQuote, GameSnapshot
+from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.main import create_app
 from app.providers.routing import RoutingError
 
 
 class FakeGame:
+    def __init__(self, game):
+        self.offer = replace(game.state_repository.list_offers()[0], id="c1")
+        self.vehicle = game.state_repository.list_vehicles()[0]
+        self.route = RouteSnapshot(((1, 1), (2, 2)), 10, 20, "fixture")
+        self.trip = ActiveTransport(
+            "trip1",
+            self.vehicle.id,
+            HistoricalContractSnapshot.from_offer(self.offer),
+            self.offer.origin,
+            self.offer.destination,
+            self.route,
+            1,
+            21,
+            1000,
+            100,
+        )
+
     def dashboard(self):
-        return {
-            "player": {"cash": 1},
-            "featured_contracts": [],
-            "transports": [],
-        }
+        return GameSnapshot(
+            1, 1, PlayerState(1, 0, 0), (self.vehicle,), (self.trip,)
+        )
 
     def list_contracts(self, query=None, zoom=None):
-        return [{"id": "c1"}]
+        return [self.offer]
 
     def get_contract(self, contract_id):
         if contract_id == "missing":
             raise KeyError("missing")
-        return {"id": contract_id}
+        return self.offer
 
     async def quote_contract(self, contract_id, vehicle_id=None):
         if contract_id == "routing-error":
             raise RoutingError("down")
         if contract_id == "missing":
             raise KeyError("missing")
-        return {"id": contract_id, "distance_km": 10}
+        return ContractQuote(
+            self.offer,
+            self.route,
+            PriceQuote(1000, 100, 900),
+            vehicle_id,
+            0.62,
+        )
 
     async def dispatch(self, contract_id, vehicle_id):
         if contract_id == "bad":
@@ -41,32 +68,26 @@ class FakeGame:
             raise KeyError("missing")
         if contract_id == "routing-error":
             raise RoutingError("down")
-        return {"id": "trip1", "vehicle_id": vehicle_id}
-
-    def refresh_market(self, force=False):
-        return [{"id": "fresh", "force": force}]
+        return self.trip
 
     def refresh_contracts(self, query=None, zoom=None):
-        return [{"id": "fresh", "force": True}]
+        return [replace(self.offer, id="fresh")]
 
     def list_vehicles(self):
-        return [{"id": "truck_01"}]
+        return (self.vehicle,)
 
     def get_vehicle(self, vehicle_id):
         if vehicle_id == "missing":
             raise KeyError("missing")
-        return {"id": vehicle_id}
+        return self.vehicle
 
     def list_transports(self):
-        return [{"id": "trip1"}]
+        return (self.trip,)
 
     def get_transport(self, transport_id):
         if transport_id == "missing":
             raise KeyError("missing")
-        return {"id": transport_id}
-
-    def reset(self):
-        return {"player": {"cash": 25000}}
+        return self.trip
 
 
 def make_settings(tmp_path: Path) -> Settings:
@@ -118,11 +139,11 @@ def make_static_files(tmp_path: Path):
         (static / filename).write_text(f"<html>{filename}</html>")
 
 
-def test_v1_resource_endpoints_and_error_mapping(tmp_path: Path):
+def test_v1_resource_endpoints_and_error_mapping(tmp_path: Path, game):
     make_static_files(tmp_path)
     app = create_app(make_settings(tmp_path))
     with TestClient(app) as client:
-        app.dependency_overrides[get_game_service] = FakeGame
+        app.dependency_overrides[get_game_service] = lambda: FakeGame(game)
         client.headers["X-Freight-Request"] = "1"
         assert client.get("/api/v1/dashboard").status_code == 200
         assert (
@@ -173,9 +194,9 @@ def test_v1_resource_endpoints_and_error_mapping(tmp_path: Path):
         )
         assert (
             client.post("/api/v1/contracts/refresh").json()["contracts"][0][
-                "force"
+                "id"
             ]
-            is True
+            == "fresh"
         )
         assert (
             client.post(
@@ -202,7 +223,6 @@ def test_product_pages_are_distinct_routes(tmp_path: Path):
     make_static_files(tmp_path)
     app = create_app(make_settings(tmp_path))
     with TestClient(app) as client:
-        app.dependency_overrides[get_game_service] = FakeGame
         client.headers["X-Freight-Request"] = "1"
         expected = {
             "/login": "login.html",
@@ -218,3 +238,21 @@ def test_product_pages_are_distinct_routes(tmp_path: Path):
             response = client.get(route)
             assert response.status_code == 200
             assert "world-map-shell" in response.text
+
+
+def test_persistence_outage_does_not_expose_database_details(tmp_path):
+    from app.domain.errors import PersistenceError
+
+    (tmp_path / "static").mkdir()
+    app = create_app(make_settings(tmp_path))
+
+    def unavailable():
+        raise PersistenceError("private database path and contents")
+
+    app.dependency_overrides[get_game_service] = unavailable
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.get("/api/v1/dashboard")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Spielstand derzeit nicht verfügbar."}
+    assert "private" not in response.text
+    assert response.headers["x-trace-id"]

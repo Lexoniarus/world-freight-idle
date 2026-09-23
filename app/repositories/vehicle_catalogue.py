@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from app.domain.errors import CatalogueError
-from app.domain.models import VehicleImage, VehicleModel
+from app.domain.vehicles import VehicleImage, VehicleModel
 
 LOGGER = logging.getLogger(__name__)
 QUERY = """

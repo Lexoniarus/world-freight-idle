@@ -3,79 +3,91 @@
 from __future__ import annotations
 
 import random
+import time
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
 
 from app.config import Settings
+from app.domain.game_import import GameStateImporter
+from app.domain.geography_migration import GeographyMigrationStore
+from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
+from app.domain.read_ports import LeaderboardReader, TrafficReader
+from app.domain.world_scopes import WorldScope
 from app.providers.routing import ValhallaTruckRouter
 from app.repositories.accounts import AccountRepository
 from app.repositories.cached_world_catalogue import CachedWorldCatalogue
-from app.repositories.multiplayer_map import MultiplayerMapRepository
-from app.repositories.sqlite_store import SqliteStore
+from app.repositories.game_database import SqliteGameDatabase
+from app.repositories.game_state import SqliteGameUnitOfWork
+from app.repositories.leaderboard import SqliteLeaderboardReader
+from app.repositories.legacy_game_import import LegacyGameImporter
+from app.repositories.provider_cache import SqliteProviderCache
+from app.repositories.relational_traffic import SqliteTrafficReader
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.repositories.world_catalogue import SqliteWorldCatalogue
-from app.repositories.world_maintenance import WorldMaintenanceRepository
-from app.repositories.world_state_migration import (
-    WorldStateMigrationRepository,
-)
+from app.repositories.world_geography import WorldGeographyRepository
 from app.services.fleet import FleetService
 from app.services.game import GameService
 from app.services.map_locations import MapLocationService
 from app.services.market import MarketGenerator
 from app.services.market_scope import MarketScopeResolver
-from app.services.multiplayer_map import MultiplayerMapService
-from app.services.pricing import PricingService
 from app.services.profile_maintenance import ProfileMaintenanceService
-from app.services.world_maintenance import WorldMaintenanceService
-from app.services.world_state_migration import WorldStateMigrationService
-from app.simulation import LEGACY_CARGO_TYPES
 
 
-def build_game_service(
+@dataclass
+class GameRuntime:
+    """Shared dependencies owned by the application composition root."""
+
+    database: SqliteGameDatabase
+    world: WorldCatalogue
+    router: TruckRouter
+    market: MarketGenerator
+    catalogue: VehicleCatalogue
+    market_scope: MarketScopeResolver
+    time_scale: float
+    clock: Callable[[], float] = time.time
+
+
+def build_game_runtime(
     settings: Settings,
     routing_client: httpx.AsyncClient,
     rng_seed: int | None = None,
-) -> GameService:
-    """Assemble the application service graph from explicit dependencies."""
-    store = SqliteStore(settings.db_path)
+) -> GameRuntime:
+    """Initialize only relational storage and shared application resources."""
+    database = SqliteGameDatabase(settings.db_path)
+    database.initialize()
     router = ValhallaTruckRouter(
-        store=store,
+        cache=SqliteProviderCache(database),
         client=routing_client,
         base_url=settings.valhalla_url,
         client_id=settings.valhalla_client_id,
     )
     world = build_world_catalogue(settings)
     catalogue = build_vehicle_catalogue(settings)
-    market = MarketGenerator(world, random.Random(rng_seed), catalogue)
-    pricing = PricingService(LEGACY_CARGO_TYPES)
-    return GameService(
-        store=store,
+    return GameRuntime(
+        database=database,
         world=world,
         router=router,
-        market=market,
-        pricing=pricing,
+        market=MarketGenerator(world, random.Random(rng_seed), catalogue),
         catalogue=catalogue,
         market_scope=MarketScopeResolver(world),
         time_scale=settings.game_time_scale,
     )
 
 
-def build_player_service(template: GameService, user_id: str) -> GameService:
-    """Isolate game state while sharing rate-limited provider adapters."""
+def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
+    """Bind one authenticated owner to the shared relational transaction."""
     game = GameService(
-        store=SqliteStore(
-            template.store.path,
-            f"user:{user_id}:",
-            initialize_schema=False,
-        ),
-        world=template.world,
-        router=template.router,
-        market=template.market,
-        pricing=template.pricing,
-        catalogue=template.catalogue,
-        market_scope=template.market_scope,
-        time_scale=template.time_scale,
+        unit_of_work=SqliteGameUnitOfWork(runtime.database, user_id),
+        world=runtime.world,
+        router=runtime.router,
+        market=runtime.market,
+        catalogue=runtime.catalogue,
+        market_scope=runtime.market_scope,
+        time_scale=runtime.time_scale,
+        clock=runtime.clock,
     )
     game.ensure_initial_state()
     return game
@@ -90,9 +102,9 @@ def build_vehicle_catalogue(settings: Settings) -> SqliteVehicleCatalogue:
 
 
 def build_fleet_service(game: GameService, settings: Settings) -> FleetService:
-    """Assemble purchasing against the authenticated player's store."""
+    """Assemble purchasing against the authenticated player's unit of work."""
     return FleetService(
-        game.store, build_vehicle_catalogue(settings), game.world
+        game.unit_of_work, build_vehicle_catalogue(settings), game.world
     )
 
 
@@ -101,23 +113,34 @@ def build_map_service(game: GameService) -> MapLocationService:
     return MapLocationService(game.world)
 
 
-def build_multiplayer_map_service(game: GameService) -> MultiplayerMapService:
-    """Build the read-only cross-player traffic projection."""
-    return MultiplayerMapService(MultiplayerMapRepository(game.store))
+def build_traffic_reader(
+    runtime: GameRuntime,
+) -> TrafficReader:
+    """Build the relational cross-player traffic projection."""
+    return SqliteTrafficReader(runtime.database)
+
+
+def build_leaderboard_reader(runtime: GameRuntime) -> LeaderboardReader:
+    """Bind the public relational progress reader."""
+    return SqliteLeaderboardReader(runtime.database)
 
 
 def build_profile_maintenance_service(
     settings: Settings,
 ) -> ProfileMaintenanceService:
     """Wire local maintenance independently of the HTTP application."""
-    accounts = AccountRepository(SqliteStore(settings.db_path))
+    database = SqliteGameDatabase(settings.db_path)
+    database.initialize()
+    accounts = AccountRepository(database)
 
-    def player_store_factory(user_id: str) -> SqliteStore:
-        """Resolve the store for a repository-verified account identity."""
-        return SqliteStore(settings.db_path, f"user:{user_id}:")
+    def player_unit_of_work_factory(user_id: str) -> SqliteGameUnitOfWork:
+        """Bind the repository-verified account to its relational state."""
+        return SqliteGameUnitOfWork(database, user_id)
 
     return ProfileMaintenanceService(
-        build_vehicle_catalogue(settings), accounts, player_store_factory
+        build_vehicle_catalogue(settings),
+        accounts,
+        player_unit_of_work_factory,
     )
 
 
@@ -132,16 +155,20 @@ def build_world_catalogue(settings: Settings) -> CachedWorldCatalogue:
     return CachedWorldCatalogue(source)
 
 
-def build_world_maintenance_service(path: Path) -> WorldMaintenanceService:
-    """Assemble explicit offline maintenance, never from an endpoint."""
-    return WorldMaintenanceService(WorldMaintenanceRepository(path))
+def build_geography_migration(
+    backup: Path, target: Path
+) -> GeographyMigrationStore:
+    """Bind offline normalization to its immutable backup and new output."""
+    return WorldGeographyRepository(backup, target)
 
 
-def build_world_state_migration_service(
-    settings: Settings,
-) -> WorldStateMigrationService:
-    """Assemble the explicit offline profile migration."""
-    return WorldStateMigrationService(
-        build_world_catalogue(settings),
-        WorldStateMigrationRepository(settings.db_path),
+def build_game_importer(
+    source: Path, settings: Settings, exclude_global_demo: bool = False
+) -> GameStateImporter:
+    """Assemble the explicit offline importer without opening runtime state."""
+    return LegacyGameImporter(
+        source,
+        WorldScope(build_world_catalogue(settings).read()),
+        MarketGenerator.model_id,
+        exclude_global_demo=exclude_global_demo,
     )

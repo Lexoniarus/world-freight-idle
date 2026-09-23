@@ -7,24 +7,31 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from app.domain.errors import WorldCatalogueError
-from app.domain.world import CargoProfile, FacilityQuery
+from app.api.v1.location_projection import project_location
+from app.domain.cargo import NhmProduct
+from app.domain.errors import AmbiguousWorldReference, WorldCatalogueError
+from app.domain.geography import Coordinates
+from app.domain.world import FacilityQuery
+from app.domain.world_scopes import WorldScope
 
 
 def test_world_snapshot_identity_provenance_and_query(world_catalogue):
     world = world_catalogue.read()
-    berlin = world.get_facility("berlin_westhafen")
-    assert world.get_facility(berlin.facility_uid) is berlin
+    berlin = WorldScope(world).facility("berlin_westhafen")
+    assert WorldScope(world).facility(berlin.facility_uid) is berlin
     assert berlin.company is not None
-    assert world.get_company(berlin.company.company_uid) is berlin.company
+    assert (
+        WorldScope(world).company(berlin.company.company_uid).company
+        is berlin.company
+    )
     assert berlin.is_routable() and berlin.has_verified_location()
-    assert berlin.outbound_cargo() and berlin.inbound_cargo()
+    assert berlin.outbound_profiles() and berlin.inbound_profiles()
     assert len(world.facilities) == 352
-    assert len(world.query(FacilityQuery())) == 352
+    assert len(WorldScope(world).query(FacilityQuery())) == 352
     assert any(
         profile.evidence_type == "derived" and profile.source is None
         for facility in world.facilities
-        for profile in facility.cargo
+        for profile in facility.nhm_profiles
     )
 
     estimated = next(
@@ -37,14 +44,14 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
     assert estimated.coordinate_evidence
 
     with pytest.raises(KeyError):
-        world.get_facility("1")
+        WorldScope(world).facility("1")
     with pytest.raises(KeyError):
-        world.get_company("1")
+        WorldScope(world).company("1").company
     ambiguous = replace(
         world, facilities=(berlin, replace(berlin, facility_uid="other"))
     )
-    with pytest.raises(KeyError, match="ambiguous"):
-        ambiguous.get_facility("berlin_westhafen")
+    with pytest.raises(AmbiguousWorldReference, match="Ambiguous"):
+        WorldScope(ambiguous).facility("berlin_westhafen")
     with pytest.raises(FrozenInstanceError):
         setattr(berlin, "label", "changed")
     location = berlin.location_snapshot()
@@ -56,8 +63,7 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
     with pytest.raises(FrozenInstanceError):
         setattr(location, "label", "changed")
 
-    location_payload = location.to_dict()
-    assert type(location).from_dict(location_payload) == location
+    location_payload = project_location(location)
     assert location_payload["id"] == berlin.facility_uid
     assert location_payload["company_uid"] == berlin.company.company_uid
     assert "sources" not in location_payload["company"]
@@ -65,36 +71,41 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
     assert "cargo" not in location_payload
     assert "handled_goods" not in location_payload
 
-    serialized = berlin.to_dict()
+    serialized = project_location(berlin.location_snapshot())
     serialized["company"]["display_name"] = "changed"
     assert berlin.company.display_name != "changed"
     assert serialized["id"] == berlin.facility_uid
     assert serialized["location_verified"] is True
     assert "facility_id" not in serialized and "company_id" not in serialized
-    assert replace(berlin, company=None).to_dict()["company_uid"] is None
+    assert (
+        project_location(replace(berlin, company=None).location_snapshot())[
+            "company_uid"
+        ]
+        is None
+    )
     for field, value in (
-        ("lat", None),
-        ("lon", float("inf")),
-        ("lat", 91),
+        ("coordinates", None),
         ("coordinate_evidence", ()),
         ("geocoding_status", "candidate"),
     ):
         assert not replace(berlin, **{field: value}).is_routable()
 
-    outbound = berlin.outbound_cargo()[0]
+    outbound = berlin.outbound_profiles()[0]
     assert not replace(
-        berlin, cargo=(replace(outbound, role="input"),)
-    ).outbound_cargo()
-    inbound = berlin.inbound_cargo()[0]
+        berlin, nhm_profiles=(replace(outbound, role="input"),)
+    ).outbound_profiles()
+    inbound = berlin.inbound_profiles()[0]
     assert not replace(
-        berlin, cargo=(replace(inbound, role="output"),)
-    ).inbound_cargo()
+        berlin, nhm_profiles=(replace(inbound, role="output"),)
+    ).inbound_profiles()
 
-    assert not FacilityQuery().includes(replace(berlin, lat=None))
+    assert not FacilityQuery().includes(replace(berlin, coordinates=None))
     dateline = FacilityQuery.parse("170,-10,-170,10")
-    assert dateline.includes(replace(berlin, lat=0, lon=179))
-    assert dateline.includes(replace(berlin, lat=0, lon=-179))
-    assert not dateline.includes(replace(berlin, lat=0, lon=0))
+    assert dateline.includes(replace(berlin, coordinates=Coordinates(0, 179)))
+    assert dateline.includes(replace(berlin, coordinates=Coordinates(0, -179)))
+    assert not dateline.includes(
+        replace(berlin, coordinates=Coordinates(0, 0))
+    )
     assert FacilityQuery.parse("13,52,14,53").includes(berlin)
     assert not FacilityQuery.parse("0,0,1,1").includes(berlin)
     for bounds in ("", "0,1,2", "nan,0,1,2", "181,0,1,2", "0,4,1,2"):
@@ -103,39 +114,9 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
 
 
 def test_nhm_cargo_profiles_follow_parent_hierarchy():
-    parent = CargoProfile(
-        1,
-        "87",
-        "Fahrzeuge",
-        "input",
-        "derived",
-        0.7,
-        0.6,
-        (1, 10),
-        None,
-    )
-    child = CargoProfile(
-        2,
-        "870850",
-        "Triebachsen",
-        "output",
-        "official",
-        1.0,
-        1.0,
-        (2, 3, 1, 10),
-        None,
-    )
-    unrelated = CargoProfile(
-        4,
-        "4011",
-        "Luftreifen",
-        "output",
-        "derived",
-        0.7,
-        0.6,
-        (4, 5, 10),
-        None,
-    )
+    parent = NhmProduct(1, "87", "Fahrzeuge", (1, 10))
+    child = NhmProduct(2, "870850", "Triebachsen", (2, 3, 1, 10))
+    unrelated = NhmProduct(4, "4011", "Luftreifen", (4, 5, 10))
     assert child.is_compatible_with(parent)
     assert parent.is_compatible_with(child)
     assert not child.is_compatible_with(unrelated)
@@ -269,7 +250,7 @@ def test_world_uid_validation_and_duplicate_detection(world_catalogue):
 
 def test_world_coordinates_require_matching_evidence(world_catalogue):
     before = world_catalogue.read()
-    berlin = before.get_facility("berlin_westhafen")
+    berlin = WorldScope(before).facility("berlin_westhafen")
     estimated = next(
         facility
         for facility in before.facilities
@@ -284,9 +265,9 @@ def test_world_coordinates_require_matching_evidence(world_catalogue):
             "UPDATE facility_geocoding_evidence SET source_url='invalid' WHERE facility_id=(SELECT facility_id FROM facilities WHERE facility_uid=?)",
             (berlin.facility_uid,),
         )
-    after = world_catalogue.read().get_facility(berlin.facility_uid)
+    after = WorldScope(world_catalogue.read()).facility(berlin.facility_uid)
     assert not after.is_routable()
-    assert after.lat == berlin.lat
+    assert after.coordinates == berlin.coordinates
     assert estimated.is_routable()
     assert not estimated.has_verified_location()
     promoted = replace(estimated, geocoding_status="verified_coordinates")
@@ -330,13 +311,14 @@ def test_delivery_requires_verified_catalogue_endpoint(world_catalogue):
 
     snapshot = world_catalogue.read()
     delivery = resolve_delivery_facility(world_catalogue)
-    berlin = snapshot.get_facility("berlin_westhafen")
+    berlin = WorldScope(snapshot).facility("berlin_westhafen")
     assert delivery.facility_uid == berlin.facility_uid
     assert delivery.resolution_status == "resolved"
     assert delivery.coordinate_evidence
     assert delivery.company is not None
+    assert berlin.company is not None
     assert delivery.company.company_uid == berlin.company.company_uid
-    payload = delivery.to_dict()
+    payload = project_location(delivery)
     assert "handled_goods" not in payload
     assert "cargo" not in payload
     assert "sources" not in payload
@@ -345,7 +327,7 @@ def test_delivery_requires_verified_catalogue_endpoint(world_catalogue):
         (),
         (
             replace(
-                snapshot.get_facility("berlin_westhafen"),
+                WorldScope(snapshot).facility("berlin_westhafen"),
                 coordinate_evidence=(),
             ),
         ),
@@ -363,7 +345,9 @@ def test_world_repository_rejects_half_null_coordinates(world_catalogue):
         connection,
     ):
         connection.executescript(
-            "DROP TRIGGER coordinate_pair_update; UPDATE facilities SET latitude=NULL WHERE longitude IS NOT NULL"
+            "DROP TRIGGER coordinate_pair_update; "
+            "PRAGMA ignore_check_constraints=ON; "
+            "UPDATE facilities SET latitude=NULL WHERE longitude IS NOT NULL"
         )
     with pytest.raises(WorldCatalogueError):
         world_catalogue.read()
@@ -413,3 +397,62 @@ def test_world_catalogue_is_packaged_independently_of_player_state(
     )
     with pytest.raises(WorldCatalogueError):
         build_world_catalogue(Settings.from_env(root)).read()
+
+
+def test_world_geography_shares_identities_and_rejects_broken_references(
+    world_catalogue,
+):
+    snapshot = world_catalogue.read()
+    facility = WorldScope(snapshot).facility("berlin_westhafen")
+    city = facility.address.city
+    assert city is next(
+        c for c in snapshot.cities if c.city_uid == city.city_uid
+    )
+    assert city.country is next(
+        c for c in snapshot.countries if c.code == "DE"
+    )
+    assert facility.company is not None
+    assert facility.company.country is city.country
+    location = facility.location_snapshot()
+    assert location.city is city
+    assert location.coordinates is facility.coordinates
+    assert location.address == facility.address.display_text()
+    assert project_location(location)["city_uid"] == city.city_uid
+    for table, column, value in (
+        ("countries", "name", ""),
+        ("cities", "city_uid", "not-a-uuid"),
+        ("cities", "country_code", "XX"),
+    ):
+        with closing(sqlite3.connect(world_catalogue.path)) as connection:
+            old = connection.execute(
+                f"SELECT rowid,{column} FROM {table} LIMIT 1"
+            ).fetchone()
+            connection.execute(
+                f"UPDATE {table} SET {column}=? WHERE rowid=?", (value, old[0])
+            )
+            connection.commit()
+            with pytest.raises(WorldCatalogueError):
+                world_catalogue.read()
+            connection.execute(
+                f"UPDATE {table} SET {column}=? WHERE rowid=?",
+                (old[1], old[0]),
+            )
+            connection.commit()
+
+
+def test_world_catalogue_composition_uses_explicit_path_without_game_state(
+    tmp_path,
+):
+    from app.bootstrap import build_world_catalogue
+    from tests.test_api import make_settings
+
+    settings = make_settings(tmp_path)
+    catalogue = build_world_catalogue(settings)
+    assert len(catalogue.read().cities) == 304
+    assert not settings.db_path.exists()
+    missing = build_world_catalogue(
+        replace(settings, world_catalogue_path=None)
+    )
+    with pytest.raises(WorldCatalogueError):
+        missing.read()
+    assert not settings.db_path.exists()

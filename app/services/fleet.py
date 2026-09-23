@@ -4,11 +4,13 @@ import logging
 import uuid
 
 from app.domain.errors import CatalogueError, WorldCatalogueError
-from app.domain.game import OwnedVehicle, PlayerState
-from app.domain.models import VehicleModel
+from app.domain.game import OwnedVehicle
 from app.domain.ports import VehicleCatalogue, WorldCatalogue
+from app.domain.results import FleetCatalogue
+from app.domain.state_ports import GameUnitOfWork
+from app.domain.vehicles import VehicleModel
 from app.domain.world import FacilityLocationSnapshot
-from app.repositories.sqlite_store import SqliteStore
+from app.domain.world_scopes import WorldScope
 
 LOGGER = logging.getLogger(__name__)
 
@@ -18,24 +20,22 @@ class FleetService:
 
     def __init__(
         self,
-        store: SqliteStore,
+        unit_of_work: GameUnitOfWork,
         catalogue: VehicleCatalogue,
         world: WorldCatalogue,
     ) -> None:
-        self.store = store
+        self.unit_of_work = unit_of_work
+        self.state_repository = unit_of_work.repository
         self.catalogue = catalogue
         self.world = world
 
-    def list_catalogue(self) -> dict:
-        """Return server-owned purchase offers and their delivery hub."""
-        return {
-            "models": [
-                model.to_dict() for model in self.catalogue.list_models()
-            ],
-            "delivery_hub": resolve_delivery_facility(self.world).label,
-        }
+    def list_catalogue(self) -> FleetCatalogue:
+        """Read immutable purchase choices and the fixed delivery location."""
+        return FleetCatalogue(
+            self.catalogue.list_models(), resolve_delivery_facility(self.world)
+        )
 
-    def purchase(self, model_id: str) -> dict:
+    def purchase(self, model_id: str) -> OwnedVehicle:
         """Debit cash and add one vehicle in the same database transaction."""
         model = next(
             (
@@ -48,30 +48,24 @@ class FleetService:
         if model is None:
             raise ValueError("Unbekanntes Fahrzeugmodell.")
         location = resolve_delivery_facility(self.world)
-        with self.store.transaction():
-            player = PlayerState.from_dict(self.store.get_json("player"))
+        with self.unit_of_work.transaction():
+            player = self.state_repository.get_player()
+            if player is None:
+                raise ValueError("Spielstand ist nicht initialisiert.")
             if player.reputation < model.unlock_reputation:
                 raise ValueError(
                     "Deine Reputation reicht für dieses Modell nicht aus."
                 )
             if player.cash < model.price_eur:
                 raise ValueError("Nicht genug Geld für dieses Fahrzeug.")
-            vehicles = [
-                OwnedVehicle.from_dict(item)
-                for item in self.store.get_json("vehicles")
-            ]
             vehicle = build_owned_vehicle(
                 model,
                 uuid.uuid4().hex,
                 location,
             )
             player.debit(model.price_eur)
-            vehicles.append(vehicle)
-            self.store.set_json("player", player.to_dict())
-            self.store.set_json(
-                "vehicles",
-                [item.to_dict() for item in vehicles],
-            )
+            self.state_repository.save_player(player)
+            self.state_repository.save_vehicle(vehicle)
         LOGGER.info(
             "Vehicle purchased",
             extra={
@@ -79,7 +73,7 @@ class FleetService:
                 "data": {"vehicle_id": vehicle.id, "model_id": model_id},
             },
         )
-        return vehicle.to_dict()
+        return vehicle
 
 
 def build_owned_vehicle(
@@ -95,7 +89,6 @@ def build_owned_vehicle(
         model_id=model.id,
         operating_cost_eur_per_km=model.operating_cost_eur_per_km,
         capacity_tons=model.capacity_tons,
-        hub_id=location.facility_uid,
         facility_uid=location.facility_uid,
         location=location,
         status="idle",
@@ -122,7 +115,7 @@ def resolve_delivery_facility(
 ) -> FacilityLocationSnapshot:
     """Require the reviewed start endpoint before creating a vehicle."""
     try:
-        facility = world.read().get_facility("berlin_westhafen")
+        facility = WorldScope(world.read()).facility("berlin_westhafen")
         if not facility.is_routable():
             raise ValueError("Unroutable delivery facility")
     except (KeyError, ValueError) as exc:

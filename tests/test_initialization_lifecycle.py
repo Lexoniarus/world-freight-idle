@@ -7,10 +7,12 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from fastapi import FastAPI
 
+from app.api.v1.game_projection import (
+    project_state,
+)
 from app.domain.errors import CatalogueError
+from app.domain.game import PlayerState
 from app.main import lifespan
-
-STATE_KEYS = ("player", "vehicles", "active_trips", "contracts")
 
 
 @pytest.mark.parametrize("failure", ["catalogue", "write"])
@@ -18,57 +20,59 @@ STATE_KEYS = ("player", "vehicles", "active_trips", "contracts")
 def test_initialization_direct_failure_is_atomic(
     game, failure, existing_player
 ):
-    game.store.delete_state_keys(STATE_KEYS)
+    repository = game.state_repository
+    repository.reset()
     if existing_player:
-        game.store.set_json(
-            "player", {"cash": 123, "completed": 4, "reputation": 4}
-        )
-    before = {key: game.store.get_json(key) for key in STATE_KEYS}
-    original = game.store.set_json
-
-    def fail_write(key, value):
-        if key == "contracts":
-            raise RuntimeError("write failed")
-        original(key, value)
-
+        repository.save_player(PlayerState(123, 4, 4))
+    before = repository.get_player()
     failures = {
         "catalogue": patch.object(
             game.catalogue,
             "list_models",
             side_effect=CatalogueError("unavailable"),
         ),
-        "write": patch.object(game.store, "set_json", side_effect=fail_write),
+        "write": patch.object(
+            repository,
+            "save_vehicle",
+            side_effect=RuntimeError("write failed"),
+        ),
     }
     with failures[failure], pytest.raises((CatalogueError, RuntimeError)):
         game.ensure_initial_state()
-    assert {key: game.store.get_json(key) for key in STATE_KEYS} == before
+    assert repository.get_player() == before
+    assert repository.list_vehicles() == ()
     game.ensure_initial_state()
-    initialized = {key: game.store.get_json(key) for key in STATE_KEYS}
+    player = repository.get_player()
+    vehicles = repository.list_vehicles()
     game.ensure_initial_state()
-    assert {key: game.store.get_json(key) for key in STATE_KEYS} == initialized
-    assert initialized["player"]["cash"] == (
-        123 if existing_player else 175000
-    )
+    assert repository.get_player() == player
+    assert repository.list_vehicles() == vehicles
+    assert player.cash == (123 if existing_player else 175000)
 
 
 def test_initialization_defers_market_generation(game):
-    game.store.delete_state_keys(STATE_KEYS)
+    game.state_repository.reset()
     with patch.object(type(game.market), "generate") as generate:
         game.ensure_initial_state()
     generate.assert_not_called()
-    assert game.store.get_json("contracts") == []
+    assert game.state_repository.list_offers() == ()
 
 
 def test_reset_failure_restores_deleted_state(game):
-    before = {key: game.store.get_json(key) for key in STATE_KEYS}
+    repository = game.state_repository
+    player = repository.get_player()
+    vehicles = repository.list_vehicles()
+    offers = repository.list_offers()
     with patch.object(
         type(game.market),
         "generate",
         side_effect=RuntimeError("market failed"),
     ):
         with pytest.raises(RuntimeError):
-            game.reset()
-    assert {key: game.store.get_json(key) for key in STATE_KEYS} == before
+            project_state(game.reset())
+    assert repository.get_player() == player
+    assert repository.list_vehicles() == vehicles
+    assert repository.list_offers() == offers
 
 
 @pytest.mark.parametrize(
@@ -101,9 +105,9 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
         )
         patches.enter_context(
             patch(
-                "app.main.build_game_service",
+                "app.main.build_game_runtime",
                 side_effect=error if failure == "game" else None,
-                return_value=SimpleNamespace(store=Mock()),
+                return_value=SimpleNamespace(database=Mock()),
             )
         )
         patches.enter_context(

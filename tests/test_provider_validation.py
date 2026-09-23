@@ -3,12 +3,12 @@
 import copy
 import math
 from typing import Any
+from unittest.mock import patch
 
 import httpx
 import pytest
 
 from app.domain.errors import GeocodingError, RoutingError
-from app.domain.models import RouteResult
 from app.providers.geocoding import NominatimGeocoder
 from app.providers.routing import ValhallaTruckRouter
 from app.providers.validation import parse_coordinates, validate_route
@@ -51,7 +51,14 @@ def test_coordinate_validation_rejects_invalid_values(point):
 @pytest.mark.parametrize("metric", [-1, 0, math.inf, math.nan, True])
 def test_route_metrics_must_be_finite_and_positive(metric):
     with pytest.raises(ValueError):
-        validate_route(RouteResult(metric, 1, {}, "test"))
+        validate_route(
+            {
+                "distance_km": metric,
+                "duration_seconds": 1,
+                "route_geojson": {},
+                "provider": "test",
+            }
+        )
 
 
 @pytest.mark.parametrize(
@@ -65,14 +72,21 @@ def test_route_metrics_must_be_finite_and_positive(metric):
 )
 def test_route_geometry_must_be_valid(geometry):
     with pytest.raises(ValueError):
-        validate_route(RouteResult(1, 1, geometry, "test"))
+        validate_route(
+            {
+                "distance_km": 1,
+                "duration_seconds": 1,
+                "route_geojson": geometry,
+                "provider": "test",
+            }
+        )
 
 
 @pytest.mark.parametrize(
     "failure",
     ["null", "array", "trip", "leg", "negative", "boolean", "coordinate"],
 )
-async def test_invalid_routing_responses_never_enter_cache(store, failure):
+async def test_invalid_routing_responses_never_enter_cache(cache, failure):
     payload: Any = copy.deepcopy(ROUTE)
     if failure == "null":
         payload = None
@@ -94,14 +108,14 @@ async def test_invalid_routing_responses_never_enter_cache(store, failure):
         )
     ) as client:
         router = ValhallaTruckRouter(
-            store, client, "https://route.test", "test"
+            cache, client, "https://route.test", "test"
         )
         with pytest.raises(RoutingError):
             await router.route(52, 13, 53, 14)
-        assert store.get_route(router._build_cache_key(52, 13, 53, 14)) is None
+        assert cache.get_route(router._build_cache_key(52, 13, 53, 14)) is None
 
 
-async def test_invalid_caches_are_replaced_by_valid_provider_results(store):
+async def test_invalid_caches_are_replaced_by_valid_provider_results(cache):
     async def respond(request):
         return httpx.Response(
             200,
@@ -114,39 +128,48 @@ async def test_invalid_caches_are_replaced_by_valid_provider_results(store):
         transport=httpx.MockTransport(respond)
     ) as client:
         router = ValhallaTruckRouter(
-            store, client, "https://route.test", "test"
+            cache, client, "https://route.test", "test"
         )
         key = router._build_cache_key(52, 13, 53, 14)
-        store.put_route(key, RouteResult(-1, 60, {}, "broken").to_dict())
+        cache.put_route(
+            key,
+            {
+                "distance_km": -1,
+                "duration_seconds": 60,
+                "route_geojson": {},
+                "provider": "broken",
+            },
+        )
         assert (await router.route(52, 13, 53, 14)).distance_km == 100
-        assert store.get_route(key)["distance_km"] == 100
-        store.put_geocode("hub", 100, 999, "broken")
+        assert cache.get_route(key)["distance_km"] == 100
+        cache.put_geocode("hub", 100, 999, "broken")
         geocoder = NominatimGeocoder(
-            store, client, "https://geo.test", "test", 0
+            cache, client, "https://geo.test", "test", 0
         )
         assert await geocoder.geocode("hub") == (52, 13, "hub")
-        assert store.get_geocode("hub")["lon"] == 13
+        assert cache.get_geocode("hub")["lon"] == 13
 
 
 @pytest.mark.parametrize(
     "payload", [{"wrong": "shape"}, [None], [{"lat": 91, "lon": 13}]]
 )
-async def test_invalid_geocoding_results_are_normalized(store, payload):
+async def test_invalid_geocoding_results_are_normalized(cache, payload):
     async with httpx.AsyncClient(
         transport=httpx.MockTransport(
             lambda request: httpx.Response(200, json=payload)
         )
     ) as client:
         geocoder = NominatimGeocoder(
-            store, client, "https://geo.test", "test", 0
+            cache, client, "https://geo.test", "test", 0
         )
         with pytest.raises(GeocodingError):
             await geocoder.geocode("hub")
-        assert store.get_geocode("hub") is None
+        assert cache.get_geocode("hub") is None
 
 
 async def test_corrupt_json_cache_is_replaced_and_coordinates_are_numeric(
-    store,
+    cache,
+    database,
 ):
     payload = copy.deepcopy(ROUTE)
     payload["trip"]["legs"][0]["shape"]["coordinates"] = [
@@ -159,18 +182,42 @@ async def test_corrupt_json_cache_is_replaced_and_coordinates_are_numeric(
         )
     ) as client:
         router = ValhallaTruckRouter(
-            store, client, "https://route.test", "test"
+            cache, client, "https://route.test", "test"
         )
         key = router._build_cache_key(52, 13, 53, 14)
-        store.put_route(key, {})
-        with store.connect() as connection:
+        cache.put_route(key, {})
+        with database.connect() as connection:
             connection.execute(
                 "UPDATE route_cache SET payload='broken' WHERE cache_key=?",
                 (key,),
             )
         route = await router.route(52, 13, 53, 14)
-        assert route.route_geojson["coordinates"] == [
-            [13.0, 52.0],
-            [14.0, 53.0],
-        ]
-        assert store.get_route(key)["distance_km"] == 100
+        assert route.coordinates == ((13.0, 52.0), (14.0, 53.0))
+        assert cache.get_route(key)["distance_km"] == 100
+
+
+def test_route_validation_rejects_non_object_cache_document():
+    payload: Any = []
+    with pytest.raises(ValueError, match="route object"):
+        validate_route(payload)
+
+
+async def test_unreadable_route_cache_is_refetched_and_repaired(cache):
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json=ROUTE)
+        )
+    ) as client:
+        router = ValhallaTruckRouter(
+            cache, client, "https://route.test", "test"
+        )
+        with patch.object(
+            cache, "get_route", side_effect=ValueError("invalid")
+        ):
+            assert (await router.route(52, 13, 53, 14)).distance_km == 100
+        assert (
+            cache.get_route(router._build_cache_key(52, 13, 53, 14))[
+                "distance_km"
+            ]
+            == 100
+        )

@@ -4,9 +4,13 @@ import hashlib
 import hmac
 import logging
 import secrets
-import sqlite3
 
-from app.repositories.accounts import AccountRepository
+from app.domain.account_ports import (
+    AccountIdentity,
+    AccountStore,
+    PasswordVerifier,
+)
+from app.domain.errors import DuplicateAccountError
 
 LOGGER = logging.getLogger(__name__)
 SESSION_LIFETIME = 7 * 24 * 60 * 60
@@ -38,19 +42,21 @@ class PasswordHasher:
 class AuthService:
     """Register users and issue revocable server-side sessions."""
 
-    def __init__(self, accounts: AccountRepository) -> None:
+    def __init__(
+        self, accounts: AccountStore, hasher: PasswordVerifier
+    ) -> None:
         self.accounts = accounts
-        self.hasher = PasswordHasher()
+        self.hasher = hasher
         self._dummy_hash = self.hasher.hash_password(secrets.token_hex(32))
 
-    def register(self, username: str, password: str) -> dict:
+    def register(self, username: str, password: str) -> AccountIdentity:
         """Create an account while enforcing case-insensitive uniqueness."""
         try:
             user = self.accounts.create_user(
                 username,
                 self.hasher.hash_password(password),
             )
-        except sqlite3.IntegrityError as exc:
+        except DuplicateAccountError as exc:
             raise ValueError(
                 "Dieser Spielername ist bereits vergeben."
             ) from exc
@@ -63,7 +69,7 @@ class AuthService:
         )
         return user
 
-    def authenticate(self, username: str, password: str) -> dict:
+    def authenticate(self, username: str, password: str) -> AccountIdentity:
         """Use one generic failure message for invalid credentials."""
         user = self.accounts.find_user(username)
         encoded = user["password_hash"] if user else self._dummy_hash

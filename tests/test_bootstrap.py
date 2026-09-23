@@ -2,7 +2,7 @@ from pathlib import Path
 
 import httpx
 
-from app.bootstrap import build_game_service
+from app.bootstrap import build_game_runtime
 from app.config import Settings
 from app.providers.routing import ValhallaTruckRouter
 
@@ -21,14 +21,14 @@ def test_build_game_service_wires_real_provider_adapters(tmp_path: Path):
         log_level="INFO",
     )
     routing_client = httpx.AsyncClient()
-    game = build_game_service(
+    game = build_game_runtime(
         settings,
         routing_client,
         rng_seed=1,
     )
     assert isinstance(game.router, ValhallaTruckRouter)
     assert game.router.base_url == "https://v.test"
-    assert game.store.path == settings.db_path
+    assert game.database.path == settings.db_path
     import asyncio
 
     asyncio.run(routing_client.aclose())

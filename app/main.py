@@ -11,12 +11,12 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import build_v1_router
-from app.bootstrap import build_game_service
+from app.bootstrap import build_game_runtime
 from app.config import Settings
-from app.domain.errors import WorldCatalogueError
+from app.domain.errors import PersistenceError, WorldCatalogueError
 from app.logging_config import configure_logging
 from app.repositories.accounts import AccountRepository
-from app.services.auth import AuthService
+from app.services.auth import AuthService, PasswordHasher
 from app.tracing import TraceIdMiddleware
 from app.web import router as web_router
 
@@ -31,11 +31,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         )
         resources.push_async_callback(routing_client.aclose)
         app.state.routing_client = routing_client
-        app.state.game = build_game_service(
+        app.state.game = build_game_runtime(
             settings,
             routing_client,
         )
-        app.state.auth = AuthService(AccountRepository(app.state.game.store))
+        app.state.auth = AuthService(
+            AccountRepository(app.state.game.database), PasswordHasher()
+        )
         yield
 
 
@@ -50,6 +52,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = active_settings
     app.add_exception_handler(WorldCatalogueError, world_catalogue_error)
+    app.add_exception_handler(PersistenceError, persistence_error)
     app.add_middleware(TraceIdMiddleware)
     app.mount(
         "/static",
@@ -78,6 +81,14 @@ async def world_catalogue_error(
         content={
             "detail": "Weltkatalog derzeit nicht verfügbar.",
         },
+    )
+
+
+async def persistence_error(request: Request, exc: Exception) -> JSONResponse:
+    """Return a stable outage response without exposing stored documents."""
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Spielstand derzeit nicht verfügbar."},
     )
 
 

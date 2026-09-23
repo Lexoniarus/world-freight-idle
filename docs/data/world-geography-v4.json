@@ -1,0 +1,4400 @@
+{
+  "version": 1,
+  "source_schema": "3.0.0",
+  "source_data_version": "2026-09-20",
+  "review": "Explicit facility-UID assignments. Nine missing-region groups reviewed against stored facility coordinates; no runtime name-based identity generation. Existing coordinate evidence remains unchanged.",
+  "countries": [
+    {
+      "code": "AT",
+      "name": "Austria"
+    },
+    {
+      "code": "BE",
+      "name": "Belgium"
+    },
+    {
+      "code": "BG",
+      "name": "Bulgaria"
+    },
+    {
+      "code": "CZ",
+      "name": "Czechia"
+    },
+    {
+      "code": "DE",
+      "name": "Germany"
+    },
+    {
+      "code": "DK",
+      "name": "Denmark"
+    },
+    {
+      "code": "EE",
+      "name": "Estonia"
+    },
+    {
+      "code": "ES",
+      "name": "Spain"
+    },
+    {
+      "code": "FI",
+      "name": "Finland"
+    },
+    {
+      "code": "FR",
+      "name": "France"
+    },
+    {
+      "code": "GB",
+      "name": "United Kingdom"
+    },
+    {
+      "code": "HR",
+      "name": "Croatia"
+    },
+    {
+      "code": "HU",
+      "name": "Hungary"
+    },
+    {
+      "code": "IE",
+      "name": "Ireland"
+    },
+    {
+      "code": "IT",
+      "name": "Italy"
+    },
+    {
+      "code": "LT",
+      "name": "Lithuania"
+    },
+    {
+      "code": "LV",
+      "name": "Latvia"
+    },
+    {
+      "code": "NL",
+      "name": "Netherlands"
+    },
+    {
+      "code": "NO",
+      "name": "Norway"
+    },
+    {
+      "code": "PL",
+      "name": "Poland"
+    },
+    {
+      "code": "PT",
+      "name": "Portugal"
+    },
+    {
+      "code": "RO",
+      "name": "Romania"
+    },
+    {
+      "code": "SE",
+      "name": "Sweden"
+    },
+    {
+      "code": "SK",
+      "name": "Slovakia"
+    },
+    {
+      "code": "TR",
+      "name": "Türkiye"
+    }
+  ],
+  "cities": [
+    {
+      "city_uid": "23917371-104e-4514-a0b8-fe500753baad",
+      "name": "Bad St. Leonhard",
+      "country_code": "AT",
+      "region": null
+    },
+    {
+      "city_uid": "52431070-a549-4731-92d4-3d65260cdf75",
+      "name": "Brand",
+      "country_code": "AT",
+      "region": null
+    },
+    {
+      "city_uid": "6c124a7b-5f4b-4e46-898c-5a00d80b3066",
+      "name": "Graz",
+      "country_code": "AT",
+      "region": "Steiermark"
+    },
+    {
+      "city_uid": "08e7de91-ad15-48f6-8032-23fe35baa1c0",
+      "name": "Heiligenkreuz im Lafnitztal",
+      "country_code": "AT",
+      "region": null
+    },
+    {
+      "city_uid": "9775cef7-86fe-49f4-8a51-ff287f330ffc",
+      "name": "Lenzing",
+      "country_code": "AT",
+      "region": null
+    },
+    {
+      "city_uid": "3f631cbc-9cf1-491d-a82c-e9cdbe57382f",
+      "name": "Linz",
+      "country_code": "AT",
+      "region": "Oberösterreich"
+    },
+    {
+      "city_uid": "9d555c98-27cc-4c7d-b2ba-81986d7e5237",
+      "name": "Reutte",
+      "country_code": "AT",
+      "region": null
+    },
+    {
+      "city_uid": "c8568236-534a-4c63-ba6b-a98289598fd3",
+      "name": "Villach",
+      "country_code": "AT",
+      "region": "Kärnten"
+    },
+    {
+      "city_uid": "2fe7535a-f59c-41af-8fba-08655f84878b",
+      "name": "Ybbs an der Donau",
+      "country_code": "AT",
+      "region": null
+    },
+    {
+      "city_uid": "025dce09-32b7-4a50-839a-d3ccef64dbac",
+      "name": "Antwerpen",
+      "country_code": "BE",
+      "region": "Vlaanderen"
+    },
+    {
+      "city_uid": "22d1b674-6b05-430b-ba00-12268ce388f6",
+      "name": "Beerse",
+      "country_code": "BE",
+      "region": "Antwerpen"
+    },
+    {
+      "city_uid": "51d905a4-5bb7-4339-96af-a1fd93bf6858",
+      "name": "Bree",
+      "country_code": "BE",
+      "region": null
+    },
+    {
+      "city_uid": "a47ee6b6-a6b9-4821-a115-487877e90f35",
+      "name": "Bruges",
+      "country_code": "BE",
+      "region": null
+    },
+    {
+      "city_uid": "7ce15ef6-6c91-4d8c-8433-0b8266b46b22",
+      "name": "Geel",
+      "country_code": "BE",
+      "region": null
+    },
+    {
+      "city_uid": "c44b6c8b-39b6-4d19-8f88-ec9ed4650631",
+      "name": "Izegem",
+      "country_code": "BE",
+      "region": null
+    },
+    {
+      "city_uid": "e1e05716-3be3-44d4-bac5-c460e0d24eef",
+      "name": "Olen",
+      "country_code": "BE",
+      "region": "Antwerpen"
+    },
+    {
+      "city_uid": "b6800b3a-680d-4d7e-9ee5-34b72a679277",
+      "name": "Oostakker",
+      "country_code": "BE",
+      "region": "East Flanders"
+    },
+    {
+      "city_uid": "e9a99a2b-6e33-4f97-a587-bbd8bdc786b7",
+      "name": "Ostend",
+      "country_code": "BE",
+      "region": null
+    },
+    {
+      "city_uid": "5c22afd8-67af-4ae9-93fd-ea324a7c74d8",
+      "name": "Rijkevorsel",
+      "country_code": "BE",
+      "region": null
+    },
+    {
+      "city_uid": "33c657cc-8c9c-4401-a508-066a494a9924",
+      "name": "Sclessin (Liège)",
+      "country_code": "BE",
+      "region": null
+    },
+    {
+      "city_uid": "130623bf-414c-46d0-a657-493dead3b2b4",
+      "name": "Sint-Katelijne-Waver",
+      "country_code": "BE",
+      "region": null
+    },
+    {
+      "city_uid": "f57809e9-69c8-48cb-85a3-96716347e3b7",
+      "name": "Westerlo",
+      "country_code": "BE",
+      "region": "Antwerpen"
+    },
+    {
+      "city_uid": "9eed1b39-b4bf-445e-993d-d9b3a4bddc7d",
+      "name": "Willebroek",
+      "country_code": "BE",
+      "region": null
+    },
+    {
+      "city_uid": "a742efad-648d-4c62-8a52-c2676d5414f6",
+      "name": "Pirdop",
+      "country_code": "BG",
+      "region": null
+    },
+    {
+      "city_uid": "a392d1c6-9a33-40fe-ba09-fca561b3d699",
+      "name": "Dobřenice",
+      "country_code": "CZ",
+      "region": null
+    },
+    {
+      "city_uid": "a4302336-6562-4d73-8647-a0a76275d69d",
+      "name": "Hostivice",
+      "country_code": "CZ",
+      "region": null
+    },
+    {
+      "city_uid": "6cee7ce3-ceba-44a9-b0fa-510a03e9e421",
+      "name": "Kladno",
+      "country_code": "CZ",
+      "region": null
+    },
+    {
+      "city_uid": "2f6620a0-c4c9-4452-a908-eac9f872a541",
+      "name": "Kvasiny",
+      "country_code": "CZ",
+      "region": "Hradec Králové"
+    },
+    {
+      "city_uid": "fe1a1333-859e-4d55-b43e-85e2279dc589",
+      "name": "Mladá Boleslav",
+      "country_code": "CZ",
+      "region": "Central Bohemia"
+    },
+    {
+      "city_uid": "2ce36e5d-5828-4186-804e-791b55a5e275",
+      "name": "Nižní Lhoty / Nošovice",
+      "country_code": "CZ",
+      "region": "Moravian-Silesian"
+    },
+    {
+      "city_uid": "dc2bed4c-7c84-4fe4-853e-8b488d8cb672",
+      "name": "Otrokovice",
+      "country_code": "CZ",
+      "region": "Zlínský kraj"
+    },
+    {
+      "city_uid": "16656011-c72d-4a45-900d-219e0d9d592b",
+      "name": "Paskov",
+      "country_code": "CZ",
+      "region": null
+    },
+    {
+      "city_uid": "e4216aef-ab3d-4836-9f60-11f1f16f74e1",
+      "name": "Planá",
+      "country_code": "CZ",
+      "region": null
+    },
+    {
+      "city_uid": "d8e58493-4d18-4fe0-97f6-a167b7d1f3f9",
+      "name": "Teplice",
+      "country_code": "CZ",
+      "region": null
+    },
+    {
+      "city_uid": "07b9d4ae-e622-41f0-9e80-2615d3bd4eac",
+      "name": "Vrchlabí",
+      "country_code": "CZ",
+      "region": "Hradec Králové"
+    },
+    {
+      "city_uid": "05c68e79-4f62-464c-b85f-68a31b9125fa",
+      "name": "Ždírec nad Doubravou",
+      "country_code": "CZ",
+      "region": null
+    },
+    {
+      "city_uid": "2772d0e6-3b7d-4623-806d-afa86e33cac3",
+      "name": "Alfdorf",
+      "country_code": "DE",
+      "region": "Baden-Württemberg"
+    },
+    {
+      "city_uid": "d76d2fe6-b993-413c-9e8c-99cfd7cd6b60",
+      "name": "Aschau am Inn",
+      "country_code": "DE",
+      "region": "Bayern"
+    },
+    {
+      "city_uid": "9bb0e9eb-c4fe-41e9-9a57-fe677544cc6d",
+      "name": "Auerbach",
+      "country_code": "DE",
+      "region": "Bayern"
+    },
+    {
+      "city_uid": "36681973-70ac-4926-bd57-ae7714e32de3",
+      "name": "Augsburg",
+      "country_code": "DE",
+      "region": "Bayern"
+    },
+    {
+      "city_uid": "d52f72bd-827d-442a-bdbe-fe82dcbd410f",
+      "name": "Bad Kreuznach",
+      "country_code": "DE",
+      "region": "Rheinland-Pfalz"
+    },
+    {
+      "city_uid": "0317c771-2ead-4fc0-ac06-50d48bdd8081",
+      "name": "Bautzen",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "6f4cd14d-2dc8-4972-9079-f7c7461e0257",
+      "name": "Berkhof / Hannover",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "842dac5f-42b4-4fc7-bed1-5b487351e675",
+      "name": "Berlin",
+      "country_code": "DE",
+      "region": "Berlin"
+    },
+    {
+      "city_uid": "01d16d1b-38b3-4342-9716-13e5fa1eaf68",
+      "name": "Bernburg",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "ecf597ed-9e98-40bd-9308-5336f6b0ab61",
+      "name": "Bremen",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "c54729f3-2a5f-41e3-9bef-379e41d84bc3",
+      "name": "Bremerhaven",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "b11fbfd7-221f-4c9e-94b2-86b9fb24217f",
+      "name": "Brunsbüttel",
+      "country_code": "DE",
+      "region": "Schleswig-Holstein"
+    },
+    {
+      "city_uid": "6279ac3e-d914-4fbe-9818-df89a67ad4a1",
+      "name": "Burglengenfeld",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "b5fbe50a-9705-4ef9-aa11-e8786fedc4da",
+      "name": "Buxtehude",
+      "country_code": "DE",
+      "region": "Niedersachsen"
+    },
+    {
+      "city_uid": "c399dd67-3f99-4e1d-b0ac-d2ec189dbca2",
+      "name": "Bühl",
+      "country_code": "DE",
+      "region": "Baden-Württemberg"
+    },
+    {
+      "city_uid": "ac204210-10e7-4712-937b-e7a25a74ec83",
+      "name": "Darmstadt",
+      "country_code": "DE",
+      "region": "Hessen"
+    },
+    {
+      "city_uid": "0139a1be-9ff1-447e-b1b8-be6e7f7c5a62",
+      "name": "Dingolfing",
+      "country_code": "DE",
+      "region": "Bayern"
+    },
+    {
+      "city_uid": "157467c8-e43d-4fe1-8ce5-dc1cf9a54459",
+      "name": "Dinklage",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "98f8214f-08b2-4181-aad6-6c9b65be372f",
+      "name": "Dormagen",
+      "country_code": "DE",
+      "region": "Nordrhein-Westfalen"
+    },
+    {
+      "city_uid": "b3bffb56-e1e9-49e1-978a-a2efb6489e0c",
+      "name": "Dornstadt",
+      "country_code": "DE",
+      "region": "Baden-Württemberg"
+    },
+    {
+      "city_uid": "e9cadc84-f161-44d3-ab6f-778606fa42c8",
+      "name": "Dresden",
+      "country_code": "DE",
+      "region": "Sachsen"
+    },
+    {
+      "city_uid": "75d1b36a-764b-4e8d-ba50-f8eb5e0b2967",
+      "name": "Duisburg",
+      "country_code": "DE",
+      "region": "Nordrhein-Westfalen"
+    },
+    {
+      "city_uid": "1f8b0d1c-3b2b-4a07-bc42-e1dc186849f4",
+      "name": "Düsseldorf",
+      "country_code": "DE",
+      "region": "Nordrhein-Westfalen"
+    },
+    {
+      "city_uid": "167799b9-d1cf-4c9a-b174-11cc42d699d9",
+      "name": "Eberbach",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "9765dbca-7ea0-44b7-8d1b-7b301f1c2dba",
+      "name": "Emden",
+      "country_code": "DE",
+      "region": "Niedersachsen"
+    },
+    {
+      "city_uid": "5c604cd8-bbe7-434b-9ca5-a8b274544631",
+      "name": "Erfurt",
+      "country_code": "DE",
+      "region": "Thüringen"
+    },
+    {
+      "city_uid": "65fd2382-2350-4e73-b837-f174cd82c322",
+      "name": "Ergolding",
+      "country_code": "DE",
+      "region": "Bayern"
+    },
+    {
+      "city_uid": "a49e8a18-82e9-4561-b9c0-83057b1820a4",
+      "name": "Frankfurt am Main",
+      "country_code": "DE",
+      "region": "Hessen"
+    },
+    {
+      "city_uid": "5a0d2a81-a91e-4667-87db-17de2063371d",
+      "name": "Friedrichshafen",
+      "country_code": "DE",
+      "region": "Baden-Württemberg"
+    },
+    {
+      "city_uid": "0afcc19a-c836-48da-8312-d253ffb994c1",
+      "name": "Grasleben",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "c4f9ca0a-de4d-4e4b-bc6f-dfdda5cfc780",
+      "name": "Grenzach-Wyhlen",
+      "country_code": "DE",
+      "region": "Baden-Württemberg"
+    },
+    {
+      "city_uid": "38bea5bd-d0b9-423b-be1a-4e2884f352e3",
+      "name": "Großbeeren",
+      "country_code": "DE",
+      "region": "Brandenburg"
+    },
+    {
+      "city_uid": "9fe776aa-d402-4f9f-a533-9195da4a9de5",
+      "name": "Grünstadt",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "8bc6dc0b-816a-43fc-8e93-df8466daed95",
+      "name": "Göttingen",
+      "country_code": "DE",
+      "region": "Niedersachsen"
+    },
+    {
+      "city_uid": "f275058d-358f-4015-a308-6bb7f3f13cc1",
+      "name": "Hamburg",
+      "country_code": "DE",
+      "region": "Hamburg"
+    },
+    {
+      "city_uid": "13b4c6c5-b2e9-4c05-92e2-6b34c6f35f8f",
+      "name": "Heidelberg",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "8700e603-5c56-4ebc-83de-0e8ee085efe6",
+      "name": "Hennigsdorf",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "84f74f26-3442-46d2-8c34-2acf7e23eaeb",
+      "name": "Herten",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "feee4f8c-43cd-4b90-a440-903e8386b76f",
+      "name": "Homburg",
+      "country_code": "DE",
+      "region": "Saarland"
+    },
+    {
+      "city_uid": "755a944e-c4a6-4655-9218-40531f7b3384",
+      "name": "Husum",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "642b0b58-4923-45f6-88dd-185e66c5bfdc",
+      "name": "Hürth",
+      "country_code": "DE",
+      "region": "Nordrhein-Westfalen"
+    },
+    {
+      "city_uid": "2df37920-9bc9-49b9-8894-c5393fb13516",
+      "name": "Ingolstadt",
+      "country_code": "DE",
+      "region": "Bayern"
+    },
+    {
+      "city_uid": "1220a34a-63c4-4359-b908-641c22852757",
+      "name": "Karlsruhe",
+      "country_code": "DE",
+      "region": "Baden-Württemberg"
+    },
+    {
+      "city_uid": "7633b43b-81cb-4694-86b4-a2720a194253",
+      "name": "Kassel",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "3b187409-fd01-446a-915d-e7cfe7b0766f",
+      "name": "Korbach",
+      "country_code": "DE",
+      "region": "Hessen"
+    },
+    {
+      "city_uid": "05a80e63-07b2-4ee4-a345-2601b7790f17",
+      "name": "Kornwestheim",
+      "country_code": "DE",
+      "region": "Baden-Württemberg"
+    },
+    {
+      "city_uid": "b4fc430e-447d-4ead-aceb-a94bc7022907",
+      "name": "Krefeld-Uerdingen",
+      "country_code": "DE",
+      "region": "Nordrhein-Westfalen"
+    },
+    {
+      "city_uid": "69d40c76-f4ed-4c6f-9549-503fd4f078fa",
+      "name": "Köln",
+      "country_code": "DE",
+      "region": "Nordrhein-Westfalen"
+    },
+    {
+      "city_uid": "152db2fd-753e-439c-9519-6e623c330510",
+      "name": "Lampertheim",
+      "country_code": "DE",
+      "region": "Hessen"
+    },
+    {
+      "city_uid": "8fea6b94-131a-4cac-ad44-ccbf5eca7abd",
+      "name": "Landshut",
+      "country_code": "DE",
+      "region": "Bayern"
+    },
+    {
+      "city_uid": "ac58107e-cbe3-4e75-9708-7deeecee3d7b",
+      "name": "Lehrte",
+      "country_code": "DE",
+      "region": "Niedersachsen"
+    },
+    {
+      "city_uid": "28157e49-c9fc-41c1-9a4b-7854d11551e8",
+      "name": "Leipzig",
+      "country_code": "DE",
+      "region": "Sachsen"
+    },
+    {
+      "city_uid": "95950905-094c-4aef-aa31-a9232ead026f",
+      "name": "Leverkusen",
+      "country_code": "DE",
+      "region": "Nordrhein-Westfalen"
+    },
+    {
+      "city_uid": "799ed2b3-74e0-4c38-b30e-42a5c9413b06",
+      "name": "Limburgerhof",
+      "country_code": "DE",
+      "region": "Rheinland-Pfalz"
+    },
+    {
+      "city_uid": "54d95036-585d-49b0-be9a-e419713f69c6",
+      "name": "Ludwigshafen am Rhein",
+      "country_code": "DE",
+      "region": "Rheinland-Pfalz"
+    },
+    {
+      "city_uid": "88fde28a-775a-4f45-8f18-7ffbb2f6733e",
+      "name": "Malsfeld",
+      "country_code": "DE",
+      "region": "Hessen"
+    },
+    {
+      "city_uid": "085c8a71-0a2e-4fd3-bab2-059a119e3a96",
+      "name": "Mannheim",
+      "country_code": "DE",
+      "region": "Baden-Württemberg"
+    },
+    {
+      "city_uid": "605e1d83-bb4f-417c-9dfa-3c868ece7166",
+      "name": "Memmingen",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "d4736fd9-b9a7-4666-999f-840c5978c132",
+      "name": "Meppen",
+      "country_code": "DE",
+      "region": "Niedersachsen"
+    },
+    {
+      "city_uid": "df5b69a1-c9e9-4aff-b19e-990e416b4ceb",
+      "name": "Monheim am Rhein",
+      "country_code": "DE",
+      "region": "Nordrhein-Westfalen"
+    },
+    {
+      "city_uid": "028bbe1e-e99b-48ca-9f21-e3f6af650a0e",
+      "name": "Munich",
+      "country_code": "DE",
+      "region": "Bayern"
+    },
+    {
+      "city_uid": "4c1bffb7-4c6a-44d1-a554-0f2b9c3729b4",
+      "name": "München",
+      "country_code": "DE",
+      "region": "Bayern"
+    },
+    {
+      "city_uid": "9e190045-e428-4983-8ad3-cbf49a8d40df",
+      "name": "Nürnberg",
+      "country_code": "DE",
+      "region": "Bayern"
+    },
+    {
+      "city_uid": "f72f7159-5707-4191-ac1b-53bd1fa1856d",
+      "name": "Ochsenfurt",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "5d936d16-39ed-433f-8e11-782c3bebe1af",
+      "name": "Offenau",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "f66d5d00-78e1-4342-8761-753a9746cb4a",
+      "name": "Offstein",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "7483a9bc-c244-4614-9fd1-12f75ba402c5",
+      "name": "Plattling",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "ee54d1aa-be88-403a-aaef-abf132fcf6df",
+      "name": "Rain",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "601a5b23-0b3d-49fe-899f-b3b0a09610db",
+      "name": "Regensburg",
+      "country_code": "DE",
+      "region": "Bayern"
+    },
+    {
+      "city_uid": "a217826f-42bb-4c74-8490-75e8be239d8f",
+      "name": "Rheinberg",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "921eb252-373e-42e7-8bd4-593f2fca041e",
+      "name": "Salzgitter",
+      "country_code": "DE",
+      "region": "Niedersachsen"
+    },
+    {
+      "city_uid": "bf0dc195-ce28-429b-8673-f6f81cd4ecab",
+      "name": "Schwarzheide",
+      "country_code": "DE",
+      "region": "Brandenburg"
+    },
+    {
+      "city_uid": "1e3f183e-d69a-4216-a67f-30d5fbce78b9",
+      "name": "Seeland OT Gatersleben",
+      "country_code": "DE",
+      "region": "Sachsen-Anhalt"
+    },
+    {
+      "city_uid": "ea9c85e9-45bb-434a-9238-2c62eb8615a9",
+      "name": "Siegen",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "b85e3b62-1baa-4d5c-9f52-6110b526fa99",
+      "name": "Stendal",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "cde133c6-bbc0-42eb-9447-93db13cd747f",
+      "name": "Stolberg",
+      "country_code": "DE",
+      "region": "Nordrhein-Westfalen"
+    },
+    {
+      "city_uid": "cf55274b-89b8-4cba-a4a7-99ade89a8e84",
+      "name": "Stuttgart",
+      "country_code": "DE",
+      "region": "Baden-Württemberg"
+    },
+    {
+      "city_uid": "93946361-9541-4995-936d-089b4744f943",
+      "name": "Wabern",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "f1f51fdd-079c-46d7-a18d-481ef68be7fe",
+      "name": "Walsrode",
+      "country_code": "DE",
+      "region": "Niedersachsen"
+    },
+    {
+      "city_uid": "df873617-81c2-4a9d-92cb-3a1856c02166",
+      "name": "Warstein",
+      "country_code": "DE",
+      "region": "Nordrhein-Westfalen"
+    },
+    {
+      "city_uid": "380f3eb8-dbbd-45a8-a24e-401b12eac023",
+      "name": "Wegberg",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "3a71154a-5d1b-4570-886b-e6271b19e37c",
+      "name": "Weil am Rhein",
+      "country_code": "DE",
+      "region": "Baden-Württemberg"
+    },
+    {
+      "city_uid": "97d59400-6c84-4289-aa80-f224d52c40f1",
+      "name": "Weimar",
+      "country_code": "DE",
+      "region": "Thüringen"
+    },
+    {
+      "city_uid": "6021d57e-459c-4a3f-a58c-8da6b1675a05",
+      "name": "Wolfsburg",
+      "country_code": "DE",
+      "region": "Niedersachsen"
+    },
+    {
+      "city_uid": "6e300b71-1bdb-4664-9c44-c26b5bed7f89",
+      "name": "Wuppertal",
+      "country_code": "DE",
+      "region": "Nordrhein-Westfalen"
+    },
+    {
+      "city_uid": "5cc381d6-b916-4a07-975f-7ead32283e83",
+      "name": "Wörth am Rhein",
+      "country_code": "DE",
+      "region": "Rheinland-Pfalz"
+    },
+    {
+      "city_uid": "0a384477-d761-49a5-a4f1-1c1757f9c443",
+      "name": "Zeitz",
+      "country_code": "DE",
+      "region": null
+    },
+    {
+      "city_uid": "543b3db5-b29d-4db9-bdb7-a8d55bd71327",
+      "name": "Zwickau",
+      "country_code": "DE",
+      "region": "Sachsen"
+    },
+    {
+      "city_uid": "1da9e39d-0b6c-4b78-8bc6-23e4239bc6c1",
+      "name": "Aalborg Ø",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "44a70330-2da3-4651-815a-940515874336",
+      "name": "Brabrand",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "9efec035-8d6f-4830-a84b-8d7fcb64c0a9",
+      "name": "Branderup J",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "0ec3c300-03e6-4ea5-94de-6fc2c14cd558",
+      "name": "Christiansfeld",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "dd2d3145-3255-468a-891a-7b84d4d4ac04",
+      "name": "Esbjerg",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "17071c5f-7de4-489c-8caa-0af3321448a9",
+      "name": "Fredericia",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "f31f9c14-ef98-45a5-8260-98748c9eb2fd",
+      "name": "Herning",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "16c33566-777f-4db4-88a6-163440e3f11e",
+      "name": "Hobro",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "86ac3c16-5d85-4d74-9595-3415c92fbeaf",
+      "name": "Holstebro",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "f04b4355-3ef4-45e1-bed9-b2db393d2992",
+      "name": "Holsted",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "73e848cb-e11f-46fd-95ce-ceda7cf01f38",
+      "name": "Horsens",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "2ed65efd-92fc-4923-b0c1-a96456e9b621",
+      "name": "Ishøj",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "76549976-a8ad-48b5-b417-c8ba47b79b14",
+      "name": "Kruså",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "cdcf374c-3d71-4ae1-b487-6c4296e9a67f",
+      "name": "Nibe",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "922f1fc4-d24c-46a7-b9ce-99942a091165",
+      "name": "Odense NV",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "992a7fe6-1481-4da5-ac03-bc29476f0aff",
+      "name": "Odense SØ",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "675ccc0d-befa-4371-acfd-d90a940926c6",
+      "name": "Rødkærsbro",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "884dcb18-0353-43b9-ab5b-2017824d29ac",
+      "name": "Rønne",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "d59fc7ff-1b79-48ce-9d34-12cde4c50673",
+      "name": "Skanderborg",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "f8a4029d-b5a6-4712-b6c6-ec92546ffb5d",
+      "name": "Skærbæk",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "476e5898-f4c1-4f67-92bf-bf482961dca0",
+      "name": "Slagelse",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "f69e4675-94c5-4130-af43-d32b29de78ff",
+      "name": "Svenstrup J",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "a5d129a8-fcf0-4a05-b64e-b73abe7d6214",
+      "name": "Tistrup",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "5a815d95-d9dc-4b97-afa6-dc55cbe3fdfd",
+      "name": "Vejle",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "73a303ee-cb09-4bdc-84db-bcad0b578fa4",
+      "name": "Videbæk",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "ff568506-8e99-414e-a863-6a4c24bc660c",
+      "name": "Vojens",
+      "country_code": "DK",
+      "region": null
+    },
+    {
+      "city_uid": "9eaa13ae-f83c-4659-9ae0-08908eb45b2e",
+      "name": "Imavere",
+      "country_code": "EE",
+      "region": null
+    },
+    {
+      "city_uid": "1874b2fb-ccc1-4065-9714-d37123b37523",
+      "name": "Barcelona",
+      "country_code": "ES",
+      "region": "Catalunya"
+    },
+    {
+      "city_uid": "9ac99de2-a8b8-45a3-8da0-660060ba7999",
+      "name": "Berango",
+      "country_code": "ES",
+      "region": "Bizkaia"
+    },
+    {
+      "city_uid": "01697091-2a21-4021-bc16-b8d9806b7896",
+      "name": "Castellbisbal",
+      "country_code": "ES",
+      "region": "Catalunya"
+    },
+    {
+      "city_uid": "82189612-0a9c-4572-8fdc-1d5513a815d2",
+      "name": "Cornellà de Llobregat",
+      "country_code": "ES",
+      "region": "Catalunya"
+    },
+    {
+      "city_uid": "f0a7436a-374a-4486-b167-dfd46c4dc28c",
+      "name": "Figueruelas",
+      "country_code": "ES",
+      "region": "Aragón"
+    },
+    {
+      "city_uid": "2c031dc5-0445-4a4e-9ddf-7a7c3413f114",
+      "name": "La Canonja",
+      "country_code": "ES",
+      "region": "Catalunya"
+    },
+    {
+      "city_uid": "54999144-8a09-4fd7-8332-cb6d2e1fa01e",
+      "name": "Madrid",
+      "country_code": "ES",
+      "region": "Comunidad de Madrid"
+    },
+    {
+      "city_uid": "8fa00124-20e4-4491-925a-aaf4a0a8532a",
+      "name": "Martorell",
+      "country_code": "ES",
+      "region": "Catalunya"
+    },
+    {
+      "city_uid": "8d440efc-a3af-4d45-b690-7e6dfd88d1ef",
+      "name": "Rubí",
+      "country_code": "ES",
+      "region": "Catalunya"
+    },
+    {
+      "city_uid": "fe572a54-3820-4def-9545-d86c7077754d",
+      "name": "Valladolid",
+      "country_code": "ES",
+      "region": "Castilla y León"
+    },
+    {
+      "city_uid": "c27a2290-c9ae-4717-9d5c-39a85a2bdf49",
+      "name": "Vigo",
+      "country_code": "ES",
+      "region": "Galicia"
+    },
+    {
+      "city_uid": "3145cea6-3422-480e-aa5a-6d25b0f7e3fa",
+      "name": "Harjavalta",
+      "country_code": "FI",
+      "region": null
+    },
+    {
+      "city_uid": "effe6de2-c55f-462a-b9ec-f08356f030fa",
+      "name": "Hämeenlinna",
+      "country_code": "FI",
+      "region": null
+    },
+    {
+      "city_uid": "1509bf6e-c67d-42aa-bccd-8f39b5a3207f",
+      "name": "Joensuu / Uimaharju",
+      "country_code": "FI",
+      "region": null
+    },
+    {
+      "city_uid": "9ada70a3-f319-420e-bd4a-205238aa1af1",
+      "name": "Joutseno",
+      "country_code": "FI",
+      "region": null
+    },
+    {
+      "city_uid": "806fec94-a064-4409-829f-13f8b72f9fb7",
+      "name": "Kalajoki",
+      "country_code": "FI",
+      "region": null
+    },
+    {
+      "city_uid": "9c8914b4-c2e0-46fb-bccb-080b00e20d8e",
+      "name": "Kokkola",
+      "country_code": "FI",
+      "region": null
+    },
+    {
+      "city_uid": "2655f0ba-bc32-4e92-a6e9-f9729cf48177",
+      "name": "Oulu",
+      "country_code": "FI",
+      "region": null
+    },
+    {
+      "city_uid": "db1865b5-3997-486a-982f-3c62ac604a45",
+      "name": "Pori",
+      "country_code": "FI",
+      "region": null
+    },
+    {
+      "city_uid": "1819606a-170b-4b07-b4cf-fd605ea07625",
+      "name": "Raahe",
+      "country_code": "FI",
+      "region": null
+    },
+    {
+      "city_uid": "69f6dd7f-f2ed-4b72-8665-e0715577d2a4",
+      "name": "Varkaus",
+      "country_code": "FI",
+      "region": null
+    },
+    {
+      "city_uid": "883e2f0c-6b88-4607-9c04-b77f53c638ac",
+      "name": "Aix-en-Provence",
+      "country_code": "FR",
+      "region": null
+    },
+    {
+      "city_uid": "3b8ca3b2-2651-418e-813f-e6dd5d91fdc8",
+      "name": "Angers",
+      "country_code": "FR",
+      "region": "Pays de la Loire"
+    },
+    {
+      "city_uid": "d61df612-5d62-4692-983a-754cd9d7e580",
+      "name": "Batilly",
+      "country_code": "FR",
+      "region": "Grand Est"
+    },
+    {
+      "city_uid": "875d31ad-c796-4749-83f1-99cba11c39f5",
+      "name": "Belfort",
+      "country_code": "FR",
+      "region": null
+    },
+    {
+      "city_uid": "ab217b7d-e2f8-489c-b374-25557d1c205a",
+      "name": "Boulogne-sur-Mer",
+      "country_code": "FR",
+      "region": null
+    },
+    {
+      "city_uid": "1f879642-7e96-4216-b1ce-5caa99e00f67",
+      "name": "Bruyères-sur-Oise",
+      "country_code": "FR",
+      "region": "Île-de-France"
+    },
+    {
+      "city_uid": "287f14f5-98a6-4336-9cb4-2dd17ea8e509",
+      "name": "Chalampé",
+      "country_code": "FR",
+      "region": "Grand Est"
+    },
+    {
+      "city_uid": "0d015206-8887-4a8a-9dc4-d16ee17167bf",
+      "name": "Cléon",
+      "country_code": "FR",
+      "region": "Normandie"
+    },
+    {
+      "city_uid": "1bdda417-0b65-49a6-a032-f5ab3c730975",
+      "name": "Crespin",
+      "country_code": "FR",
+      "region": null
+    },
+    {
+      "city_uid": "8a3b154d-4ad2-43e0-9426-e4ac78acecc5",
+      "name": "Douai",
+      "country_code": "FR",
+      "region": "Hauts-de-France"
+    },
+    {
+      "city_uid": "584225ab-c0c2-42bd-8cd1-a0d2b89619ea",
+      "name": "Gennevilliers",
+      "country_code": "FR",
+      "region": null
+    },
+    {
+      "city_uid": "c001a869-5af7-49d4-bfd4-77490f496cfd",
+      "name": "Gray",
+      "country_code": "FR",
+      "region": "Bourgogne-Franche-Comté"
+    },
+    {
+      "city_uid": "924d0bf1-4903-4299-87ca-facfcf6e205a",
+      "name": "La Rochelle / Aytré",
+      "country_code": "FR",
+      "region": null
+    },
+    {
+      "city_uid": "071f8958-d10a-4a2b-9dfc-b18549f62ec2",
+      "name": "Le Creusot",
+      "country_code": "FR",
+      "region": null
+    },
+    {
+      "city_uid": "be2610fd-d350-4733-9947-e2abe9b12dce",
+      "name": "Le Havre Cedex",
+      "country_code": "FR",
+      "region": "Normandie"
+    },
+    {
+      "city_uid": "4bf05406-ef47-4387-8949-7217e7b10771",
+      "name": "Maubeuge",
+      "country_code": "FR",
+      "region": "Hauts-de-France"
+    },
+    {
+      "city_uid": "c7f5921b-4301-4267-8f61-f7b992d67ff1",
+      "name": "Meyzieu",
+      "country_code": "FR",
+      "region": "Auvergne-Rhône-Alpes"
+    },
+    {
+      "city_uid": "bd9eacab-98f1-47d4-ac3f-62a7be8bf1fb",
+      "name": "Ornans",
+      "country_code": "FR",
+      "region": null
+    },
+    {
+      "city_uid": "b1202146-9c85-4aa0-a24c-c6fec3fcc767",
+      "name": "Ottmarsheim",
+      "country_code": "FR",
+      "region": "Grand Est"
+    },
+    {
+      "city_uid": "0759a22a-16e7-465b-961a-da930ca09bd7",
+      "name": "Petit-Quevilly",
+      "country_code": "FR",
+      "region": null
+    },
+    {
+      "city_uid": "52162ceb-9b91-4cce-b397-d29a59e0cda0",
+      "name": "Ruitz",
+      "country_code": "FR",
+      "region": "Hauts-de-France"
+    },
+    {
+      "city_uid": "da597fef-34c9-4743-9533-a37333f4e731",
+      "name": "Saint-Florentin",
+      "country_code": "FR",
+      "region": null
+    },
+    {
+      "city_uid": "6a4025de-6502-472c-bb19-8a39144536fb",
+      "name": "Tarbes / Séméac",
+      "country_code": "FR",
+      "region": null
+    },
+    {
+      "city_uid": "45a3fdd8-baf5-41c2-bdb5-cb42358bf964",
+      "name": "Valenciennes / Petite-Forêt",
+      "country_code": "FR",
+      "region": null
+    },
+    {
+      "city_uid": "2dfd1139-9477-4aef-a97e-774002da12be",
+      "name": "Villeurbanne",
+      "country_code": "FR",
+      "region": null
+    },
+    {
+      "city_uid": "b60b7c02-30ca-4f1b-8df6-68386a02f0f6",
+      "name": "Castle Donington / East Midlands",
+      "country_code": "GB",
+      "region": null
+    },
+    {
+      "city_uid": "ced4ef55-79da-420f-b52e-cb446e727303",
+      "name": "Doncaster",
+      "country_code": "GB",
+      "region": null
+    },
+    {
+      "city_uid": "05af41fc-88dc-4699-98e6-fb5ab732a3de",
+      "name": "Grimsby",
+      "country_code": "GB",
+      "region": null
+    },
+    {
+      "city_uid": "ad27ec55-9d0c-4702-a232-b8ca5d0f6616",
+      "name": "Kettering",
+      "country_code": "GB",
+      "region": null
+    },
+    {
+      "city_uid": "9749ac53-abce-4f0e-a502-fa3e9d85d4e6",
+      "name": "Tamworth",
+      "country_code": "GB",
+      "region": null
+    },
+    {
+      "city_uid": "749e275e-6c38-4dda-90bf-c4f220b414f6",
+      "name": "Rijeka",
+      "country_code": "HR",
+      "region": null
+    },
+    {
+      "city_uid": "1c59b81a-618c-4942-bcb9-e398f258c68a",
+      "name": "Győr",
+      "country_code": "HU",
+      "region": "Győr-Moson-Sopron"
+    },
+    {
+      "city_uid": "439e92d3-f202-45c0-8b2b-203b5e09c53a",
+      "name": "Kecskemét",
+      "country_code": "HU",
+      "region": "Bács-Kiskun"
+    },
+    {
+      "city_uid": "db5ae654-9750-4357-96cd-12be256daeb3",
+      "name": "Nyíregyháza",
+      "country_code": "HU",
+      "region": "Szabolcs-Szatmár-Bereg"
+    },
+    {
+      "city_uid": "434df240-74c7-4c3e-8caa-5f5b29aeaaed",
+      "name": "Dublin",
+      "country_code": "IE",
+      "region": null
+    },
+    {
+      "city_uid": "65dfba98-7f5b-485d-9925-ff5b12f79ef5",
+      "name": "Ancona",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "3fc99788-10ae-4c06-975d-5bc158d5252e",
+      "name": "Arzignano",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "ddca3f0c-7c07-4493-b248-2c1401428d91",
+      "name": "Avellino",
+      "country_code": "IT",
+      "region": "Campania"
+    },
+    {
+      "city_uid": "20ba1da9-ba61-43a5-903e-f2fbb488b58b",
+      "name": "Bologna",
+      "country_code": "IT",
+      "region": "Emilia-Romagna"
+    },
+    {
+      "city_uid": "9ea2e2bc-2bf1-4215-9d99-21a29ea1580b",
+      "name": "Castellammare di Stabia",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "62cbb184-42f9-4d7f-89f5-879ad423eeeb",
+      "name": "Genoa",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "82b5cb98-c7d1-4c55-a274-a584adec66dd",
+      "name": "Marghera",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "5b58e34f-f9d7-41b0-b0d8-9e79d7b517ca",
+      "name": "Monfalcone",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "0caf1135-674f-4da7-bf8a-404f3ca1db12",
+      "name": "Muggiano / La Spezia",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "3b344942-7e2d-49d4-856b-2d960f82b6be",
+      "name": "Palermo",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "4ab780f0-d9ff-4d7d-add8-81dd883f562d",
+      "name": "Parma",
+      "country_code": "IT",
+      "region": "Emilia-Romagna"
+    },
+    {
+      "city_uid": "27d4cc68-87b9-4064-9e1c-4b5d2703df4c",
+      "name": "Riva Trigoso",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "1e9adc42-f4f4-4a8f-a985-9514308cc589",
+      "name": "Sant’Agata Bolognese",
+      "country_code": "IT",
+      "region": "Emilia-Romagna"
+    },
+    {
+      "city_uid": "2a415b9a-d719-4e06-aa42-8187bef19f2d",
+      "name": "Savigliano",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "00662684-3a02-4aaf-a29f-18d312bf4969",
+      "name": "Sesto San Giovanni",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "62b559c2-0c56-4a58-be04-8615514c4695",
+      "name": "Sestri Ponente",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "6827284d-f891-464a-ab09-7f2f20f32fe5",
+      "name": "Trieste",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "87f4c3fc-934e-41f0-9fac-69bb4cbfafd1",
+      "name": "Vado Ligure",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "5637f1a0-4658-472a-b7ec-e9f6fe8fb3c6",
+      "name": "Valmadrera",
+      "country_code": "IT",
+      "region": null
+    },
+    {
+      "city_uid": "9e7edfa8-8788-4ea8-bd52-2636ac9bec4b",
+      "name": "Alytus",
+      "country_code": "LT",
+      "region": null
+    },
+    {
+      "city_uid": "5c2f026b-6e3c-4257-809b-23117bf60f46",
+      "name": "Kazlų Rūda",
+      "country_code": "LT",
+      "region": null
+    },
+    {
+      "city_uid": "4dde7c7d-4153-4301-8887-eb43fe0efd58",
+      "name": "Launkalne",
+      "country_code": "LV",
+      "region": null
+    },
+    {
+      "city_uid": "ec3df905-d8e8-456f-b982-dbc37f32c520",
+      "name": "Aalsmeer",
+      "country_code": "NL",
+      "region": null
+    },
+    {
+      "city_uid": "32a3d51e-76ed-4c7e-8ca5-327396115bb5",
+      "name": "De Lier",
+      "country_code": "NL",
+      "region": null
+    },
+    {
+      "city_uid": "9f30db19-cf7f-465f-9c32-7501d00e2811",
+      "name": "Eindhoven",
+      "country_code": "NL",
+      "region": "Noord-Brabant"
+    },
+    {
+      "city_uid": "b6f4f5e2-61f0-4e93-88aa-8a566b295a72",
+      "name": "Hasselt",
+      "country_code": "NL",
+      "region": "Overijssel"
+    },
+    {
+      "city_uid": "7e1cbd89-f917-4bc5-98cf-76df975a2e70",
+      "name": "Lemmer",
+      "country_code": "NL",
+      "region": null
+    },
+    {
+      "city_uid": "5925a867-dd27-4931-8936-20d28f4a0f2a",
+      "name": "Meppel",
+      "country_code": "NL",
+      "region": "Drenthe"
+    },
+    {
+      "city_uid": "21317c3b-d934-4537-b001-80400c1d327d",
+      "name": "Naaldwijk",
+      "country_code": "NL",
+      "region": null
+    },
+    {
+      "city_uid": "7ceb3620-b83b-4e11-bec0-aad0d0d8018f",
+      "name": "Rijnsburg",
+      "country_code": "NL",
+      "region": null
+    },
+    {
+      "city_uid": "7532d305-bb60-4f0c-86de-99e0ce6ad8ec",
+      "name": "Rotterdam",
+      "country_code": "NL",
+      "region": null
+    },
+    {
+      "city_uid": "262daceb-95a0-48e7-9cd7-40c086e18687",
+      "name": "Rotterdam Maasvlakte",
+      "country_code": "NL",
+      "region": null
+    },
+    {
+      "city_uid": "14073712-6355-4447-84bf-e6a5eaaba690",
+      "name": "Zwolle",
+      "country_code": "NL",
+      "region": "Overijssel"
+    },
+    {
+      "city_uid": "7e1db2cb-e769-46aa-8a42-a738b216c7c5",
+      "name": "Brattvåg",
+      "country_code": "NO",
+      "region": null
+    },
+    {
+      "city_uid": "97679983-10dc-4fcf-82fb-6adb24cf7ab5",
+      "name": "Brevik",
+      "country_code": "NO",
+      "region": null
+    },
+    {
+      "city_uid": "02199dac-49b8-4707-bf77-f9a21b2857ba",
+      "name": "Kjøpsvik",
+      "country_code": "NO",
+      "region": null
+    },
+    {
+      "city_uid": "6c9f9321-74e3-4d6e-b435-be3ebff85a41",
+      "name": "Langsten",
+      "country_code": "NO",
+      "region": null
+    },
+    {
+      "city_uid": "3c5bc7ca-eca2-4e41-ad94-ba9831296c8b",
+      "name": "Odda",
+      "country_code": "NO",
+      "region": null
+    },
+    {
+      "city_uid": "caed1701-53a7-40d1-80d9-7ce55ede3489",
+      "name": "Søviknes",
+      "country_code": "NO",
+      "region": null
+    },
+    {
+      "city_uid": "6152ffc0-ee24-4a82-b335-438214635237",
+      "name": "Gdańsk",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "2e88eeea-eafa-400f-9c64-ca34130794fa",
+      "name": "Goleniów",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "e415181e-0bf0-4991-aaf7-14a4c9c0526b",
+      "name": "Górażdże",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "4acbc71d-a4b3-4816-a020-d558a2f4f2f7",
+      "name": "Katowice",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "7d7e665c-9da0-4621-9fb7-b25e7d2d8545",
+      "name": "Lubawa",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "91057204-f18e-46c8-aed1-741287151215",
+      "name": "Marki",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "cd637f4e-0f53-488d-8b9c-e182db9ca43f",
+      "name": "Mosina",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "7362d810-dfa0-4007-b057-3ce1139184c9",
+      "name": "Murów",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "e66a1cb1-1683-402d-8ffe-2f2ee05cc83f",
+      "name": "Niepołomice",
+      "country_code": "PL",
+      "region": "Małopolskie"
+    },
+    {
+      "city_uid": "1a94634c-1005-434d-886e-0c89557dc291",
+      "name": "Olsztyn",
+      "country_code": "PL",
+      "region": "Warmian-Masurian"
+    },
+    {
+      "city_uid": "56c85e57-88fa-4cbf-9a8c-7d466056687f",
+      "name": "Orla",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "8b327ebb-8941-48d7-b1e4-5c543880255e",
+      "name": "Polska Cerekiew",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "94ac842a-ae9c-4ea0-8ab7-d77e7e0cf5c1",
+      "name": "Poznań",
+      "country_code": "PL",
+      "region": "Wielkopolskie"
+    },
+    {
+      "city_uid": "1c4438b7-de73-4489-9e5a-ba0aac0151d2",
+      "name": "Pszenno",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "ba05faf4-ce45-4583-b631-cdbeb798a178",
+      "name": "Resko",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "69b2f2e3-16fc-4dee-a065-b1c11da2c101",
+      "name": "Ropczyce",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "18751096-546f-44fe-bb16-ea6f26f49913",
+      "name": "Stalowa Wola",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "98aaca0b-4feb-49de-a3c3-2849991accb8",
+      "name": "Starachowice",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "f02090d8-9ac0-4388-958f-0c4b2b1231ce",
+      "name": "Stepnica",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "9277d36a-dcb3-466f-9abf-57f1c9f7f690",
+      "name": "Strzelin",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "d7168045-9cf5-4420-97d8-228afee19fe8",
+      "name": "Ustka",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "d70b355b-9868-418f-9e96-91fbb9b0aa05",
+      "name": "Wielbark",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "b5e93e81-6b19-4c1c-a597-94a458af8386",
+      "name": "Wrocław",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "62e7a8bd-5ebf-4f39-81ad-c7ad0b112485",
+      "name": "Września",
+      "country_code": "PL",
+      "region": "Wielkopolskie"
+    },
+    {
+      "city_uid": "721d2509-8f12-4ffa-8529-501ea3cb3113",
+      "name": "Zbąszynek",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "648acd6b-475e-4465-8ea9-b08fc8af438d",
+      "name": "Łódź",
+      "country_code": "PL",
+      "region": null
+    },
+    {
+      "city_uid": "1fef97ef-b9b8-41a9-a6f5-0e6263ffbb54",
+      "name": "Lousado",
+      "country_code": "PT",
+      "region": "Braga"
+    },
+    {
+      "city_uid": "1a4fde27-2ea6-4be2-96a6-3bf8187ca876",
+      "name": "Paços de Ferreira",
+      "country_code": "PT",
+      "region": null
+    },
+    {
+      "city_uid": "01444393-846f-4013-857b-22e37b6cfa2e",
+      "name": "Santa Maria de Lamas",
+      "country_code": "PT",
+      "region": null
+    },
+    {
+      "city_uid": "a1befa32-ee6c-4989-beeb-6a22ce74b435",
+      "name": "Brăila",
+      "country_code": "RO",
+      "region": null
+    },
+    {
+      "city_uid": "c0b879f3-e1af-4ca8-b227-8d6aec28dc71",
+      "name": "Bucharest",
+      "country_code": "RO",
+      "region": null
+    },
+    {
+      "city_uid": "a731a368-0a39-4f28-a007-7cc6b597faab",
+      "name": "Tulcea",
+      "country_code": "RO",
+      "region": null
+    },
+    {
+      "city_uid": "cf815dc1-43a6-423f-a73a-fcf0822e4909",
+      "name": "Borlänge",
+      "country_code": "SE",
+      "region": null
+    },
+    {
+      "city_uid": "8381c19d-2330-46bf-b1bb-99c6ef2a44f2",
+      "name": "Dalsjöfors",
+      "country_code": "SE",
+      "region": null
+    },
+    {
+      "city_uid": "6f31c3a2-7e1e-4d72-9015-3a12f2880f1d",
+      "name": "Gothenburg",
+      "country_code": "SE",
+      "region": null
+    },
+    {
+      "city_uid": "015accab-cda8-4dcf-8a79-e03a50c17f3f",
+      "name": "Grums",
+      "country_code": "SE",
+      "region": null
+    },
+    {
+      "city_uid": "3ebc1e34-4e64-4fb4-9af0-b9ef1464049f",
+      "name": "Göteborg",
+      "country_code": "SE",
+      "region": "Västra Götaland"
+    },
+    {
+      "city_uid": "034b1c8c-d5d6-4751-8846-d321e7fdfa0e",
+      "name": "Kalmar",
+      "country_code": "SE",
+      "region": null
+    },
+    {
+      "city_uid": "0ed0bf2b-c855-4e44-a00f-c7bb6db7d56b",
+      "name": "Landskrona",
+      "country_code": "SE",
+      "region": null
+    },
+    {
+      "city_uid": "7b98c1c9-a8c0-4b85-af30-c19814e462a0",
+      "name": "Ljusne",
+      "country_code": "SE",
+      "region": null
+    },
+    {
+      "city_uid": "54489311-18b8-4731-b70a-cc4371fb2a72",
+      "name": "Luleå",
+      "country_code": "SE",
+      "region": "Norrbotten"
+    },
+    {
+      "city_uid": "84d47eb8-229e-4cc4-8d7d-4d176fb5494e",
+      "name": "Oskarshamn",
+      "country_code": "SE",
+      "region": "Kalmar County"
+    },
+    {
+      "city_uid": "d43d6832-1742-4c2d-a610-ba707d5058fe",
+      "name": "Oxelösund",
+      "country_code": "SE",
+      "region": null
+    },
+    {
+      "city_uid": "0f0147dc-1f46-4ffc-9ed8-73d2440e6b70",
+      "name": "Skelleftehamn",
+      "country_code": "SE",
+      "region": null
+    },
+    {
+      "city_uid": "74ae40d2-9166-4362-8cda-5afbca444dde",
+      "name": "Skövde",
+      "country_code": "SE",
+      "region": "Västra Götaland"
+    },
+    {
+      "city_uid": "f8c18c47-ae9c-49dc-ad61-c092a1d914fe",
+      "name": "Södertälje",
+      "country_code": "SE",
+      "region": "Stockholm County"
+    },
+    {
+      "city_uid": "ca097565-b80b-403e-94ee-df2b8a015a7b",
+      "name": "Bratislava",
+      "country_code": "SK",
+      "region": "Bratislava"
+    },
+    {
+      "city_uid": "c21e4174-090a-4e28-b6fc-9c4646637fec",
+      "name": "Dolné Vestenice",
+      "country_code": "SK",
+      "region": "Trenčiansky kraj"
+    },
+    {
+      "city_uid": "3dd79feb-fcec-4980-a24b-c4fd9920a6e9",
+      "name": "Jasná",
+      "country_code": "SK",
+      "region": null
+    },
+    {
+      "city_uid": "74897884-3d83-4e48-9f8b-c4500ef900f0",
+      "name": "Malacky",
+      "country_code": "SK",
+      "region": null
+    },
+    {
+      "city_uid": "ca64c9bc-6087-417f-ae05-33e5bc95660e",
+      "name": "Martin",
+      "country_code": "SK",
+      "region": "Žilina"
+    },
+    {
+      "city_uid": "dfe0086c-6a5f-4cc3-a5d9-8294692d17b7",
+      "name": "Púchov",
+      "country_code": "SK",
+      "region": "Trenčiansky kraj"
+    },
+    {
+      "city_uid": "c702cde8-9445-48b3-a130-ec1575e602da",
+      "name": "Teplička nad Váhom",
+      "country_code": "SK",
+      "region": "Žilina"
+    },
+    {
+      "city_uid": "c19c5811-cbe6-4eb9-b12b-4fecf23f57e6",
+      "name": "Trnava",
+      "country_code": "SK",
+      "region": null
+    },
+    {
+      "city_uid": "12778ebf-fa8a-4243-a33e-47020677187a",
+      "name": "Zvolen",
+      "country_code": "SK",
+      "region": "Banskobystrický kraj"
+    },
+    {
+      "city_uid": "1ce03c45-478d-4ae4-bd61-d8ee421936df",
+      "name": "Akyurt",
+      "country_code": "TR",
+      "region": "Ankara"
+    },
+    {
+      "city_uid": "fb5b666a-ba0e-4dd4-807c-dff3f06137a4",
+      "name": "Eskişehir",
+      "country_code": "TR",
+      "region": null
+    },
+    {
+      "city_uid": "e1d33400-43b8-4b80-a73a-d0ca3b3d3953",
+      "name": "Istanbul",
+      "country_code": "TR",
+      "region": null
+    }
+  ],
+  "facilities": [
+    {
+      "facility_uid": "eabb992c-b9a0-4bf9-b4d6-45f0ca1531a1",
+      "city_uid": "23917371-104e-4514-a0b8-fe500753baad",
+      "source_country": "AT",
+      "source_city": "Bad St. Leonhard",
+      "source_region": null
+    },
+    {
+      "facility_uid": "cae67af5-95b0-4f92-bcb1-036b9e6e2b38",
+      "city_uid": "52431070-a549-4731-92d4-3d65260cdf75",
+      "source_country": "AT",
+      "source_city": "Brand",
+      "source_region": null
+    },
+    {
+      "facility_uid": "296af7be-bebd-42ab-b934-c72b4e41838b",
+      "city_uid": "6c124a7b-5f4b-4e46-898c-5a00d80b3066",
+      "source_country": "AT",
+      "source_city": "Graz",
+      "source_region": "Steiermark"
+    },
+    {
+      "facility_uid": "30e51eda-31a5-4fb2-a41d-b5a6f3b0a490",
+      "city_uid": "08e7de91-ad15-48f6-8032-23fe35baa1c0",
+      "source_country": "AT",
+      "source_city": "Heiligenkreuz im Lafnitztal",
+      "source_region": null
+    },
+    {
+      "facility_uid": "1eafe317-6432-4409-860a-2943044963a5",
+      "city_uid": "9775cef7-86fe-49f4-8a51-ff287f330ffc",
+      "source_country": "AT",
+      "source_city": "Lenzing",
+      "source_region": null
+    },
+    {
+      "facility_uid": "334411d3-1c09-4e1f-9f2e-98c09cdadfba",
+      "city_uid": "3f631cbc-9cf1-491d-a82c-e9cdbe57382f",
+      "source_country": "AT",
+      "source_city": "Linz",
+      "source_region": "Oberösterreich"
+    },
+    {
+      "facility_uid": "7e0d23e7-9863-4eba-8d15-3de35f45ed00",
+      "city_uid": "3f631cbc-9cf1-491d-a82c-e9cdbe57382f",
+      "source_country": "AT",
+      "source_city": "Linz",
+      "source_region": "Oberösterreich"
+    },
+    {
+      "facility_uid": "206f93d6-33a0-44b8-9a48-9aedfdbddfee",
+      "city_uid": "9d555c98-27cc-4c7d-b2ba-81986d7e5237",
+      "source_country": "AT",
+      "source_city": "Reutte",
+      "source_region": null
+    },
+    {
+      "facility_uid": "e61d0954-67d9-41d1-8b07-a50286157ef2",
+      "city_uid": "c8568236-534a-4c63-ba6b-a98289598fd3",
+      "source_country": "AT",
+      "source_city": "Villach",
+      "source_region": "Kärnten"
+    },
+    {
+      "facility_uid": "14ab1fd5-a4d5-4919-bd3f-d66f6d8c3357",
+      "city_uid": "2fe7535a-f59c-41af-8fba-08655f84878b",
+      "source_country": "AT",
+      "source_city": "Ybbs an der Donau",
+      "source_region": null
+    },
+    {
+      "facility_uid": "ca6feff4-d0fa-4e99-b0da-4073f76e18d9",
+      "city_uid": "025dce09-32b7-4a50-839a-d3ccef64dbac",
+      "source_country": "BE",
+      "source_city": "Antwerpen",
+      "source_region": "Vlaanderen"
+    },
+    {
+      "facility_uid": "c1644621-d785-4911-87bc-aba1c26844a6",
+      "city_uid": "22d1b674-6b05-430b-ba00-12268ce388f6",
+      "source_country": "BE",
+      "source_city": "Beerse",
+      "source_region": "Antwerpen"
+    },
+    {
+      "facility_uid": "a2b38930-da25-4c9f-856b-13fb1b21c640",
+      "city_uid": "51d905a4-5bb7-4339-96af-a1fd93bf6858",
+      "source_country": "BE",
+      "source_city": "Bree",
+      "source_region": null
+    },
+    {
+      "facility_uid": "7d1a8633-c4ae-4d21-88ea-6ccf02baae22",
+      "city_uid": "a47ee6b6-a6b9-4821-a115-487877e90f35",
+      "source_country": "BE",
+      "source_city": "Bruges",
+      "source_region": null
+    },
+    {
+      "facility_uid": "ebcdda99-eb55-4253-ae93-217c41b74f33",
+      "city_uid": "7ce15ef6-6c91-4d8c-8433-0b8266b46b22",
+      "source_country": "BE",
+      "source_city": "Geel",
+      "source_region": null
+    },
+    {
+      "facility_uid": "0ddc8c3e-bb6c-471f-b659-0a9825cda2f7",
+      "city_uid": "c44b6c8b-39b6-4d19-8f88-ec9ed4650631",
+      "source_country": "BE",
+      "source_city": "Izegem",
+      "source_region": null
+    },
+    {
+      "facility_uid": "4fe7fe25-b206-4939-897b-5a4e85918fbb",
+      "city_uid": "e1e05716-3be3-44d4-bac5-c460e0d24eef",
+      "source_country": "BE",
+      "source_city": "Olen",
+      "source_region": "Antwerpen"
+    },
+    {
+      "facility_uid": "106c1351-18cd-4115-af8f-7c1c54f4b44b",
+      "city_uid": "b6800b3a-680d-4d7e-9ee5-34b72a679277",
+      "source_country": "BE",
+      "source_city": "Oostakker",
+      "source_region": "East Flanders"
+    },
+    {
+      "facility_uid": "ebf64555-5992-489b-b666-f2def7367f01",
+      "city_uid": "e9a99a2b-6e33-4f97-a587-bbd8bdc786b7",
+      "source_country": "BE",
+      "source_city": "Ostend",
+      "source_region": null
+    },
+    {
+      "facility_uid": "69329244-7538-4d0e-995b-6c7ff438bc32",
+      "city_uid": "5c22afd8-67af-4ae9-93fd-ea324a7c74d8",
+      "source_country": "BE",
+      "source_city": "Rijkevorsel",
+      "source_region": null
+    },
+    {
+      "facility_uid": "62503325-e608-4326-bda3-736d6e02d78f",
+      "city_uid": "33c657cc-8c9c-4401-a508-066a494a9924",
+      "source_country": "BE",
+      "source_city": "Sclessin (Liège)",
+      "source_region": null
+    },
+    {
+      "facility_uid": "2b3138f3-19bd-46c3-8989-3b6214df4fc2",
+      "city_uid": "130623bf-414c-46d0-a657-493dead3b2b4",
+      "source_country": "BE",
+      "source_city": "Sint-Katelijne-Waver",
+      "source_region": null
+    },
+    {
+      "facility_uid": "37cc9b9e-4e83-4f02-b5b1-884d6f36cc15",
+      "city_uid": "f57809e9-69c8-48cb-85a3-96716347e3b7",
+      "source_country": "BE",
+      "source_city": "Westerlo",
+      "source_region": "Antwerpen"
+    },
+    {
+      "facility_uid": "c7c452c9-2e0d-433d-bbf0-c16ca2718ae8",
+      "city_uid": "9eed1b39-b4bf-445e-993d-d9b3a4bddc7d",
+      "source_country": "BE",
+      "source_city": "Willebroek",
+      "source_region": null
+    },
+    {
+      "facility_uid": "ea8dac71-997f-49d6-9035-2ca60be33553",
+      "city_uid": "9eed1b39-b4bf-445e-993d-d9b3a4bddc7d",
+      "source_country": "BE",
+      "source_city": "Willebroek",
+      "source_region": null
+    },
+    {
+      "facility_uid": "03315a13-c281-4904-b6c8-2b8f767b8fdc",
+      "city_uid": "a742efad-648d-4c62-8a52-c2676d5414f6",
+      "source_country": "BG",
+      "source_city": "Pirdop",
+      "source_region": null
+    },
+    {
+      "facility_uid": "3266dfb1-cff0-4f6e-b9f0-1d6b99c3fb46",
+      "city_uid": "a392d1c6-9a33-40fe-ba09-fca561b3d699",
+      "source_country": "CZ",
+      "source_city": "Dobřenice",
+      "source_region": null
+    },
+    {
+      "facility_uid": "c6496b54-f1f2-47b4-9377-8421d10aaa4c",
+      "city_uid": "a4302336-6562-4d73-8647-a0a76275d69d",
+      "source_country": "CZ",
+      "source_city": "Hostivice",
+      "source_region": null
+    },
+    {
+      "facility_uid": "b7bc3031-4563-4953-8425-0177e059b3f8",
+      "city_uid": "6cee7ce3-ceba-44a9-b0fa-510a03e9e421",
+      "source_country": "CZ",
+      "source_city": "Kladno",
+      "source_region": null
+    },
+    {
+      "facility_uid": "086cc7d7-8ab1-472f-bfe8-58787d0339d7",
+      "city_uid": "2f6620a0-c4c9-4452-a908-eac9f872a541",
+      "source_country": "CZ",
+      "source_city": "Kvasiny",
+      "source_region": "Hradec Králové"
+    },
+    {
+      "facility_uid": "fb95e2b0-f0b6-4ef3-b0f7-f60cf40599e3",
+      "city_uid": "fe1a1333-859e-4d55-b43e-85e2279dc589",
+      "source_country": "CZ",
+      "source_city": "Mladá Boleslav",
+      "source_region": "Central Bohemia"
+    },
+    {
+      "facility_uid": "9d0490f9-e180-4a8c-b3b9-148f408ed12c",
+      "city_uid": "2ce36e5d-5828-4186-804e-791b55a5e275",
+      "source_country": "CZ",
+      "source_city": "Nižní Lhoty / Nošovice",
+      "source_region": "Moravian-Silesian"
+    },
+    {
+      "facility_uid": "bf6b3e5e-ad71-461b-8ccc-9fc867227533",
+      "city_uid": "dc2bed4c-7c84-4fe4-853e-8b488d8cb672",
+      "source_country": "CZ",
+      "source_city": "Otrokovice",
+      "source_region": "Zlínský kraj"
+    },
+    {
+      "facility_uid": "5c96761a-22b0-4174-928a-ef0274a32469",
+      "city_uid": "16656011-c72d-4a45-900d-219e0d9d592b",
+      "source_country": "CZ",
+      "source_city": "Paskov",
+      "source_region": null
+    },
+    {
+      "facility_uid": "1ec85cbb-17b8-45dc-b1f9-a30c4b88be79",
+      "city_uid": "e4216aef-ab3d-4836-9f60-11f1f16f74e1",
+      "source_country": "CZ",
+      "source_city": "Planá",
+      "source_region": null
+    },
+    {
+      "facility_uid": "818750f0-bbff-4d65-8763-f606dc3bd39a",
+      "city_uid": "d8e58493-4d18-4fe0-97f6-a167b7d1f3f9",
+      "source_country": "CZ",
+      "source_city": "Teplice",
+      "source_region": null
+    },
+    {
+      "facility_uid": "313e3102-5351-4d8b-bf95-ed166327457d",
+      "city_uid": "07b9d4ae-e622-41f0-9e80-2615d3bd4eac",
+      "source_country": "CZ",
+      "source_city": "Vrchlabí",
+      "source_region": "Hradec Králové"
+    },
+    {
+      "facility_uid": "64ef1082-e3b8-4235-b176-4034d3e27da0",
+      "city_uid": "05c68e79-4f62-464c-b85f-68a31b9125fa",
+      "source_country": "CZ",
+      "source_city": "Ždírec nad Doubravou",
+      "source_region": null
+    },
+    {
+      "facility_uid": "35a6ea6a-91d1-4fdb-a3d9-3af586ce1ece",
+      "city_uid": "2772d0e6-3b7d-4623-806d-afa86e33cac3",
+      "source_country": "DE",
+      "source_city": "Alfdorf",
+      "source_region": "Baden-Württemberg"
+    },
+    {
+      "facility_uid": "b804ae5a-46b3-4870-a364-4697da679a1e",
+      "city_uid": "d76d2fe6-b993-413c-9e8c-99cfd7cd6b60",
+      "source_country": "DE",
+      "source_city": "Aschau am Inn",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "f6f6b894-58cc-4afb-87e3-49acf9ed9409",
+      "city_uid": "9bb0e9eb-c4fe-41e9-9a57-fe677544cc6d",
+      "source_country": "DE",
+      "source_city": "Auerbach",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "4733a919-4710-4dfb-bc84-f4bd37dc9ca1",
+      "city_uid": "36681973-70ac-4926-bd57-ae7714e32de3",
+      "source_country": "DE",
+      "source_city": "Augsburg",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "bdbfc399-b9b6-4c14-b192-d055b10e7078",
+      "city_uid": "36681973-70ac-4926-bd57-ae7714e32de3",
+      "source_country": "DE",
+      "source_city": "Augsburg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "2a164e84-6599-4da3-b631-c75d6db3aa7c",
+      "city_uid": "d52f72bd-827d-442a-bdbe-fe82dcbd410f",
+      "source_country": "DE",
+      "source_city": "Bad Kreuznach",
+      "source_region": "Rheinland-Pfalz"
+    },
+    {
+      "facility_uid": "e993589f-c722-419d-83c0-433d7325e06d",
+      "city_uid": "0317c771-2ead-4fc0-ac06-50d48bdd8081",
+      "source_country": "DE",
+      "source_city": "Bautzen",
+      "source_region": null
+    },
+    {
+      "facility_uid": "0a0c5fcf-d965-455c-8358-8a6161ccae22",
+      "city_uid": "6f4cd14d-2dc8-4972-9079-f7c7461e0257",
+      "source_country": "DE",
+      "source_city": "Berkhof / Hannover",
+      "source_region": null
+    },
+    {
+      "facility_uid": "0ca3400f-2a31-4dc9-8541-130f625070e3",
+      "city_uid": "842dac5f-42b4-4fc7-bed1-5b487351e675",
+      "source_country": "DE",
+      "source_city": "Berlin",
+      "source_region": "Berlin"
+    },
+    {
+      "facility_uid": "201df69b-2cef-41e8-835a-844401c6e2dd",
+      "city_uid": "842dac5f-42b4-4fc7-bed1-5b487351e675",
+      "source_country": "DE",
+      "source_city": "Berlin",
+      "source_region": "Berlin"
+    },
+    {
+      "facility_uid": "34b5d10c-c420-44e0-9477-9780e7a8eac7",
+      "city_uid": "842dac5f-42b4-4fc7-bed1-5b487351e675",
+      "source_country": "DE",
+      "source_city": "Berlin",
+      "source_region": null
+    },
+    {
+      "facility_uid": "3edb5c81-a923-45d6-87e9-274e69a8b8db",
+      "city_uid": "842dac5f-42b4-4fc7-bed1-5b487351e675",
+      "source_country": "DE",
+      "source_city": "Berlin",
+      "source_region": null
+    },
+    {
+      "facility_uid": "c4ba00cc-47ae-463b-afd5-10e60503d0e6",
+      "city_uid": "842dac5f-42b4-4fc7-bed1-5b487351e675",
+      "source_country": "DE",
+      "source_city": "Berlin",
+      "source_region": "Berlin"
+    },
+    {
+      "facility_uid": "8f4a3c31-d55b-4e92-9b03-baf327d23a93",
+      "city_uid": "01d16d1b-38b3-4342-9716-13e5fa1eaf68",
+      "source_country": "DE",
+      "source_city": "Bernburg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "42b78db6-ffb4-4a2e-b391-785f64d21920",
+      "city_uid": "ecf597ed-9e98-40bd-9308-5336f6b0ab61",
+      "source_country": "DE",
+      "source_city": "Bremen",
+      "source_region": null
+    },
+    {
+      "facility_uid": "6791ea97-d1be-4a90-9af9-a83d93379567",
+      "city_uid": "c54729f3-2a5f-41e3-9bef-379e41d84bc3",
+      "source_country": "DE",
+      "source_city": "Bremerhaven",
+      "source_region": null
+    },
+    {
+      "facility_uid": "b81f432b-f3f9-4ecf-bbfd-95197b3ac8f4",
+      "city_uid": "b11fbfd7-221f-4c9e-94b2-86b9fb24217f",
+      "source_country": "DE",
+      "source_city": "Brunsbüttel",
+      "source_region": "Schleswig-Holstein"
+    },
+    {
+      "facility_uid": "ca816597-e9df-46f7-8700-c4009fe3bb08",
+      "city_uid": "6279ac3e-d914-4fbe-9818-df89a67ad4a1",
+      "source_country": "DE",
+      "source_city": "Burglengenfeld",
+      "source_region": null
+    },
+    {
+      "facility_uid": "782a5a59-009a-4e06-b333-4d0793201827",
+      "city_uid": "b5fbe50a-9705-4ef9-aa11-e8786fedc4da",
+      "source_country": "DE",
+      "source_city": "Buxtehude",
+      "source_region": "Niedersachsen"
+    },
+    {
+      "facility_uid": "366ce9ca-54ba-4c37-9edd-3afde9385dab",
+      "city_uid": "c399dd67-3f99-4e1d-b0ac-d2ec189dbca2",
+      "source_country": "DE",
+      "source_city": "Bühl",
+      "source_region": "Baden-Württemberg"
+    },
+    {
+      "facility_uid": "31acb7c2-0170-4b62-8f54-9a7372007bce",
+      "city_uid": "ac204210-10e7-4712-937b-e7a25a74ec83",
+      "source_country": "DE",
+      "source_city": "Darmstadt",
+      "source_region": "Hessen"
+    },
+    {
+      "facility_uid": "90141d45-5a0a-4c0e-ac15-ceba5422cd97",
+      "city_uid": "0139a1be-9ff1-447e-b1b8-be6e7f7c5a62",
+      "source_country": "DE",
+      "source_city": "Dingolfing",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "0e5438c0-9ffc-4203-857a-5058c64cafa1",
+      "city_uid": "157467c8-e43d-4fe1-8ce5-dc1cf9a54459",
+      "source_country": "DE",
+      "source_city": "Dinklage",
+      "source_region": null
+    },
+    {
+      "facility_uid": "2388bb6b-91a6-4f93-a654-b52683731e42",
+      "city_uid": "98f8214f-08b2-4181-aad6-6c9b65be372f",
+      "source_country": "DE",
+      "source_city": "Dormagen",
+      "source_region": "Nordrhein-Westfalen"
+    },
+    {
+      "facility_uid": "ed921c03-d005-4f7e-af17-4c94bd3335af",
+      "city_uid": "b3bffb56-e1e9-49e1-978a-a2efb6489e0c",
+      "source_country": "DE",
+      "source_city": "Dornstadt",
+      "source_region": "Baden-Württemberg"
+    },
+    {
+      "facility_uid": "4d056aa0-72fb-4221-83e8-914e37d5de7d",
+      "city_uid": "e9cadc84-f161-44d3-ab6f-778606fa42c8",
+      "source_country": "DE",
+      "source_city": "Dresden",
+      "source_region": "Sachsen"
+    },
+    {
+      "facility_uid": "fb78c000-d677-4423-b178-6dfc15408461",
+      "city_uid": "e9cadc84-f161-44d3-ab6f-778606fa42c8",
+      "source_country": "DE",
+      "source_city": "Dresden",
+      "source_region": "Sachsen"
+    },
+    {
+      "facility_uid": "27437fed-662a-4073-bca4-6547998b08e7",
+      "city_uid": "75d1b36a-764b-4e8d-ba50-f8eb5e0b2967",
+      "source_country": "DE",
+      "source_city": "Duisburg",
+      "source_region": "Nordrhein-Westfalen"
+    },
+    {
+      "facility_uid": "548f7165-4f75-4fa6-8ded-f6e6352b9873",
+      "city_uid": "75d1b36a-764b-4e8d-ba50-f8eb5e0b2967",
+      "source_country": "DE",
+      "source_city": "Duisburg",
+      "source_region": "Nordrhein-Westfalen"
+    },
+    {
+      "facility_uid": "d1279d65-6771-4e9d-ae55-3deb387e00d2",
+      "city_uid": "75d1b36a-764b-4e8d-ba50-f8eb5e0b2967",
+      "source_country": "DE",
+      "source_city": "Duisburg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "e4efe9fe-e773-4c05-ac23-4c4314470abc",
+      "city_uid": "75d1b36a-764b-4e8d-ba50-f8eb5e0b2967",
+      "source_country": "DE",
+      "source_city": "Duisburg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "2e338bb7-e7af-462f-9936-6f362bbf21f9",
+      "city_uid": "1f8b0d1c-3b2b-4a07-bc42-e1dc186849f4",
+      "source_country": "DE",
+      "source_city": "Düsseldorf",
+      "source_region": "Nordrhein-Westfalen"
+    },
+    {
+      "facility_uid": "98c87eb0-40a0-4f14-b89a-96a150162b95",
+      "city_uid": "167799b9-d1cf-4c9a-b174-11cc42d699d9",
+      "source_country": "DE",
+      "source_city": "Eberbach",
+      "source_region": null
+    },
+    {
+      "facility_uid": "05550905-1b30-4c16-a61a-2f0b564c4cca",
+      "city_uid": "9765dbca-7ea0-44b7-8d1b-7b301f1c2dba",
+      "source_country": "DE",
+      "source_city": "Emden",
+      "source_region": "Niedersachsen"
+    },
+    {
+      "facility_uid": "21831c64-e462-4c51-a14e-0f9a9c0b4707",
+      "city_uid": "5c604cd8-bbe7-434b-9ca5-a8b274544631",
+      "source_country": "DE",
+      "source_city": "Erfurt",
+      "source_region": "Thüringen"
+    },
+    {
+      "facility_uid": "f390b467-b563-4f45-94ce-d84c4fd2a2af",
+      "city_uid": "65fd2382-2350-4e73-b837-f174cd82c322",
+      "source_country": "DE",
+      "source_city": "Ergolding",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "31d66f20-83b3-4f8b-9642-4ca2c68851bd",
+      "city_uid": "a49e8a18-82e9-4561-b9c0-83057b1820a4",
+      "source_country": "DE",
+      "source_city": "Frankfurt am Main",
+      "source_region": "Hessen"
+    },
+    {
+      "facility_uid": "e22e7a5d-c810-42a0-a4f6-5c01eaed9562",
+      "city_uid": "a49e8a18-82e9-4561-b9c0-83057b1820a4",
+      "source_country": "DE",
+      "source_city": "Frankfurt am Main",
+      "source_region": "Hessen"
+    },
+    {
+      "facility_uid": "6bf0863a-c511-4d6b-abd7-648417ac3f51",
+      "city_uid": "5a0d2a81-a91e-4667-87db-17de2063371d",
+      "source_country": "DE",
+      "source_city": "Friedrichshafen",
+      "source_region": "Baden-Württemberg"
+    },
+    {
+      "facility_uid": "d794cbf9-5c60-4517-a1f1-ef331b9b3489",
+      "city_uid": "0afcc19a-c836-48da-8312-d253ffb994c1",
+      "source_country": "DE",
+      "source_city": "Grasleben",
+      "source_region": null
+    },
+    {
+      "facility_uid": "7af4b4ee-f6a6-43d0-9290-0c017d4cd860",
+      "city_uid": "c4f9ca0a-de4d-4e4b-bc6f-dfdda5cfc780",
+      "source_country": "DE",
+      "source_city": "Grenzach-Wyhlen",
+      "source_region": "Baden-Württemberg"
+    },
+    {
+      "facility_uid": "4315ac5e-4a43-4990-a3b8-941a9f05a563",
+      "city_uid": "38bea5bd-d0b9-423b-be1a-4e2884f352e3",
+      "source_country": "DE",
+      "source_city": "Großbeeren",
+      "source_region": "Brandenburg"
+    },
+    {
+      "facility_uid": "2f4eb74e-849f-4484-b0ce-6747aac52acd",
+      "city_uid": "9fe776aa-d402-4f9f-a533-9195da4a9de5",
+      "source_country": "DE",
+      "source_city": "Grünstadt",
+      "source_region": null
+    },
+    {
+      "facility_uid": "7404e9a3-ba24-459e-9800-0d757ad018d6",
+      "city_uid": "8bc6dc0b-816a-43fc-8e93-df8466daed95",
+      "source_country": "DE",
+      "source_city": "Göttingen",
+      "source_region": "Niedersachsen"
+    },
+    {
+      "facility_uid": "0de60af9-0c33-467c-b633-ed122da8837e",
+      "city_uid": "f275058d-358f-4015-a308-6bb7f3f13cc1",
+      "source_country": "DE",
+      "source_city": "Hamburg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "1cd909c7-3a77-4196-93ae-3f9e92737478",
+      "city_uid": "f275058d-358f-4015-a308-6bb7f3f13cc1",
+      "source_country": "DE",
+      "source_city": "Hamburg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "20d033cb-7dfa-4695-ab13-e6ed2f117bf7",
+      "city_uid": "f275058d-358f-4015-a308-6bb7f3f13cc1",
+      "source_country": "DE",
+      "source_city": "Hamburg",
+      "source_region": "Hamburg"
+    },
+    {
+      "facility_uid": "268670c9-a6df-4e29-892b-d8d5d125245e",
+      "city_uid": "f275058d-358f-4015-a308-6bb7f3f13cc1",
+      "source_country": "DE",
+      "source_city": "Hamburg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "35eecf39-2ed3-4bab-a624-d6fdebbb327c",
+      "city_uid": "f275058d-358f-4015-a308-6bb7f3f13cc1",
+      "source_country": "DE",
+      "source_city": "Hamburg",
+      "source_region": "Hamburg"
+    },
+    {
+      "facility_uid": "86af10fa-5616-41df-8ad2-ee89d41ea366",
+      "city_uid": "f275058d-358f-4015-a308-6bb7f3f13cc1",
+      "source_country": "DE",
+      "source_city": "Hamburg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "95dedb08-f950-4131-8ced-be8ecc7d7c69",
+      "city_uid": "f275058d-358f-4015-a308-6bb7f3f13cc1",
+      "source_country": "DE",
+      "source_city": "Hamburg",
+      "source_region": "Hamburg"
+    },
+    {
+      "facility_uid": "d2a3b3f8-67fc-434b-969a-0b784caf09f0",
+      "city_uid": "f275058d-358f-4015-a308-6bb7f3f13cc1",
+      "source_country": "DE",
+      "source_city": "Hamburg",
+      "source_region": "Hamburg"
+    },
+    {
+      "facility_uid": "e0b8838a-511c-47d2-9338-f72deea732fc",
+      "city_uid": "f275058d-358f-4015-a308-6bb7f3f13cc1",
+      "source_country": "DE",
+      "source_city": "Hamburg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "79b87b20-15ba-4a20-97e1-6053eef85645",
+      "city_uid": "13b4c6c5-b2e9-4c05-92e2-6b34c6f35f8f",
+      "source_country": "DE",
+      "source_city": "Heidelberg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "37bfdf32-3e11-47bb-83d0-a96503efd4f4",
+      "city_uid": "8700e603-5c56-4ebc-83de-0e8ee085efe6",
+      "source_country": "DE",
+      "source_city": "Hennigsdorf",
+      "source_region": null
+    },
+    {
+      "facility_uid": "d0152777-a990-4393-a034-ecc6223eff73",
+      "city_uid": "84f74f26-3442-46d2-8c34-2acf7e23eaeb",
+      "source_country": "DE",
+      "source_city": "Herten",
+      "source_region": null
+    },
+    {
+      "facility_uid": "ebb3eb44-f07b-4aef-bcfa-aabfc1ed8392",
+      "city_uid": "feee4f8c-43cd-4b90-a440-903e8386b76f",
+      "source_country": "DE",
+      "source_city": "Homburg",
+      "source_region": "Saarland"
+    },
+    {
+      "facility_uid": "e31a1bed-7267-4328-b67d-49e25c8cfa61",
+      "city_uid": "755a944e-c4a6-4655-9218-40531f7b3384",
+      "source_country": "DE",
+      "source_city": "Husum",
+      "source_region": null
+    },
+    {
+      "facility_uid": "bd462c98-7822-496f-a0a9-70ec859f8292",
+      "city_uid": "642b0b58-4923-45f6-88dd-185e66c5bfdc",
+      "source_country": "DE",
+      "source_city": "Hürth",
+      "source_region": "Nordrhein-Westfalen"
+    },
+    {
+      "facility_uid": "55c8906a-4678-4dd0-a9ef-4b2df4c1a66f",
+      "city_uid": "2df37920-9bc9-49b9-8894-c5393fb13516",
+      "source_country": "DE",
+      "source_city": "Ingolstadt",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "f64a339c-112d-4038-bbe3-e1fb85a3eba1",
+      "city_uid": "1220a34a-63c4-4359-b908-641c22852757",
+      "source_country": "DE",
+      "source_city": "Karlsruhe",
+      "source_region": "Baden-Württemberg"
+    },
+    {
+      "facility_uid": "0e220b5b-a984-48af-aa05-4b6d5c3b7f3b",
+      "city_uid": "7633b43b-81cb-4694-86b4-a2720a194253",
+      "source_country": "DE",
+      "source_city": "Kassel",
+      "source_region": null
+    },
+    {
+      "facility_uid": "9339bddf-0ab6-445a-82e1-1fb67bb5728e",
+      "city_uid": "3b187409-fd01-446a-915d-e7cfe7b0766f",
+      "source_country": "DE",
+      "source_city": "Korbach",
+      "source_region": "Hessen"
+    },
+    {
+      "facility_uid": "6e3ebc8c-bed3-42b9-8b86-c6472e4bfc0e",
+      "city_uid": "05a80e63-07b2-4ee4-a345-2601b7790f17",
+      "source_country": "DE",
+      "source_city": "Kornwestheim",
+      "source_region": "Baden-Württemberg"
+    },
+    {
+      "facility_uid": "bae23354-d893-421c-82cf-e36f731ccec2",
+      "city_uid": "b4fc430e-447d-4ead-aceb-a94bc7022907",
+      "source_country": "DE",
+      "source_city": "Krefeld-Uerdingen",
+      "source_region": "Nordrhein-Westfalen"
+    },
+    {
+      "facility_uid": "9b975527-2f65-45f2-b9b7-b8630ee99d26",
+      "city_uid": "69d40c76-f4ed-4c6f-9549-503fd4f078fa",
+      "source_country": "DE",
+      "source_city": "Köln",
+      "source_region": "Nordrhein-Westfalen"
+    },
+    {
+      "facility_uid": "ccf06f0a-2a81-4a76-861a-7bdcbfe1b5f1",
+      "city_uid": "152db2fd-753e-439c-9519-6e623c330510",
+      "source_country": "DE",
+      "source_city": "Lampertheim",
+      "source_region": "Hessen"
+    },
+    {
+      "facility_uid": "75309b42-b660-49aa-a198-47a7e9345d41",
+      "city_uid": "8fea6b94-131a-4cac-ad44-ccbf5eca7abd",
+      "source_country": "DE",
+      "source_city": "Landshut",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "05a4e16f-5882-4a72-a4a1-f523605ad01b",
+      "city_uid": "ac58107e-cbe3-4e75-9708-7deeecee3d7b",
+      "source_country": "DE",
+      "source_city": "Lehrte",
+      "source_region": "Niedersachsen"
+    },
+    {
+      "facility_uid": "314dee92-f500-4e28-b76b-adc37b786211",
+      "city_uid": "28157e49-c9fc-41c1-9a4b-7854d11551e8",
+      "source_country": "DE",
+      "source_city": "Leipzig",
+      "source_region": "Sachsen"
+    },
+    {
+      "facility_uid": "62c49b1a-bed2-49d9-908a-4d1555296744",
+      "city_uid": "28157e49-c9fc-41c1-9a4b-7854d11551e8",
+      "source_country": "DE",
+      "source_city": "Leipzig",
+      "source_region": "Sachsen"
+    },
+    {
+      "facility_uid": "fb63b996-cd68-4976-a08b-88d5dba646fa",
+      "city_uid": "28157e49-c9fc-41c1-9a4b-7854d11551e8",
+      "source_country": "DE",
+      "source_city": "Leipzig",
+      "source_region": "Sachsen"
+    },
+    {
+      "facility_uid": "327f2711-3740-44be-937c-f3be3a3efc54",
+      "city_uid": "95950905-094c-4aef-aa31-a9232ead026f",
+      "source_country": "DE",
+      "source_city": "Leverkusen",
+      "source_region": "Nordrhein-Westfalen"
+    },
+    {
+      "facility_uid": "cfb30976-748d-4e34-b91f-543aabf4f5a5",
+      "city_uid": "95950905-094c-4aef-aa31-a9232ead026f",
+      "source_country": "DE",
+      "source_city": "Leverkusen",
+      "source_region": "Nordrhein-Westfalen"
+    },
+    {
+      "facility_uid": "09eadeea-a4e1-4f23-b39e-bca86c0bd536",
+      "city_uid": "799ed2b3-74e0-4c38-b30e-42a5c9413b06",
+      "source_country": "DE",
+      "source_city": "Limburgerhof",
+      "source_region": "Rheinland-Pfalz"
+    },
+    {
+      "facility_uid": "6ff0e1f7-d1de-4fdf-bc13-3f567e996d19",
+      "city_uid": "54d95036-585d-49b0-be9a-e419713f69c6",
+      "source_country": "DE",
+      "source_city": "Ludwigshafen am Rhein",
+      "source_region": "Rheinland-Pfalz"
+    },
+    {
+      "facility_uid": "9975d916-5d84-414b-9797-7733e1d6d176",
+      "city_uid": "88fde28a-775a-4f45-8f18-7ffbb2f6733e",
+      "source_country": "DE",
+      "source_city": "Malsfeld",
+      "source_region": "Hessen"
+    },
+    {
+      "facility_uid": "281f4592-3619-4d02-adbc-36db578a70da",
+      "city_uid": "085c8a71-0a2e-4fd3-bab2-059a119e3a96",
+      "source_country": "DE",
+      "source_city": "Mannheim",
+      "source_region": null
+    },
+    {
+      "facility_uid": "bec44dec-de3b-4387-a1f1-478fdbe09db6",
+      "city_uid": "085c8a71-0a2e-4fd3-bab2-059a119e3a96",
+      "source_country": "DE",
+      "source_city": "Mannheim",
+      "source_region": "Baden-Württemberg"
+    },
+    {
+      "facility_uid": "23e53880-fb9d-42cb-b2d7-1c053f866001",
+      "city_uid": "605e1d83-bb4f-417c-9dfa-3c868ece7166",
+      "source_country": "DE",
+      "source_city": "Memmingen",
+      "source_region": null
+    },
+    {
+      "facility_uid": "16186a08-37fc-4aee-960f-10e5d31a2ac7",
+      "city_uid": "d4736fd9-b9a7-4666-999f-840c5978c132",
+      "source_country": "DE",
+      "source_city": "Meppen",
+      "source_region": "Niedersachsen"
+    },
+    {
+      "facility_uid": "eb679016-4a00-4e78-a789-bfc3b1fcb561",
+      "city_uid": "df5b69a1-c9e9-4aff-b19e-990e416b4ceb",
+      "source_country": "DE",
+      "source_city": "Monheim am Rhein",
+      "source_region": "Nordrhein-Westfalen"
+    },
+    {
+      "facility_uid": "4a1305f3-3680-4c74-bcb3-5c08f991d45b",
+      "city_uid": "028bbe1e-e99b-48ca-9f21-e3f6af650a0e",
+      "source_country": "DE",
+      "source_city": "Munich",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "9c2e6c28-3b93-4041-b3ec-e0b3c4bbf889",
+      "city_uid": "4c1bffb7-4c6a-44d1-a554-0f2b9c3729b4",
+      "source_country": "DE",
+      "source_city": "München",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "c3f98ffc-cd6f-43b3-8377-9c1a4e209f16",
+      "city_uid": "4c1bffb7-4c6a-44d1-a554-0f2b9c3729b4",
+      "source_country": "DE",
+      "source_city": "München",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "603814e2-7206-41dc-add9-24c3d354a0b0",
+      "city_uid": "9e190045-e428-4983-8ad3-cbf49a8d40df",
+      "source_country": "DE",
+      "source_city": "Nürnberg",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "aac790d2-10ac-4f8f-ab03-3c4642320c58",
+      "city_uid": "9e190045-e428-4983-8ad3-cbf49a8d40df",
+      "source_country": "DE",
+      "source_city": "Nürnberg",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "63674634-d1de-4214-bf50-95c983e06651",
+      "city_uid": "f72f7159-5707-4191-ac1b-53bd1fa1856d",
+      "source_country": "DE",
+      "source_city": "Ochsenfurt",
+      "source_region": null
+    },
+    {
+      "facility_uid": "2a7c9c72-2b6c-4523-a223-f3a38029d8a9",
+      "city_uid": "5d936d16-39ed-433f-8e11-782c3bebe1af",
+      "source_country": "DE",
+      "source_city": "Offenau",
+      "source_region": null
+    },
+    {
+      "facility_uid": "728e8a4e-88d8-429a-b7b5-61ee61e4d985",
+      "city_uid": "f66d5d00-78e1-4342-8761-753a9746cb4a",
+      "source_country": "DE",
+      "source_city": "Offstein",
+      "source_region": null
+    },
+    {
+      "facility_uid": "aa5a9aa0-5f21-42aa-8185-f3c999837996",
+      "city_uid": "7483a9bc-c244-4614-9fd1-12f75ba402c5",
+      "source_country": "DE",
+      "source_city": "Plattling",
+      "source_region": null
+    },
+    {
+      "facility_uid": "f2518201-3d9d-434d-9a31-e7f92675ccd6",
+      "city_uid": "ee54d1aa-be88-403a-aaef-abf132fcf6df",
+      "source_country": "DE",
+      "source_city": "Rain",
+      "source_region": null
+    },
+    {
+      "facility_uid": "723f3248-572c-4c71-88db-7295f17d1015",
+      "city_uid": "601a5b23-0b3d-49fe-899f-b3b0a09610db",
+      "source_country": "DE",
+      "source_city": "Regensburg",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "7a861afc-093d-4068-924b-f75dacab7158",
+      "city_uid": "601a5b23-0b3d-49fe-899f-b3b0a09610db",
+      "source_country": "DE",
+      "source_city": "Regensburg",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "bb8f0d33-42c4-4ce1-a7a4-2459ce8b4091",
+      "city_uid": "601a5b23-0b3d-49fe-899f-b3b0a09610db",
+      "source_country": "DE",
+      "source_city": "Regensburg",
+      "source_region": "Bayern"
+    },
+    {
+      "facility_uid": "854216e6-62bd-4c39-8ca3-c23fcc957ee6",
+      "city_uid": "a217826f-42bb-4c74-8490-75e8be239d8f",
+      "source_country": "DE",
+      "source_city": "Rheinberg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "07484edc-d916-4b97-afdf-be71f0f8d65b",
+      "city_uid": "921eb252-373e-42e7-8bd4-593f2fca041e",
+      "source_country": "DE",
+      "source_city": "Salzgitter",
+      "source_region": null
+    },
+    {
+      "facility_uid": "1deab7a3-6664-4b79-9390-afe75922ffc8",
+      "city_uid": "921eb252-373e-42e7-8bd4-593f2fca041e",
+      "source_country": "DE",
+      "source_city": "Salzgitter",
+      "source_region": "Niedersachsen"
+    },
+    {
+      "facility_uid": "a94656ef-241d-45f8-ac30-46028757d0fd",
+      "city_uid": "921eb252-373e-42e7-8bd4-593f2fca041e",
+      "source_country": "DE",
+      "source_city": "Salzgitter",
+      "source_region": "Niedersachsen"
+    },
+    {
+      "facility_uid": "1358a5d7-a4b3-4b07-8a3f-3f38430a2f8d",
+      "city_uid": "bf0dc195-ce28-429b-8673-f6f81cd4ecab",
+      "source_country": "DE",
+      "source_city": "Schwarzheide",
+      "source_region": "Brandenburg"
+    },
+    {
+      "facility_uid": "a63aeb69-c844-40f8-a874-c2e92966fc12",
+      "city_uid": "1e3f183e-d69a-4216-a67f-30d5fbce78b9",
+      "source_country": "DE",
+      "source_city": "Seeland OT Gatersleben",
+      "source_region": "Sachsen-Anhalt"
+    },
+    {
+      "facility_uid": "7cd6a06c-5167-4283-aeea-601b1d6b54d7",
+      "city_uid": "ea9c85e9-45bb-434a-9238-2c62eb8615a9",
+      "source_country": "DE",
+      "source_city": "Siegen",
+      "source_region": null
+    },
+    {
+      "facility_uid": "18e6c54b-658c-4a10-ab92-d518bca060f7",
+      "city_uid": "b85e3b62-1baa-4d5c-9f52-6110b526fa99",
+      "source_country": "DE",
+      "source_city": "Stendal",
+      "source_region": null
+    },
+    {
+      "facility_uid": "73519dcd-0c2b-4d0e-92f4-35fd3c39ac74",
+      "city_uid": "cde133c6-bbc0-42eb-9447-93db13cd747f",
+      "source_country": "DE",
+      "source_city": "Stolberg",
+      "source_region": "Nordrhein-Westfalen"
+    },
+    {
+      "facility_uid": "113f5209-d181-42fb-bfad-eb2a436d3a4e",
+      "city_uid": "cf55274b-89b8-4cba-a4a7-99ade89a8e84",
+      "source_country": "DE",
+      "source_city": "Stuttgart",
+      "source_region": "Baden-Württemberg"
+    },
+    {
+      "facility_uid": "787c48c8-ded7-4dc0-8f45-cc2c497d8bd8",
+      "city_uid": "cf55274b-89b8-4cba-a4a7-99ade89a8e84",
+      "source_country": "DE",
+      "source_city": "Stuttgart",
+      "source_region": "Baden-Württemberg"
+    },
+    {
+      "facility_uid": "fbf7684b-6688-46bc-92cc-08b1016d75f6",
+      "city_uid": "93946361-9541-4995-936d-089b4744f943",
+      "source_country": "DE",
+      "source_city": "Wabern",
+      "source_region": null
+    },
+    {
+      "facility_uid": "65acb372-0afd-4d91-a4d4-752048369bca",
+      "city_uid": "f1f51fdd-079c-46d7-a18d-481ef68be7fe",
+      "source_country": "DE",
+      "source_city": "Walsrode",
+      "source_region": "Niedersachsen"
+    },
+    {
+      "facility_uid": "957c82ae-d76c-40d0-a143-b9bb32dc0de3",
+      "city_uid": "df873617-81c2-4a9d-92cb-3a1856c02166",
+      "source_country": "DE",
+      "source_city": "Warstein",
+      "source_region": "Nordrhein-Westfalen"
+    },
+    {
+      "facility_uid": "da1e95a1-186c-47d1-996d-6869d69fb3c1",
+      "city_uid": "380f3eb8-dbbd-45a8-a24e-401b12eac023",
+      "source_country": "DE",
+      "source_city": "Wegberg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "2a8b715a-0c5d-4408-a840-0793566066e5",
+      "city_uid": "3a71154a-5d1b-4570-886b-e6271b19e37c",
+      "source_country": "DE",
+      "source_city": "Weil am Rhein",
+      "source_region": "Baden-Württemberg"
+    },
+    {
+      "facility_uid": "6dcb5bf0-1fde-46b1-9104-e8155a984907",
+      "city_uid": "97d59400-6c84-4289-aa80-f224d52c40f1",
+      "source_country": "DE",
+      "source_city": "Weimar",
+      "source_region": "Thüringen"
+    },
+    {
+      "facility_uid": "53e47547-aa34-4234-a41c-4fe81bb86290",
+      "city_uid": "6021d57e-459c-4a3f-a58c-8da6b1675a05",
+      "source_country": "DE",
+      "source_city": "Wolfsburg",
+      "source_region": "Niedersachsen"
+    },
+    {
+      "facility_uid": "800b8c6e-d8b1-4502-8451-b6a0543bdb5f",
+      "city_uid": "6e300b71-1bdb-4664-9c44-c26b5bed7f89",
+      "source_country": "DE",
+      "source_city": "Wuppertal",
+      "source_region": "Nordrhein-Westfalen"
+    },
+    {
+      "facility_uid": "688a237b-3841-40f1-9239-fda2f0fe3c26",
+      "city_uid": "5cc381d6-b916-4a07-975f-7ead32283e83",
+      "source_country": "DE",
+      "source_city": "Wörth am Rhein",
+      "source_region": "Rheinland-Pfalz"
+    },
+    {
+      "facility_uid": "786ce953-30a9-42de-b380-35d3cc1d8848",
+      "city_uid": "0a384477-d761-49a5-a4f1-1c1757f9c443",
+      "source_country": "DE",
+      "source_city": "Zeitz",
+      "source_region": null
+    },
+    {
+      "facility_uid": "29c4a7cd-8b12-461b-a85d-6846af489708",
+      "city_uid": "543b3db5-b29d-4db9-bdb7-a8d55bd71327",
+      "source_country": "DE",
+      "source_city": "Zwickau",
+      "source_region": "Sachsen"
+    },
+    {
+      "facility_uid": "7f9a59f0-6479-4b7d-aaf8-114e42873381",
+      "city_uid": "1da9e39d-0b6c-4b78-8bc6-23e4239bc6c1",
+      "source_country": "DK",
+      "source_city": "Aalborg Ø",
+      "source_region": null
+    },
+    {
+      "facility_uid": "0f446c48-c701-4dc6-ad85-3650d2ace866",
+      "city_uid": "44a70330-2da3-4651-815a-940515874336",
+      "source_country": "DK",
+      "source_city": "Brabrand",
+      "source_region": null
+    },
+    {
+      "facility_uid": "32ff3534-3852-4225-98cc-70d93b22817a",
+      "city_uid": "9efec035-8d6f-4830-a84b-8d7fcb64c0a9",
+      "source_country": "DK",
+      "source_city": "Branderup J",
+      "source_region": null
+    },
+    {
+      "facility_uid": "970f4caa-b332-41cf-965e-bc0b87babe03",
+      "city_uid": "0ec3c300-03e6-4ea5-94de-6fc2c14cd558",
+      "source_country": "DK",
+      "source_city": "Christiansfeld",
+      "source_region": null
+    },
+    {
+      "facility_uid": "5feddb87-0efb-4c1a-8a29-17d8756902cc",
+      "city_uid": "dd2d3145-3255-468a-891a-7b84d4d4ac04",
+      "source_country": "DK",
+      "source_city": "Esbjerg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "0049803a-a893-4b49-8bbd-47ed48acb6d8",
+      "city_uid": "17071c5f-7de4-489c-8caa-0af3321448a9",
+      "source_country": "DK",
+      "source_city": "Fredericia",
+      "source_region": null
+    },
+    {
+      "facility_uid": "02c93835-daf5-47d8-86a5-b2ba1b081c5c",
+      "city_uid": "17071c5f-7de4-489c-8caa-0af3321448a9",
+      "source_country": "DK",
+      "source_city": "Fredericia",
+      "source_region": null
+    },
+    {
+      "facility_uid": "1fd1d97b-9cb5-4773-8254-97cd18ac8e5b",
+      "city_uid": "17071c5f-7de4-489c-8caa-0af3321448a9",
+      "source_country": "DK",
+      "source_city": "Fredericia",
+      "source_region": null
+    },
+    {
+      "facility_uid": "665d7734-1409-4e65-b98d-da4d3d325315",
+      "city_uid": "17071c5f-7de4-489c-8caa-0af3321448a9",
+      "source_country": "DK",
+      "source_city": "Fredericia",
+      "source_region": null
+    },
+    {
+      "facility_uid": "d27fe5c5-8c46-46e3-95d6-a9fcc1967e2e",
+      "city_uid": "f31f9c14-ef98-45a5-8260-98748c9eb2fd",
+      "source_country": "DK",
+      "source_city": "Herning",
+      "source_region": null
+    },
+    {
+      "facility_uid": "c5215511-5e39-4f25-8faa-8000cab79276",
+      "city_uid": "16c33566-777f-4db4-88a6-163440e3f11e",
+      "source_country": "DK",
+      "source_city": "Hobro",
+      "source_region": null
+    },
+    {
+      "facility_uid": "349a77a0-0e9a-4904-b4a4-902ed85b7766",
+      "city_uid": "86ac3c16-5d85-4d74-9595-3415c92fbeaf",
+      "source_country": "DK",
+      "source_city": "Holstebro",
+      "source_region": null
+    },
+    {
+      "facility_uid": "3b5815d3-bf3f-4af6-9add-9d3140960173",
+      "city_uid": "86ac3c16-5d85-4d74-9595-3415c92fbeaf",
+      "source_country": "DK",
+      "source_city": "Holstebro",
+      "source_region": null
+    },
+    {
+      "facility_uid": "4f9ea192-e05c-49b7-acf5-987542013d33",
+      "city_uid": "86ac3c16-5d85-4d74-9595-3415c92fbeaf",
+      "source_country": "DK",
+      "source_city": "Holstebro",
+      "source_region": null
+    },
+    {
+      "facility_uid": "46845ad2-20c9-4a34-ac22-2722ad91b720",
+      "city_uid": "f04b4355-3ef4-45e1-bed9-b2db393d2992",
+      "source_country": "DK",
+      "source_city": "Holsted",
+      "source_region": null
+    },
+    {
+      "facility_uid": "6d169f29-45c1-4d51-9b5a-49fed250d44f",
+      "city_uid": "73e848cb-e11f-46fd-95ce-ceda7cf01f38",
+      "source_country": "DK",
+      "source_city": "Horsens",
+      "source_region": null
+    },
+    {
+      "facility_uid": "80403d34-48d7-4dc7-a9ac-469afa35f7b9",
+      "city_uid": "2ed65efd-92fc-4923-b0c1-a96456e9b621",
+      "source_country": "DK",
+      "source_city": "Ishøj",
+      "source_region": null
+    },
+    {
+      "facility_uid": "82be2bf6-9e90-479c-9641-80cdb5659750",
+      "city_uid": "76549976-a8ad-48b5-b417-c8ba47b79b14",
+      "source_country": "DK",
+      "source_city": "Kruså",
+      "source_region": null
+    },
+    {
+      "facility_uid": "5dd95085-38d2-44ee-8304-e61025348fb6",
+      "city_uid": "cdcf374c-3d71-4ae1-b487-6c4296e9a67f",
+      "source_country": "DK",
+      "source_city": "Nibe",
+      "source_region": null
+    },
+    {
+      "facility_uid": "e0f821f5-c6a7-4b42-b431-2026a1d76045",
+      "city_uid": "922f1fc4-d24c-46a7-b9ce-99942a091165",
+      "source_country": "DK",
+      "source_city": "Odense NV",
+      "source_region": null
+    },
+    {
+      "facility_uid": "373f39a2-58f3-403e-a3f9-db0b26ce2a53",
+      "city_uid": "992a7fe6-1481-4da5-ac03-bc29476f0aff",
+      "source_country": "DK",
+      "source_city": "Odense SØ",
+      "source_region": null
+    },
+    {
+      "facility_uid": "2f109f4e-57f8-4323-9bcf-46200983a5e1",
+      "city_uid": "675ccc0d-befa-4371-acfd-d90a940926c6",
+      "source_country": "DK",
+      "source_city": "Rødkærsbro",
+      "source_region": null
+    },
+    {
+      "facility_uid": "9ac3ebb3-82c2-4fec-a807-adc784083f5b",
+      "city_uid": "884dcb18-0353-43b9-ab5b-2017824d29ac",
+      "source_country": "DK",
+      "source_city": "Rønne",
+      "source_region": null
+    },
+    {
+      "facility_uid": "aa97eef7-95b6-4994-8c6b-ba04ec56f5e3",
+      "city_uid": "d59fc7ff-1b79-48ce-9d34-12cde4c50673",
+      "source_country": "DK",
+      "source_city": "Skanderborg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "c2081828-cf31-457e-9e1e-f4291fcf5486",
+      "city_uid": "f8a4029d-b5a6-4712-b6c6-ec92546ffb5d",
+      "source_country": "DK",
+      "source_city": "Skærbæk",
+      "source_region": null
+    },
+    {
+      "facility_uid": "50141fa9-a579-4132-83b5-696883d37f8d",
+      "city_uid": "476e5898-f4c1-4f67-92bf-bf482961dca0",
+      "source_country": "DK",
+      "source_city": "Slagelse",
+      "source_region": null
+    },
+    {
+      "facility_uid": "a430f691-770d-4e65-83ca-a131495784b4",
+      "city_uid": "f69e4675-94c5-4130-af43-d32b29de78ff",
+      "source_country": "DK",
+      "source_city": "Svenstrup J",
+      "source_region": null
+    },
+    {
+      "facility_uid": "8f53cc12-d601-4be2-a796-3d976cddd8a6",
+      "city_uid": "a5d129a8-fcf0-4a05-b64e-b73abe7d6214",
+      "source_country": "DK",
+      "source_city": "Tistrup",
+      "source_region": null
+    },
+    {
+      "facility_uid": "82768169-8f80-42eb-813a-642c17cccfb0",
+      "city_uid": "5a815d95-d9dc-4b97-afa6-dc55cbe3fdfd",
+      "source_country": "DK",
+      "source_city": "Vejle",
+      "source_region": null
+    },
+    {
+      "facility_uid": "79a10984-ee94-4370-9fbe-40aefe1a336f",
+      "city_uid": "73a303ee-cb09-4bdc-84db-bcad0b578fa4",
+      "source_country": "DK",
+      "source_city": "Videbæk",
+      "source_region": null
+    },
+    {
+      "facility_uid": "96d0a6fd-a5f1-4ce7-b81f-feb970de6342",
+      "city_uid": "73a303ee-cb09-4bdc-84db-bcad0b578fa4",
+      "source_country": "DK",
+      "source_city": "Videbæk",
+      "source_region": null
+    },
+    {
+      "facility_uid": "df5bc154-a908-4622-a02c-27653e7f5a30",
+      "city_uid": "73a303ee-cb09-4bdc-84db-bcad0b578fa4",
+      "source_country": "DK",
+      "source_city": "Videbæk",
+      "source_region": null
+    },
+    {
+      "facility_uid": "fa338444-d561-4cb8-beb2-1546edfe2f3c",
+      "city_uid": "73a303ee-cb09-4bdc-84db-bcad0b578fa4",
+      "source_country": "DK",
+      "source_city": "Videbæk",
+      "source_region": null
+    },
+    {
+      "facility_uid": "638c7752-f4ef-41a6-a2f4-9aac4662efac",
+      "city_uid": "ff568506-8e99-414e-a863-6a4c24bc660c",
+      "source_country": "DK",
+      "source_city": "Vojens",
+      "source_region": null
+    },
+    {
+      "facility_uid": "53c18bcc-ac9e-46c2-9f58-04c43380548e",
+      "city_uid": "9eaa13ae-f83c-4659-9ae0-08908eb45b2e",
+      "source_country": "EE",
+      "source_city": "Imavere",
+      "source_region": null
+    },
+    {
+      "facility_uid": "2fbbf220-581a-4828-a696-61e99ee3fc77",
+      "city_uid": "1874b2fb-ccc1-4065-9714-d37123b37523",
+      "source_country": "ES",
+      "source_city": "Barcelona",
+      "source_region": null
+    },
+    {
+      "facility_uid": "c2a399c8-81c7-412a-9d90-a8b76e2263cf",
+      "city_uid": "1874b2fb-ccc1-4065-9714-d37123b37523",
+      "source_country": "ES",
+      "source_city": "Barcelona",
+      "source_region": "Catalunya"
+    },
+    {
+      "facility_uid": "a7fcfa83-1a49-4857-8165-1487c822d642",
+      "city_uid": "9ac99de2-a8b8-45a3-8da0-660060ba7999",
+      "source_country": "ES",
+      "source_city": "Berango",
+      "source_region": "Bizkaia"
+    },
+    {
+      "facility_uid": "c497c484-95e9-4295-a212-2444e9023331",
+      "city_uid": "01697091-2a21-4021-bc16-b8d9806b7896",
+      "source_country": "ES",
+      "source_city": "Castellbisbal",
+      "source_region": "Catalunya"
+    },
+    {
+      "facility_uid": "d1366aa3-4e1b-41f9-8322-dd68d471600c",
+      "city_uid": "82189612-0a9c-4572-8fdc-1d5513a815d2",
+      "source_country": "ES",
+      "source_city": "Cornellà de Llobregat",
+      "source_region": "Catalunya"
+    },
+    {
+      "facility_uid": "35fd2714-cbf2-4feb-ba67-e7c6d6b14d7a",
+      "city_uid": "f0a7436a-374a-4486-b167-dfd46c4dc28c",
+      "source_country": "ES",
+      "source_city": "Figueruelas",
+      "source_region": "Aragón"
+    },
+    {
+      "facility_uid": "f77a91ca-f17e-4664-965c-712c66999d22",
+      "city_uid": "2c031dc5-0445-4a4e-9ddf-7a7c3413f114",
+      "source_country": "ES",
+      "source_city": "La Canonja",
+      "source_region": "Catalunya"
+    },
+    {
+      "facility_uid": "127f5b68-c1b6-4bfb-b0c8-99cc7058293a",
+      "city_uid": "54999144-8a09-4fd7-8332-cb6d2e1fa01e",
+      "source_country": "ES",
+      "source_city": "Madrid",
+      "source_region": "Comunidad de Madrid"
+    },
+    {
+      "facility_uid": "8b65ae85-3f33-4f1c-afd1-b9302c651a1b",
+      "city_uid": "54999144-8a09-4fd7-8332-cb6d2e1fa01e",
+      "source_country": "ES",
+      "source_city": "Madrid",
+      "source_region": null
+    },
+    {
+      "facility_uid": "bc6f37c2-83ce-422e-8ecd-9265ec551b03",
+      "city_uid": "8fa00124-20e4-4491-925a-aaf4a0a8532a",
+      "source_country": "ES",
+      "source_city": "Martorell",
+      "source_region": "Catalunya"
+    },
+    {
+      "facility_uid": "af52abf4-a4db-44b8-8f8c-f883de4f5fc8",
+      "city_uid": "8d440efc-a3af-4d45-b690-7e6dfd88d1ef",
+      "source_country": "ES",
+      "source_city": "Rubí",
+      "source_region": "Catalunya"
+    },
+    {
+      "facility_uid": "35bbac21-3cee-46a8-ba87-c0bc93c78b7f",
+      "city_uid": "fe572a54-3820-4def-9545-d86c7077754d",
+      "source_country": "ES",
+      "source_city": "Valladolid",
+      "source_region": "Castilla y León"
+    },
+    {
+      "facility_uid": "6f247c43-4c70-476e-a0dc-9e8c66eed036",
+      "city_uid": "c27a2290-c9ae-4717-9d5c-39a85a2bdf49",
+      "source_country": "ES",
+      "source_city": "Vigo",
+      "source_region": "Galicia"
+    },
+    {
+      "facility_uid": "09fc70a9-ee80-41f5-9a5b-c5cd45dba37c",
+      "city_uid": "3145cea6-3422-480e-aa5a-6d25b0f7e3fa",
+      "source_country": "FI",
+      "source_city": "Harjavalta",
+      "source_region": null
+    },
+    {
+      "facility_uid": "ffff7e9d-baef-4da8-96f8-3b6525f0d523",
+      "city_uid": "effe6de2-c55f-462a-b9ec-f08356f030fa",
+      "source_country": "FI",
+      "source_city": "Hämeenlinna",
+      "source_region": null
+    },
+    {
+      "facility_uid": "ed658e03-74f2-499e-b810-3640ea042dbe",
+      "city_uid": "1509bf6e-c67d-42aa-bccd-8f39b5a3207f",
+      "source_country": "FI",
+      "source_city": "Joensuu / Uimaharju",
+      "source_region": null
+    },
+    {
+      "facility_uid": "a243bb54-b177-4ff3-8e7f-547443f7ef41",
+      "city_uid": "9ada70a3-f319-420e-bd4a-205238aa1af1",
+      "source_country": "FI",
+      "source_city": "Joutseno",
+      "source_region": null
+    },
+    {
+      "facility_uid": "76f55a5d-8f67-4dbc-b06e-457d5c51306d",
+      "city_uid": "806fec94-a064-4409-829f-13f8b72f9fb7",
+      "source_country": "FI",
+      "source_city": "Kalajoki",
+      "source_region": null
+    },
+    {
+      "facility_uid": "73b2fc84-530a-4d01-bc97-708c8e0aa055",
+      "city_uid": "9c8914b4-c2e0-46fb-bccb-080b00e20d8e",
+      "source_country": "FI",
+      "source_city": "Kokkola",
+      "source_region": null
+    },
+    {
+      "facility_uid": "15505db9-d3ca-4e27-932a-55b9c4ed4744",
+      "city_uid": "2655f0ba-bc32-4e92-a6e9-f9729cf48177",
+      "source_country": "FI",
+      "source_city": "Oulu",
+      "source_region": null
+    },
+    {
+      "facility_uid": "8180144d-be4c-4c54-b736-f332d8d13973",
+      "city_uid": "db1865b5-3997-486a-982f-3c62ac604a45",
+      "source_country": "FI",
+      "source_city": "Pori",
+      "source_region": null
+    },
+    {
+      "facility_uid": "ee8e0368-eadd-4bb6-b8c8-510b56aa5156",
+      "city_uid": "1819606a-170b-4b07-b4cf-fd605ea07625",
+      "source_country": "FI",
+      "source_city": "Raahe",
+      "source_region": null
+    },
+    {
+      "facility_uid": "a6129b9f-20c1-4e72-9e7b-5e483ddc87bf",
+      "city_uid": "69f6dd7f-f2ed-4b72-8665-e0715577d2a4",
+      "source_country": "FI",
+      "source_city": "Varkaus",
+      "source_region": null
+    },
+    {
+      "facility_uid": "cc6ddaea-7110-4d8e-9ea8-328093b405b8",
+      "city_uid": "883e2f0c-6b88-4607-9c04-b77f53c638ac",
+      "source_country": "FR",
+      "source_city": "Aix-en-Provence",
+      "source_region": null
+    },
+    {
+      "facility_uid": "81b52129-bfda-41f8-91d6-47a53ddcb78d",
+      "city_uid": "3b8ca3b2-2651-418e-813f-e6dd5d91fdc8",
+      "source_country": "FR",
+      "source_city": "Angers",
+      "source_region": "Pays de la Loire"
+    },
+    {
+      "facility_uid": "fa480a43-fdba-4301-93da-a4507e374898",
+      "city_uid": "d61df612-5d62-4692-983a-754cd9d7e580",
+      "source_country": "FR",
+      "source_city": "Batilly",
+      "source_region": "Grand Est"
+    },
+    {
+      "facility_uid": "5610f190-3819-402a-886a-4ab5d3621575",
+      "city_uid": "875d31ad-c796-4749-83f1-99cba11c39f5",
+      "source_country": "FR",
+      "source_city": "Belfort",
+      "source_region": null
+    },
+    {
+      "facility_uid": "b4b2c15c-47f3-4eeb-9544-05e0761b4ca1",
+      "city_uid": "ab217b7d-e2f8-489c-b374-25557d1c205a",
+      "source_country": "FR",
+      "source_city": "Boulogne-sur-Mer",
+      "source_region": null
+    },
+    {
+      "facility_uid": "c343b50a-d4e2-4a4a-8319-3ea21aefff3d",
+      "city_uid": "1f879642-7e96-4216-b1ce-5caa99e00f67",
+      "source_country": "FR",
+      "source_city": "Bruyères-sur-Oise",
+      "source_region": "Île-de-France"
+    },
+    {
+      "facility_uid": "d7914c9d-13cc-48ed-b9ff-29f371e77aad",
+      "city_uid": "287f14f5-98a6-4336-9cb4-2dd17ea8e509",
+      "source_country": "FR",
+      "source_city": "Chalampé",
+      "source_region": "Grand Est"
+    },
+    {
+      "facility_uid": "c753121b-d1eb-4b8e-913e-7e91fe99cc61",
+      "city_uid": "0d015206-8887-4a8a-9dc4-d16ee17167bf",
+      "source_country": "FR",
+      "source_city": "Cléon",
+      "source_region": "Normandie"
+    },
+    {
+      "facility_uid": "476ff283-ab0f-49fc-92ed-71357fd4f421",
+      "city_uid": "1bdda417-0b65-49a6-a032-f5ab3c730975",
+      "source_country": "FR",
+      "source_city": "Crespin",
+      "source_region": null
+    },
+    {
+      "facility_uid": "e41b652a-6d7e-4b5e-9a47-946c7a21b631",
+      "city_uid": "8a3b154d-4ad2-43e0-9426-e4ac78acecc5",
+      "source_country": "FR",
+      "source_city": "Douai",
+      "source_region": "Hauts-de-France"
+    },
+    {
+      "facility_uid": "7e6e84e8-df85-401c-82e4-278f5857d965",
+      "city_uid": "584225ab-c0c2-42bd-8cd1-a0d2b89619ea",
+      "source_country": "FR",
+      "source_city": "Gennevilliers",
+      "source_region": null
+    },
+    {
+      "facility_uid": "11f95216-b784-4b74-aee7-9ac2ce7969ff",
+      "city_uid": "c001a869-5af7-49d4-bfd4-77490f496cfd",
+      "source_country": "FR",
+      "source_city": "Gray",
+      "source_region": "Bourgogne-Franche-Comté"
+    },
+    {
+      "facility_uid": "bad04f21-c409-4927-9c02-f1848fe6e34f",
+      "city_uid": "924d0bf1-4903-4299-87ca-facfcf6e205a",
+      "source_country": "FR",
+      "source_city": "La Rochelle / Aytré",
+      "source_region": null
+    },
+    {
+      "facility_uid": "051defcb-6fdf-4814-8aea-7213aa54a8b4",
+      "city_uid": "071f8958-d10a-4a2b-9dfc-b18549f62ec2",
+      "source_country": "FR",
+      "source_city": "Le Creusot",
+      "source_region": null
+    },
+    {
+      "facility_uid": "4e1981a3-bd79-4261-b456-2e6de92de8fa",
+      "city_uid": "be2610fd-d350-4733-9947-e2abe9b12dce",
+      "source_country": "FR",
+      "source_city": "Le Havre Cedex",
+      "source_region": "Normandie"
+    },
+    {
+      "facility_uid": "6bb1ee91-5340-46a8-9050-08923039a939",
+      "city_uid": "4bf05406-ef47-4387-8949-7217e7b10771",
+      "source_country": "FR",
+      "source_city": "Maubeuge",
+      "source_region": "Hauts-de-France"
+    },
+    {
+      "facility_uid": "78b2edd6-585b-46ec-92ec-57af10186837",
+      "city_uid": "c7f5921b-4301-4267-8f61-f7b992d67ff1",
+      "source_country": "FR",
+      "source_city": "Meyzieu",
+      "source_region": "Auvergne-Rhône-Alpes"
+    },
+    {
+      "facility_uid": "8ab002ef-b5df-475f-a1c1-7f5ef8046af6",
+      "city_uid": "bd9eacab-98f1-47d4-ac3f-62a7be8bf1fb",
+      "source_country": "FR",
+      "source_city": "Ornans",
+      "source_region": null
+    },
+    {
+      "facility_uid": "19b077fa-cd23-48d7-aed1-e3bdaed8e21c",
+      "city_uid": "b1202146-9c85-4aa0-a24c-c6fec3fcc767",
+      "source_country": "FR",
+      "source_city": "Ottmarsheim",
+      "source_region": "Grand Est"
+    },
+    {
+      "facility_uid": "4569cc8f-4f7a-4b80-9abb-4972970afc4c",
+      "city_uid": "0759a22a-16e7-465b-961a-da930ca09bd7",
+      "source_country": "FR",
+      "source_city": "Petit-Quevilly",
+      "source_region": null
+    },
+    {
+      "facility_uid": "6f6f0960-0b6d-4d86-8301-15b1f3027d16",
+      "city_uid": "52162ceb-9b91-4cce-b397-d29a59e0cda0",
+      "source_country": "FR",
+      "source_city": "Ruitz",
+      "source_region": "Hauts-de-France"
+    },
+    {
+      "facility_uid": "265c4c56-9713-4003-aad7-3b3273ec94d2",
+      "city_uid": "da597fef-34c9-4743-9533-a37333f4e731",
+      "source_country": "FR",
+      "source_city": "Saint-Florentin",
+      "source_region": null
+    },
+    {
+      "facility_uid": "e11383a0-6c64-4003-94e5-f75b174631f8",
+      "city_uid": "6a4025de-6502-472c-bb19-8a39144536fb",
+      "source_country": "FR",
+      "source_city": "Tarbes / Séméac",
+      "source_region": null
+    },
+    {
+      "facility_uid": "c3f9418e-ace0-4623-a14f-e8ad344c59da",
+      "city_uid": "45a3fdd8-baf5-41c2-bdb5-cb42358bf964",
+      "source_country": "FR",
+      "source_city": "Valenciennes / Petite-Forêt",
+      "source_region": null
+    },
+    {
+      "facility_uid": "ca496b53-14bf-4e21-a3eb-a9d2fc83131a",
+      "city_uid": "2dfd1139-9477-4aef-a97e-774002da12be",
+      "source_country": "FR",
+      "source_city": "Villeurbanne",
+      "source_region": null
+    },
+    {
+      "facility_uid": "838130a3-9ad9-4aa1-9744-5a8589d59774",
+      "city_uid": "b60b7c02-30ca-4f1b-8df6-68386a02f0f6",
+      "source_country": "GB",
+      "source_city": "Castle Donington / East Midlands",
+      "source_region": null
+    },
+    {
+      "facility_uid": "18837e18-e62c-45a5-a45b-f639b6fe50c2",
+      "city_uid": "ced4ef55-79da-420f-b52e-cb446e727303",
+      "source_country": "GB",
+      "source_city": "Doncaster",
+      "source_region": null
+    },
+    {
+      "facility_uid": "70d8adfb-2ed1-4f75-b231-689ae2d95b0a",
+      "city_uid": "05af41fc-88dc-4699-98e6-fb5ab732a3de",
+      "source_country": "GB",
+      "source_city": "Grimsby",
+      "source_region": null
+    },
+    {
+      "facility_uid": "882b69a1-4ff5-4553-b993-bb222efedfa3",
+      "city_uid": "ad27ec55-9d0c-4702-a232-b8ca5d0f6616",
+      "source_country": "GB",
+      "source_city": "Kettering",
+      "source_region": null
+    },
+    {
+      "facility_uid": "909778ee-d0ef-4e04-93a7-d9dd6b650719",
+      "city_uid": "9749ac53-abce-4f0e-a502-fa3e9d85d4e6",
+      "source_country": "GB",
+      "source_city": "Tamworth",
+      "source_region": null
+    },
+    {
+      "facility_uid": "083010e4-c177-4978-95ad-e9d0d1c02c01",
+      "city_uid": "749e275e-6c38-4dda-90bf-c4f220b414f6",
+      "source_country": "HR",
+      "source_city": "Rijeka",
+      "source_region": null
+    },
+    {
+      "facility_uid": "13c68711-a385-4bc5-9136-0d815f05d17e",
+      "city_uid": "1c59b81a-618c-4942-bcb9-e398f258c68a",
+      "source_country": "HU",
+      "source_city": "Győr",
+      "source_region": "Győr-Moson-Sopron"
+    },
+    {
+      "facility_uid": "307ad5c8-7b58-4946-8824-79d40cd9e0cf",
+      "city_uid": "439e92d3-f202-45c0-8b2b-203b5e09c53a",
+      "source_country": "HU",
+      "source_city": "Kecskemét",
+      "source_region": "Bács-Kiskun"
+    },
+    {
+      "facility_uid": "609355fb-77f7-4800-94b0-fcca75d62946",
+      "city_uid": "db5ae654-9750-4357-96cd-12be256daeb3",
+      "source_country": "HU",
+      "source_city": "Nyíregyháza",
+      "source_region": "Szabolcs-Szatmár-Bereg"
+    },
+    {
+      "facility_uid": "d3a368c6-2fb4-4b09-835d-cc3e805a4170",
+      "city_uid": "434df240-74c7-4c3e-8caa-5f5b29aeaaed",
+      "source_country": "IE",
+      "source_city": "Dublin",
+      "source_region": null
+    },
+    {
+      "facility_uid": "fcdacb5b-e0e6-4027-90cd-e5d020667417",
+      "city_uid": "434df240-74c7-4c3e-8caa-5f5b29aeaaed",
+      "source_country": "IE",
+      "source_city": "Dublin",
+      "source_region": null
+    },
+    {
+      "facility_uid": "79130eb0-f5b0-413b-b603-5819ad1bc6f5",
+      "city_uid": "65dfba98-7f5b-485d-9925-ff5b12f79ef5",
+      "source_country": "IT",
+      "source_city": "Ancona",
+      "source_region": null
+    },
+    {
+      "facility_uid": "38f6ea6d-de72-458e-b2d6-78883252958d",
+      "city_uid": "3fc99788-10ae-4c06-975d-5bc158d5252e",
+      "source_country": "IT",
+      "source_city": "Arzignano",
+      "source_region": null
+    },
+    {
+      "facility_uid": "efdc7295-5b71-4a69-8dec-05b660d7645a",
+      "city_uid": "ddca3f0c-7c07-4493-b248-2c1401428d91",
+      "source_country": "IT",
+      "source_city": "Avellino",
+      "source_region": "Campania"
+    },
+    {
+      "facility_uid": "530dfc00-3051-4e25-8deb-6ec51d15fcf2",
+      "city_uid": "20ba1da9-ba61-43a5-903e-f2fbb488b58b",
+      "source_country": "IT",
+      "source_city": "Bologna",
+      "source_region": "Emilia-Romagna"
+    },
+    {
+      "facility_uid": "5a4f9ebd-ba15-47b9-bc1e-d5ed221b4a6d",
+      "city_uid": "9ea2e2bc-2bf1-4215-9d99-21a29ea1580b",
+      "source_country": "IT",
+      "source_city": "Castellammare di Stabia",
+      "source_region": null
+    },
+    {
+      "facility_uid": "af9f1ac3-a107-444b-b35b-a014acb11f3b",
+      "city_uid": "62cbb184-42f9-4d7f-89f5-879ad423eeeb",
+      "source_country": "IT",
+      "source_city": "Genoa",
+      "source_region": null
+    },
+    {
+      "facility_uid": "9801f356-0818-45f2-9756-77f5c45c5773",
+      "city_uid": "82b5cb98-c7d1-4c55-a274-a584adec66dd",
+      "source_country": "IT",
+      "source_city": "Marghera",
+      "source_region": null
+    },
+    {
+      "facility_uid": "f005f8b1-a4e0-44d2-bd8b-2009a478a9ff",
+      "city_uid": "5b58e34f-f9d7-41b0-b0d8-9e79d7b517ca",
+      "source_country": "IT",
+      "source_city": "Monfalcone",
+      "source_region": null
+    },
+    {
+      "facility_uid": "f1a7b16f-a61f-4523-91bd-dc858eab99a7",
+      "city_uid": "0caf1135-674f-4da7-bf8a-404f3ca1db12",
+      "source_country": "IT",
+      "source_city": "Muggiano / La Spezia",
+      "source_region": null
+    },
+    {
+      "facility_uid": "bccfd2cf-f98c-4519-8212-39ff6daf6beb",
+      "city_uid": "3b344942-7e2d-49d4-856b-2d960f82b6be",
+      "source_country": "IT",
+      "source_city": "Palermo",
+      "source_region": null
+    },
+    {
+      "facility_uid": "ee0f9fec-ded7-4361-a19a-e43bbd65466a",
+      "city_uid": "4ab780f0-d9ff-4d7d-add8-81dd883f562d",
+      "source_country": "IT",
+      "source_city": "Parma",
+      "source_region": "Emilia-Romagna"
+    },
+    {
+      "facility_uid": "a7e41702-d794-4f57-b526-fc3bf9c8f45c",
+      "city_uid": "27d4cc68-87b9-4064-9e1c-4b5d2703df4c",
+      "source_country": "IT",
+      "source_city": "Riva Trigoso",
+      "source_region": null
+    },
+    {
+      "facility_uid": "dec44360-5386-4ed3-8bdc-1e0a112d5e34",
+      "city_uid": "1e9adc42-f4f4-4a8f-a985-9514308cc589",
+      "source_country": "IT",
+      "source_city": "Sant’Agata Bolognese",
+      "source_region": "Emilia-Romagna"
+    },
+    {
+      "facility_uid": "e8d550f0-8e61-4508-9b33-ed539960c022",
+      "city_uid": "1e9adc42-f4f4-4a8f-a985-9514308cc589",
+      "source_country": "IT",
+      "source_city": "Sant’Agata Bolognese",
+      "source_region": "Emilia-Romagna"
+    },
+    {
+      "facility_uid": "e777aa45-4509-4814-b0b3-7104cf310574",
+      "city_uid": "2a415b9a-d719-4e06-aa42-8187bef19f2d",
+      "source_country": "IT",
+      "source_city": "Savigliano",
+      "source_region": null
+    },
+    {
+      "facility_uid": "e8cc7436-a242-4b73-999d-1d8561e0c4eb",
+      "city_uid": "00662684-3a02-4aaf-a29f-18d312bf4969",
+      "source_country": "IT",
+      "source_city": "Sesto San Giovanni",
+      "source_region": null
+    },
+    {
+      "facility_uid": "bacebaa0-14d2-446c-af37-40b9285b6099",
+      "city_uid": "62b559c2-0c56-4a58-be04-8615514c4695",
+      "source_country": "IT",
+      "source_city": "Sestri Ponente",
+      "source_region": null
+    },
+    {
+      "facility_uid": "31bf7a61-ba20-4dbe-831e-b16f29d904d7",
+      "city_uid": "6827284d-f891-464a-ab09-7f2f20f32fe5",
+      "source_country": "IT",
+      "source_city": "Trieste",
+      "source_region": null
+    },
+    {
+      "facility_uid": "4ce7fce4-e410-4521-b100-a361fb4df892",
+      "city_uid": "87f4c3fc-934e-41f0-9fac-69bb4cbfafd1",
+      "source_country": "IT",
+      "source_city": "Vado Ligure",
+      "source_region": null
+    },
+    {
+      "facility_uid": "bb73b190-f1e3-4e6c-bdb5-74d18eea06d7",
+      "city_uid": "5637f1a0-4658-472a-b7ec-e9f6fe8fb3c6",
+      "source_country": "IT",
+      "source_city": "Valmadrera",
+      "source_region": null
+    },
+    {
+      "facility_uid": "4870b9c6-a419-4fb2-8051-6d088a8d0c9a",
+      "city_uid": "9e7edfa8-8788-4ea8-bd52-2636ac9bec4b",
+      "source_country": "LT",
+      "source_city": "Alytus",
+      "source_region": null
+    },
+    {
+      "facility_uid": "c2551a3a-adfb-495d-aadb-4b1255b4797a",
+      "city_uid": "5c2f026b-6e3c-4257-809b-23117bf60f46",
+      "source_country": "LT",
+      "source_city": "Kazlų Rūda",
+      "source_region": null
+    },
+    {
+      "facility_uid": "6fe26225-c30a-4ac6-8390-61c295e3a747",
+      "city_uid": "4dde7c7d-4153-4301-8887-eb43fe0efd58",
+      "source_country": "LV",
+      "source_city": "Launkalne",
+      "source_region": null
+    },
+    {
+      "facility_uid": "aee17b7d-f360-4f95-9c71-6087207af74a",
+      "city_uid": "ec3df905-d8e8-456f-b982-dbc37f32c520",
+      "source_country": "NL",
+      "source_city": "Aalsmeer",
+      "source_region": null
+    },
+    {
+      "facility_uid": "21927a72-e888-4890-bf9b-8d8a51f99d4a",
+      "city_uid": "32a3d51e-76ed-4c7e-8ca5-327396115bb5",
+      "source_country": "NL",
+      "source_city": "De Lier",
+      "source_region": null
+    },
+    {
+      "facility_uid": "46763324-6757-4cd5-89b6-c98391f91299",
+      "city_uid": "9f30db19-cf7f-465f-9c32-7501d00e2811",
+      "source_country": "NL",
+      "source_city": "Eindhoven",
+      "source_region": "Noord-Brabant"
+    },
+    {
+      "facility_uid": "57df0ef3-0594-41f6-beb5-6c2144b8c7f1",
+      "city_uid": "b6f4f5e2-61f0-4e93-88aa-8a566b295a72",
+      "source_country": "NL",
+      "source_city": "Hasselt",
+      "source_region": "Overijssel"
+    },
+    {
+      "facility_uid": "92c48685-14d1-4f16-a7cf-12175166d572",
+      "city_uid": "7e1cbd89-f917-4bc5-98cf-76df975a2e70",
+      "source_country": "NL",
+      "source_city": "Lemmer",
+      "source_region": null
+    },
+    {
+      "facility_uid": "ee8cdcbc-725c-480f-b3a0-c10a2c6503a1",
+      "city_uid": "5925a867-dd27-4931-8936-20d28f4a0f2a",
+      "source_country": "NL",
+      "source_city": "Meppel",
+      "source_region": "Drenthe"
+    },
+    {
+      "facility_uid": "526383c8-6bdc-4b38-a558-ea836019b007",
+      "city_uid": "21317c3b-d934-4537-b001-80400c1d327d",
+      "source_country": "NL",
+      "source_city": "Naaldwijk",
+      "source_region": null
+    },
+    {
+      "facility_uid": "c3619ca3-cbe2-4faf-9605-e4618280d622",
+      "city_uid": "7ceb3620-b83b-4e11-bec0-aad0d0d8018f",
+      "source_country": "NL",
+      "source_city": "Rijnsburg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "3f524105-4782-409f-89d4-f3a8d2e324de",
+      "city_uid": "7532d305-bb60-4f0c-86de-99e0ce6ad8ec",
+      "source_country": "NL",
+      "source_city": "Rotterdam",
+      "source_region": null
+    },
+    {
+      "facility_uid": "8a6ecff0-0790-4518-aad9-f9918b446d67",
+      "city_uid": "262daceb-95a0-48e7-9cd7-40c086e18687",
+      "source_country": "NL",
+      "source_city": "Rotterdam Maasvlakte",
+      "source_region": null
+    },
+    {
+      "facility_uid": "01e3a1a9-f22a-4509-9bf2-f6142f1be9eb",
+      "city_uid": "14073712-6355-4447-84bf-e6a5eaaba690",
+      "source_country": "NL",
+      "source_city": "Zwolle",
+      "source_region": "Overijssel"
+    },
+    {
+      "facility_uid": "aa2badab-12bf-45d7-8bfc-dce15360d005",
+      "city_uid": "14073712-6355-4447-84bf-e6a5eaaba690",
+      "source_country": "NL",
+      "source_city": "Zwolle",
+      "source_region": "Overijssel"
+    },
+    {
+      "facility_uid": "e0d2cfc8-4ff6-4b44-966f-46f0c8d69f33",
+      "city_uid": "7e1db2cb-e769-46aa-8a42-a738b216c7c5",
+      "source_country": "NO",
+      "source_city": "Brattvåg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "9bbc85f7-90e8-47a1-a7bf-c7904ee8fa82",
+      "city_uid": "97679983-10dc-4fcf-82fb-6adb24cf7ab5",
+      "source_country": "NO",
+      "source_city": "Brevik",
+      "source_region": null
+    },
+    {
+      "facility_uid": "2305e766-c202-402d-aa97-e692fc78d196",
+      "city_uid": "02199dac-49b8-4707-bf77-f9a21b2857ba",
+      "source_country": "NO",
+      "source_city": "Kjøpsvik",
+      "source_region": null
+    },
+    {
+      "facility_uid": "7d8abaaf-6f52-4076-beb3-7e9469bd6347",
+      "city_uid": "6c9f9321-74e3-4d6e-b435-be3ebff85a41",
+      "source_country": "NO",
+      "source_city": "Langsten",
+      "source_region": null
+    },
+    {
+      "facility_uid": "19dbb55c-08ea-4553-8f25-11b6d5500240",
+      "city_uid": "3c5bc7ca-eca2-4e41-ad94-ba9831296c8b",
+      "source_country": "NO",
+      "source_city": "Odda",
+      "source_region": null
+    },
+    {
+      "facility_uid": "638c57cf-6364-491a-87d0-31be3bd1ba82",
+      "city_uid": "caed1701-53a7-40d1-80d9-7ce55ede3489",
+      "source_country": "NO",
+      "source_city": "Søviknes",
+      "source_region": null
+    },
+    {
+      "facility_uid": "8e373073-13d4-4942-b448-6e771494005b",
+      "city_uid": "6152ffc0-ee24-4a82-b335-438214635237",
+      "source_country": "PL",
+      "source_city": "Gdańsk",
+      "source_region": null
+    },
+    {
+      "facility_uid": "e8486844-02b3-4bea-8c7d-5d5ffb2bbc8c",
+      "city_uid": "2e88eeea-eafa-400f-9c64-ca34130794fa",
+      "source_country": "PL",
+      "source_city": "Goleniów",
+      "source_region": null
+    },
+    {
+      "facility_uid": "7658df94-be76-4569-bd7d-ef3dccfca717",
+      "city_uid": "e415181e-0bf0-4991-aaf7-14a4c9c0526b",
+      "source_country": "PL",
+      "source_city": "Górażdże",
+      "source_region": null
+    },
+    {
+      "facility_uid": "62f27ff9-2914-4611-9559-7d4b63379da4",
+      "city_uid": "4acbc71d-a4b3-4816-a020-d558a2f4f2f7",
+      "source_country": "PL",
+      "source_city": "Katowice",
+      "source_region": null
+    },
+    {
+      "facility_uid": "02399bea-4814-4518-bd81-497f5198321b",
+      "city_uid": "7d7e665c-9da0-4621-9fb7-b25e7d2d8545",
+      "source_country": "PL",
+      "source_city": "Lubawa",
+      "source_region": null
+    },
+    {
+      "facility_uid": "41fdaeae-25ca-4148-a9de-28ae40d3420c",
+      "city_uid": "91057204-f18e-46c8-aed1-741287151215",
+      "source_country": "PL",
+      "source_city": "Marki",
+      "source_region": null
+    },
+    {
+      "facility_uid": "a5867770-f2d0-418e-96e1-bc94dc78ad9e",
+      "city_uid": "cd637f4e-0f53-488d-8b9c-e182db9ca43f",
+      "source_country": "PL",
+      "source_city": "Mosina",
+      "source_region": null
+    },
+    {
+      "facility_uid": "da7c5d2b-d6a1-4082-93f7-116f9f8d4e82",
+      "city_uid": "7362d810-dfa0-4007-b057-3ce1139184c9",
+      "source_country": "PL",
+      "source_city": "Murów",
+      "source_region": null
+    },
+    {
+      "facility_uid": "2d2c61a6-e4bc-4853-a62f-2d117e10f5e5",
+      "city_uid": "e66a1cb1-1683-402d-8ffe-2f2ee05cc83f",
+      "source_country": "PL",
+      "source_city": "Niepołomice",
+      "source_region": "Małopolskie"
+    },
+    {
+      "facility_uid": "f7d23f23-2387-485e-9960-a5842bb7dfb5",
+      "city_uid": "1a94634c-1005-434d-886e-0c89557dc291",
+      "source_country": "PL",
+      "source_city": "Olsztyn",
+      "source_region": "Warmian-Masurian"
+    },
+    {
+      "facility_uid": "25c58db5-788d-4b01-ab09-be36443bae50",
+      "city_uid": "56c85e57-88fa-4cbf-9a8c-7d466056687f",
+      "source_country": "PL",
+      "source_city": "Orla",
+      "source_region": null
+    },
+    {
+      "facility_uid": "4fd3d0b5-216c-4d78-a44c-23ee7b7e7dd4",
+      "city_uid": "8b327ebb-8941-48d7-b1e4-5c543880255e",
+      "source_country": "PL",
+      "source_city": "Polska Cerekiew",
+      "source_region": null
+    },
+    {
+      "facility_uid": "3d9c4f03-a57c-4cc3-b1d6-6de56d3dff0a",
+      "city_uid": "94ac842a-ae9c-4ea0-8ab7-d77e7e0cf5c1",
+      "source_country": "PL",
+      "source_city": "Poznań",
+      "source_region": "Wielkopolskie"
+    },
+    {
+      "facility_uid": "bddaf872-6d1e-40e7-8da2-cbd5c77e33ba",
+      "city_uid": "94ac842a-ae9c-4ea0-8ab7-d77e7e0cf5c1",
+      "source_country": "PL",
+      "source_city": "Poznań",
+      "source_region": "Wielkopolskie"
+    },
+    {
+      "facility_uid": "00a6b238-e18b-44e4-8d0f-8bc1cf9a0ec2",
+      "city_uid": "1c4438b7-de73-4489-9e5a-ba0aac0151d2",
+      "source_country": "PL",
+      "source_city": "Pszenno",
+      "source_region": null
+    },
+    {
+      "facility_uid": "e11b273c-e048-47b3-b0c4-e512aa593bb6",
+      "city_uid": "ba05faf4-ce45-4583-b631-cdbeb798a178",
+      "source_country": "PL",
+      "source_city": "Resko",
+      "source_region": null
+    },
+    {
+      "facility_uid": "1efd8a3e-8f89-4e41-813d-c654fb163bb4",
+      "city_uid": "69b2f2e3-16fc-4dee-a065-b1c11da2c101",
+      "source_country": "PL",
+      "source_city": "Ropczyce",
+      "source_region": null
+    },
+    {
+      "facility_uid": "0f844634-b2da-49ac-9cdc-65a1e3afed6d",
+      "city_uid": "18751096-546f-44fe-bb16-ea6f26f49913",
+      "source_country": "PL",
+      "source_city": "Stalowa Wola",
+      "source_region": null
+    },
+    {
+      "facility_uid": "111e5ef9-5207-48a8-b0cd-eea07e844d64",
+      "city_uid": "98aaca0b-4feb-49de-a3c3-2849991accb8",
+      "source_country": "PL",
+      "source_city": "Starachowice",
+      "source_region": null
+    },
+    {
+      "facility_uid": "5aa9d9d2-1acf-448e-a1e5-c0f7b9bc2579",
+      "city_uid": "f02090d8-9ac0-4388-958f-0c4b2b1231ce",
+      "source_country": "PL",
+      "source_city": "Stepnica",
+      "source_region": null
+    },
+    {
+      "facility_uid": "db67153d-7037-456b-87f8-9b4a184c29ca",
+      "city_uid": "9277d36a-dcb3-466f-9abf-57f1c9f7f690",
+      "source_country": "PL",
+      "source_city": "Strzelin",
+      "source_region": null
+    },
+    {
+      "facility_uid": "55502622-685f-4fe0-80b9-cefa68d3936d",
+      "city_uid": "d7168045-9cf5-4420-97d8-228afee19fe8",
+      "source_country": "PL",
+      "source_city": "Ustka",
+      "source_region": null
+    },
+    {
+      "facility_uid": "359ab9f8-6b3d-4355-a196-d9934d6b391f",
+      "city_uid": "d70b355b-9868-418f-9e96-91fbb9b0aa05",
+      "source_country": "PL",
+      "source_city": "Wielbark",
+      "source_region": null
+    },
+    {
+      "facility_uid": "071354e8-e296-4cf3-9abf-ed2978465edb",
+      "city_uid": "b5e93e81-6b19-4c1c-a597-94a458af8386",
+      "source_country": "PL",
+      "source_city": "Wrocław",
+      "source_region": null
+    },
+    {
+      "facility_uid": "8098d71c-d46d-40fe-aea4-1aadbd4500e4",
+      "city_uid": "b5e93e81-6b19-4c1c-a597-94a458af8386",
+      "source_country": "PL",
+      "source_city": "Wrocław",
+      "source_region": null
+    },
+    {
+      "facility_uid": "6d32b159-584b-4966-8475-7da69ee83dcb",
+      "city_uid": "62e7a8bd-5ebf-4f39-81ad-c7ad0b112485",
+      "source_country": "PL",
+      "source_city": "Września",
+      "source_region": "Wielkopolskie"
+    },
+    {
+      "facility_uid": "3281012e-ebc7-4566-876d-b411b8e6d491",
+      "city_uid": "721d2509-8f12-4ffa-8529-501ea3cb3113",
+      "source_country": "PL",
+      "source_city": "Zbąszynek",
+      "source_region": null
+    },
+    {
+      "facility_uid": "fa724c57-b7ab-48bd-b4a6-05edfd767201",
+      "city_uid": "648acd6b-475e-4465-8ea9-b08fc8af438d",
+      "source_country": "PL",
+      "source_city": "Łódź",
+      "source_region": null
+    },
+    {
+      "facility_uid": "5a6fe900-df28-42b8-bb03-6161622ec7d0",
+      "city_uid": "1fef97ef-b9b8-41a9-a6f5-0e6263ffbb54",
+      "source_country": "PT",
+      "source_city": "Lousado",
+      "source_region": "Braga"
+    },
+    {
+      "facility_uid": "ecd2ac83-c28a-4e93-b1cc-5dc20da3805c",
+      "city_uid": "1a4fde27-2ea6-4be2-96a6-3bf8187ca876",
+      "source_country": "PT",
+      "source_city": "Paços de Ferreira",
+      "source_region": null
+    },
+    {
+      "facility_uid": "f4c9068b-1e3e-4135-a74f-2c960598681e",
+      "city_uid": "01444393-846f-4013-857b-22e37b6cfa2e",
+      "source_country": "PT",
+      "source_city": "Santa Maria de Lamas",
+      "source_region": null
+    },
+    {
+      "facility_uid": "43ec4975-b4fa-45fe-ba12-da8ea15f97ca",
+      "city_uid": "a1befa32-ee6c-4989-beeb-6a22ce74b435",
+      "source_country": "RO",
+      "source_city": "Brăila",
+      "source_region": null
+    },
+    {
+      "facility_uid": "238c19e7-79fd-464e-9946-034b02f08775",
+      "city_uid": "c0b879f3-e1af-4ca8-b227-8d6aec28dc71",
+      "source_country": "RO",
+      "source_city": "Bucharest",
+      "source_region": null
+    },
+    {
+      "facility_uid": "58fff7e4-c10c-4578-80d2-65ff27d7b45a",
+      "city_uid": "a731a368-0a39-4f28-a007-7cc6b597faab",
+      "source_country": "RO",
+      "source_city": "Tulcea",
+      "source_region": null
+    },
+    {
+      "facility_uid": "c4ea2cbd-73ba-4d57-b370-1fdefac297b0",
+      "city_uid": "cf815dc1-43a6-423f-a73a-fcf0822e4909",
+      "source_country": "SE",
+      "source_city": "Borlänge",
+      "source_region": null
+    },
+    {
+      "facility_uid": "8aeb37b4-525d-4683-a8cb-2aec36c0f844",
+      "city_uid": "8381c19d-2330-46bf-b1bb-99c6ef2a44f2",
+      "source_country": "SE",
+      "source_city": "Dalsjöfors",
+      "source_region": null
+    },
+    {
+      "facility_uid": "baafcc5f-3f6b-4ffa-9dae-2f0426d5d27f",
+      "city_uid": "6f31c3a2-7e1e-4d72-9015-3a12f2880f1d",
+      "source_country": "SE",
+      "source_city": "Gothenburg",
+      "source_region": null
+    },
+    {
+      "facility_uid": "5dc6c4a9-7e36-4b9d-8d12-c44d57ac2bee",
+      "city_uid": "015accab-cda8-4dcf-8a79-e03a50c17f3f",
+      "source_country": "SE",
+      "source_city": "Grums",
+      "source_region": null
+    },
+    {
+      "facility_uid": "e0ce4a2d-59e5-4cab-9691-4a219c7e01b1",
+      "city_uid": "3ebc1e34-4e64-4fb4-9af0-b9ef1464049f",
+      "source_country": "SE",
+      "source_city": "Göteborg",
+      "source_region": "Västra Götaland"
+    },
+    {
+      "facility_uid": "56332914-1f9e-4ac3-9869-8641324fbafd",
+      "city_uid": "034b1c8c-d5d6-4751-8846-d321e7fdfa0e",
+      "source_country": "SE",
+      "source_city": "Kalmar",
+      "source_region": null
+    },
+    {
+      "facility_uid": "ea27dd27-7a37-46b7-b6b1-babf90f1b0c2",
+      "city_uid": "0ed0bf2b-c855-4e44-a00f-c7bb6db7d56b",
+      "source_country": "SE",
+      "source_city": "Landskrona",
+      "source_region": null
+    },
+    {
+      "facility_uid": "c92ffa33-a32c-46cc-b4e8-937ec25d8530",
+      "city_uid": "7b98c1c9-a8c0-4b85-af30-c19814e462a0",
+      "source_country": "SE",
+      "source_city": "Ljusne",
+      "source_region": null
+    },
+    {
+      "facility_uid": "2be82ce1-111b-403f-a21f-54f16df452a9",
+      "city_uid": "54489311-18b8-4731-b70a-cc4371fb2a72",
+      "source_country": "SE",
+      "source_city": "Luleå",
+      "source_region": "Norrbotten"
+    },
+    {
+      "facility_uid": "597bee7b-6901-4815-bf2d-c51a71ca35ca",
+      "city_uid": "54489311-18b8-4731-b70a-cc4371fb2a72",
+      "source_country": "SE",
+      "source_city": "Luleå",
+      "source_region": null
+    },
+    {
+      "facility_uid": "ca09ad3b-3652-4d7c-bc70-64d1afbd74a6",
+      "city_uid": "84d47eb8-229e-4cc4-8d7d-4d176fb5494e",
+      "source_country": "SE",
+      "source_city": "Oskarshamn",
+      "source_region": "Kalmar County"
+    },
+    {
+      "facility_uid": "ecfc272f-f794-47f4-a9d3-5ff7327455b8",
+      "city_uid": "d43d6832-1742-4c2d-a610-ba707d5058fe",
+      "source_country": "SE",
+      "source_city": "Oxelösund",
+      "source_region": null
+    },
+    {
+      "facility_uid": "15cecb95-8b3a-40a8-ad81-8b0d0f03831f",
+      "city_uid": "0f0147dc-1f46-4ffc-9ed8-73d2440e6b70",
+      "source_country": "SE",
+      "source_city": "Skelleftehamn",
+      "source_region": null
+    },
+    {
+      "facility_uid": "38e66ac3-767b-4b34-addb-2b9ef9a111dc",
+      "city_uid": "74ae40d2-9166-4362-8cda-5afbca444dde",
+      "source_country": "SE",
+      "source_city": "Skövde",
+      "source_region": "Västra Götaland"
+    },
+    {
+      "facility_uid": "c0a28440-8ea9-4a2c-a7f7-0480febfae3e",
+      "city_uid": "f8c18c47-ae9c-49dc-ad61-c092a1d914fe",
+      "source_country": "SE",
+      "source_city": "Södertälje",
+      "source_region": "Stockholm County"
+    },
+    {
+      "facility_uid": "cd0a43f0-2a55-4cf7-ad63-28268924af9c",
+      "city_uid": "ca097565-b80b-403e-94ee-df2b8a015a7b",
+      "source_country": "SK",
+      "source_city": "Bratislava",
+      "source_region": "Bratislava"
+    },
+    {
+      "facility_uid": "b8984415-9342-4ffe-a986-1eec9f24c11e",
+      "city_uid": "c21e4174-090a-4e28-b6fc-9c4646637fec",
+      "source_country": "SK",
+      "source_city": "Dolné Vestenice",
+      "source_region": "Trenčiansky kraj"
+    },
+    {
+      "facility_uid": "dd0d3cd4-9daa-4fc5-9696-9d7a6cf7dfc9",
+      "city_uid": "3dd79feb-fcec-4980-a24b-c4fd9920a6e9",
+      "source_country": "SK",
+      "source_city": "Jasná",
+      "source_region": null
+    },
+    {
+      "facility_uid": "5d5adf74-b1a8-4630-9311-55570de85d0c",
+      "city_uid": "74897884-3d83-4e48-9f8b-c4500ef900f0",
+      "source_country": "SK",
+      "source_city": "Malacky",
+      "source_region": null
+    },
+    {
+      "facility_uid": "e34e8997-305d-4288-b0e3-d7c8a26b353a",
+      "city_uid": "ca64c9bc-6087-417f-ae05-33e5bc95660e",
+      "source_country": "SK",
+      "source_city": "Martin",
+      "source_region": "Žilina"
+    },
+    {
+      "facility_uid": "a189f842-a20a-432c-be09-a936fb280cc4",
+      "city_uid": "dfe0086c-6a5f-4cc3-a5d9-8294692d17b7",
+      "source_country": "SK",
+      "source_city": "Púchov",
+      "source_region": "Trenčiansky kraj"
+    },
+    {
+      "facility_uid": "fc427007-3c1c-4494-b143-d36943479506",
+      "city_uid": "c702cde8-9445-48b3-a130-ec1575e602da",
+      "source_country": "SK",
+      "source_city": "Teplička nad Váhom",
+      "source_region": "Žilina"
+    },
+    {
+      "facility_uid": "6dfd6ffc-0df4-41a5-9435-12f776df76dc",
+      "city_uid": "c19c5811-cbe6-4eb9-b12b-4fecf23f57e6",
+      "source_country": "SK",
+      "source_city": "Trnava",
+      "source_region": null
+    },
+    {
+      "facility_uid": "ebb7cdbd-1e74-475e-8518-2035df438bb4",
+      "city_uid": "12778ebf-fa8a-4243-a33e-47020677187a",
+      "source_country": "SK",
+      "source_city": "Zvolen",
+      "source_region": "Banskobystrický kraj"
+    },
+    {
+      "facility_uid": "454202e7-b3e5-496e-950f-2be80ed3d5bf",
+      "city_uid": "1ce03c45-478d-4ae4-bd61-d8ee421936df",
+      "source_country": "TR",
+      "source_city": "Akyurt",
+      "source_region": "Ankara"
+    },
+    {
+      "facility_uid": "77aec0b8-489f-49d8-9f39-2e1618ca59e0",
+      "city_uid": "fb5b666a-ba0e-4dd4-807c-dff3f06137a4",
+      "source_country": "TR",
+      "source_city": "Eskişehir",
+      "source_region": null
+    },
+    {
+      "facility_uid": "0c9f3773-8681-4271-bd8d-b7471f7db9e8",
+      "city_uid": "e1d33400-43b8-4b80-a73a-d0ca3b3d3953",
+      "source_country": "TR",
+      "source_city": "Istanbul",
+      "source_region": null
+    },
+    {
+      "facility_uid": "cd595686-e5f3-4075-8972-7258e52f9734",
+      "city_uid": "e1d33400-43b8-4b80-a73a-d0ca3b3d3953",
+      "source_country": "TR",
+      "source_city": "Istanbul",
+      "source_region": null
+    }
+  ]
+}

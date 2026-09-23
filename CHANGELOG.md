@@ -1,5 +1,19 @@
 # Changelog
 
+## Domain und relationale Persistenz – 23.09.2026
+
+- Eine typisierte Laufzeit hinter GameStateRepository/GameUnitOfWork; KV-Spielpfad
+  und obsolete Domainmodelle entfernt. Öffentliche API-Projektionen bleiben kompatibel.
+- Historische Transport-/Standortsnapshots, atomare Disposition und einmaliges
+  Settlement; eigene relationale Ports für Accounts, Cache, Rangliste und Verkehr.
+- WorldCatalogue 4.0.0 mit gespeicherten Stadt-UUIDs, Country/City/Address/Coordinates,
+  getrennten NHM-Produkten/-Profilen und unveränderlichen World-Scopes.
+- Offline-Import mit Backup, neuer Zieldatei, Abgleich und Rollback. Drei Testkonten
+  übernommen; der kontolose Demostand bleibt ausdrücklich nur im Backup.
+- Übergangscode und temporäre Umbauwerkzeuge entfernt; Docker schließt Backups aus.
+- Ist-Dokumentation, ADR, Architekturtests und Gegentests konsolidiert.
+  Ausgeführte Prüfungen und Abnahmegrenzen stehen in QUALITY_REPORT.md.
+
 ## Pylance-Abgleich
 
 - Gemeinsamer Pylance-/Pyright-Standardmodus für Anwendung, Tests und Skripte.

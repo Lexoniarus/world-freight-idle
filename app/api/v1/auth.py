@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from app.api.v1.dependencies import get_auth_service, get_current_user
 from app.api.v1.schemas import Credentials
+from app.domain.account_ports import AccountIdentity
 from app.services.auth import SESSION_COOKIE, SESSION_LIFETIME, AuthService
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -20,7 +21,7 @@ def set_session(
     request: Request,
     response: Response,
     auth: AuthService,
-    user: dict,
+    user: AccountIdentity,
 ) -> dict:
     """Rotate the browser session and set a protected cookie."""
     old_token = request.cookies.get(SESSION_COOKIE, "")
@@ -35,7 +36,7 @@ def set_session(
         samesite="strict",
     )
     response.headers["Cache-Control"] = "no-store"
-    return user
+    return dict(user)
 
 
 @router.post("/register", status_code=201)

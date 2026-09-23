@@ -54,7 +54,7 @@ def test_api_does_not_construct_concrete_services():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("failure", ["network", "malformed"])
-async def test_provider_failures_are_normalized_at_ports(store, failure):
+async def test_provider_failures_are_normalized_at_ports(cache, failure):
     async def handler(request):
         if failure == "network":
             raise httpx.ConnectError("offline", request=request)
@@ -64,16 +64,16 @@ async def test_provider_failures_are_normalized_at_ports(store, failure):
         transport=httpx.MockTransport(handler)
     ) as client:
         geocoder = NominatimGeocoder(
-            store, client, "https://n.test", "test", 0
+            cache, client, "https://n.test", "test", 0
         )
-        router = ValhallaTruckRouter(store, client, "https://r.test", "test")
+        router = ValhallaTruckRouter(cache, client, "https://r.test", "test")
         with pytest.raises(GeocodingError) as geocoding:
             await geocoder.geocode("uncached")
         with pytest.raises(RoutingError) as routing:
             await router.route(1, 2, 3, 4)
     assert geocoding.value.__cause__ is not None
     assert routing.value.__cause__ is not None
-    assert store.get_geocode("uncached") is None
+    assert cache.get_geocode("uncached") is None
 
 
 def test_profile_maintenance_keeps_cli_and_sql_out_of_service():

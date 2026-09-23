@@ -6,15 +6,12 @@ import uuid
 from contextlib import closing
 from pathlib import Path
 
+from app.domain.cargo import FacilityNhmProfile, NhmProduct
 from app.domain.errors import WorldCatalogueError
-from app.domain.world import (
-    CargoProfile,
-    Company,
-    DocumentedGood,
-    Facility,
-    SourceReference,
-    WorldSnapshot,
-)
+from app.domain.evidence import SourceReference
+from app.domain.geography import Address, City, Coordinates, Country
+from app.domain.world import Company, DocumentedGood, Facility, WorldSnapshot
+from app.repositories.world_geography_reader import read_cities, read_countries
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,6 +19,8 @@ _REQUIRED_WORLD_TABLES = {
     "facilities",
     "facility_nhm_profiles",
     "nhm_codes",
+    "countries",
+    "cities",
 }
 _REQUIRED_PROFILE_SYSTEM = "NHM 2026 via facility_nhm_profiles -> nhm_codes"
 
@@ -68,7 +67,7 @@ class SqliteWorldCatalogue:
 def validate_world_schema(connection: sqlite3.Connection) -> str:
     """Validate the NHM-capable schema and cross-table invariants."""
     metadata = dict(connection.execute("SELECT key,value FROM metadata"))
-    if metadata.get("schema_version") != "3.0.0":
+    if metadata.get("schema_version") != "4.0.0":
         raise ValueError("Unsupported world schema")
     if metadata.get("operational_profile_system") != _REQUIRED_PROFILE_SYSTEM:
         raise ValueError("Missing NHM profile capability")
@@ -152,7 +151,9 @@ def source_reference(row: sqlite3.Row) -> SourceReference:
     return SourceReference(url, row["source_role"], row["verified_at"])
 
 
-def read_companies(connection: sqlite3.Connection) -> dict[int, Company]:
+def read_companies(
+    connection: sqlite3.Connection, countries: dict[str, Country]
+) -> dict[int, Company]:
     """Resolve internal foreign keys into immutable company projections."""
     sources: dict[int, list[SourceReference]] = {}
     for row in connection.execute("SELECT * FROM company_sources"):
@@ -162,7 +163,7 @@ def read_companies(connection: sqlite3.Connection) -> dict[int, Company]:
             validate_uid(row["company_uid"]),
             row["legal_name"],
             row["display_name"],
-            row["country_code"],
+            countries[row["country_code"]],
             row["website_url"],
             tuple(sources.get(row["company_id"], [])),
         )
@@ -205,10 +206,11 @@ def read_nhm_ancestors(
 
 def read_cargo(
     connection: sqlite3.Connection,
-) -> dict[int, list[CargoProfile]]:
+) -> dict[int, list[FacilityNhmProfile]]:
     """Read operative NHM facility profiles and preserve evidence quality."""
     ancestors = read_nhm_ancestors(connection)
-    result: dict[int, list[CargoProfile]] = {}
+    result: dict[int, list[FacilityNhmProfile]] = {}
+    products: dict[int, NhmProduct] = {}
     rows = connection.execute("""
         SELECT
             p.facility_id,
@@ -245,15 +247,17 @@ def read_cargo(
             )
         elif row["evidence_type"] != "derived":
             raise ValueError("Missing cargo provenance")
-        profile = CargoProfile(
-            int(row["nhm_row_id"]),
-            row["code"],
-            row["cargo_name"],
+        row_id = int(row["nhm_row_id"])
+        if row_id not in products:
+            products[row_id] = NhmProduct(
+                row_id, row["code"], row["cargo_name"], ancestors[row_id]
+            )
+        profile = FacilityNhmProfile(
+            products[row_id],
             row["cargo_role"],
             row["evidence_type"],
             float(row["confidence"]),
             float(row["priority_score"]),
-            ancestors[int(row["nhm_row_id"])],
             source,
         )
         result.setdefault(int(row["facility_id"]), []).append(profile)
@@ -264,7 +268,8 @@ def read_facility(
     connection: sqlite3.Connection,
     row: sqlite3.Row,
     companies: dict[int, Company],
-    cargo: tuple[CargoProfile, ...],
+    cities: dict[str, City],
+    cargo: tuple[FacilityNhmProfile, ...],
     version: str,
 ) -> Facility:
     """Join all endpoint facts into a self-contained immutable reference."""
@@ -321,27 +326,22 @@ def read_facility(
             (uid,),
         )
     )
-    address = ", ".join(
-        str(row[key])
-        for key in (
-            "street",
-            "house_number",
-            "postcode",
-            "city",
-            "country_code",
-        )
-        if row[key]
-    )
     return Facility(
         uid,
         companies.get(row["company_id"]),
         row["name"],
         row["type_code"],
-        row["city"],
-        row["country_code"],
-        address,
-        row["latitude"],
-        row["longitude"],
+        Address(
+            cities[row["city_uid"]],
+            row["street"],
+            row["house_number"],
+            row["postcode"],
+        ),
+        (
+            Coordinates(row["latitude"], row["longitude"])
+            if row["latitude"] is not None
+            else None
+        ),
         row["geocoding_status"],
         sources,
         tuple(evidence),
@@ -379,13 +379,16 @@ def read_handled_goods(
 def read_world_snapshot(connection: sqlite3.Connection) -> WorldSnapshot:
     """Read one complete revision and report the routability boundary."""
     version = validate_world_schema(connection)
-    companies = read_companies(connection)
+    countries = read_countries(connection)
+    cities = read_cities(connection, countries)
+    companies = read_companies(connection, countries)
     cargo = read_cargo(connection)
     facilities = tuple(
         read_facility(
             connection,
             row,
             companies,
+            cities,
             tuple(cargo.get(row["facility_id"], [])),
             version,
         )
@@ -420,4 +423,10 @@ def read_world_snapshot(connection: sqlite3.Connection) -> WorldSnapshot:
             },
         },
     )
-    return WorldSnapshot(version, tuple(companies.values()), facilities)
+    return WorldSnapshot(
+        version,
+        tuple(companies.values()),
+        facilities,
+        tuple(countries.values()),
+        tuple(cities.values()),
+    )

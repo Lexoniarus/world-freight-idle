@@ -14,17 +14,18 @@ from tests.test_api import make_settings, make_static_files
 @pytest.mark.asyncio
 async def test_map_hubs_resolve_and_preserve_partial_failures(game):
     service = MapLocationService(game.world)
-    result = await service.list_hubs()
+    result = service.list_facilities(FacilityQuery()).facilities
     assert len(result) == 352
-    assert all(hub["resolution_status"] == "resolved" for hub in result)
-    berlin = next(h for h in result if "berlin_westhafen" in h["aliases"])
-    assert berlin["lat"] == 52.5374096
+    assert all(hub.resolution_status == "resolved" for hub in result)
+    berlin = next(h for h in result if "berlin_westhafen" in h.aliases)
+    assert berlin.coordinates is not None
+    assert berlin.coordinates.latitude == 52.5374096
     projection = service.list_facilities(FacilityQuery.parse("13,52,14,53"))
-    assert berlin in projection["facilities"]
-    assert projection["unavailable_count"] == 0
+    assert berlin in projection.facilities
+    assert projection.unavailable_count == 0
     game.world.path.unlink()
     with pytest.raises(WorldCatalogueError):
-        await service.list_hubs()
+        service.list_facilities(FacilityQuery()).facilities
 
 
 def test_map_endpoint_requires_session_and_uses_game_provider(tmp_path, game):

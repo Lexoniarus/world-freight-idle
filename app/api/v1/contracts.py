@@ -5,6 +5,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.v1.dependencies import get_game_service
+from app.api.v1.game_projection import (
+    project_contract,
+    project_quote,
+    project_transport,
+)
 from app.api.v1.schemas import DispatchRequest, QuoteRequest
 from app.domain.errors import RoutingError
 from app.domain.world import FacilityQuery
@@ -24,7 +29,11 @@ def list_contracts(
         query = FacilityQuery.parse(bbox)
     except ValueError as exc:
         raise HTTPException(422, "Ungültige Bounding Box.") from exc
-    return {"contracts": game.list_contracts(query, zoom)}
+    return {
+        "contracts": [
+            project_contract(item) for item in game.list_contracts(query, zoom)
+        ]
+    }
 
 
 @router.get("/{contract_id}")
@@ -34,7 +43,7 @@ def get_contract(
 ) -> dict:
     """Return one contract including real endpoint addresses."""
     try:
-        return game.get_contract(contract_id)
+        return project_contract(game.get_contract(contract_id))
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from exc
 
@@ -47,8 +56,10 @@ async def quote_contract(
 ) -> dict:
     """Route saved coordinates and return a provider-backed truck quote."""
     try:
-        return await game.quote_contract(
-            contract_id, body.vehicle_id if body else None
+        return project_quote(
+            await game.quote_contract(
+                contract_id, body.vehicle_id if body else None
+            )
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
@@ -66,7 +77,9 @@ async def accept_contract(
 ) -> dict:
     """Accept and dispatch one contract with a selected vehicle."""
     try:
-        return await game.dispatch(contract_id, body.vehicle_id)
+        return project_transport(
+            await game.dispatch(contract_id, body.vehicle_id)
+        )
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from exc
     except ValueError as exc:
@@ -86,4 +99,9 @@ def refresh_contracts(
         query = FacilityQuery.parse(bbox)
     except ValueError as exc:
         raise HTTPException(422, "Ungültige Bounding Box.") from exc
-    return {"contracts": game.refresh_contracts(query, zoom)}
+    return {
+        "contracts": [
+            project_contract(item)
+            for item in game.refresh_contracts(query, zoom)
+        ]
+    }

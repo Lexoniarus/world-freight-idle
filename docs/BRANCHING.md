@@ -32,6 +32,10 @@ Hotfixes durchlaufen dieselben Prüfungen; das Präfix umgeht keine Freigabe.
 4. Kleine nachvollziehbare Commits. Nachrichten: `typ: konkrete Änderung`, mit
    feat, fix, refactor, docs, chore oder test als Typ. Nur zusammengehörige Dateien
    stagen; den Index vor jedem Commit mit `git diff --cached` prüfen.
+   Betroffene Tests einschließlich unmittelbar abhängiger Aufrufer müssen vor
+   dem Commit grün sein. Kein vollständiger Projekt-Testlauf pro Commit und
+   keine zusätzlichen Kompatibilitätsschichten allein für grüne Zwischenstände.
+   Noch offene Gesamtprüfungen werden sichtbar dokumentiert.
 5. Vor Integration Quality Gate, Browserregression und Dokumenten-/Architekturreview
    durchführen. Grüne Linter ersetzen keine Prüfung der Verantwortlichkeiten.
 6. Sobald ein Remote besteht: Branch pushen, Pull Request nach main erstellen,
@@ -66,18 +70,19 @@ Merge-Commits direkt auf main und kein Zurücksetzen von main.
 
 ## Remote und tatsächlicher Schutzstatus
 
-`origin` verweist auf das private Repository
+`origin` verweist auf das öffentliche Repository
 [Lexoniarus/world-freight-idle](https://github.com/Lexoniarus/world-freight-idle).
 GitHub Actions und PR-Vorlage sind eingerichtet. Nur Squash-Merge ist freigegeben;
 GitHub löscht gemergte Arbeitsbranches automatisch.
 
-**Serverseitiger Branchschutz ist nicht aktiv.** GitHub lehnt Schutzregeln für
-dieses private Repository mit HTTP 403 ab und verlangt ein Pro-Upgrade oder eine
-öffentliche Sichtbarkeit. Das Repository bleibt privat; die Sichtbarkeit wird
-nicht als Umgehung geändert. Lokale Hooks, CI und die verpflichtende PR-Prüfung
-sind vorhanden, können serverseitige Zugriffsbeschränkungen aber nicht ersetzen.
+**Serverseitiger Branchschutz ist nicht aktiv.** Am 23.09.2026 meldet GitHub
+`isPrivate=false`, für main „Branch not protected“ und keine Rulesets. Die frühere
+403-/Tarif-Aussage bezog sich auf den damaligen privaten Zustand und ist kein
+aktueller Schutzstatus. Die Sichtbarkeit wurde in diesem Refactor nicht verändert.
+Lokale Hooks, CI und die verpflichtende PR-Prüfung sind vorhanden; sie ersetzen
+keine serverseitigen Zugriffsbeschränkungen.
 
-Sobald der GitHub-Tarif es erlaubt, für main einen Ruleset/Branchschutz aktivieren:
+Für eine serverseitige Durchsetzung ist folgender Branchschutz einzurichten:
 PR erforderlich, Statuschecks `quality` und `branch-policy` erforderlich, Branch
 aktuell, Force-Push und Löschen untersagt. Bei mehreren Mitwirkenden eine fremde
 Review-Freigabe erzwingen. Bis dahin müssen auch Administratoren den dokumentierten

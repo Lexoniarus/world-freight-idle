@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from app.domain.game import OwnedVehicle
 from app.domain.ports import WorldCatalogue
 from app.domain.world import FacilityQuery
+from app.domain.world_scopes import WorldScope
 
 MARKET_VIEWPORT_MIN_ZOOM = 7.0
 
@@ -32,7 +33,7 @@ class MarketScopeResolver:
         for vehicle in vehicles:
             if vehicle.status != "idle":
                 continue
-            identifier = vehicle.facility_uid or vehicle.hub_id
+            identifier = vehicle.facility_uid
             if identifier not in seen:
                 origins.append(identifier)
                 seen.add(identifier)
@@ -46,7 +47,7 @@ class MarketScopeResolver:
         ):
             return tuple(origins)
 
-        for facility in self.world.read().query(query):
+        for facility in WorldScope(self.world.read()).query(query):
             if facility.facility_uid not in seen:
                 origins.append(facility.facility_uid)
                 seen.add(facility.facility_uid)

@@ -1,33 +1,21 @@
 from __future__ import annotations
 
 import random
+import time
 from pathlib import Path
 
 import pytest
 
-from app.domain.models import RouteResult
-from app.repositories.sqlite_store import SqliteStore
+from app.bootstrap import GameRuntime
+from app.domain.transports import RouteSnapshot
+from app.domain.world_scopes import WorldScope
+from app.repositories.game_database import SqliteGameDatabase
+from app.repositories.game_state import SqliteGameUnitOfWork
+from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.services.game import GameService
 from app.services.market import MarketGenerator
 from app.services.market_scope import MarketScopeResolver
-from app.services.pricing import PricingService
-from tests.seed_data import (
-    CARGO_TYPES,
-    HUBS,
-)
-
-
-class FakeGeocoder:
-    async def geocode(self, address: str) -> tuple[float, float, str]:
-        coordinates = {
-            HUBS[0].address: (52.5367, 13.3407),
-            HUBS[1].address: (53.5083, 9.9286),
-            HUBS[2].address: (51.4280, 6.7370),
-            HUBS[3].address: (51.9508, 4.0407),
-        }
-        lat, lon = coordinates[address]
-        return lat, lon, address
 
 
 class FakeRouter:
@@ -37,24 +25,21 @@ class FakeRouter:
         origin_lon: float,
         destination_lat: float,
         destination_lon: float,
-    ) -> RouteResult:
-        return RouteResult(
+    ) -> RouteSnapshot:
+        return RouteSnapshot(
             distance_km=400.0,
             duration_seconds=14400.0,
-            route_geojson={
-                "type": "LineString",
-                "coordinates": [
-                    [origin_lon, origin_lat],
-                    [destination_lon, destination_lat],
-                ],
-            },
+            coordinates=(
+                (origin_lon, origin_lat),
+                (destination_lon, destination_lat),
+            ),
             provider="fake-router",
         )
 
 
 @pytest.fixture
-def store(tmp_path: Path) -> SqliteStore:
-    return SqliteStore(tmp_path / "game.db")
+def cache(database) -> SqliteProviderCache:
+    return SqliteProviderCache(database)
 
 
 WORLD_PATH = (
@@ -63,9 +48,8 @@ WORLD_PATH = (
     / "world_freight_company_facility_mvp.sqlite3"
 )
 BERLIN_UID = (
-    SqliteWorldCatalogue(WORLD_PATH)
-    .read()
-    .get_facility("berlin_westhafen")
+    WorldScope(SqliteWorldCatalogue(WORLD_PATH).read())
+    .facility("berlin_westhafen")
     .facility_uid
 )
 
@@ -80,17 +64,17 @@ def world_catalogue(tmp_path):
 
 
 @pytest.fixture
-def game(store: SqliteStore, catalogue, world_catalogue) -> GameService:
+def game(database, catalogue, world_catalogue) -> GameService:
     market = MarketGenerator(world_catalogue, random.Random(7), catalogue)
     service = GameService(
-        store=store,
+        unit_of_work=SqliteGameUnitOfWork(database, "test-owner"),
         world=world_catalogue,
         router=FakeRouter(),
         market=market,
         market_scope=MarketScopeResolver(world_catalogue),
-        pricing=PricingService(CARGO_TYPES),
         catalogue=catalogue,
         time_scale=1.0,
+        clock=time.time,
     )
     service.ensure_initial_state()
     service.refresh_market(force=True)
@@ -111,3 +95,27 @@ def catalogue(tmp_path):
         path,
     )
     return SqliteVehicleCatalogue(path)
+
+
+@pytest.fixture
+def database(tmp_path):
+    database = SqliteGameDatabase(tmp_path / "relational.db")
+    database.initialize()
+    with database.connect() as connection:
+        connection.execute(
+            "INSERT INTO users VALUES ('test-owner', 'TestOwner', 'test', 0)"
+        )
+    return database
+
+
+@pytest.fixture
+def runtime(game, database):
+    return GameRuntime(
+        database,
+        game.world,
+        game.router,
+        game.market,
+        game.catalogue,
+        game.market_scope,
+        game.time_scale,
+    )

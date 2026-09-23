@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
-from typing import Any
+from dataclasses import dataclass
 
+from app.domain.cargo import DocumentedCargo, FacilityNhmProfile, NhmProduct
 from app.domain.validation import require_finite, require_identity
-from app.domain.world import CargoProfile, FacilityLocationSnapshot
+from app.domain.world import FacilityLocationSnapshot
 
 
 @dataclass(frozen=True, slots=True)
@@ -20,9 +20,9 @@ class ContractOfferSnapshot:
     destination: FacilityLocationSnapshot
     shipper_name: str
     consignee_name: str
-    cargo: CargoProfile
-    origin_cargo_evidence: CargoProfile
-    destination_cargo_evidence: CargoProfile
+    cargo: NhmProduct
+    origin_cargo_evidence: FacilityNhmProfile
+    destination_cargo_evidence: FacilityNhmProfile
     cargo_basis: str
     trade_match_type: str
     tons: float
@@ -32,46 +32,6 @@ class ContractOfferSnapshot:
     expires_at: float
     mode: str
     relationship_simulated: bool
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize the typed offer without expanding reference aggregates."""
-        origin = self.origin.to_dict()
-        destination = self.destination.to_dict()
-        origin_evidence = asdict(self.origin_cargo_evidence)
-        origin_evidence["ancestor_row_ids"] = list(
-            self.origin_cargo_evidence.ancestor_row_ids
-        )
-        destination_evidence = asdict(self.destination_cargo_evidence)
-        destination_evidence["ancestor_row_ids"] = list(
-            self.destination_cargo_evidence.ancestor_row_ids
-        )
-        return {
-            "id": self.id,
-            "market_model": self.market_model,
-            "cargo_system": self.cargo_system,
-            "origin_hub_id": self.origin.facility_uid,
-            "destination_hub_id": self.destination.facility_uid,
-            "origin_facility_uid": self.origin.facility_uid,
-            "destination_facility_uid": self.destination.facility_uid,
-            "origin": origin,
-            "destination": destination,
-            "shipper_name": self.shipper_name,
-            "consignee_name": self.consignee_name,
-            "cargo": self.cargo.name,
-            "cargo_code": self.cargo.code,
-            "cargo_evidence": origin_evidence,
-            "origin_cargo_evidence": origin_evidence,
-            "destination_cargo_evidence": destination_evidence,
-            "cargo_basis": self.cargo_basis,
-            "trade_match_type": self.trade_match_type,
-            "tons": self.tons,
-            "payload_band": self.payload_band,
-            "rate_eur_per_km_ton": self.rate_eur_per_km_ton,
-            "created_at": self.created_at,
-            "expires_at": self.expires_at,
-            "mode": self.mode,
-            "relationship_simulated": self.relationship_simulated,
-        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,9 +45,9 @@ class ContractOffer:
     destination: FacilityLocationSnapshot
     shipper_name: str
     consignee_name: str
-    cargo: CargoProfile
-    origin_cargo_evidence: CargoProfile
-    destination_cargo_evidence: CargoProfile
+    cargo: NhmProduct
+    origin_cargo_evidence: FacilityNhmProfile
+    destination_cargo_evidence: FacilityNhmProfile
     cargo_basis: str
     trade_match_type: str
     tons: float
@@ -111,8 +71,8 @@ class ContractOffer:
         if self.origin.facility_uid == self.destination.facility_uid:
             raise ValueError("Contract endpoints must differ.")
         if self.cargo.code not in {
-            self.origin_cargo_evidence.code,
-            self.destination_cargo_evidence.code,
+            self.origin_cargo_evidence.product.code,
+            self.destination_cargo_evidence.product.code,
         }:
             raise ValueError("Cargo code does not match contract evidence.")
 
@@ -144,72 +104,91 @@ class ContractOffer:
             relationship_simulated=snapshot.relationship_simulated,
         )
 
-    @classmethod
-    def from_dict(cls, value: dict[str, Any]) -> ContractOffer:
-        """Hydrate one persisted current-model contract offer."""
-        origin_cargo = CargoProfile.from_dict(value["origin_cargo_evidence"])
-        destination_cargo = CargoProfile.from_dict(
-            value["destination_cargo_evidence"]
-        )
-        cargo_code = str(value["cargo_code"])
-        if origin_cargo.code == cargo_code:
-            cargo = origin_cargo
-        elif destination_cargo.code == cargo_code:
-            cargo = destination_cargo
-        else:
-            raise ValueError("Cargo code does not match contract evidence.")
-        return cls(
-            id=str(value["id"]),
-            market_model=str(value["market_model"]),
-            cargo_system=str(value["cargo_system"]),
-            origin=FacilityLocationSnapshot.from_dict(value["origin"]),
-            destination=FacilityLocationSnapshot.from_dict(
-                value["destination"]
-            ),
-            shipper_name=str(value["shipper_name"]),
-            consignee_name=str(value["consignee_name"]),
-            cargo=cargo,
-            origin_cargo_evidence=origin_cargo,
-            destination_cargo_evidence=destination_cargo,
-            cargo_basis=str(value["cargo_basis"]),
-            trade_match_type=str(value["trade_match_type"]),
-            tons=value["tons"],
-            payload_band=str(value["payload_band"]),
-            rate_eur_per_km_ton=value["rate_eur_per_km_ton"],
-            created_at=value["created_at"],
-            expires_at=value["expires_at"],
-            mode=str(value["mode"]),
-            relationship_simulated=bool(value["relationship_simulated"]),
-        )
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize the stable public and persistence projection."""
-        return ContractOfferSnapshot(
-            id=self.id,
-            market_model=self.market_model,
-            cargo_system=self.cargo_system,
-            origin=self.origin,
-            destination=self.destination,
-            shipper_name=self.shipper_name,
-            consignee_name=self.consignee_name,
-            cargo=self.cargo,
-            origin_cargo_evidence=self.origin_cargo_evidence,
-            destination_cargo_evidence=self.destination_cargo_evidence,
-            cargo_basis=self.cargo_basis,
-            trade_match_type=self.trade_match_type,
-            tons=self.tons,
-            payload_band=self.payload_band,
-            rate_eur_per_km_ton=self.rate_eur_per_km_ton,
-            created_at=self.created_at,
-            expires_at=self.expires_at,
-            mode=self.mode,
-            relationship_simulated=self.relationship_simulated,
-        ).to_dict()
-
     def is_available(self, now: float, market_model: str) -> bool:
         """Require the current market model and a non-expired offer."""
         require_finite(now, "Current time")
         return (
             self.market_model == market_model
             and self.created_at <= now < self.expires_at
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalContractSnapshot:
+    """Agreed transport facts, independent of today's playable market."""
+
+    id: str
+    origin: FacilityLocationSnapshot
+    destination: FacilityLocationSnapshot
+    shipper_name: str
+    consignee_name: str
+    cargo: NhmProduct | DocumentedCargo
+    tons: float
+    created_at: float
+    expires_at: float
+    mode: str
+    relationship_simulated: bool
+    cargo_basis: str
+    payload_band: str
+    rate_eur_per_km_ton: float
+    market_model: str | None = None
+    cargo_system: str | None = None
+    origin_cargo_evidence: FacilityNhmProfile | None = None
+    destination_cargo_evidence: FacilityNhmProfile | None = None
+    trade_match_type: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate saved terms without imposing a newer cargo taxonomy."""
+        require_identity(self.id, "Historical contract ID")
+        require_finite(self.tons, "Tonnage", 0.01)
+        require_finite(self.rate_eur_per_km_ton, "Freight rate")
+        require_finite(self.created_at, "Creation")
+        require_finite(self.expires_at, "Expiry")
+        if (
+            self.expires_at <= self.created_at
+            or self.origin.facility_uid == self.destination.facility_uid
+        ):
+            raise ValueError("Invalid historical contract terms.")
+        if isinstance(self.cargo, NhmProduct):
+            if (
+                self.origin_cargo_evidence is None
+                or self.destination_cargo_evidence is None
+            ):
+                raise ValueError("Historical NHM cargo needs its evidence.")
+            if self.cargo.code not in {
+                self.origin_cargo_evidence.product.code,
+                self.destination_cargo_evidence.product.code,
+            }:
+                raise ValueError(
+                    "Historical NHM code conflicts with evidence."
+                )
+        elif (
+            self.origin_cargo_evidence is not None
+            or self.destination_cargo_evidence is not None
+        ):
+            raise ValueError("Documented goods cannot acquire NHM evidence.")
+
+    @classmethod
+    def from_offer(cls, offer: ContractOffer) -> "HistoricalContractSnapshot":
+        """Freeze accepted terms without inheriting the offer lifecycle."""
+        return cls(
+            id=offer.id,
+            origin=offer.origin,
+            destination=offer.destination,
+            shipper_name=offer.shipper_name,
+            consignee_name=offer.consignee_name,
+            cargo=offer.cargo,
+            tons=offer.tons,
+            created_at=offer.created_at,
+            expires_at=offer.expires_at,
+            mode=offer.mode,
+            relationship_simulated=offer.relationship_simulated,
+            cargo_basis=offer.cargo_basis,
+            payload_band=offer.payload_band,
+            rate_eur_per_km_ton=offer.rate_eur_per_km_ton,
+            market_model=offer.market_model,
+            cargo_system=offer.cargo_system,
+            origin_cargo_evidence=offer.origin_cargo_evidence,
+            destination_cargo_evidence=offer.destination_cargo_evidence,
+            trade_match_type=offer.trade_match_type,
         )

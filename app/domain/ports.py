@@ -1,9 +1,9 @@
 """Provider interfaces consumed by application services."""
 
-from collections.abc import Callable
-from typing import Any, Protocol
+from typing import Protocol
 
-from app.domain.models import RouteResult, VehicleModel
+from app.domain.transports import RouteSnapshot
+from app.domain.vehicles import VehicleModel
 from app.domain.world import WorldSnapshot
 
 
@@ -24,7 +24,7 @@ class TruckRouter(Protocol):
         origin_lon: float,
         destination_lat: float,
         destination_lon: float,
-    ) -> RouteResult:
+    ) -> RouteSnapshot:
         """Route one truck trip."""
         ...
 
@@ -42,23 +42,4 @@ class WorldCatalogue(Protocol):
 
     def read(self) -> "WorldSnapshot":
         """Return validated identities, endpoints and provenance."""
-        ...
-
-
-class WorldMaintenanceStore(Protocol):
-    """Offline atomic reference maintenance boundary."""
-
-    def upgrade(self, entries: list[dict[str, Any]]) -> None:
-        """Preserve identity and reject incomplete upgrades."""
-        ...
-
-
-class WorldStateStore(Protocol):
-    """Atomic transformation boundary for existing player records."""
-
-    def transform(
-        self,
-        convert: Callable[[dict[str, Any]], dict[str, Any]],
-    ) -> int:
-        """Apply the complete transformation or preserve all prior records."""
         ...

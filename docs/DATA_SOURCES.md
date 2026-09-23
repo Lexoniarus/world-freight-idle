@@ -6,15 +6,15 @@ aktuell noch kein Satellitenprovider integriert.
 
 | Daten | Aktuelle Quelle | Verwendung / Grenze |
 | --- | --- | --- |
-| Referenzunternehmen / Facilities / Adressen | `data/world_freight_company_facility_mvp.sqlite3`, Schema 3.0.0 | 83 Unternehmen, 155 Facilities; keine Spielerunternehmen |
+| Referenzunternehmen / Facilities / Adressen | `data/world_freight_company_facility_mvp.sqlite3`, Schema 4.0.0 | 109 Unternehmen, 352 Facilities; keine Spielerunternehmen |
 | Koordinaten | gespeicherte Quellen und `facility_geocoding_evidence` | 352 routbar; 79 verifiziert, 273 ausdrücklich für die Simulation geschätzt |
 | Lkw-Straßenroute | Valhalla / OpenStreetMap | Geometrie, Kilometer und Fahrzeit |
 | Basiskarte | OpenStreetMap Standard via MapLibre GL JS | Rastertiles; Straßen, Orte, Gebäude und POIs; keine Routingquelle |
-| Fahrzeugmodelle | `data/world_freight_vehicle_catalog.sqlite3`, Schema 2.0.0 | acht Modelle, sieben Hersteller, technische Quellen in `sources`/`vehicle_sources` |
+| Fahrzeugmodelle | `data/world_freight_vehicle_catalog.sqlite3`, Schema 2.0.0 | 14 Modelle, acht Hersteller, technische Quellen in `sources`/`vehicle_sources` |
 | Fahrzeug-Spielwerte | `vehicle_balance` im Katalog | fiktive Preise, Nutzlast, Reputation und Kilometerkosten; keine realen Angebote |
 | NHM-Waren und Facility-Verhalten | `nhm_codes`, `facility_nhm_profiles`, `facility_handled_goods_nhm` | 15.099 NHM-Codes; belegte und transparent derived IN/OUT/BOTH-Profile; keine generische Standardfracht |
 | Beziehungen, Mengen und Aufträge | MarketGenerator, `app/simulation.py` | simulierte Einzelereignisse; DB-nutzlastabhängige Mengen, 0,18 €/km/t |
-| Vergütung / Betriebskosten | PricingService | balanciertes Spielmodell |
+| Vergütung / Betriebskosten | calculate_price | balanciertes Spielmodell |
 
 Eurostat, GLEIF, FAF, UN Comtrade, OurAirports und SeaRoute sind mögliche
 spätere Live-Quellen aus GOAL.md. Quellenreferenzen der gelieferten Datenbank
@@ -33,7 +33,8 @@ Herkunfts-/Lizenzmetadaten pro Datensatz.
 
 ## WorldCatalogue: aufbereiteter Referenzstand
 
-Die gelieferte v2-Datei wurde nach SQLite-Backup auf v3 erweitert. UUIDs werden
+Die Referenzdatei wurde nach SQLite-Backup von v3 auf das normalisierte
+Schema v4 in einer neuen Datei überführt. UUIDs werden
 einmalig gespeichert. Originalreferenzen und Bildmetadaten bleiben erhalten;
 Facility-Fotos werden in dieser Phase nicht als UI-Funktion eingeführt.
 Nominatim dient ausschließlich Kandidatensuche beim Offline-Enrichment.
@@ -58,3 +59,12 @@ Der Datenstand ist eine kuratierte Referenz, kein Live-Nachweis aktueller
 Geschäftsbeziehungen oder Wareneingänge. Keine allgemeine Freigabe fremder
 Bilder/Marken und keine vollständige rechtliche Prüfung für öffentlichen Betrieb.
 Technische Regeln und Migration: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).
+
+
+Geografie-Normalisierung (Schema 4.0.0): Die versionierte Zuordnung in
+`docs/data/world-geography-v4.json` erhält vorhandene Company-/Facility-UUIDs,
+Koordinaten, Waren und Quellen. Sie ergänzt administrative Stadtidentitäten
+und lesbare Länderbezeichnungen. Die Zuordnung ist keine zusätzliche Quelle
+für verifizierte Koordinaten; die bisherige Evidence-Klassifikation bleibt
+unverändert. Das alte Referenzschema wird nur vom expliziten Offline-Werkzeug
+zur Erstellung einer neuen Katalogdatei gelesen.

@@ -17,8 +17,9 @@
 - Ruff und Formatter laufen im Quality Gate. Lange Testbeschreibungen sind
   von E501 ausgenommen; Core-Code hat keine solche Ausnahme.
 - mypy prüft Core und Einstiegspunkt, verlangt annotierte Funktionen und
-  prüft auch Funktionskörper. Vollständig typisierte statt dynamischer
-  JSON-Spielzustände sind eine spätere Verbesserung; kein Strict-Mode-Anspruch.
+  prüft auch Funktionskörper. Spielzustände und Use-Case-Ergebnisse sind
+  typisierte Domainobjekte. JSON entsteht ausschließlich an technischen
+  Grenzen; kein Strict-Mode-Anspruch.
 - Pylance und Pyright verwenden verbindlich `[tool.pyright]` in pyproject.toml:
   `standard`, Python 3.11, Prüfung aller app-/tests-/scripts-Dateien und main.py.
   Das überschreibt einen globalen Editor-Strict-Modus nur für dieses Projekt.
@@ -75,13 +76,15 @@ entbindet öffentliche Komponenten nicht von ihren Parameterverträgen.
   Cleanup darf das Schließen weiterer Ressourcen nicht verhindern.
 - CLI-Programme verarbeiten Eingaben und orchestrieren. SQL gehört in Repositories,
   Spielvalidierung in Services, konkrete Abhängigkeiten in den Composition Root.
-  Die lokale Profilpflege erhält Repository, Katalog und Store-Factory injiziert.
+  Die lokale Profilpflege erhält Account-Port, Katalog und eine Factory für
+  spielerbezogene Units of Work injiziert.
 - Ein Backup muss vor Profilmutationen erfolgreich abgeschlossen sein. Bestehende
   Backupdateien werden nicht überschrieben. Wartungslogik unter app unterliegt
   ebenfalls dem Function-Test-Manifest und 100 % Core-Statement-Coverage.
 - Nach externen Await-Punkten werden auch veränderliche Fahrzeugkostensätze für
   den Start erneut gelesen und kalkuliert, bevor das Guthaben geprüft wird.
-- Das Profilpflege-CLI ist zusätzlich zu Core und Einstiegspunkt in mypy enthalten.
+- Profilpflege, Katalognormalisierung und Offline-Spielstandimport sind zusätzlich
+  zu Core und Einstiegspunkt in mypy enthalten.
 
 WorldCatalogue-Regeln: Domain-Port und unveränderliche Referenzmodelle, SQL
 ausschließlich im Repository, konkrete Verdrahtung im Composition Root.
@@ -89,3 +92,11 @@ Game-Core/MarketGenerator importieren weder SQL noch Katalogadapter oder
 Seed-Daten. UUIDs und vollständige Snapshots sichern historische Aufträge.
 Neue konkrete Core-Callables, einschließlich Pflege/Migration, unterliegen
 Manifest, explizitem Gegentest, Pyright/mypy und 100 % Statement-Coverage.
+
+Die Laufzeit besitzt genau einen relationalen Persistenzweg. Domainobjekte
+kennen weder KV-Schlüssel noch SQL oder Persistenzserialisierung. Historische
+Snapshots sind unveränderliche Werte; Repository und API besitzen getrennte
+Mappings für ihre jeweils unterschiedlichen Dokumentverträge. Legacy-Formate
+dürfen ausschließlich im expliziten Offline-Importer gelesen werden.
+World-Scopes sind unveränderliche Filteransichten auf normalisierte Referenzen;
+Companies werden nicht künstlich einer Stadt untergeordnet.

@@ -7,18 +7,18 @@ import pytest
 
 from app.providers import geocoding as module
 from app.providers.geocoding import GeocodingError, NominatimGeocoder
-from app.repositories.sqlite_store import SqliteStore
+from app.repositories.provider_cache import SqliteProviderCache
 
 
 @pytest.mark.asyncio
-async def test_geocode_uses_persistent_cache(store: SqliteStore):
-    store.put_geocode("cached", 1.0, 2.0, "Cached Address")
+async def test_geocode_uses_persistent_cache(cache: SqliteProviderCache):
+    cache.put_geocode("cached", 1.0, 2.0, "Cached Address")
 
     async def handler(_request):
         raise AssertionError("network should not be called")
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-    geocoder = NominatimGeocoder(store, client, "https://n.test", "agent", 0)
+    geocoder = NominatimGeocoder(cache, client, "https://n.test", "agent", 0)
     try:
         assert await geocoder.geocode("cached") == (1.0, 2.0, "Cached Address")
     finally:
@@ -26,7 +26,7 @@ async def test_geocode_uses_persistent_cache(store: SqliteStore):
 
 
 @pytest.mark.asyncio
-async def test_geocode_calls_nominatim_and_caches(store: SqliteStore):
+async def test_geocode_calls_nominatim_and_caches(cache: SqliteProviderCache):
     seen = {}
 
     async def handler(request):
@@ -38,7 +38,7 @@ async def test_geocode_calls_nominatim_and_caches(store: SqliteStore):
         )
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-    geocoder = NominatimGeocoder(store, client, "https://n.test", "agent", 0)
+    geocoder = NominatimGeocoder(cache, client, "https://n.test", "agent", 0)
     try:
         result = await geocoder.geocode("Berlin test")
     finally:
@@ -46,16 +46,16 @@ async def test_geocode_calls_nominatim_and_caches(store: SqliteStore):
     assert result == (52.5, 13.4, "Berlin")
     assert "q=Berlin+test" in seen["query"]
     assert seen["headers"]["user-agent"] == "agent"
-    assert store.get_geocode("Berlin test") is not None
+    assert cache.get_geocode("Berlin test") is not None
 
 
 @pytest.mark.asyncio
-async def test_geocode_raises_for_no_result(store: SqliteStore):
+async def test_geocode_raises_for_no_result(cache: SqliteProviderCache):
     async def handler(_request):
         return httpx.Response(200, json=[])
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-    geocoder = NominatimGeocoder(store, client, "https://n.test", "agent", 0)
+    geocoder = NominatimGeocoder(cache, client, "https://n.test", "agent", 0)
     try:
         with pytest.raises(GeocodingError):
             await geocoder.geocode("nowhere")
@@ -65,12 +65,12 @@ async def test_geocode_raises_for_no_result(store: SqliteStore):
 
 @pytest.mark.asyncio
 async def test_respect_rate_limit_sleeps_remaining_time(
-    monkeypatch, store: SqliteStore
+    monkeypatch, cache: SqliteProviderCache
 ):
     client = httpx.AsyncClient(
         transport=httpx.MockTransport(lambda _r: httpx.Response(200))
     )
-    geocoder = NominatimGeocoder(store, client, "https://n.test", "agent", 1.0)
+    geocoder = NominatimGeocoder(cache, client, "https://n.test", "agent", 1.0)
     geocoder._last_request_monotonic = 9.5
     monkeypatch.setattr(module.time, "monotonic", lambda: 10.0)
     slept = []

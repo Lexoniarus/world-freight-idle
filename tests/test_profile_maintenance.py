@@ -5,54 +5,56 @@ import json
 import sqlite3
 import sys
 from contextlib import closing
-from dataclasses import replace
+from dataclasses import asdict, replace
 from unittest.mock import patch
 
 import pytest
 
+from app.api.v1.game_projection import (
+    project_contract,
+    project_player,
+    project_transport,
+    project_vehicle,
+)
 from app.bootstrap import (
     build_player_service,
     build_profile_maintenance_service,
 )
+from app.domain.game import OwnedVehicle, PlayerState
+from app.domain.world_scopes import WorldScope
 from app.repositories.accounts import AccountRepository
 from app.repositories.database_backup import backup_database
 from scripts.update_test_profile import main, parse_assignments
 from tests.test_api import make_settings
 from tests.test_game import first_berlin_contract
+from tests.transport_fixtures import add_transport
 
 
 def test_profile_update_preserves_other_players_and_trip_snapshots(
-    game, catalogue, tmp_path
+    database, runtime, game, catalogue, tmp_path
 ):
     service = build_profile_maintenance_service(
         replace(
             make_settings(tmp_path),
-            db_path=game.store.path,
+            db_path=database.path,
             vehicle_catalogue_path=catalogue.path,
         )
     )
 
-    accounts = AccountRepository(game.store)
+    accounts = AccountRepository(database)
     user = accounts.create_user("Selected", "not-a-real-hash")
-    selected = build_player_service(game, user["id"])
+    selected = build_player_service(runtime, user["id"])
     other = accounts.create_user("Untouched", "not-a-real-hash")
-    other_game = build_player_service(game, other["id"])
-    selected.store.set_json(
-        "active_trips",
-        [
-            {
-                "id": "trip",
-                "vehicle_id": "truck_01",
-                "contract": {"tons": 24},
-                "payout_eur": 123,
-                "arrives_at": 9999999999,
-            }
-        ],
-    )
-    before = selected.store.get_json("active_trips")
-    other_before = other_game.store.get_json("player")
+    other_game = build_player_service(runtime, other["id"])
+    add_transport(selected, payout=123, arrives_at=9999999999, tons=24)
+    before = [
+        asdict(item)
+        for item in selected.state_repository.list_transports()
+        if item.status == "active"
+    ]
+    other_before = project_player(other_game._get_player())
     backup = tmp_path / "backup.db"
-    backup_database(game.store.path, backup)
+    backup_database(database.path, backup)
     assert backup.exists()
     for _ in range(2):
         result = service.update_profile(
@@ -61,16 +63,25 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
             175000,
         )
         assert result["cash"] == 175000
-    assert selected.store.get_json("active_trips") == before
-    assert selected.get_vehicle("truck_01")["model_id"] == "iveco_sway_500"
-    assert other_game.store.get_json("player") == other_before
-    selected.store.set_json("player", {**other_before, "cash": 12345})
+    assert [
+        asdict(item)
+        for item in selected.state_repository.list_transports()
+        if item.status == "active"
+    ] == before
+    assert (
+        project_vehicle(selected.get_vehicle("truck_01"))["model_id"]
+        == "iveco_sway_500"
+    )
+    assert project_player(other_game._get_player()) == other_before
+    selected.state_repository.save_player(
+        PlayerState(**{**other_before, "cash": 12345})
+    )
     service.update_profile(
         "Selected",
         {"truck_01": "iveco_sway_500"},
         None,
     )
-    assert selected.store.get_json("player")["cash"] == 12345
+    assert selected._get_player().cash == 12345
     with pytest.raises(ValueError):
         service.update_profile(
             "Selected",
@@ -83,19 +94,19 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
             {"truck_01": "mercedes_eactros_600"},
             1,
         )
-    assert selected.store.get_json("player")["cash"] == 12345
+    assert selected._get_player().cash == 12345
 
 
 @pytest.fixture
-def maintenance(game, catalogue, tmp_path):
+def maintenance(database, runtime, game, catalogue, tmp_path):
     settings = replace(
         make_settings(tmp_path),
-        db_path=game.store.path,
+        db_path=database.path,
         vehicle_catalogue_path=catalogue.path,
     )
-    accounts = AccountRepository(game.store)
+    accounts = AccountRepository(database)
     user = accounts.create_user("Selected", "test-hash")
-    selected = build_player_service(game, user["id"])
+    selected = build_player_service(runtime, user["id"])
     service = build_profile_maintenance_service(settings)
     return settings, service, selected, accounts
 
@@ -116,8 +127,11 @@ def maintenance(game, catalogue, tmp_path):
 def test_maintenance_validation_preserves_state(maintenance, failure):
     _, service, selected, accounts = maintenance
     before = (
-        selected.store.get_json("vehicles"),
-        selected.store.get_json("player"),
+        [
+            project_vehicle(item)
+            for item in selected.state_repository.list_vehicles()
+        ],
+        project_player(selected._get_player()),
     )
     username = "Selected"
     assignments = {"truck_01": "man_tgx_520"}
@@ -138,8 +152,11 @@ def test_maintenance_validation_preserves_state(maintenance, failure):
     with pytest.raises(ValueError):
         service.update_profile(username, assignments, cash)
     assert (
-        selected.store.get_json("vehicles"),
-        selected.store.get_json("player"),
+        [
+            project_vehicle(item)
+            for item in selected.state_repository.list_vehicles()
+        ],
+        project_player(selected._get_player()),
     ) == before
 
 
@@ -147,35 +164,43 @@ def test_maintenance_write_failure_rolls_back_and_retains_unselected(
     maintenance,
 ):
     _, service, selected, _ = maintenance
-    vehicles = selected.store.get_json("vehicles")
-    hamburg = selected.world.read().get_facility("hamburg_cta")
-    vehicles[0].update(
-        status="enroute",
-        hub_id=hamburg.facility_uid,
-        facility_uid=hamburg.facility_uid,
-        location_snapshot=hamburg.location_snapshot().to_dict(),
+    vehicle = selected.state_repository.list_vehicles()[0]
+    hamburg = WorldScope(selected.world.read()).facility("hamburg_cta")
+    vehicle.start_trip()
+    vehicle.arrive(hamburg.location_snapshot())
+    vehicle.start_trip()
+    other = OwnedVehicle(
+        "other",
+        "Untouched",
+        vehicle.mode,
+        vehicle.capacity_tons,
+        hamburg.facility_uid,
+        "enroute",
+        model_id=vehicle.model_id,
+        operating_cost_eur_per_km=vehicle.operating_cost_eur_per_km,
+        location=hamburg.location_snapshot(),
     )
-    vehicles.append({**vehicles[0], "id": "other", "name": "Untouched"})
-    selected.store.set_json("vehicles", vehicles)
-    store = selected.store
-    service.player_store_factory = lambda user_id: store
-    before = store.get_json("player")
-    original = store.set_json
-
-    def fail_player(key, value):
-        if key == "player":
-            raise RuntimeError("disk write failed")
-        original(key, value)
-
-    with patch.object(store, "set_json", side_effect=fail_player):
+    vehicles = [project_vehicle(vehicle), project_vehicle(other)]
+    selected.state_repository.save_vehicle(vehicle)
+    selected.state_repository.save_vehicle(other)
+    repository = selected.state_repository
+    service.player_unit_of_work_factory = lambda user_id: selected.unit_of_work
+    before = project_player(repository.get_player())
+    with patch.object(
+        repository,
+        "save_player",
+        side_effect=RuntimeError("disk write failed"),
+    ):
         with pytest.raises(RuntimeError):
             service.update_profile(
                 "Selected", {"truck_01": "man_tgx_520"}, 123
             )
-    assert store.get_json("vehicles") == vehicles
-    assert store.get_json("player") == before
+    assert [
+        project_vehicle(item) for item in repository.list_vehicles()
+    ] == vehicles
+    assert project_player(repository.get_player()) == before
     result = service.update_profile("selected", {"truck_01": "man_tgx_520"})
-    after = store.get_json("vehicles")
+    after = [project_vehicle(item) for item in repository.list_vehicles()]
     assert after[1] == vehicles[1]
     assert (
         after[0]["status"] == "enroute"
@@ -243,7 +268,10 @@ def test_cli_backs_up_before_mutation_and_preserves_cash(
     )
     if cash is not None:
         sys.argv.extend(["--cash", str(cash)])
-    before = selected.store.get_json("vehicles")
+    before = [
+        project_vehicle(item)
+        for item in selected.state_repository.list_vehicles()
+    ]
     with patch(
         "scripts.update_test_profile.Settings.from_env", return_value=settings
     ):
@@ -252,11 +280,14 @@ def test_cli_backs_up_before_mutation_and_preserves_cash(
     assert result["cash"] == (175000 if cash is None else cash)
     with closing(sqlite3.connect(result["backup"])) as db:
         stored = db.execute(
-            "SELECT value FROM kv WHERE key=?",
-            (selected.store.namespace + "vehicles",),
-        ).fetchone()
-    assert json.loads(stored[0]) == before
-    assert selected.store.get_json("vehicles")[0]["model_id"] == "man_tgx_520"
+            "SELECT vehicle_id, model_id FROM owned_vehicles "
+            "WHERE user_id = (SELECT id FROM users WHERE username='Selected')"
+        ).fetchall()
+    assert stored == [(item["id"], item["model_id"]) for item in before]
+    assert [
+        project_vehicle(item)
+        for item in selected.state_repository.list_vehicles()
+    ][0]["model_id"] == "man_tgx_520"
 
 
 def test_cli_backup_failure_never_constructs_mutation_service(
@@ -323,9 +354,11 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
 
     game.router.route = delayed_route
     before = 285 if limited_cash else 175000
-    player = game.store.get_json("player")
-    game.store.set_json("player", {**player, "cash": before})
-    game.refresh_market(force=True)
+    player = project_player(game._get_player())
+    game.state_repository.save_player(
+        PlayerState(**{**player, "cash": before})
+    )
+    [project_contract(value) for value in game.refresh_market(force=True)]
     contract = first_berlin_contract(game)
     task = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
     await asyncio.wait_for(route_started.wait(), 2)
@@ -336,12 +369,9 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
     if limited_cash:
         with pytest.raises(ValueError, match="Nicht genug"):
             await task
-        assert game.store.get_json("active_trips") == []
-        assert game.store.get_json("player")["cash"] == before
+        assert game.state_repository.list_transports() == ()
+        assert game._get_player().cash == before
     else:
-        trip = await task
+        trip = project_transport(await task)
         assert trip["operating_cost_eur"] == round(80 + 400 * 0.53)
-        assert (
-            game.store.get_json("player")["cash"]
-            == before - trip["operating_cost_eur"]
-        )
+        assert game._get_player().cash == before - trip["operating_cost_eur"]

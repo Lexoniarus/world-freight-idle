@@ -15,3 +15,19 @@ class RoutingError(RuntimeError):
 
 class WorldCatalogueError(CatalogueError):
     """World reference data is unavailable or incompatible."""
+
+
+class PersistenceError(RuntimeError):
+    """The persistence adapter could not safely read or write state."""
+
+
+class UnsupportedGameSchema(PersistenceError):
+    """Normal runtime refuses an old, incomplete or unknown state schema."""
+
+
+class DuplicateAccountError(ValueError):
+    """An account name is already assigned, including registration races."""
+
+
+class AmbiguousWorldReference(ValueError):
+    """A name identifies multiple references within the selected scope."""
