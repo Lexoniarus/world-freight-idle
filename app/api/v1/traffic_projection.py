@@ -3,6 +3,7 @@
 import colorsys
 import hashlib
 import logging
+from dataclasses import asdict
 from typing import Any
 
 from app.domain.read_ports import SharedTransport
@@ -25,6 +26,10 @@ def project_traffic(
     """Project live traffic as public JSON and record its traceable counts."""
     traffic = [
         {
+            "journey": {
+                "distance_km": row.distance_km,
+                "segments": [asdict(part) for part in row.segments],
+            },
             "id": row.id,
             "vehicle_id": row.vehicle_id,
             "model_id": row.model_id,

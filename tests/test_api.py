@@ -37,6 +37,9 @@ class FakeGame:
             journey=unmetered_journey((self.route).distance_km, (21) - (1)),
         )
 
+    def now(self):
+        return 1
+
     def dashboard(self):
         return GameSnapshot(
             1, 1, PlayerState(1, 0, 0), (self.vehicle,), (self.trip,)

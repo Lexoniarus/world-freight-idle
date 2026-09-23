@@ -71,9 +71,9 @@ def legacy_source(tmp_path, game):
     )
     state = {
         "player": {"cash": 123456, "completed": 37, "reputation": 41},
-        "vehicles": [project_vehicle(vehicle)],
+        "vehicles": [legacy_vehicle_projection(vehicle)],
         "contracts": [project_contract(offer), project_contract(expired)],
-        "active_trips": [project_transport(trip)],
+        "active_trips": [legacy_transport_projection(trip)],
     }
     password_hash = PasswordHasher().hash_password("fixture-password-42")
     path = tmp_path / "legacy.db"
@@ -182,11 +182,11 @@ def test_offline_import_preserves_profiles_history_and_settles_once(
         assert player.completed == 37
         trip = repository.list_transports()[0]
         assert trip.status == "active" and trip.is_due(now)
-        assert without_city_uids(project_transport(trip)) == without_city_uids(
-            state["active_trips"][0]
-        )
         assert without_city_uids(
-            project_vehicle(repository.list_vehicles()[0])
+            legacy_transport_projection(trip)
+        ) == without_city_uids(state["active_trips"][0])
+        assert without_city_uids(
+            legacy_vehicle_projection(repository.list_vehicles()[0])
         ) == without_city_uids(state["vehicles"][0])
     runtime = GameRuntime(
         database,
@@ -640,3 +640,21 @@ def test_global_demo_exclusion_requires_explicit_choice(
     update_legacy(path, "user:a:world_state_version", 2)
     with pytest.raises(PersistenceError):
         explicit.inspect(now)
+
+
+def legacy_vehicle_projection(vehicle):
+    """Build only pre-energy fields for the explicit old-format fixture."""
+    return {
+        key: value
+        for key, value in project_vehicle(vehicle).items()
+        if key not in {"energy", "energy_level", "top_speed_kmh"}
+    }
+
+
+def legacy_transport_projection(trip):
+    """Build the pre-energy transport contract, excluding new projections."""
+    return {
+        key: value
+        for key, value in project_transport(trip).items()
+        if key not in {"journey", "progress"}
+    }

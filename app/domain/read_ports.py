@@ -1,7 +1,7 @@
 """Typed public projections independent of account and game write models."""
 
 from dataclasses import dataclass
-from typing import Protocol, TypedDict
+from typing import Literal, Protocol, TypedDict
 
 
 class RankingEntry(TypedDict):
@@ -9,6 +9,17 @@ class RankingEntry(TypedDict):
 
     username: str
     completed: int
+
+
+@dataclass(frozen=True, slots=True)
+class MovementSegment:
+    """Public phase and geometry timing, without energy or economic values."""
+
+    phase: Literal["driving", "refuelling", "charging"]
+    starts_at: float
+    ends_at: float
+    start_km: float
+    end_km: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +35,8 @@ class SharedTransport:
     departed_at: float
     arrives_at: float
     coordinates: tuple[tuple[float, float], ...]
+    distance_km: float
+    segments: tuple[MovementSegment, ...]
 
 
 class LeaderboardReader(Protocol):

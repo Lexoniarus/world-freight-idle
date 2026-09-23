@@ -477,3 +477,10 @@ FUNCTION_TESTS.update(
         "app.repositories.energy_upgrade.VehicleEnergyUpgradeRepository._verify_inventory": "test_energy_upgrade_reconciliation_failure_removes_target",
     }
 )
+
+FUNCTION_TESTS.update(
+    {
+        "app.services.game.GameService._calculate_quote": "test_energy_quote_dispatch_pause_and_offline_settlement",
+        "app.api.v1.game_projection.project_fleet": "test_energy_quote_dispatch_pause_and_offline_settlement",
+    }
+)

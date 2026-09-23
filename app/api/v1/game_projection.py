@@ -62,9 +62,22 @@ def project_contract(
     }
 
 
-def project_vehicle(vehicle: OwnedVehicle) -> dict[str, Any]:
+def project_vehicle(
+    vehicle: OwnedVehicle,
+    trip: ActiveTransport | None = None,
+    now: float | None = None,
+) -> dict[str, Any]:
     """Expose owned model values and the saved public facility location."""
     result: dict[str, Any] = {
+        "energy": asdict(vehicle.energy),
+        "energy_level": (
+            trip.progress_at(now).energy_level
+            if trip is not None
+            and now is not None
+            and trip.journey.energy is not None
+            else vehicle.energy_level
+        ),
+        "top_speed_kmh": vehicle.top_speed_kmh,
         "id": vehicle.id,
         "name": vehicle.name,
         "mode": vehicle.mode,
@@ -88,6 +101,26 @@ def project_vehicle(vehicle: OwnedVehicle) -> dict[str, Any]:
 def project_quote(quote: ContractQuote) -> dict[str, Any]:
     """Expose the selected vehicle, historical endpoints and real route."""
     return {
+        "journey": asdict(quote.journey) if quote.journey else None,
+        "energy_consumption": (
+            quote.journey.energy.consumption_for(quote.route.distance_km)
+            if quote.journey and quote.journey.energy
+            else None
+        ),
+        "energy_stop_count": quote.journey.stop_count
+        if quote.journey
+        else None,
+        "driving_seconds": quote.journey.driving_seconds
+        if quote.journey
+        else None,
+        "pause_seconds": (
+            quote.journey.duration_seconds - quote.journey.driving_seconds
+            if quote.journey
+            else None
+        ),
+        "total_duration_seconds": quote.journey.duration_seconds
+        if quote.journey
+        else None,
         "distance_km": quote.route.distance_km,
         "duration_seconds": quote.route.duration_seconds,
         "route_geojson": {
@@ -104,9 +137,14 @@ def project_quote(quote: ContractQuote) -> dict[str, Any]:
     }
 
 
-def project_transport(trip: ActiveTransport) -> dict[str, Any]:
+def project_transport(
+    trip: ActiveTransport,
+    now: float | None = None,
+) -> dict[str, Any]:
     """Expose tracking without leaking persistence lifecycle columns."""
     return {
+        "journey": asdict(trip.journey),
+        "progress": asdict(trip.progress_at(now)) if now is not None else None,
         "id": trip.id,
         "vehicle_id": trip.vehicle_id,
         "contract": project_contract(trip.contract),
@@ -131,13 +169,16 @@ def project_transport(trip: ActiveTransport) -> dict[str, Any]:
 
 def project_state(state: GameSnapshot) -> dict[str, Any]:
     """Expose the complete state for an explicitly requested full read."""
-    vehicles = [project_vehicle(item) for item in state.vehicles]
+    vehicles = project_fleet(state)
     return {
         "server_time": state.server_time,
         "time_scale": state.time_scale,
         "player": project_player(state.player),
         "vehicles": vehicles,
-        "active_trips": [project_transport(item) for item in state.transports],
+        "active_trips": [
+            project_transport(item, state.server_time)
+            for item in state.transports
+        ],
         "contracts": [project_contract(item) for item in state.contracts],
         "hubs": [item["hub"] for item in vehicles],
     }
@@ -153,8 +194,11 @@ def project_dashboard(state: GameSnapshot) -> dict[str, Any]:
         "idle_vehicles": sum(item.status == "idle" for item in state.vehicles),
         "active_transports": len(state.transports),
         "featured_contracts": [],
-        "vehicles": [project_vehicle(item) for item in state.vehicles],
-        "transports": [project_transport(item) for item in state.transports],
+        "vehicles": project_fleet(state),
+        "transports": [
+            project_transport(item, state.server_time)
+            for item in state.transports
+        ],
     }
 
 
@@ -186,3 +230,12 @@ def project_nhm_profile(profile: FacilityNhmProfile) -> dict[str, Any]:
         "priority_score": profile.priority_score,
         "source": asdict(profile.source) if profile.source else None,
     }
+
+
+def project_fleet(state: GameSnapshot) -> list[dict[str, Any]]:
+    """Project current energy without mutating persisted departure levels."""
+    trips = {trip.vehicle_id: trip for trip in state.transports}
+    return [
+        project_vehicle(vehicle, trips.get(vehicle.id), state.server_time)
+        for vehicle in state.vehicles
+    ]

@@ -1,6 +1,6 @@
 """Public traffic read model over relational dispatch records."""
 
-from app.domain.read_ports import SharedTransport
+from app.domain.read_ports import MovementSegment, SharedTransport
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import load_transport_record
 
@@ -42,4 +42,15 @@ def project_traffic_row(row: dict) -> SharedTransport:
         departed_at=trip.departed_at,
         arrives_at=trip.arrives_at,
         coordinates=trip.route.coordinates,
+        distance_km=trip.journey.distance_km,
+        segments=tuple(
+            MovementSegment(
+                part.phase,
+                part.starts_at,
+                part.ends_at,
+                part.start_km,
+                part.end_km,
+            )
+            for part in trip.journey.segments
+        ),
     )
