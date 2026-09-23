@@ -1,0 +1,944 @@
+{
+  "baseline_commit": "f82cd51593fb074a2d6426f17b29d84f5ac78619",
+  "description": "Captured before reorganization; usage and hashes are the independent visual baseline. reference means currently unused view, part, variant or sheet, not necessarily original raw artwork.",
+  "files": [
+    {
+      "original_path": "assets/daf_xg_plus_480_front.svg",
+      "model_id": "daf_xg_plus_480",
+      "usage": "front",
+      "target_path": "assets/vehicles/daf_xg_plus_480/front.svg",
+      "sha256": "59d7b5e2ade71cf1e1c9b14f4a103d2d22df76e069d8dbc7dce33ddf227e94a6"
+    },
+    {
+      "original_path": "assets/daf_xg_plus_480_map.svg",
+      "model_id": "daf_xg_plus_480",
+      "usage": "map",
+      "target_path": "assets/vehicles/daf_xg_plus_480/map.svg",
+      "sha256": "1004210e1239106f5b853fd3b7235580a24e2a3afe6413ef3ea1a065fdfda784"
+    },
+    {
+      "original_path": "assets/daf_xg_plus_480_mx13_brandfree.svg",
+      "model_id": "daf_xg_plus_480",
+      "usage": "reference",
+      "target_path": "assets/vehicles/daf_xg_plus_480/source/daf_xg_plus_480_mx13_brandfree.svg",
+      "sha256": "d64e222b5b6c4260ac4e8133bcd9904a73506e2c6e9c6cb91848273212162f47"
+    },
+    {
+      "original_path": "assets/daf_xg_plus_480_rear_tractor.svg",
+      "model_id": "daf_xg_plus_480",
+      "usage": "reference",
+      "target_path": "assets/vehicles/daf_xg_plus_480/source/daf_xg_plus_480_rear_tractor.svg",
+      "sha256": "4ea450f89200aec1c93951a43fb9059395c4916d003b4e84e8b97001f307b3fb"
+    },
+    {
+      "original_path": "assets/daf_xg_plus_480_sheet.svg",
+      "model_id": "daf_xg_plus_480",
+      "usage": "reference",
+      "target_path": "assets/vehicles/daf_xg_plus_480/source/daf_xg_plus_480_sheet.svg",
+      "sha256": "0753f71a473a30ec2b8c87aa29808115062d2b5934ee611d50f60873c1290794"
+    },
+    {
+      "original_path": "assets/daf_xg_plus_480_side_left.svg",
+      "model_id": "daf_xg_plus_480",
+      "usage": "side",
+      "target_path": "assets/vehicles/daf_xg_plus_480/side-left.svg",
+      "sha256": "0abb7e12c5d22838f15c4c6787f62555529683d0554327806832f6046ec289db"
+    },
+    {
+      "original_path": "assets/daf_xg_plus_480_top_complete.svg",
+      "model_id": "daf_xg_plus_480",
+      "usage": "reference",
+      "target_path": "assets/vehicles/daf_xg_plus_480/source/daf_xg_plus_480_top_complete.svg",
+      "sha256": "e0153a29c6289ac574c20134734d1e153df6ca1e604343eb128ad4ba1d3832e3"
+    },
+    {
+      "original_path": "assets/daf_xg_plus_480_top_tractor_unit.svg",
+      "model_id": "daf_xg_plus_480",
+      "usage": "reference",
+      "target_path": "assets/vehicles/daf_xg_plus_480/source/daf_xg_plus_480_top_tractor_unit.svg",
+      "sha256": "ba93a4a2250f70ce9e3626eb5160129d57513795f2270523b548a16973d28b37"
+    },
+    {
+      "original_path": "assets/daf_xg_plus_480_top_trailer.svg",
+      "model_id": "daf_xg_plus_480",
+      "usage": "reference",
+      "target_path": "assets/vehicles/daf_xg_plus_480/source/daf_xg_plus_480_top_trailer.svg",
+      "sha256": "d03b66b5a1559db334632f17e9f7cec74d2497b91562e871fb14b41b7a4f472f"
+    },
+    {
+      "original_path": "assets/iveco_daily_35s18_front.svg",
+      "model_id": "iveco_daily_35s18",
+      "usage": "front",
+      "target_path": "assets/vehicles/iveco_daily_35s18/front.svg",
+      "sha256": "803ce1356d9dcbc7b95b5883dd3dd92d8d1c4a08f523035570b991974f9f32e1"
+    },
+    {
+      "original_path": "assets/iveco_daily_35s18_map.svg",
+      "model_id": "iveco_daily_35s18",
+      "usage": "map",
+      "target_path": "assets/vehicles/iveco_daily_35s18/map.svg",
+      "sha256": "e7d56355067b5d79086e99290a6a73917ab933f8e5a7f9752122b679ee78136a"
+    },
+    {
+      "original_path": "assets/iveco_daily_35s18_rear.svg",
+      "model_id": "iveco_daily_35s18",
+      "usage": "reference",
+      "target_path": "assets/vehicles/iveco_daily_35s18/source/iveco_daily_35s18_rear.svg",
+      "sha256": "029e07550261a13748219932990c4f6c71e2e93968e755f619d88f770fa4aead"
+    },
+    {
+      "original_path": "assets/iveco_daily_35s18_sheet.svg",
+      "model_id": "iveco_daily_35s18",
+      "usage": "reference",
+      "target_path": "assets/vehicles/iveco_daily_35s18/source/iveco_daily_35s18_sheet.svg",
+      "sha256": "8931ac09c35240f8e6c15a2f4deed255e4d8f64a1ab59fb5c29a8737bce9b447"
+    },
+    {
+      "original_path": "assets/iveco_daily_35s18_side_left.svg",
+      "model_id": "iveco_daily_35s18",
+      "usage": "side",
+      "target_path": "assets/vehicles/iveco_daily_35s18/side-left.svg",
+      "sha256": "7b131b6e2111a00d869639dd38f7057e4e585fad47246b03f49933df4643939c"
+    },
+    {
+      "original_path": "assets/iveco_daily_35s18_side_right.svg",
+      "model_id": "iveco_daily_35s18",
+      "usage": "reference",
+      "target_path": "assets/vehicles/iveco_daily_35s18/source/iveco_daily_35s18_side_right.svg",
+      "sha256": "fbf9090c70aec56ad8ffdbc4f2aa0ac749051bb38845147129e2c95ba327479a"
+    },
+    {
+      "original_path": "assets/iveco_daily_35s18_top_closed.svg",
+      "model_id": "iveco_daily_35s18",
+      "usage": "reference",
+      "target_path": "assets/vehicles/iveco_daily_35s18/source/iveco_daily_35s18_top_closed.svg",
+      "sha256": "ad82570baca50917086e7ba4411991c7af070230c26039413a5b8f5f1aeb779a"
+    },
+    {
+      "original_path": "assets/iveco_daily_35s18_top_complete.svg",
+      "model_id": "iveco_daily_35s18",
+      "usage": "reference",
+      "target_path": "assets/vehicles/iveco_daily_35s18/source/iveco_daily_35s18_top_complete.svg",
+      "sha256": "bc06da260cc0cd9d87eccca56e19312840643432d059f0d38acec2b694da254d"
+    },
+    {
+      "original_path": "assets/iveco_s_way_500_xc13_brandfree.svg",
+      "model_id": "iveco_sway_500",
+      "usage": "reference",
+      "target_path": "assets/vehicles/iveco_sway_500/source/iveco_s_way_500_xc13_brandfree.svg",
+      "sha256": "016ac0f9175c268f6963dcdabe02cdc85c4666259b0ce3e5866ccda3630b65f3"
+    },
+    {
+      "original_path": "assets/iveco_s_way_500_xc13_front.svg",
+      "model_id": "iveco_sway_500",
+      "usage": "reference",
+      "target_path": "assets/vehicles/iveco_sway_500/source/iveco_s_way_500_xc13_front.svg",
+      "sha256": "c3b9b0d0214e62ea3a4e4833bba6191bab8568613274ce217f9b5f712711cda5"
+    },
+    {
+      "original_path": "assets/iveco_s_way_500_xc13_map.svg",
+      "model_id": "iveco_sway_500",
+      "usage": "map",
+      "target_path": "assets/vehicles/iveco_sway_500/map.svg",
+      "sha256": "4048e1af5afd4fb2fe0d26adacad40455bd672380609fe0b08a215865ed5cfd6"
+    },
+    {
+      "original_path": "assets/iveco_s_way_500_xc13_rear_tractor.svg",
+      "model_id": "iveco_sway_500",
+      "usage": "reference",
+      "target_path": "assets/vehicles/iveco_sway_500/source/iveco_s_way_500_xc13_rear_tractor.svg",
+      "sha256": "5802a7011a6db4a36c41a7c9b7a3d63af2f30c3f633853115638f5fd31016a4c"
+    },
+    {
+      "original_path": "assets/iveco_s_way_500_xc13_rear_trailer.svg",
+      "model_id": "iveco_sway_500",
+      "usage": "reference",
+      "target_path": "assets/vehicles/iveco_sway_500/source/iveco_s_way_500_xc13_rear_trailer.svg",
+      "sha256": "aa9b87fa5fb093f102d08eb4ef6890ba53a122f3b1bfe946e4ee8b2242e9cb55"
+    },
+    {
+      "original_path": "assets/iveco_s_way_500_xc13_sheet.svg",
+      "model_id": "iveco_sway_500",
+      "usage": "reference",
+      "target_path": "assets/vehicles/iveco_sway_500/source/iveco_s_way_500_xc13_sheet.svg",
+      "sha256": "bc16493907fb49885b51a867b56c0628037c34906af3f7a055dbc2c2dddce01d"
+    },
+    {
+      "original_path": "assets/iveco_s_way_500_xc13_top_complete.svg",
+      "model_id": "iveco_sway_500",
+      "usage": "reference",
+      "target_path": "assets/vehicles/iveco_sway_500/source/iveco_s_way_500_xc13_top_complete.svg",
+      "sha256": "1b290dc81bc1df06e1a1949c817a19f992fc6a7297076c154769dd43c9c8ecb1"
+    },
+    {
+      "original_path": "assets/iveco_s_way_500_xc13_top_tractor_unit.svg",
+      "model_id": "iveco_sway_500",
+      "usage": "reference",
+      "target_path": "assets/vehicles/iveco_sway_500/source/iveco_s_way_500_xc13_top_tractor_unit.svg",
+      "sha256": "db2387e4834580025ede8c934618f0c8499eddd1f83c3e7e38ae1b19a11ea164"
+    },
+    {
+      "original_path": "assets/iveco_s_way_500_xc13_top_trailer.svg",
+      "model_id": "iveco_sway_500",
+      "usage": "reference",
+      "target_path": "assets/vehicles/iveco_sway_500/source/iveco_s_way_500_xc13_top_trailer.svg",
+      "sha256": "ab39982e40512fc320950def690026f2c9e6fbfb679f03df80d4b9cd94f42a6e"
+    },
+    {
+      "original_path": "assets/iveco_sway_500_front.svg",
+      "model_id": "iveco_sway_500",
+      "usage": "front",
+      "target_path": "assets/vehicles/iveco_sway_500/front.svg",
+      "sha256": "8ac5cddc50a30b175d43076c2c5ab2265cf4fff5470327e7695ef6d598fc1bc3"
+    },
+    {
+      "original_path": "assets/iveco_sway_500_side_left.svg",
+      "model_id": "iveco_sway_500",
+      "usage": "side",
+      "target_path": "assets/vehicles/iveco_sway_500/side-left.svg",
+      "sha256": "b9be7153ffcdddb2686f4669715026a08540623e86f429c77153761ed47d8e3e"
+    },
+    {
+      "original_path": "assets/man_tgl_12_250_front.svg",
+      "model_id": "man_tgl_12_250",
+      "usage": "front",
+      "target_path": "assets/vehicles/man_tgl_12_250/front.svg",
+      "sha256": "d23dc6e83cdbd770af66893fa02a12e461e12717d2c6d9e5bb4edc3d188b98e6"
+    },
+    {
+      "original_path": "assets/man_tgl_12_250_map.svg",
+      "model_id": "man_tgl_12_250",
+      "usage": "map",
+      "target_path": "assets/vehicles/man_tgl_12_250/map.svg",
+      "sha256": "472c9b87806221f1783463fa3510a3ab055e7ada071c1f03c7497f0877031f13"
+    },
+    {
+      "original_path": "assets/man_tgl_12_250_rear_box.svg",
+      "model_id": "man_tgl_12_250",
+      "usage": "reference",
+      "target_path": "assets/vehicles/man_tgl_12_250/source/man_tgl_12_250_rear_box.svg",
+      "sha256": "65f97bd58aa63daaadb45b039441af463f51e455b45f5c6c203c7070874371e8"
+    },
+    {
+      "original_path": "assets/man_tgl_12_250_sheet.svg",
+      "model_id": "man_tgl_12_250",
+      "usage": "reference",
+      "target_path": "assets/vehicles/man_tgl_12_250/source/man_tgl_12_250_sheet.svg",
+      "sha256": "d04f0a06a8bdcb0068f28256320430936433d55af1c480889f4f34bb4afd97fa"
+    },
+    {
+      "original_path": "assets/man_tgl_12_250_side_left.svg",
+      "model_id": "man_tgl_12_250",
+      "usage": "side",
+      "target_path": "assets/vehicles/man_tgl_12_250/side-left.svg",
+      "sha256": "46a83ab33d571d71fddb5d454d4a7abaaf8e1954a6cb36ef525ce79387162af6"
+    },
+    {
+      "original_path": "assets/man_tgl_12_250_side_right.svg",
+      "model_id": "man_tgl_12_250",
+      "usage": "reference",
+      "target_path": "assets/vehicles/man_tgl_12_250/source/man_tgl_12_250_side_right.svg",
+      "sha256": "7338fc0f3b5dd2938c327e8d7c4d74c47ef69f16b088a95cb459e00157a6177c"
+    },
+    {
+      "original_path": "assets/man_tgl_12_250_top_complete.svg",
+      "model_id": "man_tgl_12_250",
+      "usage": "reference",
+      "target_path": "assets/vehicles/man_tgl_12_250/source/man_tgl_12_250_top_complete.svg",
+      "sha256": "d262d5483872fd320fa26d7d9ab7d1f77c547d91ad7634f1ade01cae27c6f9c3"
+    },
+    {
+      "original_path": "assets/man_tgl_12_250_top_tractor_unit.svg",
+      "model_id": "man_tgl_12_250",
+      "usage": "reference",
+      "target_path": "assets/vehicles/man_tgl_12_250/source/man_tgl_12_250_top_tractor_unit.svg",
+      "sha256": "d2a8ceaa92183bc8c08439f501423090aac47566905db262f482ac5d2e5e1fac"
+    },
+    {
+      "original_path": "assets/man_tgx_520_d3066_brandfree.svg",
+      "model_id": "man_tgx_520",
+      "usage": "reference",
+      "target_path": "assets/vehicles/man_tgx_520/source/man_tgx_520_d3066_brandfree.svg",
+      "sha256": "b71ceef6600f4e53e754ab9d1057110f9e81e200299b3373c95c12ea75b93bf7"
+    },
+    {
+      "original_path": "assets/man_tgx_520_d3066_front.svg",
+      "model_id": "man_tgx_520",
+      "usage": "reference",
+      "target_path": "assets/vehicles/man_tgx_520/source/man_tgx_520_d3066_front.svg",
+      "sha256": "c819ecdcd55df54db1384c2b9af12b12f9171538da93b9c6989b47c557dbfcf1"
+    },
+    {
+      "original_path": "assets/man_tgx_520_d3066_map.svg",
+      "model_id": "man_tgx_520",
+      "usage": "map",
+      "target_path": "assets/vehicles/man_tgx_520/map.svg",
+      "sha256": "4a62e641f830e9343631f3b51002f857e8a08d692204fc960ea0ac8f1506814c"
+    },
+    {
+      "original_path": "assets/man_tgx_520_d3066_rear_tractor.svg",
+      "model_id": "man_tgx_520",
+      "usage": "reference",
+      "target_path": "assets/vehicles/man_tgx_520/source/man_tgx_520_d3066_rear_tractor.svg",
+      "sha256": "bce3505e1e2ae257f5e9ceb5e56fe1bb1cd3979cde8fbd550ff67bdb1f495f28"
+    },
+    {
+      "original_path": "assets/man_tgx_520_d3066_sheet.svg",
+      "model_id": "man_tgx_520",
+      "usage": "reference",
+      "target_path": "assets/vehicles/man_tgx_520/source/man_tgx_520_d3066_sheet.svg",
+      "sha256": "1c321967c1e0617e6538de48e3dcd5768fbcbae8d4f6b0d218512efd3151fb8f"
+    },
+    {
+      "original_path": "assets/man_tgx_520_d3066_top_complete.svg",
+      "model_id": "man_tgx_520",
+      "usage": "reference",
+      "target_path": "assets/vehicles/man_tgx_520/source/man_tgx_520_d3066_top_complete.svg",
+      "sha256": "57acc00d9ceb296d7267775d7046a1ab89efc5ac4787ed19cef40916cb1a3cd8"
+    },
+    {
+      "original_path": "assets/man_tgx_520_d3066_top_tractor_unit.svg",
+      "model_id": "man_tgx_520",
+      "usage": "reference",
+      "target_path": "assets/vehicles/man_tgx_520/source/man_tgx_520_d3066_top_tractor_unit.svg",
+      "sha256": "8889817d1393967f323baffe0c90653dc5d19ce0333dbabf6307201b9989b1af"
+    },
+    {
+      "original_path": "assets/man_tgx_520_d3066_top_trailer.svg",
+      "model_id": "man_tgx_520",
+      "usage": "reference",
+      "target_path": "assets/vehicles/man_tgx_520/source/man_tgx_520_d3066_top_trailer.svg",
+      "sha256": "556a31d3a1771d418a2d32dd7a5ff492ff91e29bdb2f3ce7de28f3d553096e5b"
+    },
+    {
+      "original_path": "assets/man_tgx_520_front.svg",
+      "model_id": "man_tgx_520",
+      "usage": "front",
+      "target_path": "assets/vehicles/man_tgx_520/front.svg",
+      "sha256": "5c7c17f4b861419fe24eb657a0b8d6f8516ca5ebbb5f606c90cca80e02b7990a"
+    },
+    {
+      "original_path": "assets/man_tgx_520_side_left.svg",
+      "model_id": "man_tgx_520",
+      "usage": "side",
+      "target_path": "assets/vehicles/man_tgx_520/side-left.svg",
+      "sha256": "2490d44fcf53f78e40a8be2a3c19b3b2d4ba56fcdeffec43418f19479572c204"
+    },
+    {
+      "original_path": "assets/mercedes_actros_l_380_front.svg",
+      "model_id": "mercedes_actros_l_380",
+      "usage": "front",
+      "target_path": "assets/vehicles/mercedes_actros_l_380/front.svg",
+      "sha256": "111f0be6c30e46abeb566762c7e78cb2b45f2618403aea4752856eded4703c3f"
+    },
+    {
+      "original_path": "assets/mercedes_actros_l_380_side_left.svg",
+      "model_id": "mercedes_actros_l_380",
+      "usage": "side",
+      "target_path": "assets/vehicles/mercedes_actros_l_380/side-left.svg",
+      "sha256": "85bb244fbc90ed9bc70ebc61a6495572fe4e5f649f316b8e9bd0f4b7e559c146"
+    },
+    {
+      "original_path": "assets/mercedes_atego_1224_l_front.svg",
+      "model_id": "mercedes_atego_1224_l",
+      "usage": "front",
+      "target_path": "assets/vehicles/mercedes_atego_1224_l/front.svg",
+      "sha256": "0448c5e63361e631f8cc46b67a5cc6e88c83e7316007b75b970d461641f8e705"
+    },
+    {
+      "original_path": "assets/mercedes_atego_1224_l_map.svg",
+      "model_id": "mercedes_atego_1224_l",
+      "usage": "map",
+      "target_path": "assets/vehicles/mercedes_atego_1224_l/map.svg",
+      "sha256": "5f902b4541e6bd82eb990e94a54678ae8a52b5a36b2b76a15d30fc4622653d8c"
+    },
+    {
+      "original_path": "assets/mercedes_atego_1224_l_rear_box.svg",
+      "model_id": "mercedes_atego_1224_l",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_atego_1224_l/source/mercedes_atego_1224_l_rear_box.svg",
+      "sha256": "0328117876d330cc1a39f8cb37ad65b779c1bc768bbb066b4cee11693409c281"
+    },
+    {
+      "original_path": "assets/mercedes_atego_1224_l_sheet.svg",
+      "model_id": "mercedes_atego_1224_l",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_atego_1224_l/source/mercedes_atego_1224_l_sheet.svg",
+      "sha256": "dd084b1c50b1a3c779b85b7a5d1b881ef8fcff8b75c5ed67fed1f928d95299cd"
+    },
+    {
+      "original_path": "assets/mercedes_atego_1224_l_side_left.svg",
+      "model_id": "mercedes_atego_1224_l",
+      "usage": "side",
+      "target_path": "assets/vehicles/mercedes_atego_1224_l/side-left.svg",
+      "sha256": "97e93d8ef46fcad83a7fb4229e1da9083dd54198e108c862dbb9750a3f46e3b9"
+    },
+    {
+      "original_path": "assets/mercedes_atego_1224_l_side_right.svg",
+      "model_id": "mercedes_atego_1224_l",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_atego_1224_l/source/mercedes_atego_1224_l_side_right.svg",
+      "sha256": "5eda28c70fe7bdf4bcb4ed247964f914b4cd453341f8412247e8f0e4fcf053aa"
+    },
+    {
+      "original_path": "assets/mercedes_atego_1224_l_top_complete.svg",
+      "model_id": "mercedes_atego_1224_l",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_atego_1224_l/source/mercedes_atego_1224_l_top_complete.svg",
+      "sha256": "05d229de8c46a6c9ef5362176ed8fe9122a4d05a54e14732981203e14cc5083d"
+    },
+    {
+      "original_path": "assets/mercedes_atego_1224_l_top_tractor_unit.svg",
+      "model_id": "mercedes_atego_1224_l",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_atego_1224_l/source/mercedes_atego_1224_l_top_tractor_unit.svg",
+      "sha256": "88fbc9b4c47b61316f7b7e1657cfbd41188ad55c740e20f0d8eda7017c377e5b"
+    },
+    {
+      "original_path": "assets/mercedes_atego_818_l_front.svg",
+      "model_id": "mercedes_atego_818_l",
+      "usage": "front",
+      "target_path": "assets/vehicles/mercedes_atego_818_l/front.svg",
+      "sha256": "a7c26236f29d08663f34fd7657776ba218468dd1bda2173a601b1040482bfce9"
+    },
+    {
+      "original_path": "assets/mercedes_atego_818_l_map.svg",
+      "model_id": "mercedes_atego_818_l",
+      "usage": "map",
+      "target_path": "assets/vehicles/mercedes_atego_818_l/map.svg",
+      "sha256": "222f7dfafbc5be97ca35950e6d1a8012dae0e35be88a453ea6145fca9708a023"
+    },
+    {
+      "original_path": "assets/mercedes_atego_818_l_rear_box.svg",
+      "model_id": "mercedes_atego_818_l",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_atego_818_l/source/mercedes_atego_818_l_rear_box.svg",
+      "sha256": "f08b12fff37708af18db564d99e62e2d9987ed2462461e0817098f61599ef9bf"
+    },
+    {
+      "original_path": "assets/mercedes_atego_818_l_sheet.svg",
+      "model_id": "mercedes_atego_818_l",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_atego_818_l/source/mercedes_atego_818_l_sheet.svg",
+      "sha256": "21572e4c46cbe213c9e52caf333d4399f4d7a9cea9b63c4b5f94737e982e7089"
+    },
+    {
+      "original_path": "assets/mercedes_atego_818_l_side_left.svg",
+      "model_id": "mercedes_atego_818_l",
+      "usage": "side",
+      "target_path": "assets/vehicles/mercedes_atego_818_l/side-left.svg",
+      "sha256": "4a753b15f0d5746d915ceb6dedb6b1fc9f97c9e4c6353c2abc359735f2b5d460"
+    },
+    {
+      "original_path": "assets/mercedes_atego_818_l_side_right.svg",
+      "model_id": "mercedes_atego_818_l",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_atego_818_l/source/mercedes_atego_818_l_side_right.svg",
+      "sha256": "2db60808eb5d7dfdab2f3f639ff6c13b7651181caf0669ec7311dbb8e7684b98"
+    },
+    {
+      "original_path": "assets/mercedes_atego_818_l_top_complete.svg",
+      "model_id": "mercedes_atego_818_l",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_atego_818_l/source/mercedes_atego_818_l_top_complete.svg",
+      "sha256": "5b535d9e7991f557b3dd493d8ed2f2bdfe73227b03ce66ce414b88c49e7ffe0a"
+    },
+    {
+      "original_path": "assets/mercedes_atego_818_l_top_tractor_unit.svg",
+      "model_id": "mercedes_atego_818_l",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_atego_818_l/source/mercedes_atego_818_l_top_tractor_unit.svg",
+      "sha256": "fea7f929616668d7faa06acc426c57854583c5aa14c4cc7b12f4540004412924"
+    },
+    {
+      "original_path": "assets/mercedes_benz_actros_l_om473_380kw_brandfree.svg",
+      "model_id": "mercedes_actros_l_380",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_actros_l_380/source/mercedes_benz_actros_l_om473_380kw_brandfree.svg",
+      "sha256": "842d2e1e177929959595dde2227a8e70eed956face5b7ed2dd063e3b242dde25"
+    },
+    {
+      "original_path": "assets/mercedes_benz_actros_l_om473_380kw_front.svg",
+      "model_id": "mercedes_actros_l_380",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_actros_l_380/source/mercedes_benz_actros_l_om473_380kw_front.svg",
+      "sha256": "33916fb51c32d9a102df7b46271afe6bb0bdcf074a37b24ad2660dfb5810a902"
+    },
+    {
+      "original_path": "assets/mercedes_benz_actros_l_om473_380kw_map.svg",
+      "model_id": "mercedes_actros_l_380",
+      "usage": "map",
+      "target_path": "assets/vehicles/mercedes_actros_l_380/map.svg",
+      "sha256": "c0364f06f8e41ae4ebba79df21601406179e143820098e7b02976bc253b804ea"
+    },
+    {
+      "original_path": "assets/mercedes_benz_actros_l_om473_380kw_rear_tractor.svg",
+      "model_id": "mercedes_actros_l_380",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_actros_l_380/source/mercedes_benz_actros_l_om473_380kw_rear_tractor.svg",
+      "sha256": "71537e6d7c1f6ec8aba75725f341b89cdb68253b5f23740cc7d387ab5ad72d16"
+    },
+    {
+      "original_path": "assets/mercedes_benz_actros_l_om473_380kw_sheet.svg",
+      "model_id": "mercedes_actros_l_380",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_actros_l_380/source/mercedes_benz_actros_l_om473_380kw_sheet.svg",
+      "sha256": "06a75a1a5ec7941c12c970a2366f8f132f08f56bbe4687ae50d7ca09b61861f4"
+    },
+    {
+      "original_path": "assets/mercedes_benz_actros_l_om473_380kw_top_complete.svg",
+      "model_id": "mercedes_actros_l_380",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_actros_l_380/source/mercedes_benz_actros_l_om473_380kw_top_complete.svg",
+      "sha256": "be573fa110c423c4e88ea89b3ea7aa0a1faccce1e4811cf1771efab67b921793"
+    },
+    {
+      "original_path": "assets/mercedes_benz_actros_l_om473_380kw_top_tractor_unit.svg",
+      "model_id": "mercedes_actros_l_380",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_actros_l_380/source/mercedes_benz_actros_l_om473_380kw_top_tractor_unit.svg",
+      "sha256": "7d0da2cd16ba6621d1c879365f42d1560602b10562d590f654fd04fad6cacdf6"
+    },
+    {
+      "original_path": "assets/mercedes_benz_actros_l_om473_380kw_top_trailer.svg",
+      "model_id": "mercedes_actros_l_380",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_actros_l_380/source/mercedes_benz_actros_l_om473_380kw_top_trailer.svg",
+      "sha256": "aa18171b2196fb3af6e74b22ce22e064ef0a1f2e8bb2b7a454787d09ef1328de"
+    },
+    {
+      "original_path": "assets/mercedes_benz_eactros_600_3pack_lfp_brandfree.svg",
+      "model_id": "mercedes_eactros_600",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_eactros_600/source/mercedes_benz_eactros_600_3pack_lfp_brandfree.svg",
+      "sha256": "a0ab2779bde121548f5dd20873c84454820a1c6d1aecb28c1c2b6e2800377160"
+    },
+    {
+      "original_path": "assets/mercedes_benz_eactros_600_3pack_lfp_front.svg",
+      "model_id": "mercedes_eactros_600",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_eactros_600/source/mercedes_benz_eactros_600_3pack_lfp_front.svg",
+      "sha256": "b7b3c5ce36673e842e4f01173de6f8e3687d53d13f3ef503e7b5372ff0150c27"
+    },
+    {
+      "original_path": "assets/mercedes_benz_eactros_600_3pack_lfp_map.svg",
+      "model_id": "mercedes_eactros_600",
+      "usage": "map",
+      "target_path": "assets/vehicles/mercedes_eactros_600/map.svg",
+      "sha256": "49d81836f5b4828a588d486c9b9337192c6a04a7136f0601215fb2f88051aac7"
+    },
+    {
+      "original_path": "assets/mercedes_benz_eactros_600_3pack_lfp_rear_tractor.svg",
+      "model_id": "mercedes_eactros_600",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_eactros_600/source/mercedes_benz_eactros_600_3pack_lfp_rear_tractor.svg",
+      "sha256": "2bb92ac6191d1ba2b7117db0a28be560eab343608e9e4197f295f7d45081c2ff"
+    },
+    {
+      "original_path": "assets/mercedes_benz_eactros_600_3pack_lfp_rear_trailer.svg",
+      "model_id": "mercedes_eactros_600",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_eactros_600/source/mercedes_benz_eactros_600_3pack_lfp_rear_trailer.svg",
+      "sha256": "3915172138820750ac060ddf719621afa871fb76c1dfa2737939908f1f138656"
+    },
+    {
+      "original_path": "assets/mercedes_benz_eactros_600_3pack_lfp_sheet.svg",
+      "model_id": "mercedes_eactros_600",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_eactros_600/source/mercedes_benz_eactros_600_3pack_lfp_sheet.svg",
+      "sha256": "16d861c557e18cdf907102bd4244c6b909d30eb2faba39e026c4ac7bec037c06"
+    },
+    {
+      "original_path": "assets/mercedes_benz_eactros_600_3pack_lfp_top_complete.svg",
+      "model_id": "mercedes_eactros_600",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_eactros_600/source/mercedes_benz_eactros_600_3pack_lfp_top_complete.svg",
+      "sha256": "cffd40b0405f6d173145957d1ce3421014dbfcd056b86a39afd39cfeffc8e0f8"
+    },
+    {
+      "original_path": "assets/mercedes_benz_eactros_600_3pack_lfp_top_tractor_unit.svg",
+      "model_id": "mercedes_eactros_600",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_eactros_600/source/mercedes_benz_eactros_600_3pack_lfp_top_tractor_unit.svg",
+      "sha256": "e83c7003ca9c9aa14fa4bc0426c551d896e24d8cbd3138f5ff6eb9d3d81f3a34"
+    },
+    {
+      "original_path": "assets/mercedes_benz_eactros_600_3pack_lfp_top_trailer.svg",
+      "model_id": "mercedes_eactros_600",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_eactros_600/source/mercedes_benz_eactros_600_3pack_lfp_top_trailer.svg",
+      "sha256": "48d688c8fbdc3386d944551d3fc050053308830495ed03193ae0562a6afe6951"
+    },
+    {
+      "original_path": "assets/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_brandfree.svg",
+      "model_id": "mercedes_sprinter_317_cdi",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_sprinter_317_cdi/source/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_brandfree.svg",
+      "sha256": "d8f5b9cc9664f2701b65b0ddeba035f37d286ffa6f8d4c3e13a3e1e339d5860a"
+    },
+    {
+      "original_path": "assets/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_front.svg",
+      "model_id": "mercedes_sprinter_317_cdi",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_sprinter_317_cdi/source/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_front.svg",
+      "sha256": "5c81c83136090d1878aacad9da20d65fbee59bbb4ae28a2690abaaa2e55bced7"
+    },
+    {
+      "original_path": "assets/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_map.svg",
+      "model_id": "mercedes_sprinter_317_cdi",
+      "usage": "map",
+      "target_path": "assets/vehicles/mercedes_sprinter_317_cdi/map.svg",
+      "sha256": "72a63f3863c8fef9b6d846a9a5752748b83435dff433aeb1c7be8066b9a861d2"
+    },
+    {
+      "original_path": "assets/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_rear.svg",
+      "model_id": "mercedes_sprinter_317_cdi",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_sprinter_317_cdi/source/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_rear.svg",
+      "sha256": "f1cdd203d0225a7ab291cdb3cc7f819a6ed6c0e460e1e3d5f12a275172d74a63"
+    },
+    {
+      "original_path": "assets/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_sheet.svg",
+      "model_id": "mercedes_sprinter_317_cdi",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_sprinter_317_cdi/source/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_sheet.svg",
+      "sha256": "263e687e89eccab19a70f613d3787f8f6943e2a26fdf625a083c1f516c390bfb"
+    },
+    {
+      "original_path": "assets/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_side_left.svg",
+      "model_id": "mercedes_sprinter_317_cdi",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_sprinter_317_cdi/source/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_side_left.svg",
+      "sha256": "9bbd0d8ab2336bfd31b0a800f2c41f11eaaa9434112f531e8567df03e6ddcdb3"
+    },
+    {
+      "original_path": "assets/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_top_closed.svg",
+      "model_id": "mercedes_sprinter_317_cdi",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_sprinter_317_cdi/source/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_top_closed.svg",
+      "sha256": "3c8febb63c7beb7fc8243f5dbfd04b8d283effdadfb9ba68d95e8368612f0ca4"
+    },
+    {
+      "original_path": "assets/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_top_open.svg",
+      "model_id": "mercedes_sprinter_317_cdi",
+      "usage": "reference",
+      "target_path": "assets/vehicles/mercedes_sprinter_317_cdi/source/mercedes_benz_sprinter_317_cdi_35t_l3h2_9g_tronic_top_open.svg",
+      "sha256": "f418f45b9ab6d2ff88767be9d1544cf657e6ce45a3033f23aea471bc15bf3a16"
+    },
+    {
+      "original_path": "assets/mercedes_eactros_600_front.svg",
+      "model_id": "mercedes_eactros_600",
+      "usage": "front",
+      "target_path": "assets/vehicles/mercedes_eactros_600/front.svg",
+      "sha256": "628ab7f51d60eda41e5dbada515e7e7102baa6808bf016d6d467b0076e5fc6a7"
+    },
+    {
+      "original_path": "assets/mercedes_eactros_600_side_left.svg",
+      "model_id": "mercedes_eactros_600",
+      "usage": "side",
+      "target_path": "assets/vehicles/mercedes_eactros_600/side-left.svg",
+      "sha256": "1231e36656107d3edf59243bb2e3423e31971b103644598d8c6e14fa33051889"
+    },
+    {
+      "original_path": "assets/mercedes_sprinter_317_cdi_front.svg",
+      "model_id": "mercedes_sprinter_317_cdi",
+      "usage": "front",
+      "target_path": "assets/vehicles/mercedes_sprinter_317_cdi/front.svg",
+      "sha256": "d1c8a567b347880a47559f3fff3019a30bd7264e09983176f4db0ae11d1cdf02"
+    },
+    {
+      "original_path": "assets/mercedes_sprinter_317_cdi_side_left.svg",
+      "model_id": "mercedes_sprinter_317_cdi",
+      "usage": "side",
+      "target_path": "assets/vehicles/mercedes_sprinter_317_cdi/side-left.svg",
+      "sha256": "2ddda5a69b6f0c2b6dfc245053716944e9e11728e222a14497231d30234da9c1"
+    },
+    {
+      "original_path": "assets/renault_t_high_520_front.svg",
+      "model_id": "renault_t_high_520",
+      "usage": "front",
+      "target_path": "assets/vehicles/renault_t_high_520/front.svg",
+      "sha256": "37224cf0e46de2316325ee78dae2006bd6225e61b545f82d323dd1339d7ced75"
+    },
+    {
+      "original_path": "assets/renault_t_high_520_side_left.svg",
+      "model_id": "renault_t_high_520",
+      "usage": "side",
+      "target_path": "assets/vehicles/renault_t_high_520/side-left.svg",
+      "sha256": "962f74d9e87fb4417ac824defe8de1fe6bbb600c4acf1a485e03dcae4ad26dbb"
+    },
+    {
+      "original_path": "assets/renault_trucks_t_high_520_de13_brandfree.svg",
+      "model_id": "renault_t_high_520",
+      "usage": "reference",
+      "target_path": "assets/vehicles/renault_t_high_520/source/renault_trucks_t_high_520_de13_brandfree.svg",
+      "sha256": "2cfa6ed74ba401df3c70fec9bc1679044c7f59099037c90186cb7d9b9cb37737"
+    },
+    {
+      "original_path": "assets/renault_trucks_t_high_520_de13_front.svg",
+      "model_id": "renault_t_high_520",
+      "usage": "reference",
+      "target_path": "assets/vehicles/renault_t_high_520/source/renault_trucks_t_high_520_de13_front.svg",
+      "sha256": "071ff09f953e3fd67dbdebd555db68e6d248152899ece7a30d5b272431c60557"
+    },
+    {
+      "original_path": "assets/renault_trucks_t_high_520_de13_map.svg",
+      "model_id": "renault_t_high_520",
+      "usage": "map",
+      "target_path": "assets/vehicles/renault_t_high_520/map.svg",
+      "sha256": "8131bf8e65435ff55ca7939c56aa9237bc165f59e30c2af56b76764aaf4834b9"
+    },
+    {
+      "original_path": "assets/renault_trucks_t_high_520_de13_rear_tractor.svg",
+      "model_id": "renault_t_high_520",
+      "usage": "reference",
+      "target_path": "assets/vehicles/renault_t_high_520/source/renault_trucks_t_high_520_de13_rear_tractor.svg",
+      "sha256": "8894cd0599d75e657d267ca663160156999cbd2103ce0314c4bdcd5bedc812da"
+    },
+    {
+      "original_path": "assets/renault_trucks_t_high_520_de13_sheet.svg",
+      "model_id": "renault_t_high_520",
+      "usage": "reference",
+      "target_path": "assets/vehicles/renault_t_high_520/source/renault_trucks_t_high_520_de13_sheet.svg",
+      "sha256": "f0332397d1b3c91d6ff0fb7f983fcecc54a36a097ec027b23a1a4bae83ef61f7"
+    },
+    {
+      "original_path": "assets/renault_trucks_t_high_520_de13_top_complete.svg",
+      "model_id": "renault_t_high_520",
+      "usage": "reference",
+      "target_path": "assets/vehicles/renault_t_high_520/source/renault_trucks_t_high_520_de13_top_complete.svg",
+      "sha256": "e290dc5a754d2d666c506c4cfb790dfa9e79101147672dae2db19503509037bf"
+    },
+    {
+      "original_path": "assets/renault_trucks_t_high_520_de13_top_tractor_unit.svg",
+      "model_id": "renault_t_high_520",
+      "usage": "reference",
+      "target_path": "assets/vehicles/renault_t_high_520/source/renault_trucks_t_high_520_de13_top_tractor_unit.svg",
+      "sha256": "d11c89b4600656048b22507220892215243c048597db38e8b75ad4c3eb1083d7"
+    },
+    {
+      "original_path": "assets/renault_trucks_t_high_520_de13_top_trailer.svg",
+      "model_id": "renault_t_high_520",
+      "usage": "reference",
+      "target_path": "assets/vehicles/renault_t_high_520/source/renault_trucks_t_high_520_de13_top_trailer.svg",
+      "sha256": "cb7d4f11535ce4045bb5a7d55477d6203c654982e18a55a0ec55c5bc7357f4a8"
+    },
+    {
+      "original_path": "assets/scania_r460_gas_cbg_lbg_brandfree.svg",
+      "model_id": "scania_r460_gas",
+      "usage": "reference",
+      "target_path": "assets/vehicles/scania_r460_gas/source/scania_r460_gas_cbg_lbg_brandfree.svg",
+      "sha256": "1413c68e3364100cd1efd15dfe1099daf66833f3a69b7a4ac4cda062f25ab80f"
+    },
+    {
+      "original_path": "assets/scania_r460_gas_front.svg",
+      "model_id": "scania_r460_gas",
+      "usage": "front",
+      "target_path": "assets/vehicles/scania_r460_gas/front.svg",
+      "sha256": "0d031cb5a9610cbdef4cf4ca4798806bbaab00cb3db3406a985fd5ecbe9e9642"
+    },
+    {
+      "original_path": "assets/scania_r460_gas_side_left.svg",
+      "model_id": "scania_r460_gas",
+      "usage": "side",
+      "target_path": "assets/vehicles/scania_r460_gas/side-left.svg",
+      "sha256": "6aec8e2356a45aa74640c8a5ca588141c6e411bf399657a09fe94a23e9be0cf9"
+    },
+    {
+      "original_path": "assets/scania_r_460_gas_cbg_lbg_front.svg",
+      "model_id": "scania_r460_gas",
+      "usage": "reference",
+      "target_path": "assets/vehicles/scania_r460_gas/source/scania_r_460_gas_cbg_lbg_front.svg",
+      "sha256": "d1e3f065ae168dd3c6790daabe05c7cbc38114f76d831d8a02ea25132ae4c4ff"
+    },
+    {
+      "original_path": "assets/scania_r_460_gas_cbg_lbg_map.svg",
+      "model_id": "scania_r460_gas",
+      "usage": "map",
+      "target_path": "assets/vehicles/scania_r460_gas/map.svg",
+      "sha256": "08618bf01367b208d3f32575fd39a47e26cc2c8bcba0c0c5dbe1fe55a691e733"
+    },
+    {
+      "original_path": "assets/scania_r_460_gas_cbg_lbg_rear_tractor.svg",
+      "model_id": "scania_r460_gas",
+      "usage": "reference",
+      "target_path": "assets/vehicles/scania_r460_gas/source/scania_r_460_gas_cbg_lbg_rear_tractor.svg",
+      "sha256": "973f7ad2ce5f4d652996abe24d3e8abc1238bc85594fdbcfa98c8905ea2d41ef"
+    },
+    {
+      "original_path": "assets/scania_r_460_gas_cbg_lbg_sheet.svg",
+      "model_id": "scania_r460_gas",
+      "usage": "reference",
+      "target_path": "assets/vehicles/scania_r460_gas/source/scania_r_460_gas_cbg_lbg_sheet.svg",
+      "sha256": "7455a677048a5f5064c737a871919baebd6cbd6f8803b7c8589ee03672e2cea2"
+    },
+    {
+      "original_path": "assets/scania_r_460_gas_cbg_lbg_top_complete.svg",
+      "model_id": "scania_r460_gas",
+      "usage": "reference",
+      "target_path": "assets/vehicles/scania_r460_gas/source/scania_r_460_gas_cbg_lbg_top_complete.svg",
+      "sha256": "c43c952f45f12ead116f42a4a332842b6af29039d8623a1451e91558e381d388"
+    },
+    {
+      "original_path": "assets/scania_r_460_gas_cbg_lbg_top_tractor_unit.svg",
+      "model_id": "scania_r460_gas",
+      "usage": "reference",
+      "target_path": "assets/vehicles/scania_r460_gas/source/scania_r_460_gas_cbg_lbg_top_tractor_unit.svg",
+      "sha256": "64cf06387c7d1b284cd6bc464bf1adc187084eb96b0884550226a00fafe1cfa7"
+    },
+    {
+      "original_path": "assets/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_front.svg",
+      "model_id": "vw_crafter_35_130kw",
+      "usage": "reference",
+      "target_path": "assets/vehicles/vw_crafter_35_130kw/source/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_front.svg",
+      "sha256": "5ab3137fb26c26959d07e7a8a6e9f8331522cf7e4c20579faaabd096cab5b972"
+    },
+    {
+      "original_path": "assets/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_map.svg",
+      "model_id": "vw_crafter_35_130kw",
+      "usage": "map",
+      "target_path": "assets/vehicles/vw_crafter_35_130kw/map.svg",
+      "sha256": "f608c1b0bfcd92d326f68a605e8e14c7042e1efee8ea8ebd25818d39ead53296"
+    },
+    {
+      "original_path": "assets/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_rear.svg",
+      "model_id": "vw_crafter_35_130kw",
+      "usage": "reference",
+      "target_path": "assets/vehicles/vw_crafter_35_130kw/source/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_rear.svg",
+      "sha256": "7be133613fbefc945097c15edbc135c6a7af6304f0f000996f724cd1711ed7b6"
+    },
+    {
+      "original_path": "assets/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_sheet.svg",
+      "model_id": "vw_crafter_35_130kw",
+      "usage": "reference",
+      "target_path": "assets/vehicles/vw_crafter_35_130kw/source/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_sheet.svg",
+      "sha256": "dd29fd4d06c6b0a63594eac0303d5924b15e82ff198536b3289936f256362894"
+    },
+    {
+      "original_path": "assets/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_side_left.svg",
+      "model_id": "vw_crafter_35_130kw",
+      "usage": "reference",
+      "target_path": "assets/vehicles/vw_crafter_35_130kw/source/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_side_left.svg",
+      "sha256": "7ac1ee903573dca400aa076ac00ccfd47e5f8aa28d8f3767a8fcc760ce195a2c"
+    },
+    {
+      "original_path": "assets/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_side_right.svg",
+      "model_id": "vw_crafter_35_130kw",
+      "usage": "reference",
+      "target_path": "assets/vehicles/vw_crafter_35_130kw/source/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_side_right.svg",
+      "sha256": "fc9870ff0d5585a1b90786a23e3c929d04e7501db827664c26ed46fbf5f1552c"
+    },
+    {
+      "original_path": "assets/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_top_closed.svg",
+      "model_id": "vw_crafter_35_130kw",
+      "usage": "reference",
+      "target_path": "assets/vehicles/vw_crafter_35_130kw/source/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_top_closed.svg",
+      "sha256": "ca82eb09645e485eceff00422e5637bede32fdc21dc2c60e55311ed731e32073"
+    },
+    {
+      "original_path": "assets/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_top_open.svg",
+      "model_id": "vw_crafter_35_130kw",
+      "usage": "reference",
+      "target_path": "assets/vehicles/vw_crafter_35_130kw/source/volkswagen_crafter_35_2_0_tdi_130kw_l3h3_top_open.svg",
+      "sha256": "15371b91ea2b999fe05a9134330d868a1ad21c016b0985837ef9ff5d10545675"
+    },
+    {
+      "original_path": "assets/volkswagen_nutzfahrzeuge_crafter_35_2_0_tdi_130kw_l3h3_brandfree.svg",
+      "model_id": "vw_crafter_35_130kw",
+      "usage": "reference",
+      "target_path": "assets/vehicles/vw_crafter_35_130kw/source/volkswagen_nutzfahrzeuge_crafter_35_2_0_tdi_130kw_l3h3_brandfree.svg",
+      "sha256": "9d51b7f5a51c27bd355423dce16124474b05d7c1c591ad2a75a07a06516076a1"
+    },
+    {
+      "original_path": "assets/volvo_fh_aero_500_isave_front.svg",
+      "model_id": "volvo_fh_aero_500_isave",
+      "usage": "front",
+      "target_path": "assets/vehicles/volvo_fh_aero_500_isave/front.svg",
+      "sha256": "8604a71dd979f87546f19730ac6d37a27df456805e1c20a201d5738ff8439763"
+    },
+    {
+      "original_path": "assets/volvo_fh_aero_500_isave_side_left.svg",
+      "model_id": "volvo_fh_aero_500_isave",
+      "usage": "side",
+      "target_path": "assets/vehicles/volvo_fh_aero_500_isave/side-left.svg",
+      "sha256": "089dfba073920f73f698299106f5092f969c5d5f9cfbab3042ff8c351ed3331b"
+    },
+    {
+      "original_path": "assets/volvo_trucks_fh_aero_500_i_save_brandfree.svg",
+      "model_id": "volvo_fh_aero_500_isave",
+      "usage": "reference",
+      "target_path": "assets/vehicles/volvo_fh_aero_500_isave/source/volvo_trucks_fh_aero_500_i_save_brandfree.svg",
+      "sha256": "5bfa5cb1dce9807c7a016a302e3f0de6eb09fe659ca37b566ef50224ff29253f"
+    },
+    {
+      "original_path": "assets/volvo_trucks_fh_aero_500_i_save_front.svg",
+      "model_id": "volvo_fh_aero_500_isave",
+      "usage": "reference",
+      "target_path": "assets/vehicles/volvo_fh_aero_500_isave/source/volvo_trucks_fh_aero_500_i_save_front.svg",
+      "sha256": "735cdc68bb268780d1f36fe069e32ed72a15f840bd2a384290b4f539f365d2a3"
+    },
+    {
+      "original_path": "assets/volvo_trucks_fh_aero_500_i_save_map.svg",
+      "model_id": "volvo_fh_aero_500_isave",
+      "usage": "map",
+      "target_path": "assets/vehicles/volvo_fh_aero_500_isave/map.svg",
+      "sha256": "f6a4faf50e34eaba868a963307764cdd1292905582c74eefa499c5ccf03b5a23"
+    },
+    {
+      "original_path": "assets/volvo_trucks_fh_aero_500_i_save_rear_tractor.svg",
+      "model_id": "volvo_fh_aero_500_isave",
+      "usage": "reference",
+      "target_path": "assets/vehicles/volvo_fh_aero_500_isave/source/volvo_trucks_fh_aero_500_i_save_rear_tractor.svg",
+      "sha256": "ae918e4993394f12fcce75ce7a0ae91b5e34b0a791db53dd6b28e42e45b759b6"
+    },
+    {
+      "original_path": "assets/volvo_trucks_fh_aero_500_i_save_rear_trailer.svg",
+      "model_id": "volvo_fh_aero_500_isave",
+      "usage": "reference",
+      "target_path": "assets/vehicles/volvo_fh_aero_500_isave/source/volvo_trucks_fh_aero_500_i_save_rear_trailer.svg",
+      "sha256": "f350d5b74a3e3cc7239e285de8bc640b7dfe9b71d468bb2d56958eae07639ef8"
+    },
+    {
+      "original_path": "assets/volvo_trucks_fh_aero_500_i_save_sheet.svg",
+      "model_id": "volvo_fh_aero_500_isave",
+      "usage": "reference",
+      "target_path": "assets/vehicles/volvo_fh_aero_500_isave/source/volvo_trucks_fh_aero_500_i_save_sheet.svg",
+      "sha256": "5ed08cea84adeb416f6f18a7c7edb36d8aef17ece63fdefb7607a7c02a8edaad"
+    },
+    {
+      "original_path": "assets/volvo_trucks_fh_aero_500_i_save_top_complete.svg",
+      "model_id": "volvo_fh_aero_500_isave",
+      "usage": "reference",
+      "target_path": "assets/vehicles/volvo_fh_aero_500_isave/source/volvo_trucks_fh_aero_500_i_save_top_complete.svg",
+      "sha256": "a90ea655a21cfd00fb0a5d443bc5da47b1cc782627ed4bb4490da3f7aba33342"
+    },
+    {
+      "original_path": "assets/volvo_trucks_fh_aero_500_i_save_top_tractor_unit.svg",
+      "model_id": "volvo_fh_aero_500_isave",
+      "usage": "reference",
+      "target_path": "assets/vehicles/volvo_fh_aero_500_isave/source/volvo_trucks_fh_aero_500_i_save_top_tractor_unit.svg",
+      "sha256": "64e8a59367dcc89027ccddd3947a6e2d86a30c06a6667c5068b2c25f72ce6805"
+    },
+    {
+      "original_path": "assets/volvo_trucks_fh_aero_500_i_save_top_trailer.svg",
+      "model_id": "volvo_fh_aero_500_isave",
+      "usage": "reference",
+      "target_path": "assets/vehicles/volvo_fh_aero_500_isave/source/volvo_trucks_fh_aero_500_i_save_top_trailer.svg",
+      "sha256": "b123ff1d17faf709f036558738fdd308d1dcb567f763c3471cac068b1bb52262"
+    },
+    {
+      "original_path": "assets/vw_crafter_35_130kw_front.svg",
+      "model_id": "vw_crafter_35_130kw",
+      "usage": "front",
+      "target_path": "assets/vehicles/vw_crafter_35_130kw/front.svg",
+      "sha256": "69c37891dbb48bee7799296aa525a8db09206fc786b543810f162e42439e2db3"
+    },
+    {
+      "original_path": "assets/vw_crafter_35_130kw_side_left.svg",
+      "model_id": "vw_crafter_35_130kw",
+      "usage": "side",
+      "target_path": "assets/vehicles/vw_crafter_35_130kw/side-left.svg",
+      "sha256": "0d768752cb845461388d3aa346f6208f0d4db54172dc0bb4e6fffd1be16c3207"
+    }
+  ]
+}

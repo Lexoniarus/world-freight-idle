@@ -83,3 +83,12 @@ abgewiesen, weil der Routensnapshot sie nicht speichert. Bei fehlendem
 location_snapshot wird eine vorhandene historische hub-Projektion verwendet.
 Diese Tests verwenden ausschließlich temporäre Datenbanken; die bereits
 migrierten Profile werden nicht erneut importiert.
+
+## Asset-Bestandsaufnahme
+
+`assets/inventory.json` sichert vor der Ordnerumstellung alle 134 SVGs mit
+Modellzuordnung, bisheriger Verwendung, Alt-/Zielpfad und SHA-256. Die 42 aktiven
+Zuordnungen wurden aus dem bestehenden Karten-/Kartenbild-Code erfasst und
+werden unabhängig vom neuen Resolver geprüft. Das feste Browser-Testprofil
+AssetReference liefert Flotten-/Shopansichten auf Desktop und Mobil.
+ASSET_VISUAL_PHASE benennt den lokalen Screenshot-Ordner unter artifacts.
