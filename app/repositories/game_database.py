@@ -1,9 +1,10 @@
 """SQLite resource ownership and explicit relational schema validation."""
 
 import logging
+import re
 import sqlite3
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from contextvars import ContextVar
 from pathlib import Path
 
@@ -85,7 +86,14 @@ class SqliteGameDatabase:
             ).fetchall()
             if [row[0] for row in versions] != [VERSION]:
                 raise UnsupportedGameSchema("Unbekannte Spielstandversion.")
-            self._validate_structure(connection)
+            try:
+                self._validate_structure(connection)
+            except UnsupportedGameSchema:
+                LOGGER.error(
+                    "Game schema safeguards rejected",
+                    extra={"event": "state.schema_rejected"},
+                )
+                raise
         LOGGER.info(
             "Game schema validated",
             extra={
@@ -145,15 +153,74 @@ class SqliteGameDatabase:
             }
             if found != columns:
                 raise UnsupportedGameSchema("Spielstandtabellen abweichend.")
-        objects = {
-            row[0]
-            for row in connection.execute(
-                "SELECT name FROM sqlite_master "
-                "WHERE type IN ('index','trigger')"
+        with closing(sqlite3.connect(":memory:")) as reference:
+            reference.executescript(SCHEMA)
+            self._validate_keys(connection, reference)
+            self._validate_guards(connection, reference)
+
+    def _validate_keys(
+        self, connection: sqlite3.Connection, reference: sqlite3.Connection
+    ) -> None:
+        """Require the supported owner identities and foreign-key links."""
+        for table in sorted(REQUIRED_TABLES):
+            expected_keys = [
+                (row[1], row[5])
+                for row in reference.execute(f"PRAGMA table_info({table})")
+                if row[5]
+            ]
+            actual_keys = [
+                (row[1], row[5])
+                for row in connection.execute(f"PRAGMA table_info({table})")
+                if row[5]
+            ]
+            expected_links = list(
+                reference.execute(f"PRAGMA foreign_key_list({table})")
             )
-        }
-        if (
-            not {"one_active_transport_per_vehicle", "retain_settlement"}
-            <= objects
-        ):
-            raise UnsupportedGameSchema("Spielstandschutz unvollständig.")
+            actual_links = [
+                tuple(row)
+                for row in connection.execute(
+                    f"PRAGMA foreign_key_list({table})"
+                )
+            ]
+            if actual_keys != expected_keys or actual_links != expected_links:
+                raise UnsupportedGameSchema(
+                    "Spielstandschluessel abweichend: " + table
+                )
+
+    def _validate_guards(
+        self, connection: sqlite3.Connection, reference: sqlite3.Connection
+    ) -> None:
+        """Check executable guards, including their table and predicates."""
+        for name in ("one_active_transport_per_vehicle", "retain_settlement"):
+            expected = reference.execute(
+                "SELECT type, tbl_name, sql FROM sqlite_master WHERE name=?",
+                (name,),
+            ).fetchone()
+            actual = connection.execute(
+                "SELECT type, tbl_name, sql FROM sqlite_master WHERE name=?",
+                (name,),
+            ).fetchone()
+            if (
+                actual is None
+                or tuple(actual[:2]) != tuple(expected[:2])
+                or schema_sql_tokens(actual[2])
+                != schema_sql_tokens(expected[2])
+            ):
+                raise UnsupportedGameSchema(
+                    "Spielstandschutz abweichend: " + name
+                )
+
+
+def schema_sql_tokens(sql: str) -> tuple[str, ...]:
+    """Compare owned schema SQL without changing quoted literal contents."""
+    tokens = re.findall(
+        r"'(?:''|[^'])*'|\"(?:\"\"|[^\"])*\"|`[^`]*`|\[[^\]]*\]"
+        r"|--[^\n]*|/\*.*?\*/|\w+|[^\s]",
+        sql,
+        re.DOTALL,
+    )
+    return tuple(
+        token if token[0] in "'\"`[" else token.lower()
+        for token in tokens
+        if not token.startswith(("--", "/*"))
+    )

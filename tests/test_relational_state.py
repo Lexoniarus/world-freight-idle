@@ -279,3 +279,85 @@ def test_corrupt_player_values_are_normalized_at_repository_boundary(
         )
     with pytest.raises(PersistenceError, match="Spielerwerte"):
         repository.get_player()
+
+
+def test_transport_queries_filter_before_decoding(relational, game):
+    from unittest.mock import patch
+
+    import app.repositories.game_state as mapping
+
+    alice = SqliteGameStateRepository(relational, "alice")
+    bob = SqliteGameStateRepository(relational, "bob")
+    vehicle = game.state_repository.list_vehicles()[0]
+    offer = game.state_repository.list_offers()[0]
+    trip = ActiveTransport(
+        "due",
+        vehicle.id,
+        HistoricalContractSnapshot.from_offer(offer),
+        offer.origin,
+        offer.destination,
+        RouteSnapshot(((13, 52), (9, 53)), 400, 100, "fixture"),
+        10,
+        110,
+        500,
+        100,
+    )
+    for repository in (alice, bob):
+        repository.save_player(PlayerState(1000, 0, 0))
+        repository.save_vehicle(vehicle)
+        repository.save_transport(trip)
+    future_vehicle = OwnedVehicle(
+        id="future-vehicle",
+        name="Future",
+        mode=vehicle.mode,
+        capacity_tons=vehicle.capacity_tons,
+        facility_uid=vehicle.facility_uid,
+        status="idle",
+    )
+    alice.save_vehicle(future_vehicle)
+    future = replace(
+        trip, id="future", vehicle_id=future_vehicle.id, arrives_at=111
+    )
+    alice.save_transport(future)
+    for index in range(100):
+        alice.save_transport(replace(trip.settle(110), id=f"history-{index}"))
+    with patch.object(
+        mapping, "load_transport_record", wraps=mapping.load_transport_record
+    ) as decode:
+        assert alice.list_due_transports(109) == ()
+        assert decode.call_count == 0
+        assert alice.list_due_transports(110) == (trip,)
+        assert decode.call_count == 1
+        decode.reset_mock()
+        assert alice.list_active_transports() == (trip, future)
+        assert decode.call_count == 2
+    for invalid in (float("nan"), float("inf"), -1, True):
+        with pytest.raises(ValueError):
+            alice.list_due_transports(invalid)
+    with relational.connect() as connection:
+        plan = connection.execute(
+            "EXPLAIN QUERY PLAN SELECT * FROM transports WHERE user_id=? "
+            "AND status='active' AND arrives_at<=? ORDER BY rowid",
+            ("alice", 110),
+        ).fetchall()
+    assert any("arrivals" in row[3] for row in plan)
+
+
+def test_dashboard_does_not_decode_settled_history(game):
+    from unittest.mock import patch
+
+    import app.repositories.game_state as mapping
+    from tests.transport_fixtures import add_transport
+
+    trip = add_transport(game)
+    game.state_repository.save_transport(trip.settle(3))
+    for index in range(99):
+        game.state_repository.save_transport(
+            replace(trip.settle(3), id=f"history-{index}")
+        )
+    with patch.object(
+        mapping, "load_transport_record", wraps=mapping.load_transport_record
+    ) as decode:
+        game.dashboard()
+        assert decode.call_count == 0
+    assert len(game.state_repository.list_transports()) == 100

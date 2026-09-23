@@ -263,11 +263,7 @@ class GameService:
         """Settle due active transports once, before refreshing the market."""
         with self.unit_of_work.transaction():
             now = self.now()
-            arrived = [
-                trip
-                for trip in self.state_repository.list_transports()
-                if trip.is_due(now)
-            ]
+            arrived = self.state_repository.list_due_transports(now)
             if not arrived:
                 return False
             for trip in arrived:
@@ -306,14 +302,6 @@ class GameService:
             raise ValueError("Spielstand ist nicht initialisiert.")
         return player
 
-    def _active_transports(self) -> tuple[ActiveTransport, ...]:
-        """Select pending deliveries without exposing settled history."""
-        return tuple(
-            trip
-            for trip in self.state_repository.list_transports()
-            if trip.status == "active"
-        )
-
     def state(self) -> GameSnapshot:
         """Synchronize and read the complete player-owned state."""
         arrived = self.reconcile_arrival()
@@ -325,7 +313,7 @@ class GameService:
                 self.time_scale,
                 self._get_player(),
                 self.state_repository.list_vehicles(),
-                self._active_transports(),
+                self.state_repository.list_active_transports(),
                 self.state_repository.list_offers(),
             )
 
@@ -338,7 +326,7 @@ class GameService:
                 self.time_scale,
                 self._get_player(),
                 self.state_repository.list_vehicles(),
-                self._active_transports(),
+                self.state_repository.list_active_transports(),
             )
 
     def list_contracts(
@@ -411,7 +399,7 @@ class GameService:
     def list_transports(self) -> tuple[ActiveTransport, ...]:
         """Return pending deliveries after settling due arrivals."""
         self.reconcile_arrival()
-        return self._active_transports()
+        return self.state_repository.list_active_transports()
 
     def get_transport(self, transport_id: str) -> ActiveTransport:
         """Find a pending transport owned by the current player."""
@@ -419,7 +407,7 @@ class GameService:
         trip = next(
             (
                 item
-                for item in self._active_transports()
+                for item in self.state_repository.list_active_transports()
                 if item.id == transport_id
             ),
             None,

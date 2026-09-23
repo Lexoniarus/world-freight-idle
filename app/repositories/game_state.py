@@ -8,7 +8,7 @@ from app.domain.errors import PersistenceError
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.state_ports import GameStateRepository
 from app.domain.transports import ActiveTransport
-from app.domain.validation import require_identity
+from app.domain.validation import require_finite, require_identity
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.snapshot_mapping import load_location, load_offer
 from app.repositories.state_snapshots import decode_snapshot, encode_snapshot
@@ -140,11 +140,32 @@ class SqliteGameStateRepository:
             )
 
     def list_transports(self) -> tuple[ActiveTransport, ...]:
-        """Include retained settlements; callers select lifecycle states."""
+        """Read complete history for explicit inventory reconciliation."""
         with self._database.connect() as connection:
             rows = connection.execute(
                 "SELECT * FROM transports WHERE user_id=? ORDER BY rowid",
                 (self._user_id,),
+            ).fetchall()
+        return tuple(load_transport_record(dict(row)) for row in rows)
+
+    def list_active_transports(self) -> tuple[ActiveTransport, ...]:
+        """Read pending deliveries without decoding settled history."""
+        with self._database.connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM transports "
+                "WHERE user_id=? AND status='active' ORDER BY rowid",
+                (self._user_id,),
+            ).fetchall()
+        return tuple(load_transport_record(dict(row)) for row in rows)
+
+    def list_due_transports(self, now: float) -> tuple[ActiveTransport, ...]:
+        """Read this owner's active deliveries due at the supplied time."""
+        require_finite(now, "Settlement time")
+        with self._database.connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM transports WHERE user_id=? "
+                "AND status='active' AND arrives_at<=? ORDER BY rowid",
+                (self._user_id, now),
             ).fetchall()
         return tuple(load_transport_record(dict(row)) for row in rows)
 
