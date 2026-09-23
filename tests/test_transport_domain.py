@@ -1,6 +1,6 @@
 """Transport invariants and transitional adapter behavior."""
 
-from dataclasses import FrozenInstanceError, replace
+from dataclasses import FrozenInstanceError, asdict, replace
 
 import pytest
 
@@ -9,7 +9,7 @@ from app.api.v1.game_projection import (
 )
 from app.domain.contracts import ContractOffer
 from app.domain.transports import ActiveTransport, RouteSnapshot
-from app.repositories.transport_mapping import dump_transport, load_transport
+from app.repositories.transport_mapping import load_transport
 
 
 def test_transport_lifecycle_rejects_invalid_and_duplicate_settlement(game):
@@ -57,14 +57,14 @@ def test_transport_lifecycle_rejects_invalid_and_duplicate_settlement(game):
             replace(trip, **changes)
     with pytest.raises(ValueError):
         trip.is_due(float("nan"))
-    payload = dump_transport(trip)
+    payload = asdict(trip)
     assert load_transport(payload) == trip
-    assert payload["profit_eur"] == 300
-    payload["route_geojson"] = {
-        "type": "Feature",
-        "geometry": payload["route_geojson"],
-    }
-    assert load_transport(payload) == trip
+    assert "profit_eur" not in payload
+    assert "route_geojson" not in payload
+    del payload["status"]
+    with pytest.raises(KeyError):
+        load_transport(payload)
+    payload = asdict(trip)
     payload["arrives_at"] = 9
     with pytest.raises(ValueError):
         load_transport(payload)

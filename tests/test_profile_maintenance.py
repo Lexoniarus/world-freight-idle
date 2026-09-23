@@ -5,7 +5,7 @@ import json
 import sqlite3
 import sys
 from contextlib import closing
-from dataclasses import replace
+from dataclasses import asdict, replace
 from unittest.mock import patch
 
 import pytest
@@ -22,7 +22,6 @@ from app.bootstrap import (
 from app.domain.game import OwnedVehicle, PlayerState
 from app.repositories.accounts import AccountRepository
 from app.repositories.database_backup import backup_database
-from app.repositories.transport_mapping import dump_transport
 from scripts.update_test_profile import main, parse_assignments
 from tests.test_api import make_settings
 from tests.test_game import first_berlin_contract
@@ -47,7 +46,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
     other_game = build_player_service(runtime, other["id"])
     add_transport(selected, payout=123, arrives_at=9999999999, tons=24)
     before = [
-        dump_transport(item)
+        asdict(item)
         for item in selected.state_repository.list_transports()
         if item.status == "active"
     ]
@@ -63,7 +62,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
         )
         assert result["cash"] == 175000
     assert [
-        dump_transport(item)
+        asdict(item)
         for item in selected.state_repository.list_transports()
         if item.status == "active"
     ] == before

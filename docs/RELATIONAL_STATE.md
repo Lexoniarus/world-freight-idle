@@ -102,3 +102,11 @@ stehen und dass ein Settlement den Offline-Zuschlag in der Rangliste ersetzt.
 Die relationalen Leser sind im Composition Root angeschlossen. Es gibt keinen
 KV-Rückfall und keinen zweiten Laufzeitpfad. Der separate Offline-Importer bleibt
 dem späteren Abschnitt F vorbehalten.
+
+Historische Dokumente enthalten die kanonischen Domainwerte: Endpunkte,
+NHM-Evidenz und Route jeweils einmal, ohne HTTP-Aliase oder berechneten Gewinn.
+Das Repository dekodiert verschachtelte Werte und unveränderliche Tupel;
+fehlende Pflichtfelder und unbekannte Felder werden abgewiesen. HTTP-Felder
+werden unabhängig davon im API-Bereich projiziert. Diese Dokumentversion ist
+Teil des noch nicht integrierten relationalen Schemas; alte KV-Spielstände
+werden weiterhin nicht im normalen Serverstart gelesen.

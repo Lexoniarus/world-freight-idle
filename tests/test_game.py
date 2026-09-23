@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from dataclasses import asdict
 
 import pytest
 
@@ -18,7 +19,6 @@ from app.domain.models import PriceQuote
 from app.domain.results import ContractQuote
 from app.domain.transports import RouteSnapshot
 from app.domain.world import FacilityQuery
-from app.repositories.transport_mapping import dump_transport
 from app.services.game import GameService
 from tests.conftest import BERLIN_UID
 from tests.seed_data import HUBS
@@ -179,10 +179,10 @@ def test_refresh_market_drops_legacy_offers_but_keeps_active_trips(
     assert all(item.get("market_model") == "nhm_v1" for item in refreshed)
     assert all(item["id"] != "legacy-offer" for item in refreshed)
     assert [
-        dump_transport(item)
+        asdict(item)
         for item in game.state_repository.list_transports()
         if item.status == "active"
-    ] == [dump_transport(trip)]
+    ] == [asdict(trip)]
     with pytest.raises(KeyError):
         game._find_contract("legacy-offer")
 
@@ -364,8 +364,8 @@ def test_list_and_get_transports(game: GameService):
         project_transport(game.get_transport("missing"))
     trip = add_transport(game, arrives_at=game.now() + 1000)
     assert [project_transport(value) for value in game.list_transports()] == [
-        dump_transport(trip)
+        project_transport(trip)
     ]
-    assert project_transport(game.get_transport(trip.id)) == dump_transport(
+    assert project_transport(game.get_transport(trip.id)) == project_transport(
         trip
     )

@@ -312,3 +312,12 @@ Lauf mit 38 bestandenen Fällen geprüft. mypy und Pyright bestehen. Neue
 Gegentests prüfen typisierte Rückgaben, fehlende gespeicherte Koordinaten und
 Angebotsänderung während Routing ohne Abbuchung. Keine vollständige Projekt-
 oder Browserabnahme für diesen Arbeitscommit behauptet.
+
+## B: kanonische historische Dokumente
+
+Speicherformate enthalten keine HTTP-Aliase, doppelten Endpunkte oder
+berechneten Gewinnfelder mehr. Repository-Decoder stellen verschachtelte
+Domainwerte wieder her und weisen fehlende beziehungsweise fremde Felder ab.
+66 betroffene Tests und Pyright bestanden. Die echte game.db wurde nicht
+geöffnet. Die verbleibenden Domain-Serialisierungsmethoden werden als nächster
+zusammenhängender Schritt samt Aufrufern entfernt.

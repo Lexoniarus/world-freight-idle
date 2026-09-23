@@ -4,7 +4,6 @@ FUNCTION_TESTS = {
     "app.domain.transports.ActiveTransport.is_due": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
     "app.domain.transports.ActiveTransport.settle": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
     "app.repositories.transport_mapping.load_transport": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
-    "app.repositories.transport_mapping.dump_transport": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
     "app.services.game.GameService._get_player": "test_relational_game_use_cases_preserve_atomic_settlement",
     "app.services.game.GameService._active_transports": "test_relational_game_use_cases_preserve_atomic_settlement",
     "app.domain.contracts.ContractOffer.__post_init__": "test_contract_offer_domain_rules",
@@ -365,5 +364,13 @@ FUNCTION_TESTS.update(
         "app.api.v1.game_projection.project_dashboard": "test_dashboard_returns_product_projection",
         "app.api.v1.game_projection.project_catalogue": "test_catalogue_builder_default_path",
         "app.providers.routing.route_cache_document": "test_route_calls_valhalla_and_caches",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.repositories.snapshot_mapping.load_location": "test_canonical_snapshots_preserve_facts_and_reject_public_documents",
+        "app.repositories.snapshot_mapping.load_cargo": "test_canonical_snapshots_preserve_facts_and_reject_public_documents",
+        "app.repositories.snapshot_mapping.load_offer": "test_canonical_snapshots_preserve_facts_and_reject_public_documents",
     }
 )

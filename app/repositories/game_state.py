@@ -1,7 +1,7 @@
 """Player-scoped relational repository and SQLite unit of work."""
 
 from contextlib import AbstractContextManager
-from dataclasses import replace
+from dataclasses import asdict, replace
 
 from app.domain.contracts import ContractOffer
 from app.domain.errors import PersistenceError
@@ -10,8 +10,9 @@ from app.domain.state_ports import GameStateRepository
 from app.domain.transports import ActiveTransport
 from app.domain.validation import require_identity
 from app.repositories.game_database import SqliteGameDatabase
+from app.repositories.snapshot_mapping import load_location, load_offer
 from app.repositories.state_snapshots import decode_snapshot, encode_snapshot
-from app.repositories.transport_mapping import dump_transport, load_transport
+from app.repositories.transport_mapping import load_transport
 
 
 class SqliteGameStateRepository:
@@ -60,7 +61,7 @@ class SqliteGameStateRepository:
     def save_vehicle(self, vehicle: OwnedVehicle) -> None:
         """Save one vehicle without replacing other owned vehicles."""
         location = (
-            encode_snapshot("location", vehicle.location.to_dict())
+            encode_snapshot("location", asdict(vehicle.location))
             if vehicle.location is not None
             else None
         )
@@ -118,7 +119,7 @@ class SqliteGameStateRepository:
                         offer.created_at,
                         offer.expires_at,
                         offer.market_model,
-                        encode_snapshot("offer", offer.to_dict()),
+                        encode_snapshot("offer", asdict(offer)),
                     )
                     for offer in offers
                 ],
@@ -162,11 +163,6 @@ class SqliteGameStateRepository:
                     != transport
                 ):
                     raise PersistenceError("Transporthistorie ist geschützt.")
-            payload = {
-                **dump_transport(transport),
-                "status": transport.status,
-                "settled_at": transport.settled_at,
-            }
             db.execute(
                 """INSERT INTO transports VALUES
                 (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -186,7 +182,7 @@ class SqliteGameStateRepository:
                     transport.settled_at,
                     transport.operating_cost_eur,
                     transport.payout_eur,
-                    encode_snapshot("transport", payload),
+                    encode_snapshot("transport", asdict(transport)),
                 ),
             )
 
@@ -221,17 +217,23 @@ class SqliteGameUnitOfWork:
 def load_vehicle_record(row: dict) -> OwnedVehicle:
     """Hydrate relational vehicle columns and validate its saved location."""
     try:
-        return OwnedVehicle.from_dict(
-            {
-                **row,
-                "id": row["vehicle_id"],
-                "hub_id": row["facility_uid"],
-                "location_snapshot": (
+        return OwnedVehicle(
+            id=row["vehicle_id"],
+            name=row["name"],
+            mode=row["mode"],
+            model_id=row["model_id"],
+            capacity_tons=row["capacity_tons"],
+            operating_cost_eur_per_km=row["operating_cost_eur_per_km"],
+            status=row["status"],
+            hub_id=row["facility_uid"],
+            facility_uid=row["facility_uid"],
+            location=(
+                load_location(
                     decode_snapshot("location", row["location_snapshot"])
-                    if row["location_snapshot"] is not None
-                    else None
-                ),
-            }
+                )
+                if row["location_snapshot"] is not None
+                else None
+            ),
         )
     except (ValueError, TypeError, KeyError) as exc:
         raise PersistenceError("Fahrzeugdaten nicht lesbar.") from exc
@@ -240,9 +242,7 @@ def load_vehicle_record(row: dict) -> OwnedVehicle:
 def load_offer_record(row: dict) -> ContractOffer:
     """Require indexed columns to agree with historical contract facts."""
     try:
-        offer = ContractOffer.from_dict(
-            decode_snapshot("offer", row["offer_snapshot"])
-        )
+        offer = load_offer(decode_snapshot("offer", row["offer_snapshot"]))
         expected = (
             offer.id,
             offer.origin.facility_uid,
