@@ -479,3 +479,9 @@ Fahrzeugstandorte, ausgeschlossene alte Angebote und unlesbare Routing-Caches.
 Alle 59 betroffenen Fälle bestehen. Der Frontend-Gesamtlauf besteht einschließlich
 54 Verhaltenstests und Produktionsbuild. Gesamt-Coverage und Browserregression
 werden nach diesen Ergänzungen erneut vollständig geprüft.
+
+Das Auslieferungsreview fand einen fehlenden Docker-Ausschluss für lokale
+Backups außerhalb von data. .dockerignore schließt jetzt backups sowie
+SQLite-/Backup-Dateien unabhängig vom Ablageort aus; die beiden Referenzkataloge
+bleiben gezielte Ausnahmen. Die Muster und Dockerfile-COPY-Grenze wurden manuell
+geprüft. Ein Docker-Build wurde mangels lokalem Docker nicht ausgeführt.
