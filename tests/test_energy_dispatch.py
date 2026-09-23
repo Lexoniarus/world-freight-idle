@@ -164,3 +164,23 @@ async def test_quote_rejects_offer_changed_during_routing(game):
             await game.quote_contract(contract["id"], "truck_01")
     assert game.get_vehicle("truck_01").status == "idle"
     assert game.state_repository.list_active_transports() == ()
+
+
+async def test_dispatch_rejects_offer_changed_after_quote(game):
+    contract = first_berlin_contract(game)
+    quote = await game.quote_contract(contract["id"], "truck_01")
+    before = game._get_player()
+    game.state_repository.replace_offers(
+        tuple(
+            replace(offer, tons=offer.tons + 0.01)
+            if offer.id == contract["id"]
+            else offer
+            for offer in game.state_repository.list_offers()
+        )
+    )
+    with game.unit_of_work.transaction():
+        with pytest.raises(ValueError, match="geändert"):
+            game._commit_dispatch(contract["id"], "truck_01", quote)
+    assert game._get_player() == before
+    assert game.get_vehicle("truck_01").status == "idle"
+    assert game.state_repository.list_active_transports() == ()

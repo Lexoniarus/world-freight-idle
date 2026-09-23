@@ -191,7 +191,7 @@ FUNCTION_TESTS.update(
 )
 
 FUNCTION_TESTS["app.services.game.GameService._commit_dispatch"] = (
-    "test_dispatch_reprices_after_concurrent_profile_maintenance"
+    "test_dispatch_rejects_offer_changed_after_quote"
 )
 
 FUNCTION_TESTS.update(
