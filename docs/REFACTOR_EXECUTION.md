@@ -46,3 +46,17 @@ ab. Die Profilpflege ersetzt Guthaben über eine validierte Entity-Methode.
 Modellwerte werden vollständig geprüft, bevor ein Fahrzeug geändert wird.
 Tests verwenden konsistente Standorte und setzen vor Ankunft einen tatsächlich
 fahrenden Fahrzeugstatus. Der Schutz der Zustandswechsel wird separat geprüft.
+
+Abschnitt A wurde über PR #7 als 015b2ee integriert. Die Arbeitscommits waren
+d3c5330, c837a34 und a649917. Ausgeführt: 230 Python-Tests, 2.378 Statements
+mit 100 % Core-Coverage, Ruff/Format/mypy/Pyright/Manifest, 54 Frontendtests,
+ESLint/Stylelint/Prettier/checkJs/Produktionsbuild und zehn Browserszenarien.
+Desktop-/Mobil-Screenshots wurden geprüft; keine reale iPad-Abnahme.
+GitHub-Push- und PR-CI waren vor dem Squash-Merge erfolgreich.
+
+## B: Relationale Spielpersistenz
+
+Der Implementierungsvertrag in RELATIONAL_STATE.md beschreibt Tabellen,
+Besitzgrenzen, Snapshotversionierung und atomare Abläufe. Die Implementierung
+beginnt auf refactor/game-state-persistence von integriertem main. Bis zum
+vollständigen Repository-/Service-Umbau gilt die bestehende KV-Laufzeit weiter.
