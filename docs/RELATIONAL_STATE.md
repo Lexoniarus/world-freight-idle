@@ -1,11 +1,8 @@
 # Relationale Spielpersistenz und Transaktionsgrenzen
 
-Status: Die Laufzeit ist auf das relationale Repository umgestellt. Der
-zusätzlich eingeführte KV-Übergangsadapter und der alte KV-Traffic-Leser wurden
-entfernt. GameService und FleetService benutzen die geplanten Ports; der
-Composition Root bindet Accounts, Cache, Profilpflege und Mehrspielerleser
-unmittelbar an SQLite. Die Mapping-Trennung und die abschließende Verifikation
-sind noch offen. Dieser Arbeitsstand ist noch nicht zur Integration freigegeben.
+Status: Relationales Schema 1.0.0, direkte Port-Verdrahtung und getrennte
+Persistenz-/HTTP-Projektionen sind implementiert. Der Offline-Importer ist der
+einzige Leser alter Spielzustände. Aktuelle Prüfergebnisse: QUALITY_REPORT.md.
 
 ## Fachliche Grenzen
 
@@ -25,7 +22,7 @@ Provideraufrufe finden nie innerhalb einer Schreibtransaktion statt.
 
 Die Schema-Versionierung unterscheidet explizit frische Datenbanken vom alten
 KV-Spielstand. Der normale Start weist alte oder unbekannte Schemata ab, ohne
-sie zu ändern. Der separate Offline-Importer in F ist der einzige Altformatweg.
+sie zu ändern. Der separate Offline-Importer ist der einzige Altformatweg.
 
 | Tabelle | Schlüssel | Relationale Werte |
 | --- | --- | --- |
@@ -83,14 +80,15 @@ zwei Spieler mit truck_01, parallele Käufe/Disposition/Abrechnung, Rollback,
 Cleanup und Snapshotbeständigkeit. Portbasierte Service-Tests benötigen kein
 SQL. Architekturtests verbieten konkrete Persistenzadapter und Mapping in
 Domain/Services. Alle neuen konkreten Core-Callables erhalten Gegentests und
-Manifest-Zuordnungen. Die alte game.db bleibt bis F ungelesen und unverändert.
+Manifest-Zuordnungen. Die drei Testprofile wurden nach Backup und vollständigem
+Vergleich übernommen.
 
 ## Ergänzende Ports und Leseadapter
 
 Die Profilpflege erhält eine Factory für GameUnitOfWork und liest aktive Lasten
 als ActiveTransport-Objekte. AuthService erhält AccountStore und PasswordVerifier
 explizit; SQLite-Konflikte werden im Account-Adapter zu DuplicateAccountError.
-Provider benutzen ProviderCache statt SqliteStore. Der neue SQLite-Cache
+Provider benutzen den ProviderCache-Port. Der SQLite-Cache
 protokolliert beschädigte JSON-Einträge als Cache-Miss und erlaubt anschließend
 einen echten Providerabruf; es werden keine Routendaten erfunden.
 
@@ -100,13 +98,14 @@ und Zeitspalten. Routen stammen aus validierten historischen Snapshots. Tests
 prüfen, dass private Kosten, Guthaben und Zugangsdaten nicht im Traffic-Ergebnis
 stehen und dass ein Settlement den Offline-Zuschlag in der Rangliste ersetzt.
 Die relationalen Leser sind im Composition Root angeschlossen. Es gibt keinen
-KV-Rückfall und keinen zweiten Laufzeitpfad. Der separate Offline-Importer bleibt
-dem späteren Abschnitt F vorbehalten.
+KV-Rückfall und keinen zweiten Laufzeitpfad. Der separate Offline-Importer gehört
+nicht zum Spielbetrieb.
 
 Historische Dokumente enthalten die kanonischen Domainwerte: Endpunkte,
-NHM-Evidenz und Route jeweils einmal, ohne HTTP-Aliase oder berechneten Gewinn.
+NHM-Evidenz und Route ohne HTTP-Aliase oder berechneten Gewinn. Der historische
+Auftrag und die Transportendpunkte bleiben eigenständige gespeicherte Fakten.
 Das Repository dekodiert verschachtelte Werte und unveränderliche Tupel;
 fehlende Pflichtfelder und unbekannte Felder werden abgewiesen. HTTP-Felder
 werden unabhängig davon im API-Bereich projiziert. Diese Dokumentversion ist
-Teil des noch nicht integrierten relationalen Schemas; alte KV-Spielstände
+Teil des relationalen Schemas 1.0.0; alte KV-Spielstände
 werden weiterhin nicht im normalen Serverstart gelesen.

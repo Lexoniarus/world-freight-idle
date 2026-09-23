@@ -111,7 +111,8 @@ Zeigt konfigurierte Provider und API-Version, ohne externe Requests auszulösen.
 - `404` – Ressource nicht vorhanden
 - `422` – ungültiges Request-Schema
 - `502` – Routing-/Providerfehler
-- `503` – benötigter Referenzkatalog fehlt oder ist inkompatibel
+- `503` – benötigter Referenzkatalog oder Spielstand ist nicht verfügbar;
+  interne SQL-Fehler, Dokumente und lokale Pfade werden nicht ausgeliefert
 
 Jeder HTTP-Request erhält `X-Trace-Id` in der Response.
 
@@ -153,3 +154,22 @@ Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
 Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
 erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
 bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
+
+## Domain- und Persistenzgrenze
+
+HTTP-Projektionen entstehen unter `app/api/v1`, unabhängig von den versionierten
+Persistenzdokumenten. Bestehende Felder wie `hub_id`, `origin_hub_id` und
+`destination_hub_id` bleiben Projektionen der Facility-UID. Standortprojektionen
+enthalten zusätzlich die dauerhaft gespeicherte `city_uid`; numerische
+Katalogschlüssel werden nicht zu öffentlichen Identitäten.
+
+Übernommene Transporte behalten ihre historischen Standort- und Warenangaben.
+Bei älteren dokumentierten Waren können NHM-spezifische Felder null sein; eine
+nachträgliche NHM-Zuordnung wird nicht behauptet. Vollständige Quellen und
+Handling-Nachweise bleiben in den historischen Repository-Snapshots erhalten;
+die öffentliche Standortprojektion bleibt kompakt.
+
+Der normale Server akzeptiert ausschließlich das relationale Spielstandschema.
+Der Offline-Importer ist kein Endpoint und wird nicht beim Start ausgeführt.
+Nach einem Import ist eine erneute Anmeldung erforderlich, weil alte Sessions
+ausdrücklich nicht übernommen werden.

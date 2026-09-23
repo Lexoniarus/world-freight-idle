@@ -1,7 +1,7 @@
 # Domänenmodell
 
 Stand: 23.09.2026. Dieses Dokument beschreibt die implementierte Struktur.
-Entscheidungsgründe stehen in ADR 0005, Fortschrittshistorie in
+Entscheidungsgründe stehen in ADR 0005/0006, Fortschrittshistorie in
 REFACTOR_EXECUTION.md. Domainobjekte kennen keine Persistenzformate.
 
 ## Spielerzustand
@@ -14,9 +14,9 @@ REFACTOR_EXECUTION.md. Domainobjekte kennen keine Persistenzformate.
 | ActiveTransport | Historischer Auftrag, Fahrzeug, Route, Kosten, Auszahlung und genau einmaliges Settlement |
 
 Identitäten sind innerhalb eines Spielers eindeutig. Ein Fahrzeug besitzt genau
- eine facility_uid und einen historischen Standort; `hub_id` existiert nur in
- öffentlichen API-Projektionen. Modellkennung und Kilometerkostensatz bleiben
- bei älteren gekauften Fahrzeugen optional, damit keine Werte erfunden werden.
+eine facility_uid und einen historischen Standort; `hub_id` existiert nur in
+öffentlichen API-Projektionen. Modellkennung und Kilometerkostensatz bleiben
+bei älteren gekauften Fahrzeugen optional, damit keine Werte erfunden werden.
 
 Entities schützen fachliche Invarianten und besitzen benannte Zustandswechsel.
 Zeitabhängige Regeln erhalten Zeitpunkte vom Aufrufer. Guthaben ist ganzzahlig;

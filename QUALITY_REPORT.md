@@ -1,128 +1,117 @@
-# Quality Report – Standards-Reparatur und Gesamt-Review
+# Qualitätsbericht: Domain-/Persistenz-Refactor
 
-## Nachtrag: Pylance-Abgleich, 18.09.2026
+Stand: 23.09.2026. Geprüfter Code: c6bf759; die anschließende Konsolidierung
+ändert ausschließlich Dokumentation. Umgebung: Windows, Python 3.11.9,
+Node 24, Microsoft Edge. Dieser Bericht ersetzt frühere Werkzeugzählungen.
 
-Die globale VS-Code-Einstellung `strict` wich von der dokumentierten
-Nicht-Strict-Grenze ab. Der richtige Projektinterpreter war bereits ausgewählt.
-Pyright reproduzierte im Standardmodus 19 Diagnosen; Protokolldeklarationen,
-LogRecord-Erweiterungen und Testannahmen wurden korrigiert. Keine pauschalen
-Fehlerunterdrückungen. `[tool.pyright]` legt Standardmodus, Python-Version und
-Prüfumfang für Pylance und CLI fest. Strict-Konformität wird nicht behauptet.
+## Ausgeführte Werkzeugprüfungen
 
-Erneut ausgeführt: gesamtes Quality Gate einschließlich Pyright 1.1.414
-(72 Dateien, 0 Fehler/0 Warnungen), 172 Python-Tests, 1.255 Core-Statements bei
-100 % Coverage, 36 Frontendtests, alle Lint-/Format-/Typprüfungen und Build.
-Nachweis: `artifacts/pylance-quality.txt`. Pylance hat die Konfiguration laut
-lokalem Language-Server-Protokoll neu geladen; die Problems-Ansicht wurde nicht
-per UI ausgelesen. Der zuvor ausgeführte Browserlauf bleibt unten historisch
-beschrieben; die neue Branch-Abnahme verwendet zusätzlich GitHub Actions.
-
-Architekturreview dieser Änderung: unveränderte Modulgrenzen und DI; explizite
-Protokoll-Stubs, gleiche strukturierte Logging-Ausgabe, präzisere Testannahmen.
-Keine Änderungen an Profilen, HTTP-Verträgen oder Spielregeln.
-
-Stand: 18.09.2026, Windows, Python 3.11.9, Node 24, Microsoft Edge.
-Dieser Bericht ersetzt die vorherige Reparaturabnahme. Er unterscheidet
-Werkzeugprüfungen, Architekturreview und tatsächliche Geräteabnahme.
-
-## Ausgeführte Prüfungen
-
-| Prüfung | Ergebnis |
+| Prüfung | Tatsächliches Ergebnis |
 | --- | --- |
-| Gemeinsames Gate `python scripts/quality.py` | Bestanden |
-| Ruff und Formatprüfung | Bestanden; 72 Dateien |
-| mypy einschließlich Profilpflege-CLI | Bestanden; 45 Quelldateien |
-| Python-Verhalten, API, Architektur und Manifest | 172 Tests bestanden |
-| Core-Statement-Coverage | 100 %, 1.255 Statements, 0 fehlend |
-| Funktionstest-Manifest | 145 konkrete benannte Implementierungen zugeordnet |
-| Frontend-Unit-, DOM- und Architekturtests | 36 Tests bestanden |
+| `python scripts/quality.py` | Vollständig bestanden, Exit 0 |
+| Ruff / Format | Bestanden, 127 Dateien |
+| mypy einschließlich aller drei Pflege-/Import-CLIs | 84 Quelldateien, keine Fehler |
+| Pyright, dokumentierter Standardmodus | 0 Fehler, 0 Warnungen |
+| Python-Verhalten, API, Architektur, Function-Test-Manifest | 252 Tests bestanden |
+| Python-Core-Statement-Coverage | 100 %, 2.990 Statements, 0 fehlend |
 | ESLint, Stylelint, Prettier, checkJs | Bestanden |
-| Vite-Produktionsbuild und compileall | Bestanden |
-| Playwright / Edge | 9 Szenarien bestanden |
+| Frontend-Verhalten und Architektur | 54 Tests bestanden |
+| Vite-Produktionsbuild / compileall | Bestanden |
+| `npm run test:e2e` | Alle 10 Szenarien bestanden, Edge, 1,9 Minuten |
+| `python main.py`, aktivierte relationale DB | Start erfolgreich, Login/Health HTTP 200, Port 8000 |
+| Aktive DB: integrity_check / foreign_key_check | ok / keine Fehler |
+| Interne Dokumentationslinks / Git-Diff-Whitespace | Keine offenen Fehler |
 
-Nachweise: `artifacts/standards-repair-quality.txt` und
-`artifacts/standards-repair-browser.txt`. Zwei bestehende Deprecation-Warnungen
-von Starlette/httpx bleiben. Coverage bezeichnet Python-Core-Statements;
-sie beweist keine vollständige Branch-, Frontend- oder Zustandsabdeckung.
+Lokale Nachweise: artifacts/domain-final-quality.log und artifacts/domain-e2e.log.
+Zwei Deprecation-Warnungen stammen aus dem Starlette/httpx-/AnyIO-Testclient;
+sie wurden nicht unterdrückt. Die Coverage-Aussage gilt für Statements,
+nicht für vollständige Pfad- oder Branch-Coverage.
 
-## Behobene Reviewbefunde
+## Manuelles Architektur- und Cleanup-Review
 
-1. **Startinitialisierung:** Die öffentliche Service-Methode besitzt nun ihre
-   eigene Transaktion. Eine private Methode führt die Schritte darin aus.
-   Direkte Aufrufe, bestehende Teilstände, Katalog-/Markt-/Schreibfehler,
-   Wiederholung und Reset-Rollback sind getestet. Der Composition Root muss
-   die Atomarität nicht mehr selbst gewährleisten.
-2. **Lifespan-Cleanup:** Jeder erzeugte HTTP-Client wird unmittelbar in einem
-   AsyncExitStack registriert. Tests erzwingen Fehler bei beiden Konstruktoren,
-   beim Spiel-/Account-/Auth-Aufbau, im aktiven Scope und beim Schließen jedes
-   Clients. Bereits registrierte Ressourcen werden trotzdem geschlossen;
-   Fehler bleiben sichtbar.
-3. **Profilpflege:** CLI, injizierter ProfileMaintenanceService und Repository-
-   Backupadapter sind getrennt. Nutzlastprüfung und Modellübernahme sind
-   separate Funktionen. SQL liegt im Repository, konkrete Verdrahtung im
-   Composition Root. Die Pflege gehört jetzt zum Core-Manifest und Coverage-Gate;
-   das CLI zusätzlich zur Typprüfung.
-4. **Zusätzlich reproduzierte Race-Condition:** Ändert Profilpflege ein Modell
-   während Routing wartet, konnte Dispatch den alten Kostensatz verwenden.
-   Zwei zuvor fehlgeschlagene Regressionen prüfen nun neue Kosten sowie den
-   Abbruch bei anschließend unzureichendem Guthaben. Dispatch kalkuliert in
-   seiner abschließenden Transaktion mit den aktuellen Fahrzeugwerten neu.
-   Guthabenprüfung, Abbuchung und Transport-Snapshot stimmen damit überein.
+Geprüft wurden Zuständigkeiten und Aufrufer in Domain, Services, Repositories,
+Composition Roots und API sowie die aktiven Frontend-Grenzen für State, Aktionen,
+Views, Marktanfragen, Karte, Animation und Bildknoten.
 
-Profilpflege-Regressionen prüfen außerdem unbekannte und leere Zuordnungen,
-doppelte CLI-IDs, ungültige Guthaben, unzureichende Nutzlast, fehlende Spielstände,
-Speicher-Rollback, erhaltene fremde Profile und nicht ausgewählte Fahrzeuge.
-Backupprüfung liest committed WAL-Daten, schließt uncommitted Werte aus und
-verhindert Überschreiben existierender Backups. Bei Backupfehlern wird der
-mutierende Service nicht aufgebaut. Alle Pflegeprüfungen nutzen temporäre DBs;
-Alex, AlexIPad und andere reale Profile wurden nicht erneut gepflegt.
+- Eine relationale Laufzeit: keine KV-Kompatibilität, keine Runtime-Hydrierung
+  alter Spielstände. SQL und Speicher-Mapping liegen in Repositories.
+- Entities besitzen fachliche Invarianten und benannte Zustandswechsel.
+  GameService erhält seine Zeitquelle injiziert; reine Preisberechnung hat
+  keine Service- oder Speicherabhängigkeit.
+- BEGIN IMMEDIATE schützt Kauf, Disposition und Settlement. Routing bleibt
+  außerhalb der Transaktion; veränderliche Voraussetzungen werden danach
+  geprüft. Auszahlungen werden vor nachfolgender Markterzeugung committet.
+- Historische Aufträge, Standorte, Quellen, Waren und Routen bleiben erhalten.
+  Relationale Ports trennen Accounts, Cache, Rangliste und Verkehr.
+- Unveränderliche World-Scopes filtern normalisierte Geografie. Companies
+  bleiben unabhängig von einer Stadt; Mehrdeutigkeiten werden abgewiesen.
+- Öffentliche Standort-/Spiel-/Traffic-Projektionen liegen im API-Bereich.
+  Der zuletzt gefundene JSON-/Zeitdurchgriff des Mehrspieler-Services wurde
+  beseitigt; der überflüssige Service ist entfernt.
+- AsyncExitStack und Repository-Kontexte besitzen Ressourcen. Browsercontroller
+  beenden Requests/Timer/Listener; überholte Antworten werden verworfen.
+  Views erzeugen sichere DOM-Texte; unveränderte Bilder behalten ihre DOM-Knoten.
+- Alte Modelle, Stores, Migrationspfade, verwaiste Manifest-Einträge und eigene
+  temporäre Umbau-Skripte sind entfernt. Docker schließt auch Backups außerhalb
+  von data aus; nur die zwei Referenzkataloge sind gezielte Ausnahmen.
 
-## Inhaltliches Architekturreview
+Für den vereinbarten Refactor bestehen nach diesem Review keine offenen
+wesentlichen Architektur-Befunde. Dies ist ein inhaltliches Review des
+implementierenden Agenten, keine unabhängige externe Freigabe. Grüne Linter
+allein waren ausdrücklich nicht das Abnahmekriterium.
 
-Abgleich: AGENTS, CODING_STANDARDS, ARCHITECTURE, TESTING, GOAL (21/27–29),
-UI DESIGN und Meilensteindokumentation. Geprüft wurden Composition Roots,
-HTTP-/Service-/Repository-Grenzen, Provideradapter, Transaktionen, aktive
-Frontend-Controller, State, Views, DOM-Helfer, Bildwiederverwendung und Karte.
+## Datenübernahme und Referenzkatalog
 
-- Zustandsbehaftete Grenzen besitzen Klassen und explizite Abhängigkeiten.
-  Reine Validierungs-, Darstellungs- und Geometriehilfen bleiben funktional.
-- Services orchestrieren benannte Aufgaben; SQL und Provider-HTTP liegen in
-  ihren Adaptern. Die lokale Pflege führt keine konkrete Store-Erzeugung im
-  Service und keine Spielvalidierung im CLI aus.
-- Transaktionsgrenzen liegen bei öffentlichen Schreibabläufen; externe Provider-
-  Awaits halten keine Schreibtransaktion. Veränderliche Werte werden anschließend
-  erneut geprüft. Bereits laufende Transporte behalten gespeicherte Economics.
-- Views senden keine Spiel-API-Requests; dynamische Inhalte werden über sichere
-  DOM-Bindungen ausgegeben. Veraltete Antworten und Ressourcenfreigabe bleiben
-  durch vorhandene Regressionen abgesichert. Der Bildabgleich behält geladene
-  Knoten über Polling und Statuswechsel.
-- API-JSON und Teile des Spielzustands bleiben dynamisch typisiert. Nicht-Strict-
-  checkJs und konkrete SqliteStore-Abhängigkeiten sind dokumentierte Grenzen;
-  dies ist kein vollständiger Domain-/Persistenz-Umbau.
+Nach SQLite-Backup und ohne laufenden Spielserver wurden drei Konten,
+21 Fahrzeuge und 21 Transporte in eine neue relationale Datei übernommen.
+Ein unabhängiger feldweiser Vergleich bestätigte Konten-IDs, Namen,
+Passwort-Hashes, Geld-/Fortschrittswerte, Fahrzeugdaten und historische
+Transportendpunkte, Geometrien, Zeiten, Kosten und Auszahlungen.
 
-Im geprüften Umfang bleiben keine wesentlichen offenen Befunde aus diesem
-Review. Diese Aussage ersetzt weder eine unabhängige Sicherheitsprüfung noch
-die Abnahme sämtlicher zukünftiger Architektur- und Produktanforderungen.
+25 abgelaufene Angebote wurden im privaten Importbericht ausgeschlossen.
+Der zusätzliche kontolose Demostand bleibt auf ausdrücklichen Nutzerentscheid
+nur im Backup. Sessions und wiederherstellbare Caches wurden nicht importiert.
+Die Originaldateien und das SQLite-Backup bleiben lokal erhalten, außerhalb
+von Git und Docker-Build-Kontext.
 
-## Browserprüfung und verbleibende Abnahmegrenzen
+Auf einer Wegwerfkopie wurden alle 21 fälligen Transporte ohne Routing genau
+einmal abgerechnet; ein zweiter Zugriff zahlte nichts erneut aus. Die aktivierte
+game.db enthielt bei der abschließenden Leseprüfung alle 21 noch als active.
+Ihre Abrechnung erfolgt beim nächsten normalen Spielerzugriff.
 
-Alle neun vorhandenen Szenarien liefen erneut gegen einen isolierten Server:
-Spielablauf, Kauf/Disposition, parallele Transporte, Offline-Ankunft und Login,
-Fokus/Navigation/Reduced Motion, Provider-/Sessionfehler, zwei getrennte Profile,
-Fotoausfall und Erhalt derselben Bildinstanz beim Polling/Transportstart.
+WorldCatalogue 4.0.0 wurde in einer neuen Datei nach Backup normalisiert:
+109 Companies, 352 Facilities, 25 Länder, 304 dauerhaft gespeicherte Stadt-UUIDs.
+Bestehende Company-/Facility-Identitäten, Koordinaten und Provenienz wurden
+bewahrt. 79 Standorte sind verifiziert, 273 ausdrücklich für Simulation geschätzt.
+Der Fahrzeugkatalog bleibt bei seinen vorhandenen 14 Modellen.
 
-Desktop 1440 × 900 und Mobil 390 × 844 wurden anhand aktueller Screenshots visuell
-geprüft. Panels und Navigation bleiben bedienbar. Im mobilen Recovery-Screenshot
-ist der erwartete kurzlebige Fehler-Toast noch sichtbar. Karten und Fotos werden
-in diesem Lauf durch lokale Testbilder ersetzt; kein erneuter öffentlicher
-Tile-/Fotoabruf. Frühere reale Fotoprüfungen sind historische Nachweise.
+## Browserprüfung und Grenzen
 
-Der aktualisierte Server wurde über python main.py auf 0.0.0.0:8000 neu gestartet.
-Die frühere Nutzerbestätigung der iPad-Anmeldeseite bleibt bestehen; eine neue
-vollständige physische iPad-/Safari-Spielabnahme wurde nicht durchgeführt.
-Docker-Build und entfernter CI-Lauf wurden hier nicht ausgeführt.
+Die zehn Szenarien prüfen Registrierung/Anmeldung, Kauf, fahrzeugbezogene
+Quote/Disposition, parallele Transporte, Offline-Ankunft, Rangliste und
+Mehrspielerkarte, zwei getrennte Profile, Deep Links, verzögerte Antworten,
+Sessionablauf, Katalog-/Tilefehler, Fokus, mobile Panels und stabile Bilder.
+Desktop 1440 × 900 und Mobil 390 × 844 einschließlich Reduced Motion wurden
+getestet. Repräsentative Screenshots von Karte, Disposition, Flotte und Shop
+wurden visuell geprüft; keine neue Layoutregression festgestellt.
 
-UI First, OSM für M1, native ES-Module und main.py bleiben Grundlage. Öffentliche
-HTTP-Verträge und Datenbankschema sind unverändert. Unternehmen, eigene Depots,
-Satelliten und weitere Wirtschaftssimulation bleiben spätere Arbeit; M1 und
-öffentlicher Betrieb sind weiterhin nicht vollständig abgenommen.
+Die Automation nutzt eine separate temporäre DB, Mock-Routing und lokale Tiles.
+Sie beweist keine aktuelle Verfügbarkeit öffentlicher Kartendienste. Eine reale
+iPad-Abnahme wurde in diesem Lauf nicht durchgeführt. Die Passwörter der drei
+übernommenen Konten waren nicht bekannt: Ihre Hashes wurden unverändert
+verglichen, tatsächliche erneute Passworteingabe bleibt beim Nutzer.
+Wiederanmeldung und Hash-Verifikation wurden mit bekannten Testkonten geprüft.
+Ein Docker-Build wurde mangels lokalem Docker nicht ausgeführt; Dockerfile,
+Compose, Katalogauslieferung und Ausschlussmuster wurden geprüft.
+
+## Integration
+
+Kleine Arbeitscommits liegen auf refactor/game-state-persistence. Integration
+bleibt an grüne GitHub-CI und den geprüften Squash-PR gebunden. Dessen Checks
+und Merge-Status sind der maßgebliche Remote-Nachweis, keine vorweggenommene
+Behauptung in diesem Bericht. Es gibt keine direkten main-Commits.
+
+GitHub meldet das Repository inzwischen öffentlich. Diese Arbeit änderte seine
+Sichtbarkeit nicht. Serverseitiger Branchschutz ist weiterhin nicht eingerichtet;
+Hooks, CI und der eingehaltene PR-Ablauf ersetzen keine Zugriffsbeschränkung.
+Der technische Refactor ist keine vollständige MVP- oder Produktionsfreigabe.

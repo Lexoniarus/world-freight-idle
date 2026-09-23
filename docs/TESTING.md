@@ -1,259 +1,67 @@
 # Teststrategie
 
-## Mehrspieler-Quality-Gate
+## Verbindliche Prüfungen
 
-`./.venv/Scripts/python.exe scripts/quality.py` (Windows) oder `make quality` (Linux).
-Installieren über `requirements-dev.txt` und `npm ci`. Node 24 für Build und Tests.
+`python scripts/quality.py` beziehungsweise `make quality` führt Ruff/Format,
+mypy, Pyright, pytest mit 100 % app-Statement-Coverage, Function-Test-Manifest,
+Architekturtests, Frontend-Verhaltenstests, ESLint, Stylelint, Prettier, checkJs,
+Vite-Produktionsbuild und compileall aus. Node 24, requirements-dev.txt und
+npm ci sind Voraussetzung. Die Offline-CLIs gehören zu Lint und Typprüfung.
 
-Ruff-Lint + Formatcheck, mypy für Core, main.py und Profilpflege-CLI,
-Pyright im Standardmodus für alle 72 Python-Dateien einschließlich Tests,
-pytest mit 100 % Statement-Coverage für `app`,
-Function-Test-Manifest, Architekturtests, ESLint, Stylelint, Prettier,
-JSDoc/checkJs, Node-/DOM-Verhaltenstests, Vite-Build und Python-Kompilierung.
+Vor Arbeitscommits müssen die betroffenen Tests samt direkten Aufrufern grün
+sein. Das vollständige Gate und E2E sind vor der abschließenden Integration
+verbindlich. Tests werden nicht übersprungen oder abgeschwächt. Jeder konkrete
+Core-Callable inklusive Konstruktor und verschachtelter Funktion erhält einen
+expliziten Gegentest in tests/function_test_manifest.py. Protokolldeklarationen
+werden strukturell ausgenommen.
 
-Neue Verhaltenstests prüfen gesalzene Passworthashes, Sitzungslaufzeit und
-Widerruf, case-insensitive Namen, CSRF, Login-Limit, Spielertrennung,
-Besitzprüfung über die HTTP-API, persistente Käufe, Parallelverhalten
-bei Käufen und Ankunft, Dispatch-Rennen nach dem Provider-Await,
-mehrere Transporte, abgelaufene Aufträge und Offline-Ranking.
+## Verhalten und Grenzen
 
-Provider-Unit-Tests verwenden kontrollierte HTTP-Antworten. Sie belegen keine
-Verfügbarkeit öffentlicher Dienste. Browser-Smoke-Tests verwenden eine
-separate Datenbank (`DB_PATH=artifacts/playtest.db`) und bei Bedarf
-`GAME_TIME_SCALE=3600`.
+- Domain: Invarianten, immutable Werte, unzulässige Zustandswechsel, Mengen,
+  WGS84, Zeitreihenfolge, kompakte öffentliche Projektionen.
+- Persistenz: getrennte Besitzer mit gleicher lokaler Fahrzeug-ID, atomare
+  Käufe/Disposition/Settlement, parallele Schreibabläufe, Rollback, kaputte
+  Snapshots, Cleanup und Ablehnung alter oder unbekannter Schemata.
+- Historie: unveränderte Endpunkte/Quellen/Konditionen bei Katalogänderung oder
+  Ausfall, genau einmalige Auszahlung und keine erfundene Transporthistorie.
+- Referenzwelt: Schema 4, readonly/FKs, stabile UUIDs, überprüftes Stadtmanifest,
+  wiederholbare Normalisierung und mehrdeutige Scope-Namen.
+- Provider/API: malformed/nonfinite Antworten, Cacheersatz, HTTP-Fehler,
+  Authentifizierung, Sessionablauf, CSRF, Traces und private Datentrennung.
+- Frontend: DOM-Text statt HTML, Cleanup, verspätete Antworten, unsichere
+  Schreibantworten, Fokus, Karten-Wrapping, Fahrzeugbilder und Panel-Lebenszyklen.
 
-Coverage ist Statement-Coverage, kein Beweis vollständiger Sicherheit.
-Starlette/httpx melden aktuell zwei Deprecation-Warnungen im Testlauf.
+Architekturtests prüfen direkte und indirekte Imports einschließlich relativer
+Imports, Re-Exports und statisch erkennbarer dynamischer Imports. Domain und
+Services kennen kein SQL, konkrete Speicheradapter oder Serialisierung.
+Frontend-Views importieren weder API noch Controller/State. Negativbeispiele
+belegen die Scanner. Grüne Tools ersetzen kein manuelles Zuständigkeitsreview.
 
-## Grundregel
+## Offline-Import
 
-**Keine konkrete Python-Core-Funktion ohne expliziten Gegentest.**
+`python scripts/import_legacy_game.py --source OLD --check` inventarisiert nur
+lesend. Ausführung benötigt --backup BACKUP und --output NEW; alle drei Pfade
+müssen verschieden sein. Bestehende Ausgaben werden nie überschrieben. Ohne
+Backup gibt es keinen Import. Aktivierung erfolgt separat nach Abgleich.
 
-`tests/test_function_contract.py` scannt den gesamten `app/`-Baum per AST. Jede konkrete Funktion/Methode muss in `tests/function_test_manifest.py` einem existierenden Test zugeordnet sein. Neue Funktion ohne Test lässt den Build fehlschlagen.
+Fixtures prüfen alle gespeicherten Werte, Passwort-Hash-Erhalt ohne Ausgabe,
+unterschiedliche historische Auftragsformate, drei isolierte Konten, WAL-Backup,
+Backup-/Schreib-/Abgleichfehler, Cleanup und wiederholten Ausführungsversuch.
+Sessions/Caches werden nicht übernommen. Intakte unspielbare Angebote werden
+berichtet, beschädigte/ungeklärte Daten brechen ab. --exclude-global-demo ist
+nur für den ausdrücklich freigegebenen kontolosen Demostand vorgesehen.
 
-## Ebenen
+## Browser und tatsächliche Geräte
 
-1. Domain-/Unit-Tests
-2. Service-/Use-Case-Tests
-3. Repository-Tests
-4. Provider-Contract-Tests mit `httpx.MockTransport`
-5. API-v1-Tests über FastAPI `TestClient`
-6. Produktseiten-Routing-Tests
-7. Frontend-Tests für API-Client, DOM-Views, Zustand, Controller und Kartenprojektionen
+`npm run test:e2e` startet den FastAPI-Kern mit separater temporärer Datenbank,
+Mock-Routing und lokalen Tiles auf Port 8011. Öffentliche OSM-Tiles werden nicht
+automatisiert vorgeladen. Der Lauf umfasst Registrierung, Anmeldung, Kauf,
+parallele Transporte, Offline-Ankunft, Rangliste, Mehrspielerkarte, Bildstabilität,
+Deep Links, Fehlerfälle und Tastaturbedienung.
 
-## Quality Gate
-
-```bash
-make quality
-```
-
-führt dieselbe Befehlsliste wie `python scripts/quality.py` aus.
-Frontend separat: `npm run quality:frontend`. Das gemeinsame Gate ist
-plattformübergreifend und bricht beim ersten Fehler ab.
-
-Provider-Netzverfügbarkeit ist kein Unit-Test. Provider-Adapter werden deterministisch gegen simulierte HTTP-Antworten getestet; ein separater Smoke-Test kann in einer Umgebung mit Internetzugang laufen.
-
-## UI-First-Abnahme
-
-Voraussetzung: Node 24, npm ci und npm run build. Anschließend:
-
-- npm run test:frontend: API-Adapter, Formatierung, Weginterpolation,
-  Datumsgrenzen, Providerwechsel, Dispatch-Voraussetzungen, Zeitoffset,
-  Abfragekoordination, veraltete Antworten und sicheres Text-Rendering.
-- npm run test:e2e: fünf Playwright-Szenarien mit echtem FastAPI-/SQLite-Kern
-  auf http://127.0.0.1:8011, eigener temporärer Datenbank und simulierten
-  Geocoding-/Routing-Providern. Öffentliche Tiles werden vollständig durch
-  lokale PNGs ersetzt. Screenshots/Testartefakte liegen im System-Tempordner.
-- Standardszenarien: Registrierung, Quote, Dispatch, Kauf, Auszahlung,
-  erneute Anmeldung, parallele Transporte, Deep Links, Kartenzoom, Layer,
-  erhaltene Karteninstanz, verspätete Antworten, Sessionablauf und Ausfälle.
-- Viewports: Desktop 1440 × 900, mobil 390 × 844; Tastaturfokus,
-  Escape, Panelhöhen, Attribution und Reduced Motion werden geprüft.
-
-Für diese Refactoring-Abnahme wird der Skill `game-studio:game-playtest`
-mit dem vorhandenen Playwright-Setup verwendet. Screenshots werden zusätzlich
-visuell geprüft, weil DOM-Assertions die WebGL-Darstellung nicht abdecken.
-
-Browserkonfiguration: PLAYWRIGHT_CHANNEL=chromium für installierte
-Playwright-Browser; PYTHON_EXECUTABLE überschreibt den Python-Pfad.
-CI installiert Chromium und verwendet den System-Python. Ein entfernter
-CI-Lauf und der Docker-Build wurden lokal nicht ausgeführt.
-
-Testgrenzen: Keine Zusage für andere Browser, reale Mobilgeräte, größere
-Produktionslast oder die dauerhafte Verfügbarkeit öffentlicher Provider.
-World-Wrapping/Datumsgrenzen werden zusätzlich durch Geometrie-Tests geprüft.
-
-Begrenzte Live-Prüfung am 18.09.2026: isolierter Server auf Port 8012 mit
-separater temporärer Datenbank, echter OSM-Basiskarte sowie Nominatim und
-Valhalla. Berlin und die Route Berlin–Hamburg wurden im In-App-Browser
-sichtbar geprüft: 316,1 km, 3 h 42 min, vollständige Kalkulation.
-Die Browserkonsole meldete dabei keine Fehler oder Warnungen.
-Dieser Einzelcheck ist keine Verfügbarkeitsgarantie für externe Provider.
-
-## Refactoring-Regressionsschutz
-
-Die Node-Tests unter `frontend/` verwenden jsdom für reale DOM-Knoten.
-Sie prüfen sichere Text-/Attributbindung, Fokus und Auswahl bei Refresh,
-veraltete Quotes und Panelantworten, Disposal trotz ignoriertem AbortSignal,
-Schreibfehler mit nachfolgender Synchronisierung statt Wiederholung,
-Timer/Listener-Freigabe, reduzierte Animation und GeoJSON-Projektionen.
-
-AST-Architekturtests verbieten alte Static-Imports und Zugriffe von Views
-auf API/Controller/State sowie von Kartenmodulen auf API/Views. Python-Tests
-prüfen Domain-/Service-/API-Importgrenzen und Service-Erzeugung außerhalb
-von Endpoints. Eine feste Zuordnung pro Funktion wird weiterhin im Python-
-Core erzwungen; Frontend-Verhalten wird über Unit-/DOM- und Browserfälle
-abgedeckt. Das ist keine Behauptung von 100 % JavaScript-Coverage.
-
-## Regressionen: Stabilisierung und Fahrzeugkatalog
-
-Der rekursive Manifest-Scanner erfasst auch explizite Konstruktoren und
-verschachtelte benannte Funktionen. Nur reine Protokolldeklarationen werden
-strukturell ausgenommen; generierte Methoden und anonyme Lambdas erhalten
-keine eigene Manifest-ID. Konstruktor-Verhalten wird über passende
-Initialisierungs-, Isolations-, Lebenszyklus- und Anwendungstests geprüft.
-Frontend-Importtests lösen Modulpfade auf und prüfen Re-Exports sowie statisch
-bestimmbare dynamische Imports; Negativfälle belegen die Controller-Grenze.
-
-Katalogtests verwenden temporäre Referenzkopien und Spielstände. Sie prüfen
-alle acht Angebote, fehlende/beschädigte Daten, Fremdschlüssel, Reputationsgrenzen,
-Transaktions-Rollback, Kauf-Snapshots, individuelle Kosten und Altbestand.
-Regressionsfälle decken ungültige Providerwerte und Cache-Reparatur, verlorene
-Schreibantworten während eines laufenden Polls, Fahrzeugwechsel während Quotes
-und Kameraführung über Weltkopien ab. Aktuelle Prüfzahlen: QUALITY_REPORT.md.
-
-
-## Ergänzung: Medien, Startfahrzeug und WLAN (18.09.2026)
-
-Die Regression prüft verifizierte Bildauswahl, Quellen-/Lizenzwerte, ungültige
-Links, reine Textausgabe und entfernte Load/Error-Listener. Browserbilder werden
-wie Tiles durch lokale Testdaten ersetzt; ein zweiter isolierter Browserkontext
-simuliert Fotoausfall und prüft getrennte Flotten, Guthaben und Besitzgrenzen.
-Neue Startflotten werden gegen die DB-Spielwerte geprüft, einschließlich
-Snapshot-Erhalt und atomarem Abbruch/Wiederholung bei Katalogausfall.
-Testprofilpflege prüft Fahrzeug-IDs, unveränderte Transport-Snapshots, fremde
-Spielstände, Backup und Guthabenerhalt ohne explizites --cash.
-
-Der Nutzer hat die reale iPad-Anmeldeseite über die LAN-IP bestätigt. Das ist
-noch keine vollständige Safari-/iPad-Spielabnahme. Tatsächlich ausgeführte
-Werkzeuge und die begrenzte reale Fotoprüfung: QUALITY_REPORT.md.
-
-Ein DOM-Regressionstest prüft die Identität geladener/fehlgeschlagener Fotos
-bei unverändertem und geändertem Panelinhalt. Der Browsertest prüft dieselbe
-Bildinstanz über einen automatischen Poll und einen Transportstatuswechsel.
-
-
-## Reparaturabnahme: Initialisierung, Cleanup und Profilpflege
-
-Neue Fehlerfalltests rufen die Initialisierung direkt ohne äußere Transaktion
-auf. Sie prüfen Katalog-, Markt- und Schreibfehler, vorhandene Teilstände,
-Idempotenz und Reset-Rollback. Lifespan-Tests prüfen beide Client-Konstruktoren,
-Spiel-/Account-/Auth-Aufbau, normale Beendigung, Fehler im aktiven Scope und
-Fehler beim Schließen jedes Clients.
-
-Profiltests verwenden ausschließlich temporäre Datenbanken: unbekannte IDs,
-leere Zuordnungen, negative/nicht ganzzahlige Guthaben, unzureichende Nutzlast,
-Rollback nach Schreibfehler, explizite Geldsetzung und Guthabenerhalt. Fremde
-Profile, nicht ausgewählte Fahrzeuge, Status und Transport-Snapshots bleiben
-unverändert. Das Backup wird mit offener WAL-Verbindung gelesen; uncommitted
-Daten werden ausgeschlossen, bestehende Backups nicht überschrieben. CLI-Tests
-sichern Argumentfehler, doppelte Zuordnungen und Abbruch vor Serviceaufbau bei
-Backupfehlern ab. Architekturtests sichern die CLI-/SQL-Grenzen der Pflege.
-
-Eine zusätzliche Nebenläufigkeitsregression pausiert Routing, ändert über die
-Profilpflege das Fahrzeug und setzt Routing fort. Der Start muss den aktuellen
-Kostensatz verwenden oder bei anschließend zu geringem Guthaben ohne Abbuchung
-abbrechen. Neue Core-Funktionen sind im Manifest und Coverage-Gate enthalten.
-Aktuelle Zahlen und tatsächlich ausgeführte Browserprüfung: QUALITY_REPORT.md.
-
-## Pylance und reproduzierbare Python-Typprüfung
-
-`npm run typecheck:python` verwendet die fest versionierte Pyright-CLI und
-`[tool.pyright]` aus pyproject.toml. Lokal wird `.venv` aufgelöst; das gemeinsame
-Gate übergibt seinen tatsächlichen Python-Interpreter mit `--pythonpath`, sodass
-auch CI ohne lokale `.venv` dieselben installierten Pakete prüft.
-
-Pylance verwendet dieselbe Projektkonfiguration und den in VS Code ausgewählten
-Interpreter. Der Standardmodus ist eine bewusste Projektgrenze, kein Nachweis
-vollständiger Strict-Typisierung. Globale Benutzereinstellungen bleiben erhalten.
-Neue Meldungen in diesem Modus müssen vor Integration behoben werden.
-
-## WorldCatalogue-Gegentests
-
-Neue Suiten test_world_catalogue.py, test_geography_migration.py und
-test_world_snapshots.py prüfen readonly/Cleanup, Quellen, Koordinaten, UIDs
-bei PK-Änderungen, wiederholte Aufbereitung, Backupfehler, transaktionalen
-Rollback und historische Transportwerte. Marktprüfungen sichern Same-City,
-Same-Company, Standardwaren und mögliche Folgeaufträge. Ein Provider-Spy
-verbietet Nominatim-Aufrufe bei Karte, Quote und Disposition. API-Tests sichern
-Authentifizierung, Datumsgrenzen-BBox, 422/503 und Legacy-Aliase. Frontendtests
-prüfen Facility-Filter, gespeicherte Marker bei Katalogausfall und verspätete
-Antworten nach Cleanup. Die Wartungs-CLIs sind in Ruff, mypy und Pyright enthalten.
-
-Historische Browserprüfungen mit Nominatim beschreiben frühere Stände. Der
-aktuelle Server nutzt nur Valhalla; automatisierte Browserläufe verwenden
-den vorhandenen FakeRouter sowie lokale Tiles und getrennte Testspielstände.
-
-NHM-Markt: Jeder routbare Standort besitzt einen ausgehenden Auftrag mit
-kompatiblem NHM-IN/BOTH-Ziel. Neue Aufträge enthalten keine generische
-Standardfracht. Tests prüfen 352 spielbare Standorte, NHM-Hierarchie, derived
-Evidence, Legacy-Angebotsbereinigung und unveränderte aktive Transporte.
-
-Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
-Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
-erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
-bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
-
-## Runtime-Performance-Regressionsschutz
-
-- `CachedWorldCatalogue` liest seinen Source-Katalog höchstens einmal.
-- `TradeNetwork` wird über mehrere Market-Refreshes wiederverwendet.
-- Contract-/Map-Endpunkte enthalten keine vollständigen Facility-NHM-Profile.
-- Der Browser-Poll lädt Contracts aus `/dashboard` und fordert `/contracts`
-  nicht ein zweites Mal an.
-- Facility-Zählungen in Maintenance-Tests werden datengetrieben geprüft statt
-  gegen historische 155er-Hardcodes.
-
-## Lazy Market Scope und Kartenlebenszyklus
-
-Der Contract-Markt wird nicht mehr global beim Browserstart materialisiert.
-`MarketScopeResolver` ist eine injizierte Backend-Abhängigkeit und bestimmt
-ausschließlich relevante Origin-Facilities: eigene idle Lkw sind immer im Scope;
-zusätzliche Facilities werden erst ab Zoomstufe 7 aus der übergebenen
-`FacilityQuery` aufgenommen. `MarketGenerator` erhält nur diese expliziten
-Origins und kennt weder Viewport noch HTTP.
-
-Im Frontend besitzt `ContractMarketController` den vollständigen Lebenszyklus
-der Contract-Slice-Requests. `WorldMap.marketViewport()` liefert ausschließlich
-neutrale Kartenwerte (`zoom`, `bbox`) und kennt keine Contracts-API. `GameSync`
-synchronisiert weiterhin nur globalen Spielzustand. Die Composition Roots
-injizieren alle zustandsbehafteten Abhängigkeiten.
-
-Facility-Marker entstehen ausschließlich aus eigener Flotte, aktiven
-Transport-Snapshots und der aktuell geladenen Contract-Slice. Die vorherige
-globale `/map/facilities`-Abfrage gehört nicht mehr zum Browserstart.
-Facility-Texte werden nicht dauerhaft als Canvas-Labels erzeugt, sondern nur
-bei Hover als textContent-basierte DOM-Popups angezeigt.
-
-
-
-Geografie-Migration: Tests verwenden isolierte Schema-3-Fixtures und neue
-Zieldateien. Geprüft werden dauerhafte Stadt-UUIDs, exakte Facility-Zuordnungen,
-Pflichtfelder/Fremdschlüssel, Erhalt von Quellen und Views, wiederholte
-Ausführung, unveränderte Quelle sowie Rollback und Backupfehler. Das alte
-Schema-2-In-place-Werkzeug und seine spezifischen Tests sind entfernt.
-
-Die finalen Persistenzgrenzen werden in test_persistence_boundaries geprüft:
-Domain/Services ohne SQL, konkrete Repositories oder HTTP-Clients; Domain ohne
-Persistenzserialisierung; keine KV-Spielpfade. Relative Imports, Re-Exports und
-statisch bestimmbare dynamische Imports werden mit Negativbeispielen geprüft.
-Der API-Aufruf des Composition Root bleibt die vorgesehene Verdrahtungsgrenze.
-
-Offline-Import: `python scripts/import_legacy_game.py --source OLD --check`
-prüft ausschließlich lesend. Ausführung erfordert `--backup BACKUP --output NEW`
-und drei getrennte Pfade. Vorhandene Ausgaben werden abgewiesen. Das Werkzeug
-aktiviert keine Datei automatisch. Tests prüfen vollständigen Vergleich,
-Passwort-Hash-Erhalt ohne Ausgabe, gemeinsame lokale IDs, einmaliges Settlement,
-veränderte/defekte Dokumente, Rollback und Backupfehler einschließlich Cleanup.
-Sessions und Provider-Caches werden nicht übernommen. Intakte abgelaufene
-Angebote erscheinen ausdrücklich im Bericht; beschädigte Daten brechen ab.
+Desktop 1440 × 900, Mobilansicht 390 × 844 und Reduced Motion werden geprüft.
+PLAYWRIGHT_CHANNEL wählt den Browser; PYTHON_EXECUTABLE den Interpreter.
+CI installiert Chromium. Lokale Screenshots werden zusätzlich visuell geprüft.
+Automatisierte Mobilansicht ist keine reale iPad-Abnahme. Provider-Mocks beweisen
+keine öffentliche Dienstverfügbarkeit. Tatsächlich ausgeführte Ergebnisse stehen
+in QUALITY_REPORT.md; historische Läufe sind keine aktuelle Freigabe.

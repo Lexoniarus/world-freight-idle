@@ -131,3 +131,16 @@ des Einlesens vollständiger privater JSON-Snapshots. Fehlerzustände sind für 
 Spieler sichtbar, und die Darstellung kennzeichnet Fahrzeughalter redundant
 über Sprite-Farbe und Farbring. Der gemeinsame knappe Markt bleibt weiterhin
 ein späterer M4-Schritt.
+
+
+## Domain-/Persistenzstand, 23.09.2026
+
+Die Spielbasis verwendet typisierte Entities, eine relationale SQLite-Laufzeit
+hinter Repository-/Unit-of-Work-Ports und WorldCatalogue 4.0.0 mit stabilen
+Stadtidentitäten und unveränderlichen World-Scopes. API-Felder, UI, Spielregeln
+und python main.py bleiben erhalten. Historische Transportwerte überleben
+Katalogupdates. Die drei Testkonten sind nach Backup übernommen; Sitzungen
+wurden verworfen. UI First bleibt verbindlich; Unternehmen, eigene Depots,
+Satelliten und neue Wirtschaftsmechaniken gehören weiterhin nicht zu diesem
+Umbau. Abnahme und ausgeführte Nachweise: QUALITY_REPORT.md. Der technische
+Umbau allein behauptet weder eine vollständige MVP- noch reale iPad-Abnahme.

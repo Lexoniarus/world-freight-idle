@@ -494,3 +494,11 @@ TrafficReader liefert unveränderliche SharedTransport-Werte mit Koordinaten.
 Der überflüssige Service wurde entfernt. Alle 17 betroffenen Tests einschließlich
 Manifest und Architektur bestehen. Das finale Gate und E2E laufen deshalb noch
 einmal auf diesem bereinigten Stand.
+
+Finaler lokaler Stand c6bf759: vollständiges Quality Gate Exit 0, 252 Python-
+Tests und 100 % von 2.990 Core-Statements, mypy/Pyright, 54 Frontendtests,
+Produktionsbuild und alle zehn Browser-Szenarien grün. Manuelles Review und
+Dokumentationsabgleich sind abgeschlossen; konkrete Grenzen stehen im neu
+konsolidierten QUALITY_REPORT.md. main.py startet mit der übernommenen DB;
+Login und Health antworten mit HTTP 200. GitHub-CI und Squash-Integration folgen
+als letzter Integrationsschritt.

@@ -15,7 +15,7 @@ freigegebener öffentlicher Produktionsdienst.
 - Registrierung, Anmeldung, getrennte persistente Profile und Lieferungsrangliste.
 - Aufträge auswählen, Fahrzeug disponieren, parallele Transporte verfolgen,
   Offline-Ankünfte abrechnen und die Flotte erweitern.
-- Acht DB-Fahrzeugmodelle mit Kaufpreis, Nutzlast, Reputationsfreigabe und
+- 14 DB-Fahrzeugmodelle mit Kaufpreis, Nutzlast, Reputationsfreigabe und
   Kilometerkosten; Fahrzeugfotos mit Herkunft/Lizenz und Ersatzdarstellung.
 - Neue Profile: **175.000 Euro plus kostenloser IVECO S-Way 500 XC13** in Berlin.
   Gekaufte und vergebene Fahrzeugwerte sind gespeicherte Snapshots.
@@ -24,9 +24,9 @@ freigegebener öffentlicher Produktionsdienst.
 Offen: eigenständige Spielerunternehmen, eigene Depots, gemeinsamer knapper Markt,
 Wartung/Energie/Reichweite und Satelliten. Öffentliche Frachtstandorte sind keine
 eigenen Depots. Reale Referenzunternehmen, Facilities, dokumentierte Güter und
-Koordinaten kommen aus dem separaten read-only WorldCatalogue. 43 von 155
-Facilities sind routbar und erhalten Aufträge. 24 besitzen dokumentierte
-Standardwaren; an den übrigen wird Standardfracht ausdrücklich simuliert.
+Koordinaten kommen aus dem separaten read-only WorldCatalogue. 352 Facilities
+sind spielbar: 79 mit verifizierten und 273 mit ausdrücklich
+für die Simulation geschätzten Koordinaten. Neue Aufträge verwenden NHM-Profile.
 Valhalla erhält gespeicherte Koordinaten; Geschäftsbeziehungen, Mengen,
 Einzelaufträge und Wirtschaftswerte bleiben simuliert.
 Es gibt keinen erfundenen Ersatz für ausgefallene Straßenrouten.
@@ -84,7 +84,7 @@ $env:HOST = "127.0.0.1"
 | HOST / PORT | 0.0.0.0 / 8000 |
 | DATA_DIR / DB_PATH | data/ bzw. data/game.db; private Spielstände |
 | VEHICLE_CATALOGUE_PATH | Mitgelieferter data/world_freight_vehicle_catalog.sqlite3 |
-| WORLD_CATALOGUE_PATH | Mitgelieferter data/world_freight_company_facility_mvp.sqlite3, Schema 3.0.0 |
+| WORLD_CATALOGUE_PATH | Mitgelieferter data/world_freight_company_facility_mvp.sqlite3, Schema 4.0.0 |
 | GAME_TIME_SCALE | 1 = Echtzeit; Beschleunigung nur für lokale Tests |
 | COOKIE_SECURE | false für lokales HTTP; true bei HTTPS-Betrieb |
 | VALHALLA_URL | Routing gespeicherter Facility-Koordinaten |
@@ -102,20 +102,23 @@ NAME --vehicle ID=MODELL` (als eine Befehlszeile). Sie erstellt zuerst ein SQLit
 Backup. Ohne --cash bleibt Guthaben erhalten; IDs und Transport-Snapshots bleiben
 bestehen. Keine automatische Migration und kein öffentlicher Pflege-Endpunkt.
 
-## Bestehende Spielstände auf Facilities umstellen
+## Relationale Spielstände und Offline-Übernahme
 
-Vor dem ersten Start dieses Stands den bisherigen Server stoppen und die
-explizite Migration mit Backup ausführen (dieselbe DB_PATH verwenden):
+Der Server verwendet ausschließlich das relationale Schema 1.0.0. Alte KV-
+Datenbanken werden beim Start abgewiesen. Neue leere Datenbanken benötigen
+keine Migration. Für Altbestände den Server stoppen und zuerst prüfen:
 
 ```sh
-python scripts/migrate_world_state.py --backup data/backups/game-before-world-v1.sqlite3
-python main.py
+python scripts/import_legacy_game.py --source OLD.db --check
+python scripts/import_legacy_game.py --source OLD.db --backup BACKUP.db --output NEW.db
 ```
 
-Neue leere Spielstände benötigen keine Migration. Das Werkzeug erhält Konten,
-Guthaben, Fahrzeug-IDs und laufende Transportwerte. Keine automatische
-Neuzuordnung beim Serverstart. Details, Quellen und Wiederholungsregeln:
-[WorldCatalogue](docs/WORLD_CATALOGUE.md).
+Das Werkzeug schreibt nur eine neue Datei und gleicht Konten, Spielwerte,
+Fahrzeuge und historische Transporte ab. Keine automatische Aktivierung.
+Nach erfolgreicher Prüfung kann NEW.db als game.db aktiviert werden; das Backup
+bleibt erhalten. Sessions/Caches werden nicht übernommen, neue Anmeldung ist
+nötig. Die drei lokalen Testkonten wurden am 23.09.2026 so übernommen.
+Details: [Persistenz](docs/RELATIONAL_STATE.md), [Tests](docs/TESTING.md).
 
 ## Entwicklung, Branches und Qualität
 
@@ -168,11 +171,12 @@ den Referenzkatalog ebenfalls mitliefern.
 Aktuell: ein Prozess, SQLite und gemeinsame Provider-Limiter. HTTPS, kontrollierter
 Reverse Proxy, Betriebsbackups, geeignete Provider und weitere Konten-/Betriebs-
 funktionen sind vor öffentlichem Betrieb zu ergänzen: [SECURITY](docs/SECURITY.md).
-Das private GitHub-Repository ist als `origin` eingerichtet. GitHub Actions prüft
+Das GitHub-Repository ist als `origin` eingerichtet und derzeit öffentlich.
+GitHub Actions prüft
 Pushes und Pull Requests. Squash-Merge und automatisches Löschen gemergter
 Arbeitsbranches sind konfiguriert. Serverseitiger Branchschutz ist noch nicht
-aktiv: GitHub verlangt dafür beim privaten Repository ein Pro-Upgrade. Lokale
-Hooks und verbindliche Reviewregeln gelten weiterhin; sie ersetzen diesen Schutz
+aktiv. Die frühere Tarifbeschränkung galt für den damaligen privaten Zustand.
+Lokale Hooks und verbindliche Reviewregeln gelten weiterhin; sie ersetzen diesen Schutz
 nicht. Details: [BRANCHING](docs/BRANCHING.md).
 
 ## Dokumentation
