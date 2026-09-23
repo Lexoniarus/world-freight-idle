@@ -107,12 +107,8 @@ def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
 
 
 def test_contract_offer_domain_rules(game):
-    payload = [item.to_dict() for item in game.state_repository.list_offers()][
-        0
-    ]
-    offer = ContractOffer.from_dict(payload)
+    offer = game.state_repository.list_offers()[0]
 
-    assert offer.to_dict() == payload
     assert offer.is_available(offer.created_at, offer.market_model)
     assert not offer.is_available(offer.expires_at, offer.market_model)
     assert not offer.is_available(offer.created_at, "other-model")
@@ -140,13 +136,9 @@ def test_contract_offer_domain_rules(game):
     )
     assert ContractOffer.from_snapshot(snapshot) == offer
 
-    broken = {**payload, "cargo_code": "not-in-evidence"}
-    with pytest.raises(ValueError, match="Cargo code"):
-        ContractOffer.from_dict(broken)
-
     for field in ("tons", "rate_eur_per_km_ton", "created_at", "expires_at"):
         with pytest.raises(ValueError):
-            ContractOffer.from_dict({**payload, field: True})
+            replace(offer, **{field: True})
 
     for changes in (
         {"id": ""},

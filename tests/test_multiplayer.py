@@ -3,6 +3,7 @@
 import asyncio
 import runpy
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,7 +20,6 @@ from app.bootstrap import (
     build_leaderboard_reader,
     build_player_service,
 )
-from app.domain.contracts import ContractOffer
 from app.domain.game import PlayerState
 from app.domain.transports import ActiveTransport
 from app.main import create_app
@@ -241,23 +241,18 @@ async def test_simultaneous_dispatch_revalidates_after_routing(game):
 
 
 async def test_expired_contract_and_failed_routing_do_not_charge(game):
-    contract = first_berlin_contract(game)
+    contract = game._find_contract(first_berlin_contract(game)["id"])
     game.state_repository.replace_offers(
-        tuple(
-            ContractOffer.from_dict(item)
-            for item in [{**contract, "created_at": 0, "expires_at": 1}]
-        )
+        (replace(contract, created_at=0, expires_at=1),)
     )
     with pytest.raises(KeyError):
-        project_transport(await game.dispatch(contract["id"], "truck_01"))
-    game.state_repository.replace_offers(
-        tuple(ContractOffer.from_dict(item) for item in [contract])
-    )
+        project_transport(await game.dispatch(contract.id, "truck_01"))
+    game.state_repository.replace_offers((contract,))
     with patch.object(
         game.router, "route", side_effect=RuntimeError("offline")
     ):
         with pytest.raises(RuntimeError):
-            project_transport(await game.dispatch(contract["id"], "truck_01"))
+            project_transport(await game.dispatch(contract.id, "truck_01"))
     assert project_state(game.state())["player"]["cash"] == 175000
     assert [project_transport(value) for value in game.list_transports()] == []
 

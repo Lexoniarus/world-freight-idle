@@ -7,15 +7,12 @@ import pytest
 from app.api.v1.game_projection import (
     project_vehicle,
 )
-from app.domain.contracts import ContractOffer
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.repositories.transport_mapping import load_transport
 
 
 def test_transport_lifecycle_rejects_invalid_and_duplicate_settlement(game):
-    offer = ContractOffer.from_dict(
-        [item.to_dict() for item in game.state_repository.list_offers()][0]
-    )
+    offer = game.state_repository.list_offers()[0]
     route = RouteSnapshot(((13.3, 52.5), (9.9, 53.5)), 300, 100, "fake")
     trip = ActiveTransport(
         "trip",

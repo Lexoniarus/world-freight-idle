@@ -19,7 +19,6 @@ from app.api.v1.game_projection import (
     project_vehicle,
 )
 from app.bootstrap import build_world_state_migration_service
-from app.domain.contracts import ContractOffer
 from app.domain.errors import WorldCatalogueError
 from app.domain.game import OwnedVehicle
 from app.domain.world import FacilityQuery
@@ -223,13 +222,11 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
                 project_contract(value)
                 for value in game.refresh_market(force=True)
             ]
-        expired = [
-            item.to_dict() for item in game.state_repository.list_offers()
-        ]
-        for item in expired:
-            item["expires_at"] = 0
         game.state_repository.replace_offers(
-            tuple(ContractOffer.from_dict(item) for item in expired)
+            tuple(
+                replace(item, created_at=0, expires_at=1)
+                for item in game.state_repository.list_offers()
+            )
         )
         assert [
             project_contract(value) for value in game.refresh_market()

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from dataclasses import asdict
+from dataclasses import asdict, replace
 
 import pytest
 
@@ -13,7 +13,6 @@ from app.api.v1.game_projection import (
     project_transport,
     project_vehicle,
 )
-from app.domain.contracts import ContractOffer
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.models import PriceQuote
 from app.domain.results import ContractQuote
@@ -29,7 +28,8 @@ def first_berlin_contract(game: GameService) -> dict:
     return next(
         contract
         for contract in [
-            item.to_dict() for item in game.state_repository.list_offers()
+            project_contract(item)
+            for item in game.state_repository.list_offers()
         ]
         if contract["origin_hub_id"] == BERLIN_UID
     )
@@ -104,14 +104,14 @@ async def test_dispatch_builds_persisted_trip_and_debits_cost(
 def test_reconcile_arrival_moves_vehicle_and_pays(game: GameService):
     contract = first_berlin_contract(game)
     quote = ContractQuote(
-        ContractOffer.from_dict(contract),
+        game._find_contract(contract["id"]),
         RouteSnapshot(((13.3, 52.5), (9.9, 53.5)), 300, 100, "fake"),
         PriceQuote(1000, 200, 800),
         "truck_01",
         0.62,
     )
     trip = game._build_trip(
-        ContractOffer.from_dict(contract), "truck_01", quote, 1.0, 1.0
+        game._find_contract(contract["id"]), "truck_01", quote, 1.0, 1.0
     )
     game.state_repository.save_transport(trip)
     vehicles = [
@@ -156,10 +156,10 @@ def test_find_contract_returns_match_and_raises(game: GameService):
     assert game._find_contract(contract["id"]).id == contract["id"]
     with pytest.raises(KeyError):
         game._find_contract("missing")
-    future = {**contract, "created_at": game.now() + 100}
-    game.state_repository.replace_offers(
-        tuple(ContractOffer.from_dict(item) for item in [future])
+    future = replace(
+        game._find_contract(contract["id"]), created_at=game.now() + 100
     )
+    game.state_repository.replace_offers((future,))
     with pytest.raises(KeyError):
         game._find_contract(contract["id"])
 
@@ -167,14 +167,12 @@ def test_find_contract_returns_match_and_raises(game: GameService):
 def test_refresh_market_drops_legacy_offers_but_keeps_active_trips(
     game: GameService,
 ):
-    current = [project_contract(value) for value in game.refresh_market()]
-    legacy = dict(current[0])
-    legacy["id"] = "legacy-offer"
-    legacy["market_model"] = "previous-market"
-    trip = add_transport(game, arrives_at=game.now() + 1000)
-    game.state_repository.replace_offers(
-        tuple(ContractOffer.from_dict(item) for item in [legacy, *current])
+    current = game.refresh_market()
+    legacy = replace(
+        current[0], id="legacy-offer", market_model="previous-market"
     )
+    trip = add_transport(game, arrives_at=game.now() + 1000)
+    game.state_repository.replace_offers((legacy, *current))
     refreshed = [project_contract(value) for value in game.refresh_market()]
     assert all(item.get("market_model") == "nhm_v1" for item in refreshed)
     assert all(item["id"] != "legacy-offer" for item in refreshed)
@@ -208,7 +206,7 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
     vehicle = OwnedVehicle.from_dict(
         [item.to_dict() for item in game.state_repository.list_vehicles()][0]
     )
-    game._validate_dispatch(vehicle, ContractOffer.from_dict(contract))
+    game._validate_dispatch(vehicle, game._find_contract(contract["id"]))
 
     wrong_location = OwnedVehicle.from_dict(
         {
@@ -220,35 +218,37 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
     )
     with pytest.raises(ValueError, match="Abholadresse"):
         game._validate_dispatch(
-            wrong_location, ContractOffer.from_dict(contract)
+            wrong_location, game._find_contract(contract["id"])
         )
 
     too_small = OwnedVehicle.from_dict(
         {**vehicle.to_dict(), "capacity_tons": 0.1}
     )
     with pytest.raises(ValueError, match="kapazität"):
-        game._validate_dispatch(too_small, ContractOffer.from_dict(contract))
+        game._validate_dispatch(too_small, game._find_contract(contract["id"]))
 
     wrong_mode = OwnedVehicle.from_dict({**vehicle.to_dict(), "mode": "ship"})
     with pytest.raises(ValueError, match="Fahrzeugtyp"):
-        game._validate_dispatch(wrong_mode, ContractOffer.from_dict(contract))
+        game._validate_dispatch(
+            wrong_mode, game._find_contract(contract["id"])
+        )
 
     busy = OwnedVehicle.from_dict({**vehicle.to_dict(), "status": "enroute"})
     with pytest.raises(ValueError, match="verfügbar"):
-        game._validate_dispatch(busy, ContractOffer.from_dict(contract))
+        game._validate_dispatch(busy, game._find_contract(contract["id"]))
 
 
 def test_build_trip_contains_tracking_timestamps(game: GameService):
     contract = first_berlin_contract(game)
     quote = ContractQuote(
-        ContractOffer.from_dict(contract),
+        game._find_contract(contract["id"]),
         RouteSnapshot(((1, 2), (3, 4)), 10, 20, "p"),
         PriceQuote(100, 30, 70),
         "truck_01",
         0.62,
     )
     trip = game._build_trip(
-        ContractOffer.from_dict(contract), "truck_01", quote, 1000.0, 50.0
+        game._find_contract(contract["id"]), "truck_01", quote, 1000.0, 50.0
     )
     assert trip.departed_at == 1000.0
     assert trip.arrives_at == 1050.0

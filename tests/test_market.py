@@ -71,7 +71,7 @@ def test_build_contract_has_expiry_and_valid_nhm_cargo(
     with pytest.raises(FrozenInstanceError):
         setattr(contract, "tons", 1)
 
-    payload = contract.to_dict()
+    payload = project_contract(contract)
     assert payload["cargo_code"] == option.cargo.code
     assert "cargo" not in payload["origin"]
     assert "handled_goods" not in payload["origin"]
@@ -303,13 +303,11 @@ def test_vehicle_catalogue_outage_preserves_only_current_market(
 ):
     from app.domain.errors import CatalogueError
 
-    original = [project_contract(value) for value in game.refresh_market()]
-    legacy = dict(original[0])
-    legacy["id"] = "legacy-generic"
-    legacy["market_model"] = "previous-market"
-    game.state_repository.replace_offers(
-        tuple(ContractOffer.from_dict(item) for item in [legacy, *original])
+    original = game.refresh_market()
+    legacy = replace(
+        original[0], id="legacy-generic", market_model="previous-market"
     )
+    game.state_repository.replace_offers((legacy, *original))
     monkeypatch.setattr(
         game.market.vehicles,
         "list_models",
@@ -319,7 +317,7 @@ def test_vehicle_catalogue_outage_preserves_only_current_market(
     assert all(item.get("market_model") == "nhm_v1" for item in surviving)
     assert all(item["id"] != "legacy-generic" for item in surviving)
     assert [
-        item.to_dict() for item in game.state_repository.list_offers()
+        project_contract(item) for item in game.state_repository.list_offers()
     ] == surviving
 
     listed = [project_contract(value) for value in game.list_contracts()]
@@ -345,7 +343,7 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
         await game.dispatch(first_berlin_contract(game)["id"], "truck_01")
     )
     remaining = [
-        item.to_dict() for item in game.state_repository.list_offers()
+        project_contract(item) for item in game.state_repository.list_offers()
     ]
     monkeypatch.setattr(game, "now", lambda: trip["arrives_at"] + 1)
     cash = game._get_player().to_dict()["cash"]
@@ -358,7 +356,7 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
         assert not game.reconcile_arrival()
     assert game._get_player().to_dict()["cash"] == cash + trip["payout_eur"]
     assert [
-        item.to_dict() for item in game.state_repository.list_offers()
+        project_contract(item) for item in game.state_repository.list_offers()
     ] == []
     refilled = [project_contract(value) for value in game.refresh_market()]
     assert refilled
@@ -371,14 +369,12 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
 def test_market_generation_never_serializes_domain_objects(game):
     origin = game.state_repository.list_vehicles()[0].hub_id
     with (
-        patch.object(
-            ContractOfferSnapshot,
-            "to_dict",
+        patch(
+            "app.api.v1.game_projection.project_contract",
             side_effect=AssertionError("snapshot serialization"),
         ),
-        patch.object(
-            ContractOffer,
-            "to_dict",
+        patch(
+            "app.repositories.snapshot_mapping.load_offer",
             side_effect=AssertionError("offer serialization"),
         ),
     ):

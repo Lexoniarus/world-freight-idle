@@ -321,3 +321,12 @@ Domainwerte wieder her und weisen fehlende beziehungsweise fremde Felder ab.
 66 betroffene Tests und Pyright bestanden. Die echte game.db wurde nicht
 geöffnet. Die verbleibenden Domain-Serialisierungsmethoden werden als nächster
 zusammenhängender Schritt samt Aufrufern entfernt.
+
+## B: Auftragsobjekte ohne Serialisierung
+
+ContractOffer und ContractOfferSnapshot kennen keine Dict-Formate mehr.
+Die öffentliche Darstellung liegt vollständig in project_contract; gespeicherte
+Aufträge werden ausschließlich durch den Repository-Decoder hergestellt.
+Die betroffenen Domain-, Markt-, Spiel-, Repository-, Transport-, Multiplayer-,
+Migrations- und API-Tests bestanden; Pyright meldet keine Fehler. Regeltests
+verändern typisierte Angebote gezielt über immutable Kopien.

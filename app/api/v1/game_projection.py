@@ -1,16 +1,55 @@
 """Stable HTTP projections of typed game use-case results."""
 
+from dataclasses import asdict
 from typing import Any
 
-from app.domain.contracts import ContractOffer
+from app.domain.contracts import ContractOffer, ContractOfferSnapshot
 from app.domain.game import OwnedVehicle
 from app.domain.results import ContractQuote, FleetCatalogue, GameSnapshot
 from app.domain.transports import ActiveTransport
 
 
-def project_contract(offer: ContractOffer) -> dict[str, Any]:
+def project_contract(
+    offer: ContractOffer | ContractOfferSnapshot,
+) -> dict[str, Any]:
     """Expose an offer using the established v1 field names."""
-    return offer.to_dict()
+    origin = offer.origin.to_dict()
+    destination = offer.destination.to_dict()
+    origin_evidence = asdict(offer.origin_cargo_evidence)
+    origin_evidence["ancestor_row_ids"] = list(
+        offer.origin_cargo_evidence.ancestor_row_ids
+    )
+    destination_evidence = asdict(offer.destination_cargo_evidence)
+    destination_evidence["ancestor_row_ids"] = list(
+        offer.destination_cargo_evidence.ancestor_row_ids
+    )
+    return {
+        "id": offer.id,
+        "market_model": offer.market_model,
+        "cargo_system": offer.cargo_system,
+        "origin_hub_id": offer.origin.facility_uid,
+        "destination_hub_id": offer.destination.facility_uid,
+        "origin_facility_uid": offer.origin.facility_uid,
+        "destination_facility_uid": offer.destination.facility_uid,
+        "origin": origin,
+        "destination": destination,
+        "shipper_name": offer.shipper_name,
+        "consignee_name": offer.consignee_name,
+        "cargo": offer.cargo.name,
+        "cargo_code": offer.cargo.code,
+        "cargo_evidence": origin_evidence,
+        "origin_cargo_evidence": origin_evidence,
+        "destination_cargo_evidence": destination_evidence,
+        "cargo_basis": offer.cargo_basis,
+        "trade_match_type": offer.trade_match_type,
+        "tons": offer.tons,
+        "payload_band": offer.payload_band,
+        "rate_eur_per_km_ton": offer.rate_eur_per_km_ton,
+        "created_at": offer.created_at,
+        "expires_at": offer.expires_at,
+        "mode": offer.mode,
+        "relationship_simulated": offer.relationship_simulated,
+    }
 
 
 def project_vehicle(vehicle: OwnedVehicle) -> dict[str, Any]:
