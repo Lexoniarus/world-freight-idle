@@ -48,6 +48,9 @@ def test_transport_lifecycle_rejects_invalid_and_duplicate_settlement(game):
     for changes in (
         {"id": ""},
         {"arrives_at": 10},
+        {"arrives_at": 111},
+        {"journey": None},
+        {"journey": unmetered_journey(301, 100)},
         {"payout_eur": -1},
         {"payout_eur": 1.5},
         {"departed_at": float("nan")},
@@ -70,6 +73,14 @@ def test_transport_lifecycle_rejects_invalid_and_duplicate_settlement(game):
         load_transport(payload)
     payload = asdict(trip)
     payload["arrives_at"] = 9
+    with pytest.raises(ValueError):
+        load_transport(payload)
+    payload = asdict(trip)
+    payload["journey"]["unknown"] = "must not disappear"
+    with pytest.raises(TypeError):
+        load_transport(payload)
+    del payload["journey"]["unknown"]
+    payload["journey"]["segments"] = ()
     with pytest.raises(ValueError):
         load_transport(payload)
 

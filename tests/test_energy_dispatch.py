@@ -131,5 +131,36 @@ async def test_dispatch_replans_after_routing_and_settlement_rolls_back(game):
     assert game.get_vehicle(vehicle.id).status == "enroute"
     assert game._get_player() == before
     assert game.state_repository.list_transports()[0].status == "active"
+    corrupted = game.get_vehicle(vehicle.id)
+    # Simulate a damaged persisted departure checkpoint, not a legal mutation.
+    corrupted._energy_level = 99
+    game.state_repository.save_vehicle(corrupted)
+    with pytest.raises(ValueError, match="checkpoint"):
+        game.reconcile_arrival()
+    assert game._get_player() == before
+    corrupted._energy_level = 100
+    game.state_repository.save_vehicle(corrupted)
     assert game.reconcile_arrival()
     assert game.get_vehicle(vehicle.id).energy_level == 20
+
+
+async def test_quote_rejects_offer_changed_during_routing(game):
+    contract = first_berlin_contract(game)
+    original_route = game.router.route
+
+    async def route_then_change_offer(*args):
+        route = await original_route(*args)
+        offers = game.state_repository.list_offers()
+        game.state_repository.replace_offers(
+            tuple(
+                replace(o, tons=o.tons + 0.01) if o.id == contract["id"] else o
+                for o in offers
+            )
+        )
+        return route
+
+    with patch.object(game.router, "route", route_then_change_offer):
+        with pytest.raises(ValueError, match="geändert"):
+            await game.quote_contract(contract["id"], "truck_01")
+    assert game.get_vehicle("truck_01").status == "idle"
+    assert game.state_repository.list_active_transports() == ()

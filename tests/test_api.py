@@ -215,6 +215,9 @@ def test_v1_resource_endpoints_and_error_mapping(tmp_path: Path, game):
         )
         assert client.get("/api/v1/fleet/missing").status_code == 404
         assert (
+            client.get("/api/v1/fleet/truck_01").json()["energy_level"] == 1010
+        )
+        assert (
             client.get("/api/v1/transports").json()["transports"][0]["id"]
             == "trip1"
         )

@@ -95,6 +95,8 @@ def test_journey_rejects_inconsistent_intervals_and_energy():
             replace(drive, **changes)
     for changes in (
         {"segments": ()},
+        {"segments": (None,)},
+        {"energy": "diesel"},
         {"segments": list(plan.segments)},
         {"distance_km": 501},
         {"energy": None},

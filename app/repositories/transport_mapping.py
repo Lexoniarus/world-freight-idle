@@ -38,9 +38,13 @@ def load_transport(value: dict[str, Any]) -> ActiveTransport:
 def load_journey(value: dict[str, Any]) -> JourneyPlan:
     """Decode the single versioned itinerary representation."""
     return JourneyPlan(
-        distance_km=value["distance_km"],
-        energy=EnergyProfile(**value["energy"])
-        if value["energy"] is not None
-        else None,
-        segments=tuple(JourneySegment(**part) for part in value["segments"]),
+        **{
+            **value,
+            "energy": EnergyProfile(**value["energy"])
+            if value["energy"] is not None
+            else None,
+            "segments": tuple(
+                JourneySegment(**part) for part in value["segments"]
+            ),
+        }
     )

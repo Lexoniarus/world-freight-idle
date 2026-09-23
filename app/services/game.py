@@ -159,6 +159,8 @@ class GameService:
             destination.coordinates.latitude,
             destination.coordinates.longitude,
         )
+        if self._find_contract(contract_id) != contract:
+            raise ValueError("Auftrag wurde während der Kalkulation geändert.")
         vehicle = (
             self.get_vehicle(vehicle_id) if vehicle_id is not None else None
         )

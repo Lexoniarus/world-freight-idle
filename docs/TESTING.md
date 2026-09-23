@@ -108,3 +108,10 @@ Fixture-Endpoint existiert ausschließlich in `tests.browser_server`, niemals
 im Produktions-Einstieg. Echte Katalogwerte werden separat für alle 14 Modelle
 geprüft. Tank-/Ladepausen, Logout/Offline-Ankunft, verbleibende Energie sowie
 stabile Bildknoten werden im Browser beobachtet.
+
+Energie-Upgrade-Gegenfälle prüfen unbekannte Modelle, falsche Snapshotformen,
+Boolesche Versionswerte, beschädigte Besitzbeziehungen und Integritätsfehler.
+Fehlgeschlagene Abgleiche entfernen die Ausgabe, bewahren die Quelle und melden
+ein strukturiertes Rollback-Ereignis. Runtime-Snapshots weisen unbekannte
+Fahrtplanfelder zurück. Konkurrierende Dispositionen prüfen das Angebot nach
+Routing erneut; ein veränderter Energiecheckpoint verhindert Teilabrechnungen.

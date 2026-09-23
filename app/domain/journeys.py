@@ -67,6 +67,12 @@ class JourneyPlan:
         require_finite(self.distance_km, "Journey distance", 0.000001)
         if not isinstance(self.segments, tuple) or not self.segments:
             raise ValueError("Journey requires immutable intervals.")
+        if any(not isinstance(part, JourneySegment) for part in self.segments):
+            raise ValueError("Journey requires typed intervals.")
+        if self.energy is not None and not isinstance(
+            self.energy, EnergyProfile
+        ):
+            raise ValueError("Journey requires a typed energy profile.")
         seconds, distance = 0.0, 0.0
         previous_level = self.segments[0].start_energy
         for segment in self.segments:

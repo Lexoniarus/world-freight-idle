@@ -110,7 +110,21 @@ def test_energy_upgrade_reconciles_accounts_sessions_and_history(
 
 
 @pytest.mark.parametrize(
-    "fault", ["model", "snapshot", "capacity", "table", "guard", "version"]
+    "fault",
+    [
+        "model",
+        "snapshot",
+        "capacity",
+        "table",
+        "guard",
+        "version",
+        "integrity",
+        "ownership",
+        "null",
+        "list",
+        "data",
+        "boolean",
+    ],
 )
 def test_energy_upgrade_rejects_invalid_source_without_output(
     old_energy_state, tmp_path, fault
@@ -128,6 +142,29 @@ def test_energy_upgrade_rejects_invalid_source_without_output(
             db.execute("CREATE TABLE unexpected (value TEXT)")
         elif fault == "guard":
             db.execute("DROP TRIGGER retain_settlement")
+        elif fault == "integrity":
+            db.execute("PRAGMA ignore_check_constraints=ON")
+            db.execute("UPDATE player_states SET cash=-1")
+        elif fault == "ownership":
+            db.execute("UPDATE owned_vehicles SET user_id='unknown'")
+        elif fault in {"null", "list", "data", "boolean"}:
+            document = json.loads(
+                db.execute(
+                    "SELECT transport_snapshot FROM transports"
+                ).fetchone()[0]
+            )
+            if fault == "null":
+                document = None
+            elif fault == "list":
+                document = []
+            elif fault == "data":
+                document["data"] = None
+            else:
+                document["version"] = True
+            db.execute(
+                "UPDATE transports SET transport_snapshot=?",
+                (json.dumps(document),),
+            )
         else:
             db.execute("UPDATE game_schema SET version='0.9.0'")
         db.commit()
@@ -141,8 +178,9 @@ def test_energy_upgrade_rejects_invalid_source_without_output(
     assert source.read_bytes() == original
 
 
+@pytest.mark.parametrize("fault", ["values", "integrity", "ownership"])
 def test_energy_upgrade_reconciliation_failure_removes_target(
-    old_energy_state, tmp_path
+    old_energy_state, tmp_path, fault, caplog
 ):
     source, upgrade, _ = old_energy_state
     original = source.read_bytes()
@@ -152,13 +190,26 @@ def test_energy_upgrade_reconciliation_failure_removes_target(
     def corrupt_output(db, inventory):
         write(db, inventory)
         with db.connect() as connection:
-            connection.execute("UPDATE player_states SET cash=cash+1")
+            if fault == "integrity":
+                connection.execute("PRAGMA ignore_check_constraints=ON")
+                connection.execute("UPDATE player_states SET cash=-1")
+            elif fault == "ownership":
+                connection.execute("PRAGMA foreign_keys=OFF")
+                connection.execute(
+                    "UPDATE owned_vehicles SET user_id='unknown'"
+                )
+            else:
+                connection.execute("UPDATE player_states SET cash=cash+1")
 
     with patch.object(upgrade, "_write_inventory", side_effect=corrupt_output):
-        with pytest.raises(PersistenceError, match="Abgleich"):
+        with pytest.raises(PersistenceError):
             upgrade.upgrade_to(output)
     assert not output.exists()
     assert source.read_bytes() == original
+    assert any(
+        getattr(record, "event", None) == "state.energy_upgrade_rolled_back"
+        for record in caplog.records
+    )
 
 
 def test_energy_upgrade_cli_backs_up_before_building(
@@ -198,6 +249,20 @@ def test_energy_upgrade_cli_backs_up_before_building(
     assert json.loads(capsys.readouterr().out)["vehicles"] == 1
     with pytest.raises(SystemExit):
         main()
+
+    monkeypatch.setattr(
+        sys, "argv", ["upgrade", "--source", str(source), "--check"]
+    )
+    with (
+        patch(
+            "scripts.upgrade_vehicle_energy.build_energy_upgrade",
+            return_value=upgrade,
+        ),
+        patch("scripts.upgrade_vehicle_energy.backup_database") as backup_call,
+    ):
+        main()
+    backup_call.assert_not_called()
+    assert json.loads(capsys.readouterr().out)["vehicles"] == 1
 
 
 def test_energy_upgrade_builder_requires_catalogue(tmp_path):

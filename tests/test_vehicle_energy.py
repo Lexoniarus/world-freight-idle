@@ -95,6 +95,25 @@ def test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction(
     game,
 ):
     vehicle = game.state_repository.list_vehicles()[0]
+    from typing import Any
+
+    from app.domain.game import OwnedVehicle
+
+    invalid_energy: dict[str, Any] = {
+        "energy": None,
+        "energy_level": 0,
+        "top_speed_kmh": 90,
+    }
+    with pytest.raises(ValueError, match="energy profile"):
+        OwnedVehicle(
+            "bad",
+            "Invalid energy",
+            "truck",
+            24,
+            vehicle.facility_uid,
+            "idle",
+            **invalid_energy,
+        )
     original = vehicle.energy
     assert vehicle.energy_level == original.capacity
     assert vehicle.top_speed_kmh == 90

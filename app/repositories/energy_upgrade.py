@@ -81,6 +81,10 @@ class VehicleEnergyUpgradeRepository:
             database.initialize()
         except BaseException:
             target.unlink(missing_ok=True)
+            LOGGER.error(
+                "Vehicle energy upgrade rolled back",
+                extra={"event": "state.energy_upgrade_rolled_back"},
+            )
             raise
         counts = {
             "accounts": len(inventory.tables["users"]),
@@ -90,7 +94,14 @@ class VehicleEnergyUpgradeRepository:
         }
         LOGGER.info(
             "Vehicle energy upgrade reconciled",
-            extra={"event": "state.energy_upgraded", "data": counts},
+            extra={
+                "event": "state.energy_upgraded",
+                "data": {
+                    **counts,
+                    "source_version": "1.0.0",
+                    "target_version": "1.1.0",
+                },
+            },
         )
         return counts
 
@@ -131,7 +142,8 @@ class VehicleEnergyUpgradeRepository:
                     for row in db.execute(
                         "SELECT sql FROM sqlite_master WHERE type='index' "
                         "AND sql IS NOT NULL AND tbl_name IN "
-                        "('sessions','auth_attempts','geocode_cache','route_cache')"
+                        "('sessions','auth_attempts',"
+                        "'geocode_cache','route_cache')"
                     )
                 )
                 return EnergyUpgradeInventory(tables, extra_schema)
@@ -190,9 +202,12 @@ class VehicleEnergyUpgradeRepository:
             elif table == "transports":
                 document = json.loads(value["transport_snapshot"])
                 if (
-                    document.keys() != {"version", "kind", "data"}
+                    not isinstance(document, dict)
+                    or document.keys() != {"version", "kind", "data"}
+                    or type(document["version"]) is not int
                     or document["version"] != 1
                     or document["kind"] != "transport"
+                    or not isinstance(document["data"], dict)
                     or "journey" in document["data"]
                 ):
                     raise ValueError("Unsupported source transport.")

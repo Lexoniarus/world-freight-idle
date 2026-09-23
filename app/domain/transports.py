@@ -75,6 +75,8 @@ class ActiveTransport:
             != self.contract.destination.facility_uid
         ):
             raise ValueError("Transport endpoints differ from its contract.")
+        if not isinstance(self.journey, JourneyPlan):
+            raise ValueError("Transport requires a typed journey.")
         if self.journey.distance_km != self.route.distance_km or not isclose(
             self.journey.duration_seconds,
             self.arrives_at - self.departed_at,
