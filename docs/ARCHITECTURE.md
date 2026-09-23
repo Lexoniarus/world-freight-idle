@@ -380,9 +380,10 @@ Transaktion. Die Markterzeugung folgt nach deren Commit. Routing bleibt vor der
 Schreibtransaktion; Verfügbarkeit und Wirtschaftswerte werden danach erneut
 geprüft.
 
-Die relationale Implementierung ist eigenständig und mit denselben Use Cases
-geprüft. Zur schrittweisen Integration hält ein temporärer Adapter im
-Repository-Layer die bisherigen Account-/Mehrspielerleser lauffähig, bis deren
-gemeinsame Umstellung erfolgt. Er wird danach entfernt. Eine automatische
-Altformatreparatur ist kein Bestandteil der neuen Services. API-/Markt-Mapping
-ist noch ein gesonderter nachfolgender Arbeitsschritt in Abschnitt B.
+Die Laufzeit ist direkt relational verdrahtet. Die zusätzlich eingeführte
+KV-Übergangsschicht wurde wieder entfernt; sie gehört nicht zur Zielarchitektur.
+GameRuntime im Composition Root bündelt nur gemeinsame Abhängigkeiten.
+Benutzerbezogene Services erhalten die jeweilige SqliteGameUnitOfWork; Services
+kennen weiterhin ausschließlich deren Domain-Port. Accounts, Provider-Cache,
+Rangliste und Traffic verwenden ihre getrennten relationalen Zugriffe.
+API-/Markt-Mapping und abschließende Verifikation sind innerhalb B noch offen.

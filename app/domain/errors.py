@@ -23,3 +23,7 @@ class PersistenceError(RuntimeError):
 
 class UnsupportedGameSchema(PersistenceError):
     """Normal runtime refuses an old, incomplete or unknown state schema."""
+
+
+class DuplicateAccountError(ValueError):
+    """An account name is already assigned, including registration races."""

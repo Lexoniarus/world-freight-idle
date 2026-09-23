@@ -11,15 +11,19 @@ def add_transport(
     payout: int = 1000,
     departed_at: float = 1,
     arrives_at: float = 2,
+    tons: float | None = None,
+    transport_id: str = "fixture-trip",
 ) -> ActiveTransport:
     """Reserve a real owned vehicle and persist a complete test snapshot."""
     game.refresh_market()
     offer = game.state_repository.list_offers()[0]
     offer = replace(offer, created_at=0, expires_at=max(arrives_at, 10))
+    if tons is not None:
+        offer = replace(offer, tons=tons)
     vehicle = game.state_repository.list_vehicles()[0]
     vehicle.start_trip()
     trip = ActiveTransport(
-        "fixture-trip",
+        transport_id,
         vehicle.id,
         offer,
         offer.origin,

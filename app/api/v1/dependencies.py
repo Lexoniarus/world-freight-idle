@@ -4,6 +4,7 @@ from fastapi import Depends, HTTPException, Request
 
 from app.bootstrap import (
     build_fleet_service,
+    build_leaderboard_reader,
     build_map_service,
     build_multiplayer_map_service,
     build_player_service,
@@ -11,6 +12,7 @@ from app.bootstrap import (
 )
 from app.domain.errors import CatalogueError
 from app.domain.ports import VehicleCatalogue
+from app.domain.read_ports import LeaderboardReader
 from app.services.auth import SESSION_COOKIE, AuthService
 from app.services.fleet import FleetService
 from app.services.game import GameService
@@ -45,7 +47,7 @@ def get_current_user(
     user = auth.accounts.session_user(token)
     if user is None:
         raise HTTPException(401, "Bitte anmelden.")
-    return user
+    return dict(user)
 
 
 def get_game_service(
@@ -82,3 +84,8 @@ def get_multiplayer_map_service(request: Request) -> MultiplayerMapService:
 def get_vehicle_catalogue(request: Request) -> VehicleCatalogue:
     """Resolve the read-only catalogue through the composition root."""
     return build_vehicle_catalogue(request.app.state.settings)
+
+
+def get_leaderboard_reader(request: Request) -> LeaderboardReader:
+    """Resolve the public projection separately from account operations."""
+    return build_leaderboard_reader(request.app.state.game)

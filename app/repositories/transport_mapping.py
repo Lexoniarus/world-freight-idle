@@ -1,4 +1,4 @@
-"""Transitional KV adapter for typed transports and compatible projections."""
+"""Historical transport document encoding and decoding."""
 
 from typing import Any
 

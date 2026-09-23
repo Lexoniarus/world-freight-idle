@@ -1,11 +1,11 @@
 # Relationale Spielpersistenz und Transaktionsgrenzen
 
-Status: Ports, relationale SQLite-Adapter und deren Verhaltenstests sind
-implementiert. GameService und FleetService benutzen diese Ports. Der
-Composition Root verwendet bis zur gemeinsamen Umstellung von Accounts,
-Profilpflege und Mehrspielerprojektionen noch einen ausdrücklich temporären
-KV-Adapter. Die gleichen Use Cases sind bereits gegen das relationale
-Repository getestet. Dies ist noch keine vollständig umgestellte Laufzeit.
+Status: Die Laufzeit ist auf das relationale Repository umgestellt. Der
+zusätzlich eingeführte KV-Übergangsadapter und der alte KV-Traffic-Leser wurden
+entfernt. GameService und FleetService benutzen die geplanten Ports; der
+Composition Root bindet Accounts, Cache, Profilpflege und Mehrspielerleser
+unmittelbar an SQLite. Die Mapping-Trennung und die abschließende Verifikation
+sind noch offen. Dieser Arbeitsstand ist noch nicht zur Integration freigegeben.
 
 ## Fachliche Grenzen
 
@@ -84,3 +84,21 @@ Cleanup und Snapshotbeständigkeit. Portbasierte Service-Tests benötigen kein
 SQL. Architekturtests verbieten konkrete Persistenzadapter und Mapping in
 Domain/Services. Alle neuen konkreten Core-Callables erhalten Gegentests und
 Manifest-Zuordnungen. Die alte game.db bleibt bis F ungelesen und unverändert.
+
+## Ergänzende Ports und Leseadapter
+
+Die Profilpflege erhält eine Factory für GameUnitOfWork und liest aktive Lasten
+als ActiveTransport-Objekte. AuthService erhält AccountStore und PasswordVerifier
+explizit; SQLite-Konflikte werden im Account-Adapter zu DuplicateAccountError.
+Provider benutzen ProviderCache statt SqliteStore. Der neue SQLite-Cache
+protokolliert beschädigte JSON-Einträge als Cache-Miss und erlaubt anschließend
+einen echten Providerabruf; es werden keine Routendaten erfunden.
+
+LeaderboardReader und TrafficReader beschreiben getrennte öffentliche
+Lesezugriffe. Ihre relationalen Adapter verwenden indizierte Besitz-, Status-
+und Zeitspalten. Routen stammen aus validierten historischen Snapshots. Tests
+prüfen, dass private Kosten, Guthaben und Zugangsdaten nicht im Traffic-Ergebnis
+stehen und dass ein Settlement den Offline-Zuschlag in der Rangliste ersetzt.
+Die relationalen Leser sind im Composition Root angeschlossen. Es gibt keinen
+KV-Rückfall und keinen zweiten Laufzeitpfad. Der separate Offline-Importer bleibt
+dem späteren Abschnitt F vorbehalten.

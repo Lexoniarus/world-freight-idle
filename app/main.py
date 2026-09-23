@@ -11,12 +11,12 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import build_v1_router
-from app.bootstrap import build_game_service, game_store
+from app.bootstrap import build_game_runtime
 from app.config import Settings
 from app.domain.errors import WorldCatalogueError
 from app.logging_config import configure_logging
 from app.repositories.accounts import AccountRepository
-from app.services.auth import AuthService
+from app.services.auth import AuthService, PasswordHasher
 from app.tracing import TraceIdMiddleware
 from app.web import router as web_router
 
@@ -31,12 +31,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         )
         resources.push_async_callback(routing_client.aclose)
         app.state.routing_client = routing_client
-        app.state.game = build_game_service(
+        app.state.game = build_game_runtime(
             settings,
             routing_client,
         )
         app.state.auth = AuthService(
-            AccountRepository(game_store(app.state.game))
+            AccountRepository(app.state.game.database), PasswordHasher()
         )
         yield
 

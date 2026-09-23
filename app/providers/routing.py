@@ -9,10 +9,10 @@ from typing import Any
 
 import httpx
 
+from app.domain.cache_ports import ProviderCache
 from app.domain.errors import RoutingError
 from app.domain.models import RouteResult
 from app.providers.validation import validate_route
-from app.repositories.sqlite_store import SqliteStore
 from app.tracing import get_trace_id
 
 LOGGER = logging.getLogger(__name__)
@@ -54,12 +54,12 @@ class ValhallaTruckRouter:
 
     def __init__(
         self,
-        store: SqliteStore,
+        cache: ProviderCache,
         client: httpx.AsyncClient,
         base_url: str,
         client_id: str,
     ) -> None:
-        self.store = store
+        self.cache = cache
         self.client = client
         self.base_url = base_url.rstrip("/")
         self.client_id = client_id
@@ -94,7 +94,7 @@ class ValhallaTruckRouter:
             destination_lon,
         )
         try:
-            cached = self.store.get_route(cache_key)
+            cached = self.cache.get_route(cache_key)
         except ValueError:
             LOGGER.warning(
                 "Unreadable cached route",
@@ -148,7 +148,7 @@ class ValhallaTruckRouter:
             )
 
         route_result = self._extract_route(response.json())
-        self.store.put_route(cache_key, route_result.to_dict())
+        self.cache.put_route(cache_key, route_result.to_dict())
         return route_result
 
     def _build_cache_key(

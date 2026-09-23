@@ -8,7 +8,7 @@ import logging
 import time
 from typing import Any
 
-from app.repositories.multiplayer_map import MultiplayerMapRepository
+from app.domain.read_ports import TrafficReader
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ def player_color(user_id: str) -> str:
 class MultiplayerMapService:
     """Expose active transports without leaking private economy state."""
 
-    def __init__(self, repository: MultiplayerMapRepository) -> None:
+    def __init__(self, repository: TrafficReader) -> None:
         self.repository = repository
 
     def list_traffic(

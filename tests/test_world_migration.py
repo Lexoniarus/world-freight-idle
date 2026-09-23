@@ -11,7 +11,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.bootstrap import build_world_state_migration_service, game_store
+from app.bootstrap import build_world_state_migration_service
+from app.domain.contracts import ContractOffer
 from app.domain.errors import WorldCatalogueError
 from app.domain.game import OwnedVehicle
 from app.repositories.world_state_migration import (
@@ -180,7 +181,9 @@ def test_world_migration_repository_rolls_back_and_cli_requires_backup(
     assert store.get_json("first") is None
 
 
-async def test_snapshot_routing_and_settlement_survive_catalogue_failure(game):
+async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
+    monkeypatch, game
+):
     contract = first_berlin_contract(game)
     original = game.router.route
     game.router.route = AsyncMock(side_effect=original)
@@ -195,23 +198,24 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(game):
             contract["destination"]["lon"],
         )
         trip = await game.dispatch(contract["id"], "truck_01")
-        cash = game_store(game).get_json("player")["cash"]
-        trip["departed_at"] = 0
-        trip["arrives_at"] = 1
-        game_store(game).set_json("active_trips", [trip])
+        cash = game._get_player().to_dict()["cash"]
+        monkeypatch.setattr(game, "now", lambda: trip["arrives_at"] + 1)
         assert game.reconcile_arrival()
         assert (
-            game_store(game).get_json("player")["cash"]
-            == cash + trip["payout_eur"]
+            game._get_player().to_dict()["cash"] == cash + trip["payout_eur"]
         )
         assert not game.reconcile_arrival()
         assert game.list_vehicles()[0]["hub"] == trip["destination_snapshot"]
         with pytest.raises(WorldCatalogueError):
             game.refresh_market(force=True)
-        expired = game_store(game).get_json("contracts")
+        expired = [
+            item.to_dict() for item in game.state_repository.list_offers()
+        ]
         for item in expired:
             item["expires_at"] = 0
-        game_store(game).set_json("contracts", expired)
+        game.state_repository.replace_offers(
+            tuple(ContractOffer.from_dict(item) for item in expired)
+        )
         assert game.refresh_market() == []
         assert game.state()["vehicles"]
     assert quote["origin"] == contract["origin"]

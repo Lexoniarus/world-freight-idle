@@ -32,6 +32,10 @@ Hotfixes durchlaufen dieselben Prüfungen; das Präfix umgeht keine Freigabe.
 4. Kleine nachvollziehbare Commits. Nachrichten: `typ: konkrete Änderung`, mit
    feat, fix, refactor, docs, chore oder test als Typ. Nur zusammengehörige Dateien
    stagen; den Index vor jedem Commit mit `git diff --cached` prüfen.
+   Betroffene Tests einschließlich unmittelbar abhängiger Aufrufer müssen vor
+   dem Commit grün sein. Kein vollständiger Projekt-Testlauf pro Commit und
+   keine zusätzlichen Kompatibilitätsschichten allein für grüne Zwischenstände.
+   Noch offene Gesamtprüfungen werden sichtbar dokumentiert.
 5. Vor Integration Quality Gate, Browserregression und Dokumenten-/Architekturreview
    durchführen. Grüne Linter ersetzen keine Prüfung der Verantwortlichkeiten.
 6. Sobald ein Remote besteht: Branch pushen, Pull Request nach main erstellen,

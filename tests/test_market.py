@@ -5,8 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from app.bootstrap import game_store
-from app.domain.contracts import ContractOfferSnapshot
+from app.domain.contracts import ContractOffer, ContractOfferSnapshot
 from app.domain.errors import WorldCatalogueError
 from app.domain.game import OwnedVehicle
 from app.domain.world import FacilityQuery
@@ -306,7 +305,9 @@ def test_vehicle_catalogue_outage_preserves_only_current_market(
     legacy = dict(original[0])
     legacy["id"] = "legacy-generic"
     legacy["market_model"] = "previous-market"
-    game_store(game).set_json("contracts", [legacy, *original])
+    game.state_repository.replace_offers(
+        tuple(ContractOffer.from_dict(item) for item in [legacy, *original])
+    )
     monkeypatch.setattr(
         game.market.vehicles,
         "list_models",
@@ -315,7 +316,9 @@ def test_vehicle_catalogue_outage_preserves_only_current_market(
     surviving = game.refresh_market()
     assert all(item.get("market_model") == "nhm_v1" for item in surviving)
     assert all(item["id"] != "legacy-generic" for item in surviving)
-    assert game_store(game).get_json("contracts") == surviving
+    assert [
+        item.to_dict() for item in game.state_repository.list_offers()
+    ] == surviving
 
     listed = game.list_contracts()
     assert [item["id"] for item in listed] == [
@@ -328,6 +331,7 @@ def test_vehicle_catalogue_outage_preserves_only_current_market(
 
 @pytest.mark.asyncio
 async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
+    monkeypatch,
     game,
 ):
     from unittest.mock import patch
@@ -336,11 +340,11 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
     from tests.test_game import first_berlin_contract
 
     trip = await game.dispatch(first_berlin_contract(game)["id"], "truck_01")
-    remaining = game_store(game).get_json("contracts")
-    trip["departed_at"] = 0
-    trip["arrives_at"] = 1
-    game_store(game).set_json("active_trips", [trip])
-    cash = game_store(game).get_json("player")["cash"]
+    remaining = [
+        item.to_dict() for item in game.state_repository.list_offers()
+    ]
+    monkeypatch.setattr(game, "now", lambda: trip["arrives_at"] + 1)
+    cash = game._get_player().to_dict()["cash"]
     with patch.object(
         game.market.vehicles,
         "list_models",
@@ -348,11 +352,10 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
     ):
         assert game.reconcile_arrival()
         assert not game.reconcile_arrival()
-    assert (
-        game_store(game).get_json("player")["cash"]
-        == cash + trip["payout_eur"]
-    )
-    assert game_store(game).get_json("contracts") == []
+    assert game._get_player().to_dict()["cash"] == cash + trip["payout_eur"]
+    assert [
+        item.to_dict() for item in game.state_repository.list_offers()
+    ] == []
     refilled = game.refresh_market()
     assert refilled
     destination_id = trip["contract"]["destination_hub_id"]

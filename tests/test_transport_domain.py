@@ -4,14 +4,15 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
-from app.bootstrap import game_store
 from app.domain.contracts import ContractOffer
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.repositories.transport_mapping import dump_transport, load_transport
 
 
 def test_transport_lifecycle_rejects_invalid_and_duplicate_settlement(game):
-    offer = ContractOffer.from_dict(game_store(game).get_json("contracts")[0])
+    offer = ContractOffer.from_dict(
+        [item.to_dict() for item in game.state_repository.list_offers()][0]
+    )
     route = RouteSnapshot(((13.3, 52.5), (9.9, 53.5)), 300, 100, "fake")
     trip = ActiveTransport(
         "trip",

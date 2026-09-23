@@ -5,9 +5,11 @@ from pathlib import Path
 
 import pytest
 
+from app.bootstrap import GameRuntime
 from app.domain.models import RouteResult
+from app.repositories.game_database import SqliteGameDatabase
+from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.sqlite_store import SqliteStore
-from app.repositories.transition_state import TransitionGameUnitOfWork
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.services.game import GameService
 from app.services.market import MarketGenerator
@@ -81,10 +83,10 @@ def world_catalogue(tmp_path):
 
 
 @pytest.fixture
-def game(store: SqliteStore, catalogue, world_catalogue) -> GameService:
+def game(database, catalogue, world_catalogue) -> GameService:
     market = MarketGenerator(world_catalogue, random.Random(7), catalogue)
     service = GameService(
-        unit_of_work=TransitionGameUnitOfWork(store),
+        unit_of_work=SqliteGameUnitOfWork(database, "test-owner"),
         world=world_catalogue,
         router=FakeRouter(),
         market=market,
@@ -112,3 +114,28 @@ def catalogue(tmp_path):
         path,
     )
     return SqliteVehicleCatalogue(path)
+
+
+@pytest.fixture
+def database(tmp_path):
+    database = SqliteGameDatabase(tmp_path / "relational.db")
+    database.initialize()
+    with database.connect() as connection:
+        connection.execute(
+            "INSERT INTO users VALUES ('test-owner', 'TestOwner', 'test', 0)"
+        )
+    return database
+
+
+@pytest.fixture
+def runtime(game, database):
+    return GameRuntime(
+        database,
+        game.world,
+        game.router,
+        game.market,
+        game.pricing,
+        game.catalogue,
+        game.market_scope,
+        game.time_scale,
+    )

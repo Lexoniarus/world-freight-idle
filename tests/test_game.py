@@ -4,9 +4,8 @@ import time
 
 import pytest
 
-from app.bootstrap import game_store
 from app.domain.contracts import ContractOffer
-from app.domain.game import OwnedVehicle
+from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.world import FacilityQuery
 from app.repositories.transport_mapping import dump_transport
 from app.services.game import GameService
@@ -18,7 +17,9 @@ from tests.transport_fixtures import add_transport
 def first_berlin_contract(game: GameService) -> dict:
     return next(
         contract
-        for contract in game_store(game).get_json("contracts", [])
+        for contract in [
+            item.to_dict() for item in game.state_repository.list_offers()
+        ]
         if contract["origin_hub_id"] == BERLIN_UID
     )
 
@@ -31,10 +32,12 @@ def test_now_returns_wall_clock(game: GameService):
 
 
 def test_ensure_initial_state_is_idempotent(game: GameService):
-    before = game_store(game).get_json("vehicles")
+    before = [item.to_dict() for item in game.state_repository.list_vehicles()]
     game.ensure_initial_state()
-    assert game_store(game).get_json("vehicles") == before
-    assert game_store(game).get_json("player")["cash"] == 175000
+    assert [
+        item.to_dict() for item in game.state_repository.list_vehicles()
+    ] == before
+    assert game._get_player().to_dict()["cash"] == 175000
 
 
 def test_refresh_market_reuses_fresh_market_and_can_force(game: GameService):
@@ -67,16 +70,18 @@ async def test_dispatch_builds_persisted_trip_and_debits_cost(
     game: GameService,
 ):
     contract = first_berlin_contract(game)
-    before_cash = game_store(game).get_json("player")["cash"]
+    before_cash = game._get_player().to_dict()["cash"]
     trip = await game.dispatch(contract["id"], "truck_01")
-    after_cash = game_store(game).get_json("player")["cash"]
+    after_cash = game._get_player().to_dict()["cash"]
     assert (
         trip["origin"]["address"]
         == game.world.read().get_facility(BERLIN_UID).address
     )
     assert trip["route_geojson"]["type"] == "LineString"
     assert after_cash == before_cash - trip["operating_cost_eur"]
-    assert game_store(game).get_json("vehicles")[0]["status"] == "enroute"
+    assert [item.to_dict() for item in game.state_repository.list_vehicles()][
+        0
+    ]["status"] == "enroute"
 
 
 def test_reconcile_arrival_moves_vehicle_and_pays(game: GameService):
@@ -99,16 +104,21 @@ def test_reconcile_arrival_moves_vehicle_and_pays(game: GameService):
         ContractOffer.from_dict(contract), "truck_01", quote, 1.0, 1.0
     )
     game.state_repository.save_transport(trip)
-    vehicles = game_store(game).get_json("vehicles")
+    vehicles = [
+        item.to_dict() for item in game.state_repository.list_vehicles()
+    ]
     vehicles[0]["status"] = "enroute"
-    game_store(game).set_json("vehicles", vehicles)
-    before_cash = game_store(game).get_json("player")["cash"]
+    for item in vehicles:
+        game.state_repository.save_vehicle(OwnedVehicle.from_dict(item))
+    before_cash = game._get_player().to_dict()["cash"]
     assert game.reconcile_arrival() is True
     assert game.reconcile_arrival() is False
-    vehicle = game_store(game).get_json("vehicles")[0]
+    vehicle = [
+        item.to_dict() for item in game.state_repository.list_vehicles()
+    ][0]
     assert vehicle["hub_id"] == contract["destination_hub_id"]
     assert vehicle["status"] == "idle"
-    assert game_store(game).get_json("player")["cash"] == before_cash + 1000
+    assert game._get_player().to_dict()["cash"] == before_cash + 1000
 
 
 def test_state_expands_contract_addresses(game: GameService):
@@ -122,8 +132,8 @@ def test_state_expands_contract_addresses(game: GameService):
 
 
 def test_reset_restores_playable_state(game: GameService):
-    game_store(game).set_json(
-        "player", {"cash": 1, "completed": 99, "reputation": 99}
+    game.state_repository.save_player(
+        PlayerState.from_dict({"cash": 1, "completed": 99, "reputation": 99})
     )
     state = game.reset()
     assert state["player"]["cash"] == 175000
@@ -137,7 +147,9 @@ def test_find_contract_returns_match_and_raises(game: GameService):
     with pytest.raises(KeyError):
         game._find_contract("missing")
     future = {**contract, "created_at": game.now() + 100}
-    game_store(game).set_json("contracts", [future])
+    game.state_repository.replace_offers(
+        tuple(ContractOffer.from_dict(item) for item in [future])
+    )
     with pytest.raises(KeyError):
         game._find_contract(contract["id"])
 
@@ -149,17 +161,18 @@ def test_refresh_market_drops_legacy_offers_but_keeps_active_trips(
     legacy = dict(current[0])
     legacy["id"] = "legacy-offer"
     legacy["market_model"] = "previous-market"
-    trip = {
-        "id": "legacy-trip",
-        "vehicle_id": "truck_01",
-        "arrives_at": game.now() + 1000,
-    }
-    game_store(game).set_json("contracts", [legacy, *current])
-    game_store(game).set_json("active_trips", [trip])
+    trip = add_transport(game, arrives_at=game.now() + 1000)
+    game.state_repository.replace_offers(
+        tuple(ContractOffer.from_dict(item) for item in [legacy, *current])
+    )
     refreshed = game.refresh_market()
     assert all(item.get("market_model") == "nhm_v1" for item in refreshed)
     assert all(item["id"] != "legacy-offer" for item in refreshed)
-    assert game_store(game).get_json("active_trips") == [trip]
+    assert [
+        dump_transport(item)
+        for item in game.state_repository.list_transports()
+        if item.status == "active"
+    ] == [dump_transport(trip)]
     with pytest.raises(KeyError):
         game._find_contract("legacy-offer")
 
@@ -167,7 +180,9 @@ def test_refresh_market_drops_legacy_offers_but_keeps_active_trips(
 def test_find_vehicle_returns_match_and_raises(game: GameService):
     vehicles = [
         OwnedVehicle.from_dict(item)
-        for item in game_store(game).get_json("vehicles")
+        for item in [
+            item.to_dict() for item in game.state_repository.list_vehicles()
+        ]
     ]
     assert game._find_vehicle(vehicles, "truck_01").name == (
         "IVECO S-Way 500 XC13"
@@ -180,7 +195,9 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
     game: GameService,
 ):
     contract = first_berlin_contract(game)
-    vehicle = OwnedVehicle.from_dict(game_store(game).get_json("vehicles")[0])
+    vehicle = OwnedVehicle.from_dict(
+        [item.to_dict() for item in game.state_repository.list_vehicles()][0]
+    )
     game._validate_dispatch(vehicle, ContractOffer.from_dict(contract))
 
     wrong_location = OwnedVehicle.from_dict(
@@ -260,17 +277,20 @@ def test_expand_contract_attaches_hubs(game: GameService):
 def test_refresh_market_without_idle_vehicle_has_no_local_origins(
     game: GameService,
 ):
-    vehicles = game_store(game).get_json("vehicles")
+    vehicles = [
+        item.to_dict() for item in game.state_repository.list_vehicles()
+    ]
     vehicles[0]["status"] = "enroute"
-    game_store(game).set_json("vehicles", vehicles)
+    for item in vehicles:
+        game.state_repository.save_vehicle(OwnedVehicle.from_dict(item))
     assert game.refresh_market(force=True) == []
 
 
 @pytest.mark.asyncio
 async def test_dispatch_rejects_insufficient_cash(game: GameService):
     contract = first_berlin_contract(game)
-    game_store(game).set_json(
-        "player", {"cash": 0, "completed": 0, "reputation": 0}
+    game.state_repository.save_player(
+        PlayerState.from_dict({"cash": 0, "completed": 0, "reputation": 0})
     )
     with pytest.raises(ValueError, match="Nicht genug Geld"):
         await game.dispatch(contract["id"], "truck_01")
@@ -319,7 +339,12 @@ def test_list_get_and_expand_vehicles(game: GameService):
     assert game.get_vehicle("truck_01")["hub"]["city"] == HUBS[0].city
     assert (
         game._expand_vehicle(
-            OwnedVehicle.from_dict(game_store(game).get_json("vehicles")[0])
+            OwnedVehicle.from_dict(
+                [
+                    item.to_dict()
+                    for item in game.state_repository.list_vehicles()
+                ][0]
+            )
         )["hub"]["id"]
         == BERLIN_UID
     )

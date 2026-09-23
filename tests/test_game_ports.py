@@ -2,12 +2,10 @@
 
 import pytest
 
-from app.bootstrap import game_store
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.services.fleet import FleetService
 from app.services.game import GameService
-from tests.transport_fixtures import add_transport
 
 
 @pytest.fixture
@@ -39,8 +37,6 @@ async def test_relational_game_use_cases_preserve_atomic_settlement(
     fleet = FleetService(game.unit_of_work, game.catalogue, game.world)
     with pytest.raises(ValueError, match="initialisiert"):
         fleet.purchase("iveco_sway_500")
-    with pytest.raises(TypeError, match="KV"):
-        game_store(game)
     game.ensure_initial_state()
     game.ensure_initial_state()
     purchased = fleet.purchase("iveco_sway_500")
@@ -83,31 +79,3 @@ async def test_relational_dispatch_rolls_back_all_mutations(
     assert game.state_repository.list_vehicles() == vehicles
     assert game.state_repository.list_transports() == ()
     assert game.get_contract(offer["id"])["id"] == offer["id"]
-
-
-def test_transition_adapter_roundtrips_without_implicit_migration(game):
-    repository = game.state_repository
-    player = repository.get_player()
-    vehicles = repository.list_vehicles()
-    offers = repository.list_offers()
-    assert player is not None and vehicles and offers
-    with pytest.raises(RuntimeError):
-        with game.unit_of_work.transaction():
-            repository.reset()
-            assert repository.get_player() is None
-            raise RuntimeError("rollback")
-    assert repository.get_player() == player
-    repository.save_player(player)
-    repository.save_vehicle(vehicles[0])
-    repository.replace_offers(offers)
-    repository.remove_offer("absent")
-    assert repository.list_offers() == offers
-    trip = add_transport(game)
-    repository.save_transport(trip.settle(3))
-    assert repository.list_transports()[0].status == "settled"
-    game_store(game).set_json("contracts", [{"id": "incomplete"}])
-    with pytest.raises(KeyError):
-        repository.list_offers()
-    game_store(game).set_json("active_trips", [{"id": "incomplete"}])
-    with pytest.raises(KeyError):
-        repository.list_transports()

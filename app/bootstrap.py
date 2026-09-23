@@ -3,17 +3,22 @@
 from __future__ import annotations
 
 import random
+from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
 
 from app.config import Settings
+from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
+from app.domain.read_ports import LeaderboardReader
 from app.providers.routing import ValhallaTruckRouter
 from app.repositories.accounts import AccountRepository
 from app.repositories.cached_world_catalogue import CachedWorldCatalogue
-from app.repositories.multiplayer_map import MultiplayerMapRepository
-from app.repositories.sqlite_store import SqliteStore
-from app.repositories.transition_state import TransitionGameUnitOfWork
+from app.repositories.game_database import SqliteGameDatabase
+from app.repositories.game_state import SqliteGameUnitOfWork
+from app.repositories.leaderboard import SqliteLeaderboardReader
+from app.repositories.provider_cache import SqliteProviderCache
+from app.repositories.relational_traffic import SqliteTrafficReader
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.repositories.world_maintenance import WorldMaintenanceRepository
@@ -33,52 +38,59 @@ from app.services.world_state_migration import WorldStateMigrationService
 from app.simulation import LEGACY_CARGO_TYPES
 
 
-def build_game_service(
+@dataclass
+class GameRuntime:
+    """Shared dependencies owned by the application composition root."""
+
+    database: SqliteGameDatabase
+    world: WorldCatalogue
+    router: TruckRouter
+    market: MarketGenerator
+    pricing: PricingService
+    catalogue: VehicleCatalogue
+    market_scope: MarketScopeResolver
+    time_scale: float
+
+
+def build_game_runtime(
     settings: Settings,
     routing_client: httpx.AsyncClient,
     rng_seed: int | None = None,
-) -> GameService:
-    """Assemble the application service graph from explicit dependencies."""
-    store = SqliteStore(settings.db_path)
+) -> GameRuntime:
+    """Initialize only relational storage and shared application resources."""
+    database = SqliteGameDatabase(settings.db_path)
+    database.initialize()
     router = ValhallaTruckRouter(
-        store=store,
+        cache=SqliteProviderCache(database),
         client=routing_client,
         base_url=settings.valhalla_url,
         client_id=settings.valhalla_client_id,
     )
     world = build_world_catalogue(settings)
     catalogue = build_vehicle_catalogue(settings)
-    market = MarketGenerator(world, random.Random(rng_seed), catalogue)
-    pricing = PricingService(LEGACY_CARGO_TYPES)
-    return GameService(
-        unit_of_work=TransitionGameUnitOfWork(store),
+    return GameRuntime(
+        database=database,
         world=world,
         router=router,
-        market=market,
-        pricing=pricing,
+        market=MarketGenerator(world, random.Random(rng_seed), catalogue),
+        pricing=PricingService(LEGACY_CARGO_TYPES),
         catalogue=catalogue,
         market_scope=MarketScopeResolver(world),
         time_scale=settings.game_time_scale,
     )
 
 
-def build_player_service(template: GameService, user_id: str) -> GameService:
-    """Isolate game state while sharing rate-limited provider adapters."""
+def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
+    """Bind one authenticated owner to the shared relational transaction."""
     game = GameService(
-        unit_of_work=TransitionGameUnitOfWork(
-            SqliteStore(
-                game_store(template).path,
-                f"user:{user_id}:",
-                initialize_schema=False,
-            )
-        ),
-        world=template.world,
-        router=template.router,
-        market=template.market,
-        pricing=template.pricing,
-        catalogue=template.catalogue,
-        market_scope=template.market_scope,
-        time_scale=template.time_scale,
+        unit_of_work=SqliteGameUnitOfWork(runtime.database, user_id),
+        world=runtime.world,
+        router=runtime.router,
+        market=runtime.market,
+        pricing=runtime.pricing,
+        catalogue=runtime.catalogue,
+        market_scope=runtime.market_scope,
+        time_scale=runtime.time_scale,
     )
     game.ensure_initial_state()
     return game
@@ -104,31 +116,34 @@ def build_map_service(game: GameService) -> MapLocationService:
     return MapLocationService(game.world)
 
 
-def build_multiplayer_map_service(game: GameService) -> MultiplayerMapService:
-    """Build the read-only cross-player traffic projection."""
-    return MultiplayerMapService(MultiplayerMapRepository(game_store(game)))
+def build_multiplayer_map_service(
+    runtime: GameRuntime,
+) -> MultiplayerMapService:
+    """Build the relational cross-player traffic projection."""
+    return MultiplayerMapService(SqliteTrafficReader(runtime.database))
 
 
-def game_store(game: GameService) -> SqliteStore:
-    """Resolve the transitional adapter only at the composition boundary."""
-    unit = game.unit_of_work
-    if not isinstance(unit, TransitionGameUnitOfWork):
-        raise TypeError("The relational runtime has no KV store.")
-    return unit.store
+def build_leaderboard_reader(runtime: GameRuntime) -> LeaderboardReader:
+    """Bind the public relational progress reader."""
+    return SqliteLeaderboardReader(runtime.database)
 
 
 def build_profile_maintenance_service(
     settings: Settings,
 ) -> ProfileMaintenanceService:
     """Wire local maintenance independently of the HTTP application."""
-    accounts = AccountRepository(SqliteStore(settings.db_path))
+    database = SqliteGameDatabase(settings.db_path)
+    database.initialize()
+    accounts = AccountRepository(database)
 
-    def player_store_factory(user_id: str) -> SqliteStore:
-        """Resolve the store for a repository-verified account identity."""
-        return SqliteStore(settings.db_path, f"user:{user_id}:")
+    def player_unit_of_work_factory(user_id: str) -> SqliteGameUnitOfWork:
+        """Bind the repository-verified account to its relational state."""
+        return SqliteGameUnitOfWork(database, user_id)
 
     return ProfileMaintenanceService(
-        build_vehicle_catalogue(settings), accounts, player_store_factory
+        build_vehicle_catalogue(settings),
+        accounts,
+        player_unit_of_work_factory,
     )
 
 

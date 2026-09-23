@@ -8,9 +8,9 @@ import time
 
 import httpx
 
+from app.domain.cache_ports import ProviderCache
 from app.domain.errors import GeocodingError
 from app.providers.validation import parse_coordinates
-from app.repositories.sqlite_store import SqliteStore
 from app.tracing import get_trace_id
 
 LOGGER = logging.getLogger(__name__)
@@ -21,13 +21,13 @@ class NominatimGeocoder:
 
     def __init__(
         self,
-        store: SqliteStore,
+        cache: ProviderCache,
         client: httpx.AsyncClient,
         base_url: str,
         user_agent: str,
         minimum_interval_seconds: float = 1.05,
     ) -> None:
-        self.store = store
+        self.cache = cache
         self.client = client
         self.base_url = base_url.rstrip("/")
         self.user_agent = user_agent
@@ -52,7 +52,7 @@ class NominatimGeocoder:
 
     async def _resolve_address(self, address: str) -> tuple[float, float, str]:
         """Resolve one postal address, using the persistent cache first."""
-        cached = self.store.get_geocode(address)
+        cached = self.cache.get_geocode(address)
         if cached:
             LOGGER.info(
                 "Geocode cache hit",
@@ -105,7 +105,7 @@ class NominatimGeocoder:
         first = data[0]
         lon, lat = parse_coordinates([first["lon"], first["lat"]])
         display_name = str(first.get("display_name") or address)
-        self.store.put_geocode(address, lat, lon, display_name)
+        self.cache.put_geocode(address, lat, lon, display_name)
         return lat, lon, display_name
 
     async def _respect_rate_limit(self) -> None:

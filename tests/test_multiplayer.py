@@ -9,7 +9,12 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.bootstrap import build_player_service, game_store
+from app.bootstrap import (
+    build_leaderboard_reader,
+    build_player_service,
+)
+from app.domain.contracts import ContractOffer
+from app.domain.game import PlayerState
 from app.main import create_app
 from app.repositories.accounts import AccountRepository
 from app.repositories.sqlite_store import SqliteStore
@@ -32,9 +37,9 @@ def test_password_hashes_are_salted_and_verified():
     assert not hasher.verify_password("wrong", encoded)
 
 
-def test_auth_sessions_expire_revoke_and_throttle(store):
-    accounts = AccountRepository(store)
-    auth = AuthService(accounts)
+def test_auth_sessions_expire_revoke_and_throttle(database):
+    accounts = AccountRepository(database)
+    auth = AuthService(accounts, PasswordHasher())
     user = auth.register("FreightOne", PASSWORD)
     with pytest.raises(ValueError, match="vergeben"):
         auth.register("freightone", PASSWORD)
@@ -44,7 +49,7 @@ def test_auth_sessions_expire_revoke_and_throttle(store):
             auth.authenticate(username, "wrong-password")
     token = auth.issue_session(user["id"])
     assert accounts.session_user(token) == user
-    with store.connect() as connection:
+    with database.connect() as connection:
         digest = connection.execute(
             "SELECT token_hash FROM sessions"
         ).fetchone()
@@ -54,7 +59,7 @@ def test_auth_sessions_expire_revoke_and_throttle(store):
     accounts.save_session("expired", user["id"], -10)
     assert accounts.session_user("expired") is None
     accounts.save_session("valid", user["id"], 10)
-    with store.connect() as connection:
+    with database.connect() as connection:
         assert (
             connection.execute("SELECT count(*) FROM sessions").fetchone()[0]
             == 1
@@ -62,7 +67,7 @@ def test_auth_sessions_expire_revoke_and_throttle(store):
     for _ in range(30):
         assert accounts.allow_attempt("peer")
     assert not accounts.allow_attempt("peer")
-    with store.connect() as connection:
+    with database.connect() as connection:
         connection.execute("UPDATE auth_attempts SET expires_at = 0")
     assert accounts.allow_attempt("peer")
 
@@ -85,9 +90,20 @@ def test_transaction_rolls_back_and_namespaces_isolate(store):
     assert second.get_json("balance") == 90
 
 
-def test_player_service_isolation_and_atomic_purchases(game, catalogue):
-    alice = build_player_service(game, "alice")
-    bob = build_player_service(game, "bob")
+def test_player_service_isolation_and_atomic_purchases(
+    runtime, game, catalogue
+):
+    with runtime.database.connect() as connection:
+        connection.execute(
+            "INSERT INTO users VALUES (?, ?, ?, 0)",
+            ("alice", "alice", "test-only"),
+        )
+        connection.execute(
+            "INSERT INTO users VALUES (?, ?, ?, 0)",
+            ("bob", "bob", "test-only"),
+        )
+    alice = build_player_service(runtime, "alice")
+    bob = build_player_service(runtime, "bob")
     assert alice.world is bob.world
     vehicle = FleetService(
         alice.unit_of_work, catalogue, alice.world
@@ -106,14 +122,19 @@ def test_player_service_isolation_and_atomic_purchases(game, catalogue):
         )
     with pytest.raises(KeyError):
         bob.get_vehicle(vehicle["id"])
-    restored = build_player_service(game, "alice")
+    restored = build_player_service(runtime, "alice")
     assert restored.state()["player"]["cash"] == 26000
     assert restored.get_vehicle(vehicle["id"])["hub_id"] == BERLIN_UID
 
 
-def test_concurrent_purchases_cannot_overdraw(game, catalogue):
-    first = build_player_service(game, "race")
-    second = build_player_service(game, "race")
+def test_concurrent_purchases_cannot_overdraw(runtime, game, catalogue):
+    with runtime.database.connect() as connection:
+        connection.execute(
+            "INSERT INTO users VALUES (?, ?, ?, 0)",
+            ("race", "race", "test-only"),
+        )
+    first = build_player_service(runtime, "race")
+    second = build_player_service(runtime, "race")
 
     def purchase(service):
         try:
@@ -130,7 +151,9 @@ def test_concurrent_purchases_cannot_overdraw(game, catalogue):
     assert len(first.list_vehicles()) == 2
 
 
-async def test_parallel_transports_and_offline_settlement(game, catalogue):
+async def test_parallel_transports_and_offline_settlement(
+    game, catalogue, monkeypatch
+):
     second_vehicle = FleetService(
         game.unit_of_work, catalogue, game.world
     ).purchase("iveco_sway_500")
@@ -144,10 +167,9 @@ async def test_parallel_transports_and_offline_settlement(game, catalogue):
     second = await game.dispatch(contracts[1]["id"], second_vehicle["id"])
     assert len(game.list_transports()) == 2
     before = game.state()["player"]["cash"]
-    for trip in (first, second):
-        trip["departed_at"] = 0
-        trip["arrives_at"] = 1
-    game_store(game).set_json("active_trips", [first, second])
+    monkeypatch.setattr(
+        game, "now", lambda: max(first["arrives_at"], second["arrives_at"]) + 1
+    )
     assert game.reconcile_arrival()
     assert not game.reconcile_arrival()
     state = game.state()
@@ -188,12 +210,17 @@ async def test_simultaneous_dispatch_revalidates_after_routing(game):
 
 async def test_expired_contract_and_failed_routing_do_not_charge(game):
     contract = first_berlin_contract(game)
-    game_store(game).set_json(
-        "contracts", [{**contract, "created_at": 0, "expires_at": 1}]
+    game.state_repository.replace_offers(
+        tuple(
+            ContractOffer.from_dict(item)
+            for item in [{**contract, "created_at": 0, "expires_at": 1}]
+        )
     )
     with pytest.raises(KeyError):
         await game.dispatch(contract["id"], "truck_01")
-    game_store(game).set_json("contracts", [contract])
+    game.state_repository.replace_offers(
+        tuple(ContractOffer.from_dict(item) for item in [contract])
+    )
     with patch.object(
         game.router, "route", side_effect=RuntimeError("offline")
     ):
@@ -203,21 +230,27 @@ async def test_expired_contract_and_failed_routing_do_not_charge(game):
     assert game.list_transports() == []
 
 
-def test_leaderboard_counts_offline_arrivals_without_double_counting(game):
-    accounts = AccountRepository(game_store(game))
+def test_leaderboard_counts_offline_arrivals_without_double_counting(
+    database, runtime, game
+):
+    accounts = AccountRepository(database)
     alice = accounts.create_user("Alice", "unused")
     accounts.create_user("Bob", "unused")
-    service = build_player_service(game, alice["id"])
-    game_store(service).set_json(
-        "player", {"cash": 175000, "completed": 2, "reputation": 2}
+    service = build_player_service(runtime, alice["id"])
+    service.state_repository.save_player(
+        PlayerState.from_dict(
+            {"cash": 175000, "completed": 2, "reputation": 2}
+        )
     )
     add_transport(service, payout=100)
-    assert accounts.leaderboard() == [
+    reader = build_leaderboard_reader(runtime)
+    assert list(reader.list_ranking(game.now())) == [
         {"username": "Alice", "completed": 3},
+        {"username": "TestOwner", "completed": 0},
         {"username": "Bob", "completed": 0},
     ]
     service.reconcile_arrival()
-    assert accounts.leaderboard()[0]["completed"] == 3
+    assert reader.list_ranking(game.now())[0]["completed"] == 3
 
 
 def test_auth_api_and_private_game_resources(tmp_path):
@@ -341,18 +374,31 @@ def test_launchers_run_main_without_changing_working_directory():
         assert run.call_args.kwargs["host"] == "0.0.0.0"
 
 
-def test_initialization_does_not_implicitly_import_legacy_trips(game):
-    game_store(game).delete_state_keys(("active_trips",))
-    trip = {"id": "legacy", "arrives_at": game.now() + 1000}
-    game_store(game).set_json("active_trip", trip)
-    game.ensure_initial_state()
-    assert game.state_repository.list_transports() == ()
-    assert game_store(game).get_json("active_trip") == trip
+async def test_initialization_does_not_implicitly_import_legacy_trips(
+    tmp_path,
+):
+    import httpx
+
+    from app.bootstrap import build_game_runtime
+    from app.domain.errors import UnsupportedGameSchema
+
+    settings = make_settings(tmp_path)
+    store = SqliteStore(settings.db_path)
+    store.set_json("active_trip", {"id": "old", "arrives_at": 42})
+    async with httpx.AsyncClient() as routing_client:
+        with pytest.raises(UnsupportedGameSchema):
+            build_game_runtime(settings, routing_client)
+    assert store.get_json("active_trip") == {"id": "old", "arrives_at": 42}
 
 
-def test_concurrent_arrivals_pay_once(game):
-    alice = build_player_service(game, "arrival")
-    other = build_player_service(game, "arrival")
+def test_concurrent_arrivals_pay_once(runtime, game):
+    with runtime.database.connect() as connection:
+        connection.execute(
+            "INSERT INTO users VALUES (?, ?, ?, 0)",
+            ("arrival", "arrival", "test-only"),
+        )
+    alice = build_player_service(runtime, "arrival")
+    other = build_player_service(runtime, "arrival")
     add_transport(alice)
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures = [

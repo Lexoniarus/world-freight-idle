@@ -4,11 +4,12 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from app.domain.game import OwnedVehicle, PlayerState
+from app.domain.account_ports import AccountStore
+from app.domain.game import OwnedVehicle
 from app.domain.models import VehicleModel
 from app.domain.ports import VehicleCatalogue
-from app.repositories.accounts import AccountRepository
-from app.repositories.sqlite_store import SqliteStore
+from app.domain.state_ports import GameUnitOfWork
+from app.domain.transports import ActiveTransport
 
 LOGGER = logging.getLogger(__name__)
 
@@ -19,12 +20,12 @@ class ProfileMaintenanceService:
     def __init__(
         self,
         catalogue: VehicleCatalogue,
-        accounts: AccountRepository,
-        player_store_factory: Callable[[str], SqliteStore],
+        accounts: AccountStore,
+        player_unit_of_work_factory: Callable[[str], GameUnitOfWork],
     ) -> None:
         self.catalogue = catalogue
         self.accounts = accounts
-        self.player_store_factory = player_store_factory
+        self.player_unit_of_work_factory = player_unit_of_work_factory
 
     def update_profile(
         self,
@@ -39,16 +40,19 @@ class ProfileMaintenanceService:
         if user is None:
             raise ValueError("Unknown profile")
         models = {model.id: model for model in self.catalogue.list_models()}
-        store = self.player_store_factory(user["id"])
-        with store.transaction():
-            raw_player = store.get_json("player")
-            raw_vehicles = store.get_json("vehicles")
-            if raw_player is None or raw_vehicles is None:
+        unit = self.player_unit_of_work_factory(user["id"])
+        repository = unit.repository
+        with unit.transaction():
+            player = repository.get_player()
+            vehicles = repository.list_vehicles()
+            if player is None or not vehicles:
                 raise ValueError("Profile has no initialized game state")
-            player = PlayerState.from_dict(raw_player)
-            vehicles = [OwnedVehicle.from_dict(item) for item in raw_vehicles]
-            validate_assignments(vehicles, assignments, models)
-            trips = store.get_json("active_trips", [])
+            validate_assignments(list(vehicles), assignments, models)
+            trips = tuple(
+                trip
+                for trip in repository.list_transports()
+                if trip.status == "active"
+            )
             for vehicle in vehicles:
                 if vehicle.id not in assignments:
                     continue
@@ -57,8 +61,9 @@ class ProfileMaintenanceService:
                 vehicle.apply_model(model)
             if cash is not None:
                 player.replace_cash(cash)
-            store.set_json("vehicles", [item.to_dict() for item in vehicles])
-            store.set_json("player", player.to_dict())
+            for vehicle in vehicles:
+                repository.save_vehicle(vehicle)
+            repository.save_player(player)
         LOGGER.info(
             "Profile maintenance completed",
             extra={
@@ -93,12 +98,12 @@ def validate_assignments(
 
 
 def validate_active_load(
-    vehicle_id: str, model: VehicleModel, trips: list[dict[str, Any]]
+    vehicle_id: str, model: VehicleModel, trips: tuple[ActiveTransport, ...]
 ) -> None:
     """Require the replacement model to carry every existing active load."""
     if any(
-        trip["vehicle_id"] == vehicle_id
-        and float(trip["contract"]["tons"]) > model.capacity_tons
+        trip.vehicle_id == vehicle_id
+        and trip.contract.tons > model.capacity_tons
         for trip in trips
     ):
         raise ValueError("New vehicle cannot carry its active load")
