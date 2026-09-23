@@ -5,6 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from app.bootstrap import game_store
 from app.domain.contracts import ContractOfferSnapshot
 from app.domain.errors import WorldCatalogueError
 from app.domain.game import OwnedVehicle
@@ -304,8 +305,8 @@ def test_vehicle_catalogue_outage_preserves_only_current_market(
     original = game.refresh_market()
     legacy = dict(original[0])
     legacy["id"] = "legacy-generic"
-    legacy.pop("market_model")
-    game.store.set_json("contracts", [legacy, *original])
+    legacy["market_model"] = "previous-market"
+    game_store(game).set_json("contracts", [legacy, *original])
     monkeypatch.setattr(
         game.market.vehicles,
         "list_models",
@@ -314,7 +315,7 @@ def test_vehicle_catalogue_outage_preserves_only_current_market(
     surviving = game.refresh_market()
     assert all(item.get("market_model") == "nhm_v1" for item in surviving)
     assert all(item["id"] != "legacy-generic" for item in surviving)
-    assert game.store.get_json("contracts") == surviving
+    assert game_store(game).get_json("contracts") == surviving
 
     listed = game.list_contracts()
     assert [item["id"] for item in listed] == [
@@ -335,11 +336,11 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
     from tests.test_game import first_berlin_contract
 
     trip = await game.dispatch(first_berlin_contract(game)["id"], "truck_01")
-    remaining = game.store.get_json("contracts")
+    remaining = game_store(game).get_json("contracts")
     trip["departed_at"] = 0
     trip["arrives_at"] = 1
-    game.store.set_json("active_trips", [trip])
-    cash = game.store.get_json("player")["cash"]
+    game_store(game).set_json("active_trips", [trip])
+    cash = game_store(game).get_json("player")["cash"]
     with patch.object(
         game.market.vehicles,
         "list_models",
@@ -347,8 +348,11 @@ async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
     ):
         assert game.reconcile_arrival()
         assert not game.reconcile_arrival()
-    assert game.store.get_json("player")["cash"] == cash + trip["payout_eur"]
-    assert game.store.get_json("contracts") == []
+    assert (
+        game_store(game).get_json("player")["cash"]
+        == cash + trip["payout_eur"]
+    )
+    assert game_store(game).get_json("contracts") == []
     refilled = game.refresh_market()
     assert refilled
     destination_id = trip["contract"]["destination_hub_id"]

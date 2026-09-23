@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import build_v1_router
-from app.bootstrap import build_game_service
+from app.bootstrap import build_game_service, game_store
 from app.config import Settings
 from app.domain.errors import WorldCatalogueError
 from app.logging_config import configure_logging
@@ -35,7 +35,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             settings,
             routing_client,
         )
-        app.state.auth = AuthService(AccountRepository(app.state.game.store))
+        app.state.auth = AuthService(
+            AccountRepository(game_store(app.state.game))
+        )
         yield
 
 

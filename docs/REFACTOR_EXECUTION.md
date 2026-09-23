@@ -69,3 +69,16 @@ und fehlende Struktur werden abgewiesen. Acht gezielte Tests inklusive Manifest
 bestehen; die drei neuen ausführbaren Repository-Module erreichen zusammen
 172/172 Statements. Ruff/Format/mypy/Pyright sind ebenfalls grün. Der vollständige
 Anwendungs- und Browserlauf folgt nach der Service-/Composition-Umstellung.
+
+Game-/Fleet-Use-Cases verwenden jetzt die Repository-/Unit-of-Work-Ports.
+Der temporäre KV-Adapter hält den bisherigen Composition Root bis zum gemeinsamen
+Cutover der übrigen Leser funktionsfähig; er ist kein Importer. Direkte
+relationale Use-Case-Tests prüfen Kauf, Dispatch, Settlement, Reset und Rollback
+nach erfolgter Abbuchung. Unvollständige Transport-Testdicts wurden durch
+vollständige typisierte Fixtures ersetzt. Die echte Altformatübernahme bleibt F.
+
+Zwischenprüfung der Port-Umstellung: Gesamtlauf mit 237 bestandenen Tests und
+zwei veralteten Fixture-Annahmen; korrigierte Fälle separat mit drei bestandenen
+Parametervarianten nachgeprüft. Kombinierte Core-Statement-Coverage: 2.602/2.602.
+Ruff/Format/mypy/Pyright und Manifest bestehen. Vor PR-Integration folgt erneut
+ein vollständiger Lauf auf dem endgültigen relationalen Stand.

@@ -8,6 +8,7 @@ from dataclasses import replace
 
 import pytest
 
+from app.bootstrap import game_store
 from app.domain.contracts import ContractOffer
 from app.domain.errors import PersistenceError, UnsupportedGameSchema
 from app.domain.game import OwnedVehicle, PlayerState
@@ -113,8 +114,8 @@ def test_relational_entities_roundtrip_isolate_and_protect_history(
 ):
     alice = SqliteGameStateRepository(relational, "alice")
     bob = SqliteGameStateRepository(relational, "bob")
-    vehicle = OwnedVehicle.from_dict(game.store.get_json("vehicles")[0])
-    offer = ContractOffer.from_dict(game.store.get_json("contracts")[0])
+    vehicle = OwnedVehicle.from_dict(game_store(game).get_json("vehicles")[0])
+    offer = ContractOffer.from_dict(game_store(game).get_json("contracts")[0])
     route = RouteSnapshot(((13, 52), (9, 53)), 400, 100, "fixture")
     trip = ActiveTransport(
         "trip",
@@ -208,8 +209,8 @@ def test_snapshot_envelopes_and_corrupt_records_fail_explicitly(
             decode_snapshot("sample", encoded)
     repository = SqliteGameStateRepository(relational, "alice")
     repository.save_player(PlayerState(1, 0, 0))
-    vehicle = OwnedVehicle.from_dict(game.store.get_json("vehicles")[0])
-    offer = ContractOffer.from_dict(game.store.get_json("contracts")[0])
+    vehicle = OwnedVehicle.from_dict(game_store(game).get_json("vehicles")[0])
+    offer = ContractOffer.from_dict(game_store(game).get_json("contracts")[0])
     repository.save_vehicle(vehicle)
     repository.replace_offers((offer,))
     trip = ActiveTransport(

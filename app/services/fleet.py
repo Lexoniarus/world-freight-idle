@@ -4,11 +4,11 @@ import logging
 import uuid
 
 from app.domain.errors import CatalogueError, WorldCatalogueError
-from app.domain.game import OwnedVehicle, PlayerState
+from app.domain.game import OwnedVehicle
 from app.domain.models import VehicleModel
 from app.domain.ports import VehicleCatalogue, WorldCatalogue
+from app.domain.state_ports import GameUnitOfWork
 from app.domain.world import FacilityLocationSnapshot
-from app.repositories.sqlite_store import SqliteStore
 
 LOGGER = logging.getLogger(__name__)
 
@@ -18,11 +18,12 @@ class FleetService:
 
     def __init__(
         self,
-        store: SqliteStore,
+        unit_of_work: GameUnitOfWork,
         catalogue: VehicleCatalogue,
         world: WorldCatalogue,
     ) -> None:
-        self.store = store
+        self.unit_of_work = unit_of_work
+        self.state_repository = unit_of_work.repository
         self.catalogue = catalogue
         self.world = world
 
@@ -48,30 +49,24 @@ class FleetService:
         if model is None:
             raise ValueError("Unbekanntes Fahrzeugmodell.")
         location = resolve_delivery_facility(self.world)
-        with self.store.transaction():
-            player = PlayerState.from_dict(self.store.get_json("player"))
+        with self.unit_of_work.transaction():
+            player = self.state_repository.get_player()
+            if player is None:
+                raise ValueError("Spielstand ist nicht initialisiert.")
             if player.reputation < model.unlock_reputation:
                 raise ValueError(
                     "Deine Reputation reicht für dieses Modell nicht aus."
                 )
             if player.cash < model.price_eur:
                 raise ValueError("Nicht genug Geld für dieses Fahrzeug.")
-            vehicles = [
-                OwnedVehicle.from_dict(item)
-                for item in self.store.get_json("vehicles")
-            ]
             vehicle = build_owned_vehicle(
                 model,
                 uuid.uuid4().hex,
                 location,
             )
             player.debit(model.price_eur)
-            vehicles.append(vehicle)
-            self.store.set_json("player", player.to_dict())
-            self.store.set_json(
-                "vehicles",
-                [item.to_dict() for item in vehicles],
-            )
+            self.state_repository.save_player(player)
+            self.state_repository.save_vehicle(vehicle)
         LOGGER.info(
             "Vehicle purchased",
             extra={

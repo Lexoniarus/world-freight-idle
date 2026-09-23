@@ -5,7 +5,9 @@ FUNCTION_TESTS = {
     "app.domain.transports.ActiveTransport.settle": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
     "app.repositories.transport_mapping.load_transport": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
     "app.repositories.transport_mapping.dump_transport": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
-    "app.services.game.GameService._legacy_trip_destination": "test_legacy_transport_settlement_keeps_saved_location",
+    "app.services.game.GameService._get_player": "test_relational_game_use_cases_preserve_atomic_settlement",
+    "app.services.game.GameService._active_transport_payloads": "test_relational_game_use_cases_preserve_atomic_settlement",
+    "app.bootstrap.game_store": "test_relational_game_use_cases_preserve_atomic_settlement",
     "app.domain.contracts.ContractOffer.__post_init__": "test_contract_offer_domain_rules",
     "app.domain.validation.require_finite": "test_domain_value_validators_reject_invalid_values",
     "app.domain.validation.require_integer": "test_domain_value_validators_reject_invalid_values",
@@ -343,3 +345,20 @@ FUNCTION_TESTS.update(
 FUNCTION_TESTS[
     "app.repositories.game_database.SqliteGameDatabase._validate_structure"
 ] = "test_schema_structure_rejects_missing_columns_and_guards"
+FUNCTION_TESTS.update(
+    {
+        "app.repositories.transition_state.TransitionGameRepository.__init__": "test_transition_adapter_roundtrips_without_implicit_migration",
+        "app.repositories.transition_state.TransitionGameRepository.get_player": "test_transition_adapter_roundtrips_without_implicit_migration",
+        "app.repositories.transition_state.TransitionGameRepository.save_player": "test_transition_adapter_roundtrips_without_implicit_migration",
+        "app.repositories.transition_state.TransitionGameRepository.list_vehicles": "test_transition_adapter_roundtrips_without_implicit_migration",
+        "app.repositories.transition_state.TransitionGameRepository.save_vehicle": "test_transition_adapter_roundtrips_without_implicit_migration",
+        "app.repositories.transition_state.TransitionGameRepository.list_offers": "test_transition_adapter_roundtrips_without_implicit_migration",
+        "app.repositories.transition_state.TransitionGameRepository.replace_offers": "test_transition_adapter_roundtrips_without_implicit_migration",
+        "app.repositories.transition_state.TransitionGameRepository.remove_offer": "test_transition_adapter_roundtrips_without_implicit_migration",
+        "app.repositories.transition_state.TransitionGameRepository.list_transports": "test_transition_adapter_roundtrips_without_implicit_migration",
+        "app.repositories.transition_state.TransitionGameRepository.save_transport": "test_transition_adapter_roundtrips_without_implicit_migration",
+        "app.repositories.transition_state.TransitionGameRepository.reset": "test_transition_adapter_roundtrips_without_implicit_migration",
+        "app.repositories.transition_state.TransitionGameUnitOfWork.__init__": "test_transition_adapter_roundtrips_without_implicit_migration",
+        "app.repositories.transition_state.TransitionGameUnitOfWork.transaction": "test_transition_adapter_roundtrips_without_implicit_migration",
+    }
+)

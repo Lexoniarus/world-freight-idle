@@ -4,13 +4,14 @@ from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
+from app.bootstrap import game_store
 from app.domain.contracts import ContractOffer
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.repositories.transport_mapping import dump_transport, load_transport
 
 
 def test_transport_lifecycle_rejects_invalid_and_duplicate_settlement(game):
-    offer = ContractOffer.from_dict(game.store.get_json("contracts")[0])
+    offer = ContractOffer.from_dict(game_store(game).get_json("contracts")[0])
     route = RouteSnapshot(((13.3, 52.5), (9.9, 53.5)), 300, 100, "fake")
     trip = ActiveTransport(
         "trip",
@@ -83,32 +84,17 @@ def test_route_snapshot_rejects_invalid_measurements_and_geometry():
             replace(route, **changes)
 
 
-def test_legacy_transport_settlement_keeps_saved_location(game):
-    location = (
-        game.world.read().get_facility("hamburg_cta").location_snapshot()
-    )
-    legacy = {
-        "id": "old-trip",
-        "vehicle_id": "truck_01",
-        "contract": {"destination_hub_id": location.facility_uid},
-        "destination_snapshot": location.to_dict(),
-        "arrives_at": 0,
-        "payout_eur": 50,
-    }
-    vehicles = game.store.get_json("vehicles")
-    vehicles[0]["status"] = "enroute"
-    game.store.set_json("vehicles", vehicles)
-    game.store.set_json("active_trips", [legacy])
-    assert game.reconcile_arrival()
-    assert game.store.get_json("player")["cash"] == 175050
-    assert (
-        game.list_vehicles()[0]["hub"]["facility_uid"] == location.facility_uid
-    )
-    assert (
-        game._legacy_trip_destination({"contract": legacy["contract"]})
-        == location
-    )
-    with pytest.raises(KeyError):
-        game._legacy_trip_destination(
-            {"contract": {"destination_hub_id": "missing"}}
-        )
+def test_transport_settlement_keeps_saved_location_without_catalogue(game):
+    from unittest.mock import patch
+
+    from app.domain.errors import WorldCatalogueError
+    from tests.transport_fixtures import add_transport
+
+    trip = add_transport(game, payout=50)
+    with patch.object(game.world, "read", side_effect=WorldCatalogueError()):
+        assert game.reconcile_arrival()
+        assert game.list_vehicles()[0]["hub"] == trip.destination.to_dict()
+    player = game.state_repository.get_player()
+    assert player is not None and player.cash == 175050
+    assert not game.reconcile_arrival()
+    assert game.state_repository.list_transports()[0].status == "settled"

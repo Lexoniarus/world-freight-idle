@@ -369,3 +369,20 @@ Abwesenheit von IO/Systemzeit in den neuen Domainregeln. Konkrete Store-
 Abhängigkeiten der Services, Domain-JSON-Mapping und Legacy-Hydrierung sind
 noch ausdrücklich offen und Bestandteil der Abschnitte B/E. Abschnitt A ist
 deshalb keine Abnahme der endgültigen Persistenzarchitektur.
+
+## Spielzustandsports (Abschnitt B)
+
+GameService und FleetService erhalten eine GameUnitOfWork mit typisiertem
+GameStateRepository. Die Services kennen keine KV-Schlüssel und keinen
+SqliteStore. Kauf, Disposition und Ankunft speichern Entities; Ankunft bewahrt
+den settled-Transport und aktualisiert Fahrzeug und Spielerzähler in derselben
+Transaktion. Die Markterzeugung folgt nach deren Commit. Routing bleibt vor der
+Schreibtransaktion; Verfügbarkeit und Wirtschaftswerte werden danach erneut
+geprüft.
+
+Die relationale Implementierung ist eigenständig und mit denselben Use Cases
+geprüft. Zur schrittweisen Integration hält ein temporärer Adapter im
+Repository-Layer die bisherigen Account-/Mehrspielerleser lauffähig, bis deren
+gemeinsame Umstellung erfolgt. Er wird danach entfernt. Eine automatische
+Altformatreparatur ist kein Bestandteil der neuen Services. API-/Markt-Mapping
+ist noch ein gesonderter nachfolgender Arbeitsschritt in Abschnitt B.

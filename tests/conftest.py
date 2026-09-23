@@ -7,6 +7,7 @@ import pytest
 
 from app.domain.models import RouteResult
 from app.repositories.sqlite_store import SqliteStore
+from app.repositories.transition_state import TransitionGameUnitOfWork
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.services.game import GameService
 from app.services.market import MarketGenerator
@@ -83,7 +84,7 @@ def world_catalogue(tmp_path):
 def game(store: SqliteStore, catalogue, world_catalogue) -> GameService:
     market = MarketGenerator(world_catalogue, random.Random(7), catalogue)
     service = GameService(
-        store=store,
+        unit_of_work=TransitionGameUnitOfWork(store),
         world=world_catalogue,
         router=FakeRouter(),
         market=market,

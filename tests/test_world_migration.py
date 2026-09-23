@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.bootstrap import build_world_state_migration_service
+from app.bootstrap import build_world_state_migration_service, game_store
 from app.domain.errors import WorldCatalogueError
 from app.domain.game import OwnedVehicle
 from app.repositories.world_state_migration import (
@@ -195,22 +195,23 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(game):
             contract["destination"]["lon"],
         )
         trip = await game.dispatch(contract["id"], "truck_01")
-        cash = game.store.get_json("player")["cash"]
+        cash = game_store(game).get_json("player")["cash"]
         trip["departed_at"] = 0
         trip["arrives_at"] = 1
-        game.store.set_json("active_trips", [trip])
+        game_store(game).set_json("active_trips", [trip])
         assert game.reconcile_arrival()
         assert (
-            game.store.get_json("player")["cash"] == cash + trip["payout_eur"]
+            game_store(game).get_json("player")["cash"]
+            == cash + trip["payout_eur"]
         )
         assert not game.reconcile_arrival()
         assert game.list_vehicles()[0]["hub"] == trip["destination_snapshot"]
         with pytest.raises(WorldCatalogueError):
             game.refresh_market(force=True)
-        expired = game.store.get_json("contracts")
+        expired = game_store(game).get_json("contracts")
         for item in expired:
             item["expires_at"] = 0
-        game.store.set_json("contracts", expired)
+        game_store(game).set_json("contracts", expired)
         assert game.refresh_market() == []
         assert game.state()["vehicles"]
     assert quote["origin"] == contract["origin"]

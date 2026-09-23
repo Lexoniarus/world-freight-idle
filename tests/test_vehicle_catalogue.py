@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.bootstrap import build_fleet_service, build_player_service
+from app.bootstrap import build_fleet_service, build_player_service, game_store
 from app.domain.errors import CatalogueError
 from app.main import create_app
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
@@ -108,50 +108,52 @@ def test_catalogue_numeric_nonfinite_and_negative_cost(catalogue):
 
 
 def test_purchase_reputation_snapshots_and_rollback(game, catalogue):
-    fleet = FleetService(game.store, catalogue, game.world)
+    fleet = FleetService(game.unit_of_work, catalogue, game.world)
     with pytest.raises(ValueError, match="Reputation"):
         fleet.purchase("daf_xg_plus_480")
-    player = game.store.get_json("player")
+    player = game_store(game).get_json("player")
     player.update(cash=500000, reputation=25)
-    game.store.set_json("player", player)
+    game_store(game).set_json("player", player)
     vehicle = fleet.purchase("daf_xg_plus_480")
     rate = vehicle["operating_cost_eur_per_km"]
     assert vehicle["capacity_tons"] == 24.3
-    assert game.store.get_json("player")["cash"] == 338000
+    assert game_store(game).get_json("player")["cash"] == 338000
     with sqlite3.connect(catalogue.path) as connection:
         connection.execute(
             "UPDATE vehicle_balance SET operating_cost_eur_per_km_game=9"
         )
     assert game.get_vehicle(vehicle["id"])["operating_cost_eur_per_km"] == rate
-    before = game.store.get_json("player")
-    vehicles = game.store.get_json("vehicles")
-    original = game.store.set_json
+    before = game_store(game).get_json("player")
+    vehicles = game_store(game).get_json("vehicles")
+    original = game_store(game).set_json
 
     def fail_vehicle_write(key, value):
         if key == "vehicles":
             raise RuntimeError("persistence failed")
         original(key, value)
 
-    with patch.object(game.store, "set_json", side_effect=fail_vehicle_write):
+    with patch.object(
+        game_store(game), "set_json", side_effect=fail_vehicle_write
+    ):
         with pytest.raises(RuntimeError):
             fleet.purchase("iveco_sway_500")
-    assert game.store.get_json("player") == before
-    assert game.store.get_json("vehicles") == vehicles
+    assert game_store(game).get_json("player") == before
+    assert game_store(game).get_json("vehicles") == vehicles
 
 
 async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
     game, catalogue
 ):
-    legacy = game.store.get_json("vehicles")
+    legacy = game_store(game).get_json("vehicles")
     legacy[0].pop("operating_cost_eur_per_km")
     legacy[0].pop("model_id")
-    game.store.set_json("vehicles", legacy)
+    game_store(game).set_json("vehicles", legacy)
     contract = first_berlin_contract(game)
     first = await game.quote_contract(contract["id"], "truck_01")
     assert first["operating_cost_eur_per_km"] == 0.62
     assert first["vehicle_id"] == "truck_01"
     assert (await game.quote_contract(contract["id"]))["vehicle_id"] is None
-    vehicle = FleetService(game.store, catalogue, game.world).purchase(
+    vehicle = FleetService(game.unit_of_work, catalogue, game.world).purchase(
         "iveco_sway_500"
     )
     quote = await game.quote_contract(contract["id"], vehicle["id"])
@@ -160,31 +162,36 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
     )
     assert quote["payout_eur"] == first["payout_eur"]
     assert quote["operating_cost_eur"] != first["operating_cost_eur"]
-    before = game.store.get_json("player")["cash"]
+    before = game_store(game).get_json("player")["cash"]
     trip = await game.dispatch(contract["id"], vehicle["id"])
     assert trip["operating_cost_eur"] == quote["operating_cost_eur"]
     assert (
-        game.store.get_json("player")["cash"]
+        game_store(game).get_json("player")["cash"]
         == before - quote["operating_cost_eur"]
     )
     # Old balances and models are not migrated by reinitialization.
-    game.store.set_json(
+    game_store(game).set_json(
         "player", {"cash": 25000, "reputation": 0, "completed": 0}
     )
-    legacy = game.store.get_json("vehicles")[0]
+    legacy = game_store(game).get_json("vehicles")[0]
     for model_id in (None, "rigid_12t", "semi_24t"):
-        game.store.set_json("vehicles", [{**legacy, "model_id": model_id}])
+        game_store(game).set_json(
+            "vehicles", [{**legacy, "model_id": model_id}]
+        )
         game.ensure_initial_state()
-        assert game.store.get_json("player")["cash"] == 25000
+        assert game_store(game).get_json("player")["cash"] == 25000
         assert game.get_vehicle("truck_01")["model_id"] == model_id
     # Already running transport economics are independent of the catalogue.
     trip["departed_at"] = 0
     trip["arrives_at"] = 1
     vehicle["status"] = "enroute"
-    game.store.set_json("vehicles", [vehicle])
-    game.store.set_json("active_trips", [trip])
+    game_store(game).set_json("vehicles", [vehicle])
+    game_store(game).set_json("active_trips", [trip])
     assert game.reconcile_arrival()
-    assert game.store.get_json("player")["cash"] == 25000 + trip["payout_eur"]
+    assert (
+        game_store(game).get_json("player")["cash"]
+        == 25000 + trip["payout_eur"]
+    )
 
 
 def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
@@ -293,14 +300,14 @@ def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
     assert (
         starter["operating_cost_eur_per_km"] == model.operating_cost_eur_per_km
     )
-    assert game.store.get_json("player")["cash"] == 175000
-    before = game.store.get_json("vehicles")
+    assert game_store(game).get_json("player")["cash"] == 175000
+    before = game_store(game).get_json("vehicles")
     with sqlite3.connect(catalogue.path) as db:
         db.execute(
             "UPDATE vehicle_balance SET operating_cost_eur_per_km_game=7"
         )
     game.ensure_initial_state()
-    assert game.store.get_json("vehicles") == before
+    assert game_store(game).get_json("vehicles") == before
     fresh = build_player_service(game, "fresh")
     assert fresh.get_vehicle("truck_01")["operating_cost_eur_per_km"] == 7
     with patch.object(game.catalogue, "list_models", return_value=()):
@@ -308,7 +315,7 @@ def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
             build_player_service(game, "failed")
     from app.repositories.sqlite_store import SqliteStore
 
-    failed = SqliteStore(game.store.path, "user:failed:")
+    failed = SqliteStore(game_store(game).path, "user:failed:")
     assert failed.get_json("player") is None
     assert failed.get_json("vehicles") is None
 

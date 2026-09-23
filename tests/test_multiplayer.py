@@ -9,7 +9,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.bootstrap import build_player_service
+from app.bootstrap import build_player_service, game_store
 from app.main import create_app
 from app.repositories.accounts import AccountRepository
 from app.repositories.sqlite_store import SqliteStore
@@ -18,6 +18,7 @@ from app.services.fleet import FleetService
 from tests.conftest import BERLIN_UID, FakeRouter
 from tests.test_api import make_settings, make_static_files
 from tests.test_game import first_berlin_contract
+from tests.transport_fixtures import add_transport
 
 PASSWORD = "test-only-password-42"
 
@@ -88,19 +89,21 @@ def test_player_service_isolation_and_atomic_purchases(game, catalogue):
     alice = build_player_service(game, "alice")
     bob = build_player_service(game, "bob")
     assert alice.world is bob.world
-    vehicle = FleetService(alice.store, catalogue, alice.world).purchase(
-        "iveco_sway_500"
-    )
+    vehicle = FleetService(
+        alice.unit_of_work, catalogue, alice.world
+    ).purchase("iveco_sway_500")
     assert alice.get_vehicle(vehicle["id"])["capacity_tons"] == 24.2
     assert alice.state()["player"]["cash"] == 26000
     assert bob.state()["player"]["cash"] == 175000
     assert len(bob.list_vehicles()) == 1
     with pytest.raises(ValueError, match="Nicht genug"):
-        FleetService(alice.store, catalogue, alice.world).purchase(
+        FleetService(alice.unit_of_work, catalogue, alice.world).purchase(
             "renault_t_high_520"
         )
     with pytest.raises(ValueError, match="Unbekanntes"):
-        FleetService(alice.store, catalogue, alice.world).purchase("fake")
+        FleetService(alice.unit_of_work, catalogue, alice.world).purchase(
+            "fake"
+        )
     with pytest.raises(KeyError):
         bob.get_vehicle(vehicle["id"])
     restored = build_player_service(game, "alice")
@@ -115,7 +118,7 @@ def test_concurrent_purchases_cannot_overdraw(game, catalogue):
     def purchase(service):
         try:
             return FleetService(
-                service.store, catalogue, service.world
+                service.unit_of_work, catalogue, service.world
             ).purchase("iveco_sway_500")
         except ValueError:
             return None
@@ -128,9 +131,9 @@ def test_concurrent_purchases_cannot_overdraw(game, catalogue):
 
 
 async def test_parallel_transports_and_offline_settlement(game, catalogue):
-    second_vehicle = FleetService(game.store, catalogue, game.world).purchase(
-        "iveco_sway_500"
-    )
+    second_vehicle = FleetService(
+        game.unit_of_work, catalogue, game.world
+    ).purchase("iveco_sway_500")
     game.refresh_market(force=True)
     contracts = [
         item
@@ -144,7 +147,7 @@ async def test_parallel_transports_and_offline_settlement(game, catalogue):
     for trip in (first, second):
         trip["departed_at"] = 0
         trip["arrives_at"] = 1
-    game.store.set_json("active_trips", [first, second])
+    game_store(game).set_json("active_trips", [first, second])
     assert game.reconcile_arrival()
     assert not game.reconcile_arrival()
     state = game.state()
@@ -185,10 +188,12 @@ async def test_simultaneous_dispatch_revalidates_after_routing(game):
 
 async def test_expired_contract_and_failed_routing_do_not_charge(game):
     contract = first_berlin_contract(game)
-    game.store.set_json("contracts", [{**contract, "expires_at": 0}])
+    game_store(game).set_json(
+        "contracts", [{**contract, "created_at": 0, "expires_at": 1}]
+    )
     with pytest.raises(KeyError):
         await game.dispatch(contract["id"], "truck_01")
-    game.store.set_json("contracts", [contract])
+    game_store(game).set_json("contracts", [contract])
     with patch.object(
         game.router, "route", side_effect=RuntimeError("offline")
     ):
@@ -199,28 +204,14 @@ async def test_expired_contract_and_failed_routing_do_not_charge(game):
 
 
 def test_leaderboard_counts_offline_arrivals_without_double_counting(game):
-    accounts = AccountRepository(game.store)
+    accounts = AccountRepository(game_store(game))
     alice = accounts.create_user("Alice", "unused")
     accounts.create_user("Bob", "unused")
     service = build_player_service(game, alice["id"])
-    service.store.set_json(
+    game_store(service).set_json(
         "player", {"cash": 175000, "completed": 2, "reputation": 2}
     )
-    vehicles = service.store.get_json("vehicles")
-    vehicles[0]["status"] = "enroute"
-    service.store.set_json("vehicles", vehicles)
-    service.store.set_json(
-        "active_trips",
-        [
-            {
-                "id": "offline",
-                "arrives_at": 0,
-                "vehicle_id": "truck_01",
-                "payout_eur": 100,
-                "contract": {"destination_hub_id": BERLIN_UID},
-            }
-        ],
-    )
+    add_transport(service, payout=100)
     assert accounts.leaderboard() == [
         {"username": "Alice", "completed": 3},
         {"username": "Bob", "completed": 0},
@@ -350,33 +341,19 @@ def test_launchers_run_main_without_changing_working_directory():
         assert run.call_args.kwargs["host"] == "0.0.0.0"
 
 
-def test_legacy_trip_migrates_without_loss(game):
-    game.store.delete_state_keys(("active_trips",))
+def test_initialization_does_not_implicitly_import_legacy_trips(game):
+    game_store(game).delete_state_keys(("active_trips",))
     trip = {"id": "legacy", "arrives_at": game.now() + 1000}
-    game.store.set_json("active_trip", trip)
+    game_store(game).set_json("active_trip", trip)
     game.ensure_initial_state()
-    assert game.store.get_json("active_trips") == [trip]
-    assert game.store.get_json("active_trip") is None
+    assert game.state_repository.list_transports() == ()
+    assert game_store(game).get_json("active_trip") == trip
 
 
 def test_concurrent_arrivals_pay_once(game):
     alice = build_player_service(game, "arrival")
     other = build_player_service(game, "arrival")
-    vehicles = alice.store.get_json("vehicles")
-    vehicles[0]["status"] = "enroute"
-    alice.store.set_json("vehicles", vehicles)
-    alice.store.set_json(
-        "active_trips",
-        [
-            {
-                "id": "arrived",
-                "arrives_at": 0,
-                "vehicle_id": "truck_01",
-                "payout_eur": 1000,
-                "contract": {"destination_hub_id": BERLIN_UID},
-            }
-        ],
-    )
+    add_transport(alice)
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures = [
             pool.submit(service.reconcile_arrival)

@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from fastapi import FastAPI
 
+from app.bootstrap import game_store
 from app.domain.errors import CatalogueError
 from app.main import lifespan
 
@@ -18,16 +19,16 @@ STATE_KEYS = ("player", "vehicles", "active_trips", "contracts")
 def test_initialization_direct_failure_is_atomic(
     game, failure, existing_player
 ):
-    game.store.delete_state_keys(STATE_KEYS)
+    game_store(game).delete_state_keys(STATE_KEYS)
     if existing_player:
-        game.store.set_json(
+        game_store(game).set_json(
             "player", {"cash": 123, "completed": 4, "reputation": 4}
         )
-    before = {key: game.store.get_json(key) for key in STATE_KEYS}
-    original = game.store.set_json
+    before = {key: game_store(game).get_json(key) for key in STATE_KEYS}
+    original = game_store(game).set_json
 
     def fail_write(key, value):
-        if key == "contracts":
+        if key == "vehicles":
             raise RuntimeError("write failed")
         original(key, value)
 
@@ -37,30 +38,36 @@ def test_initialization_direct_failure_is_atomic(
             "list_models",
             side_effect=CatalogueError("unavailable"),
         ),
-        "write": patch.object(game.store, "set_json", side_effect=fail_write),
+        "write": patch.object(
+            game_store(game), "set_json", side_effect=fail_write
+        ),
     }
     with failures[failure], pytest.raises((CatalogueError, RuntimeError)):
         game.ensure_initial_state()
-    assert {key: game.store.get_json(key) for key in STATE_KEYS} == before
+    assert {
+        key: game_store(game).get_json(key) for key in STATE_KEYS
+    } == before
     game.ensure_initial_state()
-    initialized = {key: game.store.get_json(key) for key in STATE_KEYS}
+    initialized = {key: game_store(game).get_json(key) for key in STATE_KEYS}
     game.ensure_initial_state()
-    assert {key: game.store.get_json(key) for key in STATE_KEYS} == initialized
+    assert {
+        key: game_store(game).get_json(key) for key in STATE_KEYS
+    } == initialized
     assert initialized["player"]["cash"] == (
         123 if existing_player else 175000
     )
 
 
 def test_initialization_defers_market_generation(game):
-    game.store.delete_state_keys(STATE_KEYS)
+    game_store(game).delete_state_keys(STATE_KEYS)
     with patch.object(type(game.market), "generate") as generate:
         game.ensure_initial_state()
     generate.assert_not_called()
-    assert game.store.get_json("contracts") == []
+    assert game.state_repository.list_offers() == ()
 
 
 def test_reset_failure_restores_deleted_state(game):
-    before = {key: game.store.get_json(key) for key in STATE_KEYS}
+    before = {key: game_store(game).get_json(key) for key in STATE_KEYS}
     with patch.object(
         type(game.market),
         "generate",
@@ -68,7 +75,9 @@ def test_reset_failure_restores_deleted_state(game):
     ):
         with pytest.raises(RuntimeError):
             game.reset()
-    assert {key: game.store.get_json(key) for key in STATE_KEYS} == before
+    assert {
+        key: game_store(game).get_json(key) for key in STATE_KEYS
+    } == before
 
 
 @pytest.mark.parametrize(
@@ -96,6 +105,9 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
     if failure == "close-first":
         clients[0].aclose.side_effect = error
     with ExitStack() as patches:
+        patches.enter_context(
+            patch("app.main.game_store", return_value=Mock())
+        )
         patches.enter_context(
             patch("app.main.httpx.AsyncClient", side_effect=creation)
         )

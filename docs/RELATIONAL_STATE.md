@@ -1,9 +1,11 @@
 # Relationale Spielpersistenz und Transaktionsgrenzen
 
 Status: Ports, relationale SQLite-Adapter und deren Verhaltenstests sind
-implementiert. Die bestehende Anwendung verwendet bis zur anschließenden
-Service-/Composition-Umstellung weiterhin die KV-Persistenz. Dies ist noch
-kein Nachweis einer fertig umgestellten Laufzeit.
+implementiert. GameService und FleetService benutzen diese Ports. Der
+Composition Root verwendet bis zur gemeinsamen Umstellung von Accounts,
+Profilpflege und Mehrspielerprojektionen noch einen ausdrücklich temporären
+KV-Adapter. Die gleichen Use Cases sind bereits gegen das relationale
+Repository getestet. Dies ist noch keine vollständig umgestellte Laufzeit.
 
 ## Fachliche Grenzen
 

@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from app.bootstrap import game_store
 from app.domain.contracts import ContractOffer, ContractOfferSnapshot
 from app.domain.game import OwnedVehicle, PlayerState
 
@@ -107,7 +108,7 @@ def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
 
 
 def test_contract_offer_domain_rules(game):
-    payload = game.store.get_json("contracts")[0]
+    payload = game_store(game).get_json("contracts")[0]
     offer = ContractOffer.from_dict(payload)
 
     assert offer.to_dict() == payload

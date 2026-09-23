@@ -13,6 +13,7 @@ import pytest
 from app.bootstrap import (
     build_player_service,
     build_profile_maintenance_service,
+    game_store,
 )
 from app.repositories.accounts import AccountRepository
 from app.repositories.database_backup import backup_database
@@ -27,17 +28,17 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
     service = build_profile_maintenance_service(
         replace(
             make_settings(tmp_path),
-            db_path=game.store.path,
+            db_path=game_store(game).path,
             vehicle_catalogue_path=catalogue.path,
         )
     )
 
-    accounts = AccountRepository(game.store)
+    accounts = AccountRepository(game_store(game))
     user = accounts.create_user("Selected", "not-a-real-hash")
     selected = build_player_service(game, user["id"])
     other = accounts.create_user("Untouched", "not-a-real-hash")
     other_game = build_player_service(game, other["id"])
-    selected.store.set_json(
+    game_store(selected).set_json(
         "active_trips",
         [
             {
@@ -49,10 +50,10 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
             }
         ],
     )
-    before = selected.store.get_json("active_trips")
-    other_before = other_game.store.get_json("player")
+    before = game_store(selected).get_json("active_trips")
+    other_before = game_store(other_game).get_json("player")
     backup = tmp_path / "backup.db"
-    backup_database(game.store.path, backup)
+    backup_database(game_store(game).path, backup)
     assert backup.exists()
     for _ in range(2):
         result = service.update_profile(
@@ -61,16 +62,16 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
             175000,
         )
         assert result["cash"] == 175000
-    assert selected.store.get_json("active_trips") == before
+    assert game_store(selected).get_json("active_trips") == before
     assert selected.get_vehicle("truck_01")["model_id"] == "iveco_sway_500"
-    assert other_game.store.get_json("player") == other_before
-    selected.store.set_json("player", {**other_before, "cash": 12345})
+    assert game_store(other_game).get_json("player") == other_before
+    game_store(selected).set_json("player", {**other_before, "cash": 12345})
     service.update_profile(
         "Selected",
         {"truck_01": "iveco_sway_500"},
         None,
     )
-    assert selected.store.get_json("player")["cash"] == 12345
+    assert game_store(selected).get_json("player")["cash"] == 12345
     with pytest.raises(ValueError):
         service.update_profile(
             "Selected",
@@ -83,17 +84,17 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
             {"truck_01": "mercedes_eactros_600"},
             1,
         )
-    assert selected.store.get_json("player")["cash"] == 12345
+    assert game_store(selected).get_json("player")["cash"] == 12345
 
 
 @pytest.fixture
 def maintenance(game, catalogue, tmp_path):
     settings = replace(
         make_settings(tmp_path),
-        db_path=game.store.path,
+        db_path=game_store(game).path,
         vehicle_catalogue_path=catalogue.path,
     )
-    accounts = AccountRepository(game.store)
+    accounts = AccountRepository(game_store(game))
     user = accounts.create_user("Selected", "test-hash")
     selected = build_player_service(game, user["id"])
     service = build_profile_maintenance_service(settings)
@@ -116,8 +117,8 @@ def maintenance(game, catalogue, tmp_path):
 def test_maintenance_validation_preserves_state(maintenance, failure):
     _, service, selected, accounts = maintenance
     before = (
-        selected.store.get_json("vehicles"),
-        selected.store.get_json("player"),
+        game_store(selected).get_json("vehicles"),
+        game_store(selected).get_json("player"),
     )
     username = "Selected"
     assignments = {"truck_01": "man_tgx_520"}
@@ -138,8 +139,8 @@ def test_maintenance_validation_preserves_state(maintenance, failure):
     with pytest.raises(ValueError):
         service.update_profile(username, assignments, cash)
     assert (
-        selected.store.get_json("vehicles"),
-        selected.store.get_json("player"),
+        game_store(selected).get_json("vehicles"),
+        game_store(selected).get_json("player"),
     ) == before
 
 
@@ -147,7 +148,7 @@ def test_maintenance_write_failure_rolls_back_and_retains_unselected(
     maintenance,
 ):
     _, service, selected, _ = maintenance
-    vehicles = selected.store.get_json("vehicles")
+    vehicles = game_store(selected).get_json("vehicles")
     hamburg = selected.world.read().get_facility("hamburg_cta")
     vehicles[0].update(
         status="enroute",
@@ -156,8 +157,8 @@ def test_maintenance_write_failure_rolls_back_and_retains_unselected(
         location_snapshot=hamburg.location_snapshot().to_dict(),
     )
     vehicles.append({**vehicles[0], "id": "other", "name": "Untouched"})
-    selected.store.set_json("vehicles", vehicles)
-    store = selected.store
+    game_store(selected).set_json("vehicles", vehicles)
+    store = game_store(selected)
     service.player_store_factory = lambda user_id: store
     before = store.get_json("player")
     original = store.set_json
@@ -243,7 +244,7 @@ def test_cli_backs_up_before_mutation_and_preserves_cash(
     )
     if cash is not None:
         sys.argv.extend(["--cash", str(cash)])
-    before = selected.store.get_json("vehicles")
+    before = game_store(selected).get_json("vehicles")
     with patch(
         "scripts.update_test_profile.Settings.from_env", return_value=settings
     ):
@@ -253,10 +254,13 @@ def test_cli_backs_up_before_mutation_and_preserves_cash(
     with closing(sqlite3.connect(result["backup"])) as db:
         stored = db.execute(
             "SELECT value FROM kv WHERE key=?",
-            (selected.store.namespace + "vehicles",),
+            (game_store(selected).namespace + "vehicles",),
         ).fetchone()
     assert json.loads(stored[0]) == before
-    assert selected.store.get_json("vehicles")[0]["model_id"] == "man_tgx_520"
+    assert (
+        game_store(selected).get_json("vehicles")[0]["model_id"]
+        == "man_tgx_520"
+    )
 
 
 def test_cli_backup_failure_never_constructs_mutation_service(
@@ -323,8 +327,8 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
 
     game.router.route = delayed_route
     before = 285 if limited_cash else 175000
-    player = game.store.get_json("player")
-    game.store.set_json("player", {**player, "cash": before})
+    player = game_store(game).get_json("player")
+    game_store(game).set_json("player", {**player, "cash": before})
     game.refresh_market(force=True)
     contract = first_berlin_contract(game)
     task = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
@@ -336,12 +340,12 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
     if limited_cash:
         with pytest.raises(ValueError, match="Nicht genug"):
             await task
-        assert game.store.get_json("active_trips") == []
-        assert game.store.get_json("player")["cash"] == before
+        assert game.state_repository.list_transports() == ()
+        assert game_store(game).get_json("player")["cash"] == before
     else:
         trip = await task
         assert trip["operating_cost_eur"] == round(80 + 400 * 0.53)
         assert (
-            game.store.get_json("player")["cash"]
+            game_store(game).get_json("player")["cash"]
             == before - trip["operating_cost_eur"]
         )

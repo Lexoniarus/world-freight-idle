@@ -13,6 +13,7 @@ from app.repositories.accounts import AccountRepository
 from app.repositories.cached_world_catalogue import CachedWorldCatalogue
 from app.repositories.multiplayer_map import MultiplayerMapRepository
 from app.repositories.sqlite_store import SqliteStore
+from app.repositories.transition_state import TransitionGameUnitOfWork
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.repositories.world_maintenance import WorldMaintenanceRepository
@@ -50,7 +51,7 @@ def build_game_service(
     market = MarketGenerator(world, random.Random(rng_seed), catalogue)
     pricing = PricingService(LEGACY_CARGO_TYPES)
     return GameService(
-        store=store,
+        unit_of_work=TransitionGameUnitOfWork(store),
         world=world,
         router=router,
         market=market,
@@ -64,10 +65,12 @@ def build_game_service(
 def build_player_service(template: GameService, user_id: str) -> GameService:
     """Isolate game state while sharing rate-limited provider adapters."""
     game = GameService(
-        store=SqliteStore(
-            template.store.path,
-            f"user:{user_id}:",
-            initialize_schema=False,
+        unit_of_work=TransitionGameUnitOfWork(
+            SqliteStore(
+                game_store(template).path,
+                f"user:{user_id}:",
+                initialize_schema=False,
+            )
         ),
         world=template.world,
         router=template.router,
@@ -92,7 +95,7 @@ def build_vehicle_catalogue(settings: Settings) -> SqliteVehicleCatalogue:
 def build_fleet_service(game: GameService, settings: Settings) -> FleetService:
     """Assemble purchasing against the authenticated player's store."""
     return FleetService(
-        game.store, build_vehicle_catalogue(settings), game.world
+        game.unit_of_work, build_vehicle_catalogue(settings), game.world
     )
 
 
@@ -103,7 +106,15 @@ def build_map_service(game: GameService) -> MapLocationService:
 
 def build_multiplayer_map_service(game: GameService) -> MultiplayerMapService:
     """Build the read-only cross-player traffic projection."""
-    return MultiplayerMapService(MultiplayerMapRepository(game.store))
+    return MultiplayerMapService(MultiplayerMapRepository(game_store(game)))
+
+
+def game_store(game: GameService) -> SqliteStore:
+    """Resolve the transitional adapter only at the composition boundary."""
+    unit = game.unit_of_work
+    if not isinstance(unit, TransitionGameUnitOfWork):
+        raise TypeError("The relational runtime has no KV store.")
+    return unit.store
 
 
 def build_profile_maintenance_service(

@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from app.bootstrap import (
     build_multiplayer_map_service,
     build_player_service,
+    game_store,
 )
 from app.main import create_app
 from app.repositories.accounts import AccountRepository
@@ -43,23 +44,23 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
     game,
     caplog,
 ):
-    accounts = AccountRepository(game.store)
+    accounts = AccountRepository(game_store(game))
     alice = accounts.create_user("Alice", "unused")
     bob = accounts.create_user("Bob", "unused")
     alice_game = build_player_service(game, alice["id"])
     bob_game = build_player_service(game, bob["id"])
     now = game.now()
 
-    alice_vehicle = alice_game.store.get_json("vehicles")[0]
-    bob_vehicle = bob_game.store.get_json("vehicles")[0]
+    alice_vehicle = game_store(alice_game).get_json("vehicles")[0]
+    bob_vehicle = game_store(bob_game).get_json("vehicles")[0]
     bob_vehicle["model_id"] = "daf_xg_plus_480"
     bob_vehicle["name"] = "DAF XG+ 480 MX-13"
-    bob_game.store.set_json("vehicles", [bob_vehicle])
-    alice_game.store.set_json(
+    game_store(bob_game).set_json("vehicles", [bob_vehicle])
+    game_store(alice_game).set_json(
         "active_trips",
         [active_trip("alice-trip", alice_vehicle["id"], now)],
     )
-    bob_game.store.set_json(
+    game_store(bob_game).set_json(
         "active_trips",
         [
             active_trip("bob-trip", bob_vehicle["id"], now),
@@ -70,7 +71,7 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
         ],
     )
 
-    repository = MultiplayerMapRepository(game.store)
+    repository = MultiplayerMapRepository(game_store(game))
     rows = repository.list_active_transports(now)
     assert [row["id"] for row in rows] == ["alice-trip", "bob-trip"]
     assert set(rows[0]) == {
@@ -137,8 +138,8 @@ def test_multiplayer_map_endpoint_requires_login_and_shares_other_players(
         alice = alice_response.json()
         alice_game = build_player_service(app.state.game, alice["id"])
         now = alice_game.now()
-        vehicle = alice_game.store.get_json("vehicles")[0]
-        alice_game.store.set_json(
+        vehicle = game_store(alice_game).get_json("vehicles")[0]
+        game_store(alice_game).set_json(
             "active_trips",
             [active_trip("alice-live", vehicle["id"], now)],
         )
