@@ -126,7 +126,7 @@ export class GameActions {
   }
   /** Dispatch the selected vehicle and follow the resulting transport. */
   async dispatchTransport() {
-    const path = this.panel.view.url.href;
+    const route = this.panel.view.url;
     const contractId = this.panel.view.url.pathname.split("/").at(-1);
     const choice = /** @type {HTMLSelectElement} */ (requiredElement("#vehicle-choice"));
     if (!this.panel.view.quote || this.panel.view.quote.vehicle_id !== choice.value) return;
@@ -137,7 +137,7 @@ export class GameActions {
     if (this.disposed) return;
     this.notify("Transport gestartet. Gute Fahrt!");
     await this.state.afterMutation();
-    if (!this.disposed && path === this.panel.view.url.href) {
+    if (!this.disposed && route === this.panel.view.url) {
       this.navigate("/transports/" + trip.id);
     }
   }

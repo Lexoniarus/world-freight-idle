@@ -18,6 +18,8 @@ export function renderVehicleImage(vehicle, role = "detail") {
           <div class="vehicle-photo-frame">
             <img
               data-local-vehicle-asset
+              data-vehicle-model="${modelId}"
+              data-vehicle-role="front"
               src="${localAssets.front}"
               alt="${vehicle.name} – Frontansicht"
               width="512"
@@ -32,6 +34,8 @@ export function renderVehicleImage(vehicle, role = "detail") {
           <div class="vehicle-photo-frame">
             <img
               data-local-vehicle-asset
+              data-vehicle-model="${modelId}"
+              data-vehicle-role="side"
               src="${localAssets.side}"
               alt="${vehicle.name} – Seitenansicht"
               width="896"

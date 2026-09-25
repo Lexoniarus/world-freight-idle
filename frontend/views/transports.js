@@ -1,3 +1,4 @@
+import { renderCostBreakdown } from "../ui/cost-breakdown.js";
 import { phaseLabel, transportProgress } from "../journey.js";
 import { renderEnergyMeter } from "../ui/vehicle-energy.js";
 import { html } from "../ui/dom.js";
@@ -62,6 +63,7 @@ function renderTransportDetails(trip, now, vehicle) {
       ${trip.destination.label}
     </p>
     ${renderProgress(trip, now)} ${vehicle ? renderEnergyMeter(vehicle, trip, now) : null}
+    ${renderCostBreakdown(trip.cost_breakdown)}
     <div class="metrics">
       ${metric("Anfahrt zur Abholung", number(trip.approach_distance_km ?? 0) + " km")}${metric("Frachtstrecke", number(trip.delivery_distance_km ?? trip.distance_km) + " km")}${metric("Gesamtdauer", formatDuration(trip.arrives_at - trip.departed_at))}${metric("Strecke gesamt", number(trip.distance_km) + " km")}${metric("Erlös bei Ankunft", money(trip.payout_eur))}${metric("Betriebskosten", money(trip.operating_cost_eur))}${metric("Gewinn", money(trip.profit_eur), "profit")}
     </div>

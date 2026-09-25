@@ -203,8 +203,8 @@ test("DB vehicle selection changes costs, dispatches and settles after relogin",
   const response = page.waitForResponse(response => response.url().endsWith("/quote") && response.request().postDataJSON()?.vehicle_id === purchased.id);
   await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
   const quote = await (await response).json();
-  expect(quote.operating_cost_eur_per_km).toBe(purchased.operating_cost_eur_per_km);
-  expect(quote.operating_cost_eur).toBe(Math.round(80 + quote.distance_km * purchased.operating_cost_eur_per_km));
+  expect(quote.cost_breakdown.maintenance_eur_per_km).toBeGreaterThan(0);
+  expect(quote.operating_cost_eur).toBe(quote.cost_breakdown.base_cost_eur + quote.cost_breakdown.maintenance_cost_eur + quote.cost_breakdown.energy_cost_eur);
   await expect(page.getByRole("button", { name: "Transport starten" })).toBeEnabled();
   await page.getByRole("button", { name: "Transport starten" }).click();
   await expect(page).toHaveURL(/transports\//);
@@ -290,7 +290,7 @@ test("starter game assets survive polling and changed transport panel content", 
   const figure = page.locator(".vehicle-photo").first();
   await expect(figure).toHaveClass(/vehicle-game-asset/);
   await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
-  await expect(figure.locator("img").first()).toHaveAttribute("src", "/assets/vehicles/iveco_sway_500/front.svg");
+  await expect(figure.locator("img").first()).toHaveAttribute("src", /^blob:/);
   await page.waitForResponse(response => response.url().endsWith("/api/v1/fleet"), { timeout: 15000 });
   await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
   const headers = { "X-Freight-Request": "1" };
@@ -475,6 +475,8 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["tablet
     await page.getByText("Werte als Tabelle",{exact:true}).first().click();
     await expect(page.locator(".chart table").first()).toBeVisible();
     expect(await page.locator(".chart table").first().locator("tbody tr").count()).toBeGreaterThan(0);
+    await page.locator(".chart table").first().scrollIntoViewIfNeeded();
+    await page.screenshot({path:screenshot(`analytics-table-${device}`),animations:"disabled"});
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(viewport.width);
     if (device === "desktop") {
       await page.route("**/api/v1/company/analytics?*", route=>route.fulfill({status:503,json:{detail:"Statistik vorübergehend nicht verfügbar"}}));
@@ -573,5 +575,77 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     await page.screenshot({path:screenshot(`delivery-${device}`),animations:"disabled"});
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(viewport.width);
     expect((await (await page.request.get("/api/v1/fleet")).json()).vehicles[0].facility_uid).toBe(start.facility_uid);
+  });
+}
+
+for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile", {width:390,height:844}]]) {
+  test(`${device}: company livery persists across map and stable panel images`, async ({page}) => {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({reducedMotion:"reduce"});
+    await register(page);
+    await page.goto("/contracts");
+    const fleet = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
+    const active = [...new Set(fleet.filter(v=>v.status==="idle").map(v=>v.hub.city_uid))].sort();
+    await expect.poll(async()=>page.locator('[data-filter="city"] option').evaluateAll(nodes=>nodes.map(n=>n.value).filter(Boolean).sort())).toEqual(active);
+    await page.goto("/company");
+    await page.locator('details[data-disclosure="company-color"] summary').click();
+    await expect(page.locator("[data-company-color]")).toHaveCount(10);
+    const choice = page.locator("[data-company-color]").nth(1);
+    const color = await choice.getAttribute("data-company-color");
+    await choice.click();
+    await expect(choice).toHaveAttribute("aria-pressed", "true");
+    const front = page.locator('img[data-vehicle-role="front"]').first();
+    await expect(front).toHaveAttribute("src", /^blob:/);
+    await expect(front).toHaveAttribute("data-vehicle-color", color);
+    expect(await front.evaluate(async image=>(await (await fetch(image.src)).text()))).toContain(`--vehicle-color:${color}`);
+    await front.evaluate(image=>{window.stableLiveryImage=image;});
+    await page.getByRole("button",{name:"Aktualisieren",exact:true}).click();
+    await expect.poll(()=>front.evaluate(image=>image===window.stableLiveryImage)).toBe(true);
+    await page.locator('details[data-disclosure="company-color"] summary').scrollIntoViewIfNeeded();
+    await page.screenshot({path:screenshot(`livery-${device}`),animations:"disabled"});
+    await page.reload();
+    await page.locator('details[data-disclosure="company-color"] summary').click();
+    await expect(page.locator(`[data-company-color="${color}"]`)).toHaveAttribute("aria-pressed","true");
+    expect((await (await page.request.get("/api/v1/auth/me")).json()).company_color).toBe(color);
+    await page.goto("/");
+    await expect(page.locator("#world-map")).toHaveAttribute("aria-busy","false");
+    for (let index=0;index<5;index++) await page.getByRole("button",{name:"Zoom out",exact:true}).click();
+    await expect(page.locator(".vehicle-group img").first()).toBeVisible();
+    await expect(page.locator(".vehicle-group-count").first()).toHaveText("1");
+    await page.screenshot({path:screenshot(`regional-livery-${device}`),animations:"disabled"});
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(viewport.width);
+  });
+}
+
+
+for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile", {width:390,height:844}]]) {
+  test(`${device}: low and high shipment quotes expose exact cost components`, async ({page}) => {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({reducedMotion:"reduce"});
+    await register(page);
+    const offers = (await (await page.request.get("/api/v1/contracts")).json()).contracts.sort((a,b)=>a.tons-b.tons);
+    expect(offers.length).toBeGreaterThan(1);
+    for (const [label, offer, stops] of [["low", offers[0], false], ["high", offers.at(-1), false], ["purchases", offers[0], true]]) {
+      if (stops) expect((await page.request.post("/__tests__/energy-fixture", {headers:{"X-Freight-Request":"1"}})).ok()).toBeTruthy();
+      await page.goto("/contracts/"+offer.id);
+      const response = page.waitForResponse(value=>value.url().includes("/quote") && value.request().method()==="POST");
+      await page.getByRole("button",{name:"Route & Ertrag berechnen"}).click();
+      const quote = await (await response).json();
+      const costs = quote.cost_breakdown;
+      expect(costs.total_cost_eur).toBe(80+costs.maintenance_cost_eur+costs.purchases.reduce((sum,p)=>sum+p.cost_eur,0));
+      expect(costs.total_cost_eur).toBe(quote.operating_cost_eur);
+      expect(costs.purchases.length>0).toBe(stops);
+      expect(quote.contract.tons).toBe(offer.tons);
+      expect(quote.contract.tariff).toEqual(offer.tariff);
+      const details = page.locator('details[data-disclosure="costs"]');
+      await details.locator("summary").click();
+      await details.scrollIntoViewIfNeeded();
+      await expect(details).toContainText("Grundkosten");
+      await expect(details).toContainText("Wartung");
+      await expect(details).toContainText("Gesamtkosten");
+      if (stops) await expect(details).toContainText("kWh");
+      await page.screenshot({path:screenshot(`costs-${label}-${device}`),animations:"disabled"});
+      expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(viewport.width);
+    }
   });
 }

@@ -1,3 +1,4 @@
+import { renderCompanyPreferences } from "../ui/company-preferences.js";
 import { dataTable } from "../ui/data-table.js";
 import { html } from "../ui/dom.js";
 import { metric } from "../ui/components.js";
@@ -22,6 +23,7 @@ export function renderCompany(view) {
       <h2>${view.user.username}</h2>
       <p>Die Leistung deiner Flotte. Aus belegten Fahrten.</p>
     </div>
+    ${renderCompanyPreferences(view)}
     <div class="filter-grid">
       <label class="filter-field"
         ><span>Zeitraum</span

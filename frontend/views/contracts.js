@@ -1,3 +1,4 @@
+import { renderCostBreakdown } from "../ui/cost-breakdown.js";
 import { cityFilter, selectFilter, searchFilter } from "../ui/filters.js";
 import { renderVehicleImage } from "../ui/vehicle-image.js";
 import { renderEnergyMeter } from "../ui/vehicle-energy.js";
@@ -42,7 +43,8 @@ export function renderContracts(view) {
       ${Object.entries(distanceLabels).map(([code, label]) => html`<span>${label}<strong>${view.marketLoaded === false || view.marketStale ? "–" : contracts.filter((item) => item.distance_band === code).length}</strong></span>`)}
     </div>
     <div class="filter-grid">
-      ${cityFilter(view)}
+      ${cityFilter(view, true)}
+      ${view.marketCities?.length === 0 ? html`<p role="status">Keine aktive Marktstadt: Deine Fahrzeuge sind unterwegs.</p>` : null}
       ${selectFilter(
         "vehicle",
         "Geeignetes Fahrzeug",
@@ -159,6 +161,8 @@ function renderQuote({ quote, state, busy, selectedVehicle }) {
       ${metric("Anfahrt zur Abholung", number(quote.approach_distance_km ?? 0) + " km")}${metric("Frachtstrecke", number(quote.delivery_distance_km ?? quote.distance_km) + " km")}
       ${metric("Straßenstrecke gesamt", number(quote.distance_km) + " km")}${metric("Gesamtdauer im Spiel", formatDuration(quote.total_duration_seconds ?? quote.duration_seconds / state.time_scale))}${metric("Erlös", money(quote.payout_eur))}${metric("Betriebskosten", money(quote.operating_cost_eur))}${metric("Dein Gewinn", money(quote.profit_eur), "profit wide")}
     </div>
+    ${renderCostBreakdown(quote.cost_breakdown)}
+    ${quote.profit_eur < 0 ? html`<p class="inline-notice negative">Dieser Auftrag ergibt mit diesem Fahrzeug ein negatives Ergebnis.</p>` : null}
     ${quote.journey ? html`<p class="footnote">${quote.energy_stop_count} Tank-/Ladepausen · ${formatDuration(quote.pause_seconds)} Pause insgesamt · Verbrauch ${number(quote.energy_consumption, 1)} ${quote.journey.energy.unit}. Haltepositionen sind simuliert.</p>` : null}
     ${actionButton("focus-quote", [icon("target", 17), " Route anzeigen"], false, "quiet")}`;
 }

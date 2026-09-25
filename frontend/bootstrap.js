@@ -1,3 +1,6 @@
+import { VehicleColorAssets } from "./vehicle-color-assets.js";
+import { VehicleImageController } from "./vehicle-image-bindings.js";
+import { PreferencesController } from "./controllers/preferences-controller.js";
 import { CityContextController } from "./controllers/city-context-controller.js";
 import { LayerStateController } from "./controllers/layer-state-controller.js";
 import { AnalyticsController } from "./controllers/analytics-controller.js";
@@ -65,7 +68,7 @@ export async function bootstrap() {
 
 /** Wire stateful game components around a single persistent shell.
  * @param {GameApiClient} api
- * @param {{id: string, username: string}} user
+ * @param {{id: string, username: string, company_color?: string}} user
  * @param {(path: string) => void} redirect
  * @returns {GameApplication}
  */
@@ -92,11 +95,15 @@ function createGameApplication(api, user, redirect) {
     requiredElement("#map-notice"),
   );
   const notify = notifications.show;
+  const assets = new VehicleColorAssets(api.requestAsset);
   const panel = new PanelController({ view, request: api.request, notify, now: () => state.now() });
+  panel.images = new VehicleImageController(assets);
   let application;
   const router = new BrowserRouter(window, (url) => application.navigateTo(url));
   const navigate = (path) => router.navigate(path);
-  const map = createWorldMap(navigate, notify, () => state.now(), api.requestAsset);
+  const map = createWorldMap(navigate, notify, () => state.now(), api.requestAsset, assets);
+  map?.setCompanyColor(user.company_color);
+  const preferences = new PreferencesController({ request: api.request, panel, map, notify });
   const city = new CityContextController({ state, view, request: api.request, notify, map });
   const layers = new LayerStateController({ userId: user.id, map });
   const analytics = new AnalyticsController({ request: api.request, panel });
@@ -157,13 +164,15 @@ function createGameApplication(api, user, redirect) {
     layers,
     analytics,
     managementInput,
+    preferences,
+    assets,
     redirect,
   });
   return application;
 }
 
 /** Keep game controls usable when the browser cannot initialize WebGL. */
-function createWorldMap(navigate, notify, now, loadAsset) {
+function createWorldMap(navigate, notify, now, loadAsset, assets) {
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   try {
     return new WorldMap("world-map", {
@@ -171,6 +180,7 @@ function createWorldMap(navigate, notify, now, loadAsset) {
       notify,
       now,
       loadAsset,
+      assets,
       provider: createBasemap(),
       reducedMotion: () => reducedMotion.matches,
       isHidden: () => document.hidden,

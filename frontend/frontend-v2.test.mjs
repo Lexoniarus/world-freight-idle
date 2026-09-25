@@ -66,10 +66,10 @@ function cityFixture() {
   return { state, view, focus, reads, city };
 }
 
-test("city defaults, identical names and explicit inactive city survive polling", async () => {
+test("city defaults and inactive fleet context survive polling", async () => {
   const { city, state, view, focus } = cityFixture();
   assert.equal(view.cityUid, "a");
-  await city.selectRoute(new URL("http://test/contracts?city=b"));
+  await city.selectRoute(new URL("http://test/fleet?city=b"));
   assert.equal(view.cityUid, "b");
   assert.equal(view.cities.length, 2);
   assert.equal(focus.length, 1);

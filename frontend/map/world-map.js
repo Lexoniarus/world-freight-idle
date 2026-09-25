@@ -25,7 +25,7 @@ const FACILITY_HOVER_LAYERS = new Set(["orders", "parked", "hub-points"]);
 export class WorldMap {
   constructor(
     container,
-    { navigate, notify, now, loadAsset, provider, viewport, reducedMotion, isHidden },
+    { navigate, notify, now, loadAsset, assets, provider, viewport, reducedMotion, isHidden },
   ) {
     this.navigate = navigate;
     this.notify = notify;
@@ -63,7 +63,9 @@ export class WorldMap {
       dragRotate: false,
       pitchWithRotate: false,
     });
-    this.vehicleIcons = new VehicleIconRegistry(this.map, loadAsset);
+    this.vehicleIcons = new VehicleIconRegistry(this.map, loadAsset, {
+      coloredSource: assets?.source.bind(assets),
+    });
     this.camera = new MapCamera(this.map, reducedMotion, viewport);
     this.animator = new VehicleAnimator({
       draw: () => this.drawTraffic(),
@@ -72,7 +74,7 @@ export class WorldMap {
       reducedMotion,
     });
     this.map.touchZoomRotate.disableRotation();
-    this.groups = new VehicleGroups(this.map, navigate, reducedMotion);
+    this.groups = new VehicleGroups(this.map, navigate, reducedMotion, assets);
     this.opportunities = new Opportunities(this.map, navigate);
     this.map.addControl(new maplibregl.AttributionControl({ compact: false }), "bottom-left");
     this.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
@@ -131,15 +133,9 @@ export class WorldMap {
   update(state) {
     this.overlays.update(state);
     if (!this.ready || this.disposed) return;
-    this.setSourceData("hubs", this.overlays.hubFeatures());
+    this.setSourceData("hubs", this.overlays.hubFeatures(this.visible.vehicles));
     this.setSourceData("orders", this.overlays.locationFeatures(state.contracts, "origin_hub_id"));
-    this.setSourceData(
-      "parked",
-      this.overlays.locationFeatures(
-        state.vehicles.filter((vehicle) => vehicle.status === "idle"),
-        "hub_id",
-      ),
-    );
+    this.setSourceData("parked", { type: "FeatureCollection", features: [] });
     this.setSourceData("routes", this.overlays.routeFeatures());
     this.updateSelectedRoute();
     this.setSourceData(
@@ -149,9 +145,22 @@ export class WorldMap {
     this.drawTraffic();
     this.opportunities.update(state.contracts, this.visible.orders, this.selected);
     void this.syncVehicleIcons([
-      ...(state.traffic ?? []),
-      ...state.vehicles.map((vehicle) => ({ model_id: vehicle.model_id, player_color: "#f6bc43" })),
+      ...(state.traffic ?? []).map((trip) => ({
+        ...trip,
+        player_color: trip.is_own ? this.overlays.companyColor : trip.player_color,
+      })),
+      ...state.vehicles.map((vehicle) => ({
+        model_id: vehicle.model_id,
+        player_color: this.overlays.companyColor,
+        role: "front",
+      })),
     ]);
+  }
+
+  setCompanyColor(color) {
+    this.overlays.companyColor = color;
+    this.groups.last = -Infinity;
+    this.update(this.overlays.state);
   }
 
   updateFacilityHover(feature, lngLat) {
@@ -330,6 +339,8 @@ export class WorldMap {
 
   toggle(name, visible) {
     this.visible[name] = visible;
+    if (this.ready && name === "vehicles")
+      this.setSourceData("hubs", this.overlays.hubFeatures(visible));
     const layers =
       name === "hubs"
         ? ["hub-clusters", "hub-points"]
@@ -356,6 +367,7 @@ export class WorldMap {
     this.groups.destroy();
     this.opportunities.destroy();
     this.hoverPopup.remove();
+    this.vehicleIcons.destroy();
     this.map.remove();
   }
 }

@@ -565,6 +565,7 @@ test("all feature views render active, empty, unavailable and shop states", () =
         capacity_tons: 12,
         unlock_reputation: 0,
         operating_cost_eur_per_km: 0.49,
+        maintenance_eur_per_1000_km: 80,
         powertrain: "combustion",
         energy: vehicle.energy,
         top_speed_kmh: 90,
@@ -668,6 +669,7 @@ test("catalogue reputations gate offers independently of funds", () => {
         capacity_tons: 24.3,
         unlock_reputation: 5,
         operating_cost_eur_per_km: 0.49,
+        maintenance_eur_per_1000_km: 80,
         powertrain: "combustion",
         energy: vehicle.energy,
         top_speed_kmh: 90,
@@ -677,7 +679,7 @@ test("catalogue reputations gate offers independently of funds", () => {
   const locked = renderPanel(view);
   assert.equal(locked.querySelector('[data-action="buy"]').disabled, true);
   assert.match(locked.textContent, /Reputation reicht nicht/);
-  assert.match(locked.textContent, /0,49/);
+  assert.match(locked.textContent, /0,08/);
   view.state.player.reputation = 5;
   assert.equal(renderPanel(view).querySelector('[data-action="buy"]').disabled, false);
 });
@@ -828,4 +830,29 @@ test("city market requests have no viewport parameters and removed details prese
   assert.deepEqual(state.data.contracts, [contract]);
   assert.equal(state.detail, null);
   controller.destroy();
+});
+
+test("dispatch follows its trip after active-city URL cleanup but preserves newer navigation", async () => {
+  for (const navigated of [false, true]) {
+    const panel = mountPanel();
+    panel.view.quote = quote;
+    panel.render();
+    const paths = [];
+    const actions = new GameActions({
+      panel,
+      request: async () => ({ id: "started" }),
+      notify() {},
+      navigate: (path) => paths.push(path),
+      state: {
+        afterMutation: async () => {
+          if (navigated) panel.view.url = new URL("http://test/fleet");
+          else panel.view.url.searchParams.set("city", "");
+        },
+      },
+    });
+    await actions.dispatchTransport();
+    assert.deepEqual(paths, navigated ? [] : ["/transports/started"]);
+    actions.destroy();
+    panel.destroy();
+  }
 });

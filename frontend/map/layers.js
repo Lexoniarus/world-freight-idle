@@ -90,7 +90,7 @@ export function addOverlayLayers(map) {
     id: "multiplayer-vehicles-fallback",
     type: "circle",
     source: "multiplayer-vehicles",
-    filter: ["any", ["==", ["get", "hasIcon"], false], ["<", ["zoom"], ZOOM_TIERS.assets]],
+    filter: ["==", ["get", "hasIcon"], false],
     paint: {
       "circle-radius": 9,
       "circle-color": ["coalesce", ["get", "playerColor"], "#f6bc43"],
@@ -102,7 +102,6 @@ export function addOverlayLayers(map) {
     id: "multiplayer-vehicles",
     type: "symbol",
     source: "multiplayer-vehicles",
-    minzoom: ZOOM_TIERS.assets,
     filter: ["==", ["get", "hasIcon"], true],
     layout: {
       "icon-image": ["get", "iconImage"],
@@ -118,7 +117,7 @@ export function addOverlayLayers(map) {
     id: "vehicles-fallback",
     type: "circle",
     source: "vehicles",
-    filter: ["any", ["==", ["get", "hasIcon"], false], ["<", ["zoom"], ZOOM_TIERS.assets]],
+    filter: ["==", ["get", "hasIcon"], false],
     paint: {
       "circle-radius": 9,
       "circle-color": ["coalesce", ["get", "playerColor"], "#f6bc43"],
@@ -130,7 +129,6 @@ export function addOverlayLayers(map) {
     id: "vehicles",
     type: "symbol",
     source: "vehicles",
-    minzoom: ZOOM_TIERS.assets,
     filter: ["==", ["get", "hasIcon"], true],
     layout: {
       "icon-image": ["get", "iconImage"],
@@ -175,7 +173,6 @@ export function addOverlayLayers(map) {
     id: "selected-vehicle-assets",
     type: "symbol",
     source: "selection",
-    minzoom: ZOOM_TIERS.assets,
     filter: ["==", ["get", "hasIcon"], true],
     layout: {
       "icon-image": ["get", "iconImage"],

@@ -20,6 +20,8 @@ export class PanelController {
     this.contentFocus = null;
     this.returnFocus = null;
     this.disposed = false;
+    /** @type {import("../vehicle-image-bindings.js").VehicleImageController | null} */
+    this.images = null;
   }
   /** Reset only panel-specific selection when the route changes.
    * @param {URL} url
@@ -150,6 +152,7 @@ export class PanelController {
           current
         ).open;
     }
+    this.images?.prepare(fragment, this.view.user.company_color);
     const media = matchVehicleImages(this.content, fragment);
     const same =
       this.content.childNodes.length === fragment.childNodes.length &&
@@ -159,6 +162,7 @@ export class PanelController {
     if (same) return;
     for (const { current, next } of media) next.replaceWith(current);
     this.content.replaceChildren(fragment);
+    this.images?.update(this.content.querySelectorAll("img[data-vehicle-model]"));
     this.restoreFocus();
   }
   /** Restore a surviving control only when a replacement was necessary. */
@@ -183,5 +187,6 @@ export class PanelController {
   destroy() {
     this.disposed = true;
     this.pending.cancel();
+    this.images?.destroy();
   }
 }

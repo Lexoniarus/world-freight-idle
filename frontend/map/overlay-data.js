@@ -7,6 +7,7 @@ export const routeGeometry = (route) => (route.type === "Feature" ? route.geomet
 export class OverlayData {
   constructor() {
     this.hubs = [];
+    this.companyColor = undefined;
     this.routes = new Map();
     this.trafficRoutes = new Map();
     this.availableVehicleIcons = new Set();
@@ -52,9 +53,20 @@ export class OverlayData {
         this.trafficRoutes.set(trip.id, prepareTransportRoute(trip));
   }
 
-  hubFeatures() {
+  hubFeatures(vehiclesVisible = false) {
     return collection(
-      this.hubs.map((hub) => pointFeature([hub.lon, hub.lat], this.hubProperties(hub))),
+      this.hubs
+        .filter(
+          (hub) =>
+            !vehiclesVisible ||
+            !this.state.vehicles.some((vehicle) => {
+              const location = vehicle.location_snapshot ?? vehicle.hub;
+              return (
+                vehicle.status === "idle" && location?.lon === hub.lon && location?.lat === hub.lat
+              );
+            }),
+        )
+        .map((hub) => pointFeature([hub.lon, hub.lat], this.hubProperties(hub))),
     );
   }
 
@@ -110,7 +122,7 @@ export class OverlayData {
       .flatMap((vehicle) => {
         const location = vehicle.location_snapshot ?? vehicle.hub;
         if (!Number.isFinite(location?.lon) || !Number.isFinite(location?.lat)) return [];
-        const iconImage = vehicleIconId(vehicle.model_id);
+        const iconImage = vehicleIconId(vehicle.model_id, this.companyColor, "front");
         return [
           pointFeature([location.lon, location.lat], {
             id: vehicle.id,
@@ -121,7 +133,7 @@ export class OverlayData {
             iconImage,
             hasIcon: this.availableVehicleIcons.has(iconImage),
             bearing: 0,
-            playerColor: "#f6bc43",
+            playerColor: this.companyColor,
             isOwn: true,
             idle: true,
           }),
@@ -141,7 +153,8 @@ export class OverlayData {
         const route = this.trafficRoutes.get(trip.id);
         const pose = route && transportRoutePose(route, trip, now);
         if (!pose) return [];
-        const iconImage = vehicleIconId(trip.model_id, trip.player_color);
+        const color = trip.is_own ? (this.companyColor ?? trip.player_color) : trip.player_color;
+        const iconImage = vehicleIconId(trip.model_id, color);
         const hasIcon = Boolean(iconImage && this.availableVehicleIcons.has(iconImage));
         return [
           pointFeature(pose.coordinate, {
@@ -153,7 +166,7 @@ export class OverlayData {
             iconImage: hasIcon ? iconImage : "",
             hasIcon,
             bearing: pose.bearing,
-            playerColor: trip.player_color,
+            playerColor: color,
             username: trip.username,
             isOwn: trip.is_own,
           }),

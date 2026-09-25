@@ -10,14 +10,19 @@ export function selectFilter(name, label, options, value = "", all = "Alle") {
     </select></label
   >`;
 }
-export function cityFilter(view) {
-  return selectFilter(
+export function cityFilter(view, market = false) {
+  const result = selectFilter(
     "city",
     "Stadt",
-    (view.cities ?? []).map((item) => [item.city_uid, item.city]),
+    (market ? (view.marketCities ?? []) : (view.cities ?? [])).map((item) => [
+      item.city_uid,
+      item.city,
+    ]),
     view.cityUid ?? "",
-    "Alle Städte",
+    market ? "Alle aktiven Städte" : "Alle Städte",
   );
+  if (market && !view.marketCities?.length) result.querySelector("select").disabled = true;
+  return result;
 }
 export function searchFilter(name, label, url) {
   return html`<label class="filter-field"

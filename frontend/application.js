@@ -18,7 +18,11 @@ export class GameApplication {
     layers,
     analytics,
     managementInput,
+    preferences,
+    assets,
   }) {
+    this.preferences = preferences;
+    this.assets = assets;
     this.city = city;
     this.layers = layers;
     this.analytics = analytics;
@@ -43,6 +47,7 @@ export class GameApplication {
   async start() {
     for (const component of [
       this.router,
+      this.preferences,
       this.city,
       this.managementInput,
       this.sync,
@@ -93,6 +98,7 @@ export class GameApplication {
     this.disposed = true;
     for (const component of [
       this.scheduler,
+      this.preferences,
       this.city,
       this.layers,
       this.analytics,
@@ -107,6 +113,7 @@ export class GameApplication {
       this.map,
       this.notifications,
       this.state,
+      this.assets,
       this.api,
     ])
       component?.destroy();

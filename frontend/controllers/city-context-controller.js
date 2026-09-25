@@ -11,6 +11,7 @@ export class CityContextController {
     this.map = map;
     this.known = new Map();
     this.explicit = false;
+    this.marketRoute = false;
     this.selected = "";
     this.pending = new LatestRequest();
     this.changed = () => this.update();
@@ -22,10 +23,17 @@ export class CityContextController {
     for (const location of cityLocations(this.state.data))
       this.known.set(location.city_uid, location);
     const active = activeCityIds(this.state.data);
+    if (this.marketRoute && this.selected && !active.includes(this.selected)) {
+      this.selected = "";
+      this.explicit = true;
+      this.view.url.searchParams.set("city", "");
+      window.history.replaceState({}, "", this.view.url.pathname + this.view.url.search);
+    }
     if (!this.explicit && !active.includes(this.selected)) this.selected = active[0] ?? "";
     this.view.cityUid = this.selected;
     this.view.cities = [...this.known.values()].sort((a, b) => a.city.localeCompare(b.city));
     this.view.activeCities = active;
+    this.view.marketCities = this.view.cities.filter((city) => active.includes(city.city_uid));
     const label = document.querySelector("#current-city-label");
     if (label) label.textContent = this.known.get(this.selected)?.city ?? "Alle Städte";
   }
@@ -66,6 +74,15 @@ export class CityContextController {
     } catch (error) {
       if (!pending.isCurrent() || error.name === "AbortError") return;
       this.notify("Stadt oder Standort nicht verfügbar. Alle Städte werden angezeigt.");
+      this.selected = "";
+      this.explicit = true;
+    }
+    this.marketRoute = url.pathname.startsWith("/contracts");
+    if (
+      this.state.data &&
+      this.marketRoute &&
+      !activeCityIds(this.state.data).includes(this.selected)
+    ) {
       this.selected = "";
       this.explicit = true;
     }

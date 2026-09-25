@@ -1,10 +1,18 @@
+import { getVehicleAssets } from "../vehicle-assets.js";
+import { VehicleImageController } from "../vehicle-image-bindings.js";
 import { Marker, Popup } from "maplibre-gl";
 import { nearestLongitude } from "../geometry.js";
 import { groupVehicles, GROUP_INTERVAL, ZOOM_TIERS } from "./grouping.js";
 
 /** Render accessible count markers independently of the movement frame loop. */
 export class VehicleGroups {
-  constructor(map, navigate, reducedMotion) {
+  /** @param {import("maplibre-gl").Map} map
+   * @param {import("../types.js").Navigate} navigate
+   * @param {() => boolean} reducedMotion
+   * @param {import("../vehicle-color-assets.js").VehicleColorAssets} [assets]
+   */
+  constructor(map, navigate, reducedMotion, assets) {
+    this.images = assets ? new VehicleImageController(assets) : null;
     this.map = map;
     this.navigate = navigate;
     this.reducedMotion = reducedMotion;
@@ -65,7 +73,7 @@ export class VehicleGroups {
         this.markers.set(key, entry);
       }
       entry.members = group.members;
-      entry.button.textContent = String(group.members.length);
+      this.renderVisual(entry.button, group.members);
       entry.button.setAttribute(
         "aria-label",
         `${group.members.length} ${group.own ? "eigene" : "fremde"} Fahrzeuge – Gruppe öffnen`,
@@ -80,7 +88,33 @@ export class VehicleGroups {
         entry.marker.remove();
         this.markers.delete(key);
       }
+    this.images?.update(
+      [...this.markers.values()].flatMap((entry) => [
+        ...entry.button.querySelectorAll("img[data-vehicle-model]"),
+      ]),
+    );
     return features.filter((feature) => !this.hidden.has(feature.properties.key));
+  }
+  renderVisual(button, members) {
+    const representative = members.find((item) => getVehicleAssets(item.properties.modelId));
+    const props = (representative ?? members[0]).properties;
+    const role = members.every((item) => item.properties.idle) ? "front" : "map";
+    const signature = `${props.modelId}:${role}:${props.playerColor}:${members.length}`;
+    if (button.dataset.visual === signature) return;
+    button.dataset.visual = signature;
+    button.style.setProperty("--company-color", props.playerColor);
+    const count = document.createElement("span");
+    count.className = "vehicle-group-count";
+    count.textContent = String(members.length);
+    const visual = document.createElement(representative ? "img" : "span");
+    if (visual instanceof HTMLImageElement) {
+      visual.alt = "";
+      visual.src = getVehicleAssets(props.modelId)[role];
+      visual.dataset.vehicleModel = props.modelId;
+      visual.dataset.vehicleRole = role;
+      visual.dataset.vehicleColor = props.playerColor;
+    } else visual.textContent = "🚚";
+    button.replaceChildren(visual, count);
   }
   showList(features, coordinate) {
     this.popup?.remove();
@@ -107,6 +141,7 @@ export class VehicleGroups {
     list.querySelector("button")?.focus();
   }
   destroy() {
+    this.images?.destroy();
     for (const entry of this.markers.values()) entry.marker.remove();
     this.markers.clear();
     this.popup?.remove();
