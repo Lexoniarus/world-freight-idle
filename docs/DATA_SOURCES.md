@@ -6,14 +6,14 @@ aktuell noch kein Satellitenprovider integriert.
 
 | Daten | Aktuelle Quelle | Verwendung / Grenze |
 | --- | --- | --- |
-| Referenzunternehmen / Facilities / Adressen | `data/world_freight_company_facility_mvp.sqlite3`, Schema 4.0.0 | 109 Unternehmen, 352 Facilities; keine Spielerunternehmen |
-| Koordinaten | gespeicherte Quellen und `facility_geocoding_evidence` | 352 routbar; 79 verifiziert, 273 ausdrücklich für die Simulation geschätzt |
+| Referenzunternehmen / Facilities / Adressen | `data/world_freight_company_facility_mvp.sqlite3`, Schema 4.2.0 | 559 Facilities in 333 Städten; keine Spielerunternehmen |
+| Koordinaten | gespeicherte Quellen und `facility_geocoding_evidence` | Routability und verifizierte/geschätzte Koordinaten getrennt ausgewiesen |
 | Lkw-Straßenroute | Valhalla / OpenStreetMap | Geometrie, Kilometer und Fahrzeit |
 | Basiskarte | OpenStreetMap Standard via MapLibre GL JS | Rastertiles; Straßen, Orte, Gebäude und POIs; keine Routingquelle |
-| Fahrzeugmodelle | `data/world_freight_vehicle_catalog.sqlite3`, Schema 2.1.0 | 14 Modelle, acht Hersteller, technische Quellen in `sources`/`vehicle_sources` |
+| Fahrzeugmodelle | `data/world_freight_vehicle_catalog.sqlite3`, Schema 2.2.0 | 14 Modelle, acht Hersteller, technische Quellen in `sources`/`vehicle_sources` |
 | Fahrzeug-Spielwerte | `vehicle_balance` im Katalog | fiktive Preise, Nutzlast, Reputation und Kilometerkosten; keine realen Angebote |
 | NHM-Waren und Facility-Verhalten | `nhm_codes`, `facility_nhm_profiles`, `facility_handled_goods_nhm` | 15.099 NHM-Codes; belegte und transparent derived IN/OUT/BOTH-Profile; keine generische Standardfracht |
-| Beziehungen, Mengen und Aufträge | MarketGenerator, `app/simulation.py` | simulierte Einzelereignisse; DB-nutzlastabhängige Mengen, 0,18 €/km/t |
+| Beziehungen, Mengen und Aufträge | Market-Services und immutable NHM-Profile | simulierte Einzelereignisse; gespeicherte Kapazität × Load Factor; 0,18 €/km/t × Warenfaktor |
 | Vergütung / Betriebskosten | calculate_price | balanciertes Spielmodell |
 
 Eurostat, GLEIF, FAF, UN Comtrade, OurAirports und SeaRoute sind mögliche
@@ -76,7 +76,7 @@ zur Erstellung einer neuen Katalogdatei gelesen.
 
 ## Fahrzeugenergie
 
-Katalogschema 2.1.0 / Datenstand 2.2.0 ergänzt für alle 14 Modelle Verbrauch,
+Die frühere Energieanreicherung (Schema 2.1.0 / Datenstand 2.2.0) ergänzt für alle 14 Modelle Verbrauch,
 Einheit, Tank-/nutzbare Batteriekapazität und Höchstgeschwindigkeit. Quellen-
 notizen unterscheiden Test-/Referenzwerte von repräsentativen Spielannahmen.
 Der Runtime-Leser validiert diese Daten als EnergyProfile; der technische
@@ -86,3 +86,14 @@ verwendet 25, Elektro 35 Minuten aus dem Katalog. Fahrverbrauch und Pausen
 sind als begrenzte erste Simulation aktiv. Verbrauch bleibt konstant;
 Zusatzkosten entstehen nicht. Tankstellen und Ladepunkte werden nicht
 recherchiert, sondern als Positionen entlang der gespeicherten Route simuliert.
+
+
+## Market-v2-Profile
+
+Der unverändert übernommene World-Katalog 4.2.0 enthält nhm_market_profiles,
+nhm_distance_load_profiles und nhm_vehicle_scale_profiles. Vehicle 2.2.0 ergänzt
+vehicle_transport_capabilities und explizite Segmente. Warenwerte, Frachtraten-
+Faktoren, Load Factors und Suitability sind Spielparameter, keine beobachteten
+Handelspreise. Haversine-Schätzungen dienen ausschließlich Marktgewichtung und
+Coverage. Die Auszahlung verwendet die gerouteten Straßenkilometer und die
+bei Generierung gespeicherte Frachtrate. Sie hängt nicht vom Warenwert ab.

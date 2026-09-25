@@ -54,11 +54,16 @@ Den bedarfsabhängigen Markt lädt der Client gesondert über `/contracts`.
 
 ### `GET /contracts`
 
-Liefert den bedarfsabhängigen Markt mit gespeicherten Endpunktadressen.
-Optional: `bbox=west,south,east,north` und `zoom`. Origins eigener freier
-Fahrzeuge sind immer enthalten; ab Zoom 7 kommen spielbare Facilities im
-Kartenbereich hinzu. Ohne Viewport entsteht kein globaler Markt. Ungültige
-Bounding Boxes ergeben 422; die Datumsgrenze wird unterstützt.
+Liefert die Märkte eigener idle Fahrzeuge, zusammengefasst nach `city_uid`.
+BBox und Zoom sind keine Parameter dieses Endpoints. Bestehende fahrbare
+V2-Angebote mit mehr als 60 Sekunden Restlaufzeit behalten ihre IDs.
+
+Neue Angebote enthalten `market_model=nhm_v2`, `cargo_system=NHM2026`,
+`distance_band`, `estimated_distance_km`, `transport_class`,
+`generated_for_vehicle_scale`, `generated_capacity_tons`,
+`cargo_value_eur_per_t`, `cargo_value_eur` und `rate_eur_per_km_ton`.
+`eligible_vehicle_ids` ist eine flüchtige serverseitige Auswahlhilfe und
+reserviert kein Fahrzeug. Historische Transporte benötigen keinen V2-Kontext.
 
 ### `GET /contracts/{contract_id}`
 
@@ -84,7 +89,7 @@ Validiert Fahrzeugstatus, Modus, Standort, Kapazität und Liquidität. Bei Erfol
 
 ### `POST /contracts/refresh`
 
-Erneuert den NHM-basierten Markt für denselben Fahrzeug-/Viewport-Scope
+Erneuert den NHM-basierten Markt ausschließlich für aktive Fahrzeugstädte
 wie `GET /contracts`; dieselben optionalen `bbox`-/`zoom`-Parameter gelten.
 
 ## Flotte
@@ -144,12 +149,16 @@ Jeder HTTP-Request erhält `X-Trace-Id` in der Response.
 `POST /fleet/purchase` prüft Reputation/Guthaben serverseitig und speichert
 Fahrzeugwerte atomar. Unbekanntes/gesperrtes Modell: 400. Katalogfehler: 503.
 
-`POST /contracts/{id}/quote` akzeptiert optional `{"vehicle_id":"..."}`.
-Mit ID werden Besitz, Standort, Kapazität, Modus und Verfügbarkeit geprüft;
-ungültige Fahrzeugauswahl ergibt 400. Ohne Body/ID bleibt die allgemeine
-Vorschau mit 0,62 €/km erhalten. Antworten ergänzen `vehicle_id` (ggf. null)
-und `operating_cost_eur_per_km`. Kosten: `round(80 + km * Satz)`.
-`accept` berechnet Kosten für das gewählte Fahrzeug erneut auf dem Server.
+`POST /contracts/{id}/quote` verlangt `{"vehicle_id":"..."}`.
+Fehlender Body sowie fehlende, leere oder null IDs liefern HTTP 422.
+Besitz, idle-Status, Stadt, Modus, Modell, Klasse, Scale und konkrete Kapazität
+werden serverseitig geprüft; ungültige Auswahl ergibt 400. Antworten enthalten
+`vehicle_id` und `operating_cost_eur_per_km`. Kosten: `round(80 + km * Satz)`.
+Geroutete Straßenkilometer sind von `estimated_distance_km` (Luftlinie) getrennt.
+Auszahlung nutzt Straßenkilometer und gespeicherte Frachtrate, keinen Warenwert.
+`accept` verlangt ebenfalls eine Fahrzeug-ID und prüft nach dem Routing erneut.
+Ein Refill-Fehler nach erfolgreichem Dispatch-Commit verändert die erfolgreiche
+Antwort nicht. Der Transport darf deshalb nicht erneut gestartet werden.
 Negative/nicht endliche Strecken oder Zeiten und ungültige Geometrien erzeugen
 502 statt eines verwendbaren Angebots. Produkt-URLs bleiben unverändert.
 
@@ -215,3 +224,13 @@ Eigene Transporte enthalten den gespeicherten Plan sowie zeitabhängiges
 Intervalle verwenden Zeiten relativ zur Abfahrt. Die öffentliche Karte bekommt
 unter `journey` nur Entfernung sowie Phasen-, Zeit- und Streckenintervalle;
 keine Energieinhalte, Verbrauchsprofile, Auftrags- oder Wirtschaftsdaten.
+
+
+### Ungeklärte Bestände und Referenzausfälle
+
+Ein nicht auflösbares OwnedVehicle-Modell wird nicht aus Namen oder Nutzlast
+erraten. Marktreads melden den expliziten Zuordnungsbedarf mit HTTP 409;
+Quote/Accept übersetzen ungültige Fahrzeugauswahl weiterhin mit HTTP 400.
+Ein nicht verfügbarer Fahrzeugkatalog liefert HTTP 503 mit stabiler Meldung,
+ohne interne Pfade offenzulegen. Ein Fehler ausschließlich beim Refill nach
+Dispatch-Commit bleibt eine protokollierte Marktlücke, keine fehlgeschlagene Fahrt.

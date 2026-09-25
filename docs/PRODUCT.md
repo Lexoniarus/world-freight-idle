@@ -92,14 +92,13 @@ automatische Energiehalte sind aktiv; Wartung und Zuverlässigkeit folgen späte
 Öffentliche Frachtstandorte bleiben von eigenen Depots unterschieden.
 
 Der WorldCatalogue ergänzt reale Referenzunternehmen; dies ist kein Ausbau
-der Spielerunternehmens- oder Depotmechanik. Jeder routbare Standort kann passende Aufträge erhalten;
-erzeugt werden
-sie bedarfsabhängig an eigenen freien Fahrzeugen und ab Zoom 7 im Kartenbereich.
-Verwendet werden NHM-basierte
-Facility-Profile mit belegter oder transparent derived Warenrolle
-(DB-nutzlastabhängige Mengen, 0,18 €/km/t); generische Standardfracht entfällt. Derselbe Ort oder dieselbe
-Firma darf beide Endpunkte besitzen; dieselbe Facility nicht. Details und
-Bestandskompatibilität: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).
+der Spielerunternehmens- oder Depotmechanik. Eigene idle Fahrzeuge aktivieren
+Stadtmärkte über city_uid. Alle geeigneten Facilities dieser Städte liefern
+NHM-kompatible Angebote; Ziele bleiben weltweit verfügbar. Pan/Zoom verändert
+diesen Markt nicht. Mengen verwenden gespeicherte Fahrzeugkapazität und
+Waren-/Distanzprofile, die Frachtrate einen NHM-Faktor auf 0,18 €/km/t.
+Unterschiedliche Facilities derselben Stadt dürfen handeln. Quote und Dispatch
+verlangen ein geeignetes Fahrzeug. Details: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).
 
 ## Gemeinsamer Live-Verkehr
 
@@ -124,7 +123,7 @@ auch wenn die Einfärbung eines Fahrzeugs auf kleinem Kartenmaßstab dezent ist.
 ## Aktuelle technische Grundlage
 
 Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
-WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
+WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
 Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).
@@ -148,3 +147,18 @@ Strecke/Höchstgeschwindigkeit. Providerdaten, Kilometerkosten und Erlösformel
 bleiben erhalten. Es gibt keine zusätzlichen Kraftstoffgebühren. Offline-Pausen
 und -Ankunft benötigen keine Hintergrundjobs; beim nächsten Zugriff wird der
 Endfüllstand mit Auszahlung und Settlement atomar gespeichert.
+
+
+## Market v2 – implementierter Stand vom 25.09.2026
+
+Stadtmärkte eigener idle Fahrzeuge ersetzen Nutzlastklassen und Viewport-Scope.
+V2 bewahrt gültige fahrbare Angebote und ergänzt Facility-/Distanz-Coverage.
+Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Same-City-
+Reposition ist kostenlos; Dispatch und anschließender Markt-Refill besitzen
+getrennte Transaktionen. Historische Transporte und gespeicherte Konditionen
+bleiben erhalten. Trailer, Versicherungen und weitere Simulationen sind nicht
+Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
+Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
+den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
+Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
+[Qualitätsbericht](../QUALITY_REPORT.md).

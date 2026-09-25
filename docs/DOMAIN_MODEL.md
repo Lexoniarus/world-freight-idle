@@ -1,6 +1,6 @@
 # Domänenmodell
 
-Stand: 23.09.2026. Dieses Dokument beschreibt die implementierte Struktur.
+Stand: 25.09.2026. Dieses Dokument beschreibt die implementierte Struktur.
 Entscheidungsgründe stehen in ADR 0005/0006, Fortschrittshistorie in
 [der archivierten Refactor-Chronik](archive/REFACTOR_EXECUTION.md).
 Domainobjekte kennen keine Persistenzformate.
@@ -93,3 +93,22 @@ Energieabrechnung. OwnedVehicle speichert den Ausgangsfüllstand; während
 der Fahrt berechnet ActiveTransport den aktuellen Stand aus seinem Snapshot.
 Settlement speichert Endfüllstand, Standort, Auszahlung und Status atomar.
 Modellwechsel sind nur im Stand zulässig und erhalten den bisherigen Füllgrad.
+
+
+## Immutable Stadtmarktwerte
+
+NhmMarketProfile komponiert DistanceLoadProfile und VehicleScaleProfile.
+VehicleModel liefert Segment und immutable TransportCapability-Werte.
+MarketVehicle hält aufgelöstes Modell, Stadt und gespeicherte Kaufkapazität;
+CompatibleVehicle ergänzt den positiven Eignungswert. TradeOption repräsentiert
+nur die NHM-Handelsrelation. MarketCandidate komponiert Relation, Profile,
+Haversine-Distanz, kompatible Kontexte und positives Auswahlgewicht.
+CoveragePlan enthält ausgewählte Candidates und CoverageDiagnostic je Stadt.
+OfferMarketContext hält die unveränderlichen V2-Generierungskonditionen.
+
+OwnedVehicle.restore_location ergänzt ausschließlich einen fehlenden Snapshot
+zur exakt gespeicherten Facility. reposition_within_city verlangt idle und
+gleiche Stadt-UUID; Facility-ID und Snapshot ändern sich gemeinsam, ohne
+Kosten, Zeit oder Energie. Kein generiertes Angebot bindet ein Fahrzeug.
+AvailableContract ergänzt flüchtige eligible_vehicle_ids ausschließlich für
+die HTTP-Auswahl. Historische Konditionen benötigen keinen aktuellen Katalog.
