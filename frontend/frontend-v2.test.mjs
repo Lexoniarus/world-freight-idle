@@ -66,19 +66,19 @@ function cityFixture() {
   return { state, view, focus, reads, city };
 }
 
-test("city defaults and inactive fleet context survive polling", async () => {
+test("overview stays unscoped and explicit fleet filters survive polling", async () => {
   const { city, state, view, focus } = cityFixture();
-  assert.equal(view.cityUid, "a");
+  assert.equal(view.cityUid, "");
   await city.selectRoute(new URL("http://test/fleet?city=b"));
   assert.equal(view.cityUid, "b");
   assert.equal(view.cities.length, 2);
-  assert.equal(focus.length, 1);
+  assert.equal(focus.length, 0);
   state.data.vehicles = [];
   city.update();
   city.update();
   assert.equal(view.cityUid, "b");
   assert.deepEqual(view.activeCities, []);
-  assert.equal(focus.length, 1);
+  assert.equal(focus.length, 0);
   await city.selectRoute(new URL("http://test/fleet?city="));
   state.data.vehicles = [vehicle];
   city.update();
@@ -104,20 +104,23 @@ test("city links prefer explicit UID, then saved aliases, then exact lookups", a
   city.destroy();
 });
 
-test("automatic alternative is deterministic; late city lookup cannot replace navigation", async () => {
+test("overview has no automatic city; late lookup cannot replace navigation", async () => {
   const fixture = cityFixture();
   fixture.state.data.vehicles = [{ ...vehicle, hub: other }, vehicle];
   fixture.city.update();
-  assert.equal(fixture.view.cityUid, "a");
+  assert.equal(fixture.view.cityUid, "");
   fixture.state.data.vehicles = [{ ...vehicle, hub: other }];
   fixture.city.update();
-  assert.equal(fixture.view.cityUid, "b");
+  assert.equal(fixture.view.cityUid, "");
   let finish;
   fixture.city.request = () =>
     new Promise((resolve) => {
       finish = resolve;
     });
   const old = fixture.city.selectRoute(new URL("http://test/fleet?city=remote"));
+  const currentUrl = window.location.href;
+  fixture.city.update();
+  assert.equal(window.location.href, currentUrl);
   await fixture.city.selectRoute(new URL("http://test/fleet?city=a"));
   finish({ city_uid: "remote", city: "Old" });
   await old;
@@ -185,13 +188,7 @@ test("offer filters use server IDs exclusively even with incompatible-looking ve
     "destination=same",
   ])
     assert.deepEqual(filterContracts(contracts, "a", new URLSearchParams(query)), [offer]);
-  for (const query of [
-    "vehicle=unknown",
-    "band=long",
-    "class=parcel",
-    "cargo=steel",
-    "destination=else",
-  ])
+  for (const query of ["band=long", "class=parcel", "cargo=steel", "destination=else"])
     assert.deepEqual(filterContracts(contracts, "a", new URLSearchParams(query)), []);
 });
 
@@ -344,7 +341,8 @@ test("navigation before the first fleet snapshot does not freeze an accidental a
   state.data = { vehicles: [vehicle], contracts: [], transports: [] };
   city.update();
   await city.selectRoute(route);
-  assert.equal(route.searchParams.get("city"), berlin.city_uid);
-  assert.equal(city.explicit, false);
+  assert.equal(route.searchParams.has("city"), false);
+  await city.selectRoute(new URL("http://test/contracts"));
+  assert.equal(view.cityUid, berlin.city_uid);
   city.destroy();
 });

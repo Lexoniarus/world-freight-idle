@@ -1,5 +1,5 @@
 import { renderCostBreakdown } from "../ui/cost-breakdown.js";
-import { cityFilter, selectFilter, searchFilter } from "../ui/filters.js";
+import { selectFilter, searchFilter } from "../ui/filters.js";
 import { renderVehicleImage } from "../ui/vehicle-image.js";
 import { renderEnergyMeter } from "../ui/vehicle-energy.js";
 import { distanceLabels, classLabels, humanLabel } from "../labels.js";
@@ -28,30 +28,31 @@ export function renderContracts(view) {
         : html`${emptyState("Auftrag nicht mehr verfügbar", "Er wurde angenommen oder ist abgelaufen.")}${routeLink("/contracts", "Zur Auftragsbörse", "button primary")}`;
   }
   const params = view.url.searchParams;
-  const contracts = filterContracts(view.state.contracts, view.cityUid, params);
+  const contracts = view.cityUid ? filterContracts(view.state.contracts, view.cityUid, params) : [];
   const city = view.cities?.find((item) => item.city_uid === view.cityUid);
-  const active = !view.cityUid || view.activeCities?.includes(view.cityUid);
+  const active = view.cityUid && view.activeCities?.includes(view.cityUid);
   return html`<div class="market-heading">
       <span class="eyebrow">STADTMARKT</span>
-      <h2>${city?.city ?? "Alle Marktstädte"}</h2>
+      <h2>${city?.city ?? "Fahrzeug wählen"}</h2>
       <p>
         ${view.marketLoaded === false ? "Auftragszahl noch unbekannt" : contracts.length + (view.marketStale ? " Aufträge · wird aktualisiert" : " verfügbare Aufträge")}
       </p>
     </div>
-    ${active ? null : html`<p class="inline-notice">In dieser Stadt steht kein eigenes einsatzbereites Fahrzeug. Hier ist aktuell kein Stadtmarkt aktiv.</p>`}
+    ${active ? null : html`<p class="inline-notice">Wähle ein einsatzbereites Fahrzeug, um den Stadtmarkt seines Standorts zu öffnen.</p>`}
     <div class="distance-summary">
       ${Object.entries(distanceLabels).map(([code, label]) => html`<span>${label}<strong>${view.marketLoaded === false || view.marketStale ? "–" : contracts.filter((item) => item.distance_band === code).length}</strong></span>`)}
     </div>
     <div class="filter-grid">
-      ${cityFilter(view, true)}
+      ${params.get("vehicle") ? routeLink("/fleet/" + encodeURIComponent(params.get("vehicle")), "Zum Fahrzeug", "back-link") : null}
       ${view.marketCities?.length === 0 ? html`<p role="status">Keine aktive Marktstadt: Deine Fahrzeuge sind unterwegs.</p>` : null}
       ${selectFilter(
         "vehicle",
-        "Geeignetes Fahrzeug",
+        "Fahrzeug für den Stadtmarkt",
         view.state.vehicles
           .filter((item) => item.status === "idle")
           .map((item) => [item.id, item.name]),
         params.get("vehicle"),
+        "Fahrzeug wählen",
       )}
     </div>
     <details
@@ -84,7 +85,6 @@ export function filterContracts(contracts, cityUid, params) {
   return contracts.filter(
     (item) =>
       (!cityUid || item.origin.city_uid === cityUid) &&
-      (!params.get("vehicle") || item.eligible_vehicle_ids?.includes(params.get("vehicle"))) &&
       (!params.get("band") || item.distance_band === params.get("band")) &&
       (!params.get("class") || item.transport_class === params.get("class")) &&
       hasText(item.destination.city, "destination") &&
@@ -94,15 +94,22 @@ export function filterContracts(contracts, cityUid, params) {
 
 /** Render one market listing and vehicle eligibility. */
 function renderContractCard(contract, vehicles, params = new URLSearchParams()) {
-  const ready = eligibleVehicles(vehicles, contract).length > 0;
+  const selected = vehicles.find((vehicle) => vehicle.id === params.get("vehicle"));
+  const eligible = eligibleVehicles(vehicles, contract);
+  const ready = selected
+    ? eligible.some((vehicle) => vehicle.id === selected.id)
+    : eligible.length > 0;
+  const suitability = selected
+    ? selected.name + (ready ? " · geeignet" : " · nicht geeignet")
+    : ready
+      ? "Lkw bereit · " + eligible.length + " Fahrzeuge verfügbar"
+      : "Kein passender Lkw";
   return routeLink(
     "/contracts/" + contract.id + "?" + params,
     html`<div class="card-kicker">
         <span title="${contract.cargo}">${contract.cargo}</span
         ><strong class="cargo-amount">${number(contract.tons, 2)} t</strong
-        ><span class="badge ${ready ? "green" : ""}"
-          >${ready ? "Lkw bereit · " + eligibleVehicles(vehicles, contract).length + " Fahrzeuge verfügbar" : "Kein passender Lkw"}</span
-        >
+        ><span class="badge ${ready ? "green" : ""}">${suitability}</span>
       </div>
       <h3>${contract.origin.city} ${icon("arrow", 17)} ${contract.destination.city}</h3>
       ${contract.distance_band ? html`<p class="footnote">${humanLabel(contract.distance_band)} · ca. ${number(contract.estimated_distance_km)} km Luftlinie</p>` : null}
@@ -119,7 +126,7 @@ function renderContractCard(contract, vehicles, params = new URLSearchParams()) 
 export function renderContractDetails(contract, view) {
   const vehicle = view.state.vehicles.find((item) => item.id === view.selectedVehicle);
   const start = view.quote?.start ?? vehicle?.location_snapshot ?? vehicle?.hub;
-  return html`${routeLink("/contracts", [icon("back", 16), " Alle Aufträge"], "back-link")}
+  return html`${routeLink("/contracts?" + view.url.searchParams, [icon("back", 16), " Zum Stadtmarkt"], "back-link")}
     <div class="cargo-heading">
       ${icon("contracts", 28)}<span
         >${contract.cargo}<small>${number(contract.tons, 2)} Tonnen · Straßentransport</small></span
@@ -173,6 +180,7 @@ function renderDispatchForm(contract, view) {
   const insufficientFunds = view.quote && view.state.player.cash < view.quote.operating_cost_eur;
   return html`<div class="dispatch-form">
     <h3>Fahrzeug disponieren</h3>
+    ${view.url.searchParams.get("vehicle") && !view.selectedVehicle ? html`<p class="inline-notice">Das gewählte Fahrzeug ist für diesen Auftrag nicht geeignet. Wähle ausdrücklich ein anderes Fahrzeug.</p>` : null}
     <div class="vehicle-choices" role="radiogroup" aria-label="Geeignete Fahrzeuge">
       ${vehicles.map(
         (vehicle) =>
@@ -199,6 +207,7 @@ function renderDispatchForm(contract, view) {
     <label for="vehicle-choice">Fahrzeug disponieren</label> ${
       vehicles.length
         ? html`<select id="vehicle-choice" disabled="${view.mutating}">
+            ${!view.selectedVehicle ? html`<option value="" selected>Geeignetes Fahrzeug wählen</option>` : null}
             ${vehicles.map((vehicle) => html`<option value="${vehicle.id}" selected="${view.selectedVehicle === vehicle.id}">${vehicle.name} · ${number(vehicle.capacity_tons, 2)} t</option>`)}
           </select>`
         : html`<p class="inline-notice">

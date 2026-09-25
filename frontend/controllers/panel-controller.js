@@ -109,7 +109,9 @@ export class PanelController {
         : this.view.state?.contracts.find((item) => item.id === contractId);
     const vehicles = contract ? eligibleVehicles(this.view.state.vehicles, contract) : [];
     if (contractId && !vehicles.some((vehicle) => vehicle.id === this.view.selectedVehicle)) {
-      this.view.selectedVehicle = vehicles[0]?.id || "";
+      this.view.selectedVehicle = this.view.url.searchParams.get("vehicle")
+        ? ""
+        : vehicles[0]?.id || "";
       this.view.quote = null;
     }
   }

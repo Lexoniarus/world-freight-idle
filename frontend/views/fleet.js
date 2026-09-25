@@ -1,3 +1,5 @@
+import { selectFleetGroups } from "../fleet-selection.js";
+export { fleetGroups } from "../fleet-selection.js";
 import { renderEnergyMeter, renderEnergySpecification } from "../ui/vehicle-energy.js";
 import { phaseLabel, transportProgress } from "../journey.js";
 import { html } from "../ui/dom.js";
@@ -5,28 +7,6 @@ import { renderVehicleImage } from "../ui/vehicle-image.js";
 import { emptyState, fleetTabs, routeLink } from "../ui/components.js";
 import { cityFilter, selectFilter, searchFilter } from "../ui/filters.js";
 import { number } from "../format.js";
-
-/** Group vehicles by physical idle location and explicit journey direction. */
-export function fleetGroups(state, cityUid) {
-  const groups = new Map();
-  const add = (city, role, vehicle, trip) => {
-    if (cityUid && city?.city_uid !== cityUid) return;
-    city = city ?? { city: "Standort unbekannt" };
-    if (!groups.has(city.city_uid))
-      groups.set(city.city_uid, { city, stationed: [], outbound: [], inbound: [] });
-    groups.get(city.city_uid)[role].push({ vehicle, trip });
-  };
-  for (const vehicle of state.vehicles) {
-    const trip = state.transports.find((item) => item.vehicle_id === vehicle.id);
-    if (!trip) add(vehicle.location_snapshot ?? vehicle.hub, "stationed", vehicle, null);
-    else {
-      add(trip.origin, "outbound", vehicle, trip);
-      if (trip.destination.city_uid !== trip.origin.city_uid)
-        add(trip.destination, "inbound", vehicle, trip);
-    }
-  }
-  return [...groups.values()].sort((a, b) => (a.city.city ?? "").localeCompare(b.city.city ?? ""));
-}
 
 /** City-first fleet management and individual vehicle inspection. */
 export function renderFleet(view) {
@@ -45,17 +25,7 @@ export function renderFleet(view) {
   }
   const model = url.searchParams.get("model");
   const status = url.searchParams.get("status");
-  const search = (url.searchParams.get("search") ?? "").toLocaleLowerCase("de");
-  const filtered = {
-    ...state,
-    vehicles: state.vehicles.filter(
-      (vehicle) =>
-        (!model || vehicle.model_id === model) &&
-        (!status || vehicle.status === status) &&
-        vehicle.name.toLocaleLowerCase("de").includes(search),
-    ),
-  };
-  const groups = fleetGroups(filtered, view.cityUid);
+  const groups = selectFleetGroups(state, url, view.cityUid);
   return html`${fleetTabs()}
     <div class="filter-grid">
       ${cityFilter(view)}
@@ -116,7 +86,7 @@ function renderVehicle(vehicle, trip, now, detail = false) {
       <p>${trip ? trip.origin.city + " → " + trip.destination.city : place?.city}</p>
       <p class="footnote">${trip ? "Unterwegs · kein stationiertes Fahrzeug" : place?.label}</p>
       ${renderEnergyMeter(vehicle, trip, now)}${detail ? renderEnergySpecification(vehicle) : null}
-      ${routeLink(trip ? "/transports/" + trip.id : orders, trip ? "Transport verfolgen" : "Passende Aufträge", "button secondary")}
+      ${routeLink(trip ? "/transports/" + trip.id : orders, trip ? "Transport verfolgen" : "Stadtmarkt öffnen", "button secondary")}
     </div>
   </article>`;
 }

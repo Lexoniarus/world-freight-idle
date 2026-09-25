@@ -1,3 +1,4 @@
+import { MapFocusController } from "./controllers/map-focus-controller.js";
 import { VehicleColorAssets } from "./vehicle-color-assets.js";
 import { VehicleImageController } from "./vehicle-image-bindings.js";
 import { PreferencesController } from "./controllers/preferences-controller.js";
@@ -104,7 +105,7 @@ function createGameApplication(api, user, redirect) {
   const map = createWorldMap(navigate, notify, () => state.now(), api.requestAsset, assets);
   map?.setCompanyColor(user.company_color);
   const preferences = new PreferencesController({ request: api.request, panel, map, notify });
-  const city = new CityContextController({ state, view, request: api.request, notify, map });
+  const city = new CityContextController({ state, view, request: api.request, notify });
   const layers = new LayerStateController({ userId: user.id, map });
   const analytics = new AnalyticsController({ request: api.request, panel });
   const sync = new GameSync({ state, panel, map, notify });
@@ -119,13 +120,14 @@ function createGameApplication(api, user, redirect) {
     page: document,
     view,
     navigate,
-    city,
     layers,
     analytics,
     panel,
     market: contractMarket,
   });
+  const focus = new MapFocusController({ state, view, map });
   const actions = new GameActions({
+    focus,
     request: api.request,
     state,
     panel,
@@ -148,6 +150,7 @@ function createGameApplication(api, user, redirect) {
   const input = new InputController({ page: document, navigate, actions, panel, map });
   const sheet = new MobileSheet(requiredElement("#sheet-handle"), requiredElement("#panel"));
   application = new GameApplication({
+    focus,
     api,
     state,
     panel,

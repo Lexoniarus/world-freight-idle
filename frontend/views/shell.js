@@ -27,9 +27,6 @@ export function renderShell(user) {
           <span>FLOTTE</span><strong id="fleet-count">—</strong
           ><small id="fleet-state">Status wird geladen</small>
         </div>
-        <button class="city-context-button" data-action="focus-city">
-          <span>AKTUELLE STADT</span><strong id="current-city-label">Alle Städte</strong>
-        </button>
         <div class="player-chip">
           <span class="avatar">${user.username.slice(0, 2).toUpperCase()}</span
           ><span><strong>${user.username}</strong><small id="connection">Verbinde …</small></span>
@@ -77,9 +74,6 @@ export function renderShell(user) {
         <div id="panel-content" class="panel-content"></div>
       </section>
       <div class="map-tools">
-        <button class="map-tool" data-action="focus-city" aria-label="Aktuelle Stadt">
-          ${icon("pin")}<span>Aktuelle Stadt</span>
-        </button>
         <button class="map-tool" data-action="focus-fleet" aria-label="Flotte zentrieren">
           ${icon("target")}<span>Meine Flotte</span>
         </button>

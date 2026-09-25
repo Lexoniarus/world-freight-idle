@@ -93,6 +93,7 @@ const trip = {
 function createView(path = "/contracts/job") {
   return {
     url: new URL(path, "http://test"),
+    cityUid: hub.city_uid,
     state: {
       contracts: [contract],
       vehicles: [vehicle],
@@ -855,4 +856,17 @@ test("dispatch follows its trip after active-city URL cleanup but preserves newe
     actions.destroy();
     panel.destroy();
   }
+});
+
+test("an incompatible explicit reference vehicle requires a new deliberate choice", () => {
+  const panel = mountPanel();
+  panel.selectRoute(new URL("http://test/contracts/job?vehicle=too-small"));
+  assert.equal(panel.view.selectedVehicle, "");
+  assert.equal(document.querySelector('[data-action="quote"]').disabled, true);
+  assert.match(panel.content.textContent, /nicht geeignet/);
+  assert.equal(document.querySelector("#vehicle-choice").value, "");
+  panel.view.selectedVehicle = vehicle.id;
+  panel.render();
+  assert.equal(document.querySelector('[data-action="quote"]').disabled, false);
+  panel.destroy();
 });

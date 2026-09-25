@@ -1,10 +1,9 @@
 /** URL-backed presentation controls, isolated from game mutations. */
 export class ManagementInput {
-  constructor({ page, view, navigate, city, layers, analytics, panel, market }) {
+  constructor({ page, view, navigate, layers, analytics, panel, market }) {
     this.page = page;
     this.view = view;
     this.navigate = navigate;
-    this.city = city;
     this.layers = layers;
     this.analytics = analytics;
     this.panel = panel;
@@ -30,6 +29,7 @@ export class ManagementInput {
     const name = target.dataset.filter;
     url.searchParams.set(name, target.value);
     if (name === "city") url.searchParams.delete("vehicle");
+    if (name === "vehicle") url.searchParams.delete("city");
     if (name === "scope") {
       url.searchParams.delete("scope_id");
       if (target.value !== "company") {
@@ -43,7 +43,6 @@ export class ManagementInput {
   click(event) {
     if (!(event.target instanceof Element)) return;
     const action = event.target.closest("[data-action]")?.getAttribute("data-action");
-    if (action === "focus-city") this.city.focus();
     if (action === "reset-layers") {
       this.layers.reset();
       void this.market.refresh();

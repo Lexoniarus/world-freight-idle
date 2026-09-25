@@ -19,8 +19,10 @@ export class GameApplication {
     analytics,
     managementInput,
     preferences,
+    focus,
     assets,
   }) {
+    this.focus = focus;
     this.preferences = preferences;
     this.assets = assets;
     this.city = city;
@@ -51,6 +53,7 @@ export class GameApplication {
       this.city,
       this.managementInput,
       this.sync,
+      this.focus,
       this.contractMarket,
       this.input,
       this.sheet,
@@ -65,6 +68,7 @@ export class GameApplication {
 
   async navigateTo(url) {
     const version = ++this.navigationVersion;
+    this.focus?.cancel();
     this.actions.cancelQuote();
     await this.city?.selectRoute(url);
     if (version !== this.navigationVersion || this.disposed) return;
@@ -72,6 +76,7 @@ export class GameApplication {
     this.panel.selectRoute(url);
     this.map?.setPreview(null);
     this.selectTransport();
+    this.focus?.select(url);
     void this.contractMarket.refresh();
     void this.analytics?.refresh();
   }
@@ -98,6 +103,7 @@ export class GameApplication {
     this.disposed = true;
     for (const component of [
       this.scheduler,
+      this.focus,
       this.preferences,
       this.city,
       this.layers,

@@ -1,17 +1,16 @@
 import { LatestRequest } from "../state.js";
 import { cityLocations, activeCityIds, resolveLegacyCity } from "../city-context.js";
+import { marketVehicle, vehicleCity } from "../market-context.js";
 
-/** Own session city selection; market availability is a separate fact. */
+/** Resolve route-local city context without scoping the world overview. */
 export class CityContextController {
-  constructor({ state, view, request, notify, map }) {
+  constructor({ state, view, request, notify }) {
     this.state = state;
     this.view = view;
     this.request = request;
     this.notify = notify;
-    this.map = map;
     this.known = new Map();
-    this.explicit = false;
-    this.marketRoute = false;
+    this.route = null;
     this.selected = "";
     this.pending = new LatestRequest();
     this.changed = () => this.update();
@@ -23,34 +22,38 @@ export class CityContextController {
     for (const location of cityLocations(this.state.data))
       this.known.set(location.city_uid, location);
     const active = activeCityIds(this.state.data);
-    if (this.marketRoute && this.selected && !active.includes(this.selected)) {
-      this.selected = "";
-      this.explicit = true;
-      this.view.url.searchParams.set("city", "");
-      window.history.replaceState({}, "", this.view.url.pathname + this.view.url.search);
+    if (this.route?.pathname === "/contracts") {
+      const vehicle = marketVehicle(this.state.data, this.route);
+      this.selected = vehicle ? vehicleCity(vehicle) : "";
+      if (!vehicle) this.route.searchParams.delete("vehicle");
+      this.writeCity(this.route);
     }
-    if (!this.explicit && !active.includes(this.selected)) this.selected = active[0] ?? "";
     this.view.cityUid = this.selected;
     this.view.cities = [...this.known.values()].sort((a, b) => a.city.localeCompare(b.city));
     this.view.activeCities = active;
     this.view.marketCities = this.view.cities.filter((city) => active.includes(city.city_uid));
-    const label = document.querySelector("#current-city-label");
-    if (label) label.textContent = this.known.get(this.selected)?.city ?? "Alle Städte";
+  }
+  /** Normalize only this route's city parameter. */
+  writeCity(url) {
+    if (this.selected) url.searchParams.set("city", this.selected);
+    else url.searchParams.delete("city");
+    window.history.replaceState({}, "", url.pathname + url.search);
   }
   async selectRoute(url) {
     const pending = this.pending.start();
-    const old = this.selected;
-    let identifier = url.searchParams.get("city");
+    this.route = null;
+    if (url.pathname === "/") url.searchParams.delete("vehicle");
+    let identifier = url.pathname === "/" ? null : url.searchParams.get("city");
     const vehicle = this.state.data?.vehicles.find(
       (item) =>
         item.id ===
         (url.searchParams.get("vehicle") ??
           (url.pathname.startsWith("/fleet/") ? url.pathname.split("/")[2] : null)),
     );
-    if (identifier === null && vehicle?.status === "idle")
+    if (url.pathname !== "/" && identifier === null && vehicle?.status === "idle")
       identifier = (vehicle.location_snapshot ?? vehicle.hub)?.city_uid ?? null;
     try {
-      if (identifier === null && url.searchParams.has("hub")) {
+      if (url.pathname !== "/" && identifier === null && url.searchParams.has("hub")) {
         const hub = url.searchParams.get("hub");
         const location =
           resolveLegacyCity(this.state.data, hub) ??
@@ -67,42 +70,21 @@ export class CityContextController {
         if (pending.isCurrent()) this.known.set(identifier, city);
       }
       if (!pending.isCurrent()) return;
-      if (identifier !== null) {
-        this.selected = identifier;
-        this.explicit = true;
-      }
+      this.selected = identifier ?? "";
     } catch (error) {
       if (!pending.isCurrent() || error.name === "AbortError") return;
-      this.notify("Stadt oder Standort nicht verfügbar. Alle Städte werden angezeigt.");
+      this.notify("Stadt oder Standort nicht verfügbar. Bitte wähle ein Fahrzeug.");
       this.selected = "";
-      this.explicit = true;
     }
-    this.marketRoute = url.pathname.startsWith("/contracts");
-    if (
-      this.state.data &&
-      this.marketRoute &&
-      !activeCityIds(this.state.data).includes(this.selected)
-    ) {
-      this.selected = "";
-      this.explicit = true;
+    if (url.pathname === "/contracts") {
+      if (identifier) url.searchParams.set("city", identifier);
+      const vehicle = marketVehicle(this.state.data, url, true);
+      if (vehicle) url.searchParams.set("vehicle", vehicle.id);
     }
+    this.route = url;
     this.update();
     url.searchParams.delete("hub");
-    if (this.selected || this.explicit) url.searchParams.set("city", this.selected);
-    else url.searchParams.delete("city");
-    window.history.replaceState({}, "", url.pathname + url.search);
-    if (this.selected && old !== this.selected && this.explicit) this.focus();
-  }
-  focus() {
-    const points = [...cityLocations(this.state.data), this.known.get(this.selected)]
-      .filter(Boolean)
-      .filter(
-        (item) =>
-          item.city_uid === this.selected && Number.isFinite(item.lon) && Number.isFinite(item.lat),
-      )
-      .map((item) => [item.lon, item.lat]);
-    if (points.length) this.map?.camera.fitCoordinates(points);
-    else this.notify("Für diese Stadt sind noch keine Kartenpositionen geladen.");
+    this.writeCity(url);
   }
   destroy() {
     this.pending.cancel();

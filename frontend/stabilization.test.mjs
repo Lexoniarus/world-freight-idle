@@ -168,7 +168,7 @@ test("market city options exclude destinations and enroute checkpoints", async (
   city.update();
   assert.deepEqual(view.marketCities, []);
   assert.equal(view.cityUid, "");
-  assert.equal(view.url.searchParams.get("city"), "");
+  assert.equal(view.url.searchParams.has("city"), false);
   assert.equal(view.cities.length, 2);
   city.destroy();
   state.destroy();
