@@ -1,417 +1,454 @@
+"""City market selection, coverage and immutable materialization behavior."""
+
+import math
 import random
 from dataclasses import FrozenInstanceError, replace
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
+from uuid import UUID
 
 import pytest
 
-from app.api.v1.game_projection import (
-    project_contract,
-    project_transport,
+from app.bootstrap import build_market_generator
+from app.domain.cargo import FacilityNhmProfile, NhmProduct
+from app.domain.contracts import ContractOffer
+from app.domain.errors import CatalogueError, WorldCatalogueError
+from app.domain.geography import Coordinates
+from app.domain.market_calculations import (
+    distance_band,
+    evidence_weight,
+    great_circle_km,
+    shipment_tons,
 )
-from app.domain.contracts import ContractOffer, ContractOfferSnapshot
-from app.domain.energy import EnergyProfile
-from app.domain.errors import WorldCatalogueError
-from app.domain.game import OwnedVehicle
-from app.domain.world import FacilityQuery
+from app.domain.market_compatibility import (
+    can_carry_offer,
+    market_vehicle,
+    vehicle_suitability,
+)
+from app.domain.market_profiles import (
+    VEHICLE_SCALES,
+    DistanceLoadProfile,
+    NhmMarketProfile,
+    TransportCapability,
+    VehicleScaleProfile,
+)
 from app.domain.world_scopes import WorldScope
-from app.services.contract_factory import ContractFactory
-from app.services.market import MarketGenerator
+from app.services.fleet import build_owned_vehicle
 from app.services.market_scope import MarketScopeResolver
 from app.services.trade_network import TradeNetwork
-from app.simulation import PayloadBand, build_payload_bands
 
 
-def test_market_generate_guarantees_origin_and_real_addresses_are_external(
-    world_catalogue,
-    catalogue,
-):
-    market = MarketGenerator(world_catalogue, random.Random(3), catalogue)
-    contracts = market.generate(1000, ["berlin_westhafen", "missing"], 4)
+@pytest.fixture
+def city_market(world_catalogue, catalogue):
     snapshot = world_catalogue.read()
-    berlin = WorldScope(snapshot).facility("berlin_westhafen")
-    build_payload_bands(
-        [model.capacity_tons for model in catalogue.list_models()]
-    )
-    assert len(contracts) == 4
-    assert contracts[0].origin.facility_uid == berlin.facility_uid
-    for contract in contracts:
-        assert (
-            contract.origin.facility_uid != contract.destination.facility_uid
+    base = WorldScope(snapshot).facility("berlin_westhafen")
+    cargo = NhmProduct(1, "7308", "Structural modules", (1,))
+    output = FacilityNhmProfile(cargo, "output", "derived", 0.8, 0.7, None)
+    inbound = replace(output, role="input")
+    origin = replace(base, facility_uid="origin-a", nhm_profiles=(output,))
+    other = replace(origin, facility_uid="origin-b")
+    destinations = tuple(
+        replace(
+            base,
+            facility_uid="destination-" + str(index),
+            address=replace(
+                base.address,
+                city=replace(
+                    base.address.city,
+                    city_uid=str(UUID(int=index + 1)),
+                ),
+            ),
+            coordinates=point,
+            nhm_profiles=(inbound,),
         )
-        assert contract.relationship_simulated is True
-        assert contract.market_model == "nhm_v1"
-        assert contract.cargo_system == "NHM2026"
-        assert contract.origin.coordinate_evidence
-        assert contract.destination.coordinate_evidence
-
-
-def test_build_contract_has_expiry_and_valid_nhm_cargo(
-    world_catalogue,
-    catalogue,
-):
-    snapshot = world_catalogue.read()
-    origin = WorldScope(snapshot).facility("berlin_westhafen")
-    candidates = tuple(f for f in snapshot.facilities if f.is_routable())
-    market = MarketGenerator(world_catalogue, random.Random(3), catalogue)
-    network = TradeNetwork(candidates)
-    options = network.options_for(origin.facility_uid)
-    option = market._select_trade_option(options)
-    contract = ContractFactory(market.rng).build(
-        option,
-        1000,
-        PayloadBand("heavy", 24),
-    )
-    assert isinstance(contract, ContractOfferSnapshot)
-    assert contract.expires_at == 22600
-    assert contract.cargo.code == option.cargo.code
-    assert contract.cargo.name == option.cargo.name
-    assert 8 <= contract.tons <= 24
-    assert contract.rate_eur_per_km_ton == 0.18
-    assert contract.destination.facility_uid != origin.facility_uid
-    assert contract.trade_match_type in {"exact", "ancestor"}
-    with pytest.raises(FrozenInstanceError):
-        setattr(contract, "tons", 1)
-
-    payload = project_contract(contract)
-    assert payload["cargo_code"] == option.cargo.code
-    assert "cargo" not in payload["origin"]
-    assert "handled_goods" not in payload["origin"]
-    with pytest.raises(WorldCatalogueError):
-        TradeNetwork._build_trade_options(
-            replace(origin, nhm_profiles=()),
-            {},
-            {},
+        for index, point in enumerate(
+            (Coordinates(52.5, 13.4), Coordinates(50, 13), Coordinates(40, 2))
         )
-    with pytest.raises(WorldCatalogueError):
-        network.options_for("missing")
-
-
-def test_market_contract_count_can_extend_small_valid_market(
-    world_catalogue,
-):
-    snapshot = world_catalogue.read()
-    terminals = tuple(
-        facility
-        for facility in snapshot.facilities
-        if facility.facility_type == "intermodal_terminal"
     )
-    first, second = terminals[:2]
+    # An inbound facility in the active city cannot invent outbound work.
+    inactive = replace(
+        origin, facility_uid="inbound-only", nhm_profiles=(inbound,)
+    )
+    profile = NhmMarketProfile(
+        1,
+        "general",
+        500,
+        1.4,
+        tuple(
+            DistanceLoadProfile(band, 1, 0.5, 0.8)
+            for band in ("short", "medium", "long")
+        ),
+        tuple(VehicleScaleProfile(scale, 1) for scale in VEHICLE_SCALES),
+    )
     world = Mock(
-        read=Mock(return_value=replace(snapshot, facilities=(first, second)))
-    )
-    vehicles = Mock(
-        list_models=Mock(return_value=[SimpleNamespace(capacity_tons=24.0)])
-    )
-    market = MarketGenerator(world, random.Random(11), vehicles)
-    contracts = market.generate(
-        1000,
-        [first.facility_uid, second.facility_uid],
-        contract_count=3,
-    )
-    assert len(contracts) == 3
-    assert {contract.origin.facility_uid for contract in contracts} == {
-        first.facility_uid,
-        second.facility_uid,
-    }
-
-
-def test_market_generate_rejects_world_without_onward_work(
-    world_catalogue, catalogue
-):
-    snapshot = world_catalogue.read()
-    world = Mock(read=Mock(return_value=replace(snapshot, facilities=())))
-    with pytest.raises(WorldCatalogueError):
-        MarketGenerator(world, random.Random(1), catalogue).generate(1, [])
-
-
-def test_every_routable_facility_has_nhm_work_without_generic_freight(
-    world_catalogue,
-    catalogue,
-):
-    market = MarketGenerator(world_catalogue, random.Random(3), catalogue)
-    facilities = world_catalogue.read().facilities
-    origin_ids = [
-        facility.facility_uid
-        for facility in facilities
-        if facility.is_routable()
-    ]
-    contracts = market.generate(1000, origin_ids)
-    network = market.trade_network
-    assert {contract.origin.facility_uid for contract in contracts} == {
-        facility.facility_uid
-        for facility in facilities
-        if facility.is_routable()
-    }
-    assert all(contract.market_model == "nhm_v1" for contract in contracts)
-    assert all(contract.cargo_system == "NHM2026" for contract in contracts)
-    assert all(
-        contract.cargo.code != "simulated_standard"
-        and "Standardfracht" not in contract.cargo.name
-        for contract in contracts
-    )
-    for contract in contracts:
-        origin = contract.origin_cargo_evidence
-        destination = contract.destination_cargo_evidence
-        assert (
-            origin.product.nhm_row_id in destination.product.ancestor_row_ids
-            or destination.product.nhm_row_id
-            in origin.product.ancestor_row_ids
-        )
-        assert contract.cargo_basis in {"documented", "derived"}
-    remaining = contracts[1:]
-    refilled = market.generate(
-        1001,
-        origin_ids,
-        existing_contracts=remaining,
-    )
-    assert refilled[: len(remaining)] == remaining
-    assert len(refilled) == len(contracts)
-    assert refilled[-1].origin.facility_uid == contracts[0].origin.facility_uid
-    assert (
-        market.generate(1002, origin_ids, existing_contracts=refilled)
-        == refilled
-    )
-    assert market.trade_network is network
-
-
-def test_market_scope_combines_idle_trucks_and_zoomed_viewport(
-    world_catalogue,
-):
-    resolver = MarketScopeResolver(world_catalogue)
-    berlin = WorldScope(world_catalogue.read()).facility("berlin_westhafen")
-    vehicles = [
-        OwnedVehicle(
-            id="idle",
-            name="Idle",
-            mode="truck",
-            capacity_tons=24,
-            facility_uid=berlin.facility_uid,
-            status="idle",
-            energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
-            energy_level=100,
-            top_speed_kmh=90,
-        ),
-        OwnedVehicle(
-            id="busy",
-            name="Busy",
-            mode="truck",
-            capacity_tons=24,
-            facility_uid="ignored",
-            status="enroute",
-            energy=EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
-            energy_level=100,
-            top_speed_kmh=90,
-        ),
-    ]
-    query = FacilityQuery.parse("-10,35,30,60")
-
-    low_zoom = resolver.resolve(vehicles, query, 6.99)
-    assert low_zoom == (berlin.facility_uid,)
-
-    high_zoom = resolver.resolve(
-        vehicles,
-        query,
-        resolver.minimum_zoom,
-    )
-    assert berlin.facility_uid in high_zoom
-    assert len(high_zoom) > len(low_zoom)
-    assert resolver.resolve([], query, 6.99) == ()
-    assert resolver.resolve(vehicles, query, float("nan")) == low_zoom
-
-
-def test_payload_bands_cover_catalogue_and_reject_invalid_capacities():
-    assert build_payload_bands([1.15, 1.1, 2, 5.1, 5.3, 22, 24.3]) == (
-        PayloadBand("light", 1.1),
-        PayloadBand("medium", 5.1),
-        PayloadBand("heavy", 22),
-    )
-    assert build_payload_bands([3.5, 12, 12.01]) == (
-        PayloadBand("light", 3.5),
-        PayloadBand("medium", 12),
-        PayloadBand("heavy", 12.01),
-    )
-    assert build_payload_bands([0.01]) == (PayloadBand("light", 0.01),)
-    for capacities in ([], [0], [-1], [float("nan")], [float("inf")]):
-        with pytest.raises(ValueError, match="capacities"):
-            build_payload_bands(capacities)
-
-
-def test_every_payload_can_work_at_every_facility_and_refill_keeps_ids(
-    world_catalogue,
-):
-    capacities = [1.15, 1.1, 1.2, 2, 5.1, 5.3, 22, 24.3]
-    vehicles = Mock(
-        list_models=Mock(
-            return_value=[
-                SimpleNamespace(capacity_tons=value) for value in capacities
-            ]
+        read=Mock(
+            return_value=replace(
+                snapshot,
+                facilities=(origin, other, inactive, *destinations),
+                market_profiles=(profile,),
+            )
         )
     )
-    market = MarketGenerator(world_catalogue, random.Random(5), vehicles)
-    facilities = tuple(
-        facility
-        for facility in world_catalogue.read().facilities
-        if facility.is_routable()
+    model = next(
+        m for m in catalogue.list_models() if m.id == "iveco_sway_500"
     )
-    origin_ids = [facility.facility_uid for facility in facilities]
-    contracts = market.generate(1000, origin_ids)
-    assert len(contracts) == len(facilities) * 3
-    for facility in facilities:
-        local = [
-            contract
-            for contract in contracts
-            if contract.origin.facility_uid == facility.facility_uid
-        ]
-        assert {contract.payload_band for contract in local} == {
-            "light",
-            "medium",
-            "heavy",
-        }
-        for capacity in capacities:
-            assert any(0 < contract.tons <= capacity for contract in local)
-        assert not all(contract.tons <= 1.1 for contract in local)
-    legacy = replace(contracts[0], id="unchanged", tons=24, payload_band="")
-    retained = [legacy, *contracts[1:]]
-    refilled = market.generate(
-        1001,
-        origin_ids,
-        existing_contracts=retained,
+    models = Mock(list_models=Mock(return_value=(model,)))
+    owned = build_owned_vehicle(model, "truck", origin.location_snapshot())
+    market = build_market_generator(world, random.Random(3), models)
+    fleet = market.candidates.resolve_fleet((owned,))
+    return market, owned, fleet, world, model
+
+
+def test_city_scope_uses_only_distinct_idle_city_identities(city_market):
+    market, owned, _, world, model = city_market
+    scope = MarketScopeResolver(world)
+    other = build_owned_vehicle(model, "other", owned.location)
+    busy = build_owned_vehicle(model, "busy", owned.location)
+    busy.start_trip()
+    assert scope.resolve((owned, other, busy)) == (
+        owned.location.city.city_uid,
     )
-    assert refilled[: len(retained)] == retained
-    assert len(refilled) == len(contracts) + 1
-    vehicles.list_models.return_value = [SimpleNamespace(capacity_tons=0.01)]
-    tiny = market.generate(
-        1002,
-        origin_ids,
-        existing_contracts=refilled,
+    assert scope.resolve((busy,)) == ()
+    destination = world.read().facilities[-1].location_snapshot()
+    other.reposition_within_city(owned.location)
+    other.start_trip()
+    other.arrive(destination)
+    assert len(scope.resolve((owned, other))) == 2
+    # Same city name is not a shared identity.
+    assert other.location is not None
+    assert other.location.city.name == owned.location.city.name
+    owned._location = None
+    assert scope.resolve((owned,)) == (
+        world.read().facilities[0].address.city.city_uid,
     )
-    assert len(
-        [contract for contract in tiny if contract.tons == 0.01]
-    ) == len(facilities)
-    vehicles.list_models.return_value = [SimpleNamespace(capacity_tons=24)]
-    legacy_fleet = market.generate(
-        1003,
-        origin_ids,
-        owned_capacities=[12],
-    )
-    assert len(legacy_fleet) == len(facilities) * 2
-    assert {contract.payload_band for contract in legacy_fleet} == {
+
+
+def test_distance_and_tonnage_are_deterministic_and_bounded():
+    assert [distance_band(d) for d in (0, 150, 150.0001, 600, 600.0001)] == [
+        "short",
+        "short",
         "medium",
-        "heavy",
-    }
-
-
-def test_vehicle_catalogue_outage_preserves_only_current_market(
-    game, monkeypatch
-):
-    from app.domain.errors import CatalogueError
-
-    original = game.refresh_market()
-    legacy = replace(
-        original[0], id="legacy-generic", market_model="previous-market"
-    )
-    game.state_repository.replace_offers((legacy, *original))
-    monkeypatch.setattr(
-        game.market.vehicles,
-        "list_models",
-        Mock(side_effect=CatalogueError("offline")),
-    )
-    surviving = [project_contract(value) for value in game.refresh_market()]
-    assert all(item.get("market_model") == "nhm_v1" for item in surviving)
-    assert all(item["id"] != "legacy-generic" for item in surviving)
-    assert [
-        project_contract(item) for item in game.state_repository.list_offers()
-    ] == surviving
-
-    listed = [project_contract(value) for value in game.list_contracts()]
-    assert [item["id"] for item in listed] == [
-        item["id"] for item in surviving
+        "medium",
+        "long",
     ]
+    assert great_circle_km(Coordinates(0, 0), Coordinates(0, 0)) == 0
+    assert great_circle_km(
+        Coordinates(0, 0), Coordinates(0, 180)
+    ) == pytest.approx(20015.1144, rel=1e-6)
+    assert great_circle_km(
+        Coordinates(0, 179), Coordinates(0, -179)
+    ) == pytest.approx(222.39, rel=1e-4)
+    for bad in (-1, math.nan, math.inf):
+        with pytest.raises(ValueError):
+            distance_band(bad)
+    assert shipment_tons(0.01, 0.5) == 0.01
+    assert shipment_tons(1.157, 1) == 1.15
+    assert shipment_tons(24.2, 0.5) == 12.1
+    for capacity, load in ((0, 1), (1, 0), (1, 1.1), (math.inf, 0.5)):
+        with pytest.raises(ValueError):
+            shipment_tons(capacity, load)
 
-    with pytest.raises(CatalogueError, match="offline"):
-        [project_contract(value) for value in game.refresh_market(force=True)]
 
-
-@pytest.mark.asyncio
-async def test_arrival_keeps_other_orders_and_vehicle_outage_keeps_payout(
-    monkeypatch,
-    game,
-):
-    from unittest.mock import patch
-
-    from app.domain.errors import CatalogueError
-    from tests.test_game import first_berlin_contract
-
-    trip = project_transport(
-        await game.dispatch(first_berlin_contract(game)["id"], "truck_01")
+def test_candidate_compatibility_and_weighting_are_separate(city_market):
+    market, owned, fleet, world, model = city_market
+    city = owned.location.city.city_uid
+    candidates = market.candidates.build((city,), fleet)
+    assert candidates
+    first = candidates[0]
+    with pytest.raises(FrozenInstanceError):
+        first.weight = 0
+    profile = first.profile
+    assert market.candidates.build((), fleet) == ()
+    assert (
+        market.candidates.build((city,), (replace(fleet[0], mode="rail"),))
+        == ()
     )
-    remaining = [
-        project_contract(item) for item in game.state_repository.list_offers()
-    ]
-    monkeypatch.setattr(game, "now", lambda: trip["arrives_at"] + 1)
-    cash = game._get_player().cash
-    with patch.object(
-        game.market.vehicles,
-        "list_models",
-        side_effect=CatalogueError("offline"),
-    ):
-        assert game.reconcile_arrival()
-        assert not game.reconcile_arrival()
-    assert game._get_player().cash == cash + trip["payout_eur"]
-    assert [
-        project_contract(item) for item in game.state_repository.list_offers()
-    ] == []
-    refilled = [project_contract(value) for value in game.refresh_market()]
-    assert refilled
-    destination_id = trip["contract"]["destination_hub_id"]
-    assert {item["origin_hub_id"] for item in refilled} == {destination_id}
-    previous_ids = {item["id"] for item in remaining}
-    assert all(item["id"] not in previous_ids for item in refilled)
-
-
-def test_market_generation_never_serializes_domain_objects(game):
-    origin = game.state_repository.list_vehicles()[0].facility_uid
-    with (
-        patch(
-            "app.api.v1.game_projection.project_contract",
-            side_effect=AssertionError("snapshot serialization"),
+    assert (
+        vehicle_suitability(replace(fleet[0], capabilities=()), profile) == 0
+    )
+    zero = replace(
+        profile,
+        scale_profiles=tuple(
+            replace(p, suitability_game=0) for p in profile.scale_profiles
         ),
-        patch(
-            "app.repositories.snapshot_mapping.load_offer",
-            side_effect=AssertionError("offer serialization"),
+    )
+    assert vehicle_suitability(fleet[0], zero) == 0
+    assert market.candidates._candidate(first.trade, ()) is None
+    market.candidates._profiles[1] = replace(
+        profile,
+        distance_profiles=tuple(
+            replace(p, selection_weight=0) for p in profile.distance_profiles
         ),
-    ):
-        offers = game.market.generate(1000, [origin])
-        assert all(isinstance(offer, ContractOffer) for offer in offers)
-        assert (
-            game.market.generate(1001, [origin], existing_contracts=offers)
-            == offers
+    )
+    assert market.candidates._candidate(first.trade, fleet) is None
+    market.candidates._profiles[1] = profile
+    low = replace(
+        fleet[0],
+        vehicle_id="low",
+        capacity_tons=1,
+        capabilities=(TransportCapability("general", 0.2),),
+    )
+    candidate = market.candidates._candidate(first.trade, (*fleet, low))
+    assert candidate.weight == pytest.approx(evidence_weight(first.trade))
+    assert [v.suitability for v in candidate.vehicles] == [1, 0.2]
+    documented = replace(
+        first.trade,
+        origin_cargo=replace(
+            first.trade.origin_cargo, evidence_type="official"
+        ),
+        destination_cargo=replace(
+            first.trade.destination_cargo, evidence_type="official"
+        ),
+    )
+    assert evidence_weight(documented) > evidence_weight(first.trade)
+    assert evidence_weight(
+        replace(first.trade, match_type="ancestor")
+    ) < evidence_weight(first.trade)
+    assert evidence_weight(
+        replace(
+            first.trade,
+            origin_cargo=replace(
+                first.trade.origin_cargo, confidence=0, priority_score=0
+            ),
         )
-        assert game.market.generate(1001, ["unknown"]) == []
+    ) < evidence_weight(first.trade)
+    # Candidate max never forces the later materialization vehicle.
+    with patch.object(
+        market.factory.rng, "choices", return_value=[candidate.vehicles[1]]
+    ) as choose:
+        offer = ContractOffer.from_snapshot(
+            market.factory.build(candidate, 1000)
+        )
+    assert choose.call_args.kwargs["weights"] == [1, 0.2]
+    assert offer.market_context is not None
+    assert offer.market_context.generated_capacity_tons == 1
+    assert 0.5 <= offer.tons <= 0.8
+    assert can_carry_offer(fleet[0], offer, profile)
+    assert not can_carry_offer(
+        replace(fleet[0], city_uid="elsewhere"), offer, profile
+    )
+    assert not can_carry_offer(
+        replace(fleet[0], capacity_tons=0.01), offer, profile
+    )
+    with pytest.raises(ValueError):
+        market_vehicle(owned, replace(model, id="other"), owned.location)
+    owned.start_trip()
+    assert market.candidates.resolve_fleet((owned,)) == ()
+    with pytest.raises(ValueError):
+        market_vehicle(owned, model, owned.location)
 
 
-def test_market_cache_tracks_reference_facts_without_changing_identities(
-    world_catalogue, catalogue
+def test_city_coverage_preserves_ids_and_never_invents_relations(city_market):
+    market, owned, fleet, world, _ = city_market
+    cities = (owned.location.city.city_uid,)
+    offers, diagnostics = market.generate(1000, cities, fleet)
+    assert len(offers) == 9
+    assert (
+        diagnostics[0].covered_facilities
+        == diagnostics[0].eligible_facilities
+        == 2
+    )
+    assert diagnostics[0].distance_counts == (3, 3, 3)
+    assert diagnostics[0].unmet_bands == ()
+    assert {o.origin.facility_uid for o in offers} == {"origin-a", "origin-b"}
+    assert len({o.id for o in offers}) == 9
+    assert all(
+        o.market_model == "nhm_v2" and o.cargo_system == "NHM2026"
+        for o in offers
+    )
+    assert all(
+        o.origin.facility_uid != o.destination.facility_uid for o in offers
+    )
+    assert any(o.destination.city.city_uid not in cities for o in offers)
+    assert market.generate(1001, cities, fleet, offers)[0] == offers
+    assert market.generate(1001, (), (), ())[0] == ()
+    network = market.candidates._network
+    assert set(network._options_by_origin) <= {
+        "origin-a",
+        "origin-b",
+        "inbound-only",
+    }
+    candidates = market.candidates.build(cities, fleet)
+    long_only = tuple(
+        c for c in candidates if c.distance_profile.distance_band == "long"
+    )[:1]
+    plan = market.coverage.plan(cities, long_only, ())
+    assert len(plan.selected) == 3
+    assert plan.diagnostics[0].unmet_bands == ("short", "medium")
+    empty = market.coverage.plan(cities, (), ())
+    assert empty.selected == ()
+    assert empty.diagnostics[0].unmet_bands == ("short", "medium", "long")
+    more_origins = tuple(
+        replace(
+            long_only[0],
+            trade=replace(
+                long_only[0].trade,
+                origin=replace(long_only[0].trade.origin, facility_uid=str(i)),
+            ),
+        )
+        for i in range(12)
+    )
+    assert len(market.coverage.plan(cities, more_origins, ()).selected) == 12
+
+
+def test_materialization_snapshots_profile_terms_and_validates_context(
+    city_market,
 ):
-    snapshot = world_catalogue.read()
-    source = Mock()
-    source.read.return_value = snapshot
-    market = MarketGenerator(source, random.Random(5), catalogue)
-    origin = WorldScope(snapshot).facility("berlin_westhafen")
-    first = market.generate(1000, [origin.facility_uid])
-    network = market.trade_network
-    market.generate(1001, [origin.facility_uid])
-    assert market.trade_network is network
-    updated = replace(origin, label="Updated historical source label")
-    source.read.return_value = replace(
-        snapshot,
-        facilities=tuple(
-            updated if f.facility_uid == origin.facility_uid else f
-            for f in snapshot.facilities
+    market, owned, fleet, _, _ = city_market
+    offers, _ = market.generate(1000, (owned.location.city.city_uid,), fleet)
+    for offer in offers:
+        context = offer.market_context
+        assert offer.expires_at == 22600
+        assert offer.payload_band == ""
+        assert offer.rate_eur_per_km_ton == pytest.approx(0.18 * 1.4)
+        assert context.cargo_value_eur == round(offer.tons * 500)
+        assert (
+            0.5 * owned.capacity_tons - 0.01
+            <= offer.tons
+            <= 0.8 * owned.capacity_tons
+        )
+        assert context.generated_capacity_tons == owned.capacity_tons
+    first = offers[0]
+    for changes in (
+        {"distance_band": "invalid"},
+        {"transport_class": "bad"},
+        {"generated_for_vehicle_scale": "bad"},
+        {"generated_capacity_tons": 0},
+        {"cargo_value_eur_per_t": 0},
+        {"cargo_value_eur": -1},
+    ):
+        with pytest.raises(ValueError):
+            replace(first.market_context, **changes)
+    with pytest.raises(ValueError):
+        replace(first, market_context=None)
+    with pytest.raises(ValueError):
+        replace(first, cargo_system="other")
+    with pytest.raises(ValueError):
+        replace(first, tons=owned.capacity_tons + 1)
+    with pytest.raises(ValueError):
+        replace(
+            first,
+            market_context=replace(first.market_context, cargo_value_eur=1),
+        )
+    historical = replace(first, market_model="nhm_v1", market_context=None)
+    assert historical.market_context is None
+
+
+def test_reference_cache_and_empty_origin_relations(city_market):
+    market, owned, fleet, world, _ = city_market
+    city = owned.location.city.city_uid
+    first = market.candidates.build((city,), fleet)
+    network = market.candidates._network
+    assert market.candidates.build((city,), fleet) == first
+    assert market.candidates._network is network
+    assert network.options_for("inbound-only") == ()
+    with pytest.raises(WorldCatalogueError):
+        network.options_for("unknown")
+    with pytest.raises(WorldCatalogueError):
+        TradeNetwork(())
+    snapshot = world.read()
+    updated = replace(snapshot.facilities[0], label="New source")
+    world.read.return_value = replace(
+        snapshot, facilities=(updated, *snapshot.facilities[1:])
+    )
+    second = market.candidates.build((city,), fleet)
+    assert market.candidates._network is not network
+    assert second[0].trade.origin.label == "New source"
+    assert first[0].trade.origin.label != "New source"
+
+
+def test_model_resolution_is_explicit_and_saved_capacity_wins(city_market):
+    market, owned, fleet, world, _ = city_market
+    owned._capacity_tons = 4.2
+    owned._location = None
+    assert market.candidates.resolve_fleet((owned,))[0].capacity_tons == 4.2
+    for identifier in (None, "unknown"):
+        owned._model_id = identifier
+        with pytest.raises(ValueError, match="Bestand"):
+            market.candidates.resolve_fleet((owned,))
+    market.candidates.catalogue.list_models.side_effect = CatalogueError(
+        "offline"
+    )
+    with pytest.raises(CatalogueError):
+        market.candidates.resolve_fleet((owned,))
+
+
+def test_retention_requires_structure_and_actual_vehicle_compatibility(
+    city_market,
+):
+    market, owned, fleet, world, _ = city_market
+    offer = market.generate(1000, (owned.location.city.city_uid,), fleet)[0][0]
+    assert market.candidates.structurally_current(offer)
+    assert market.candidates.eligible_ids(offer, fleet) == (owned.id,)
+    assert not market.candidates.eligible_ids(
+        replace(offer, market_model="nhm_v1", market_context=None), fleet
+    )
+    assert not market.candidates.eligible_ids(
+        replace(
+            offer,
+            market_context=replace(
+                offer.market_context, transport_class="special"
+            ),
+        ),
+        fleet,
+    )
+    assert not market.candidates.structurally_current(
+        replace(offer, origin=replace(offer.origin, facility_uid="missing"))
+    )
+    assert not market.candidates.structurally_current(
+        replace(offer, market_model="nhm_v1", market_context=None)
+    )
+    profile = market.candidates._profiles.pop(1)
+    assert not market.candidates.structurally_current(offer)
+    assert not market.candidates.eligible_ids(offer, fleet)
+    market.candidates._profiles[1] = replace(
+        profile,
+        distance_profiles=tuple(
+            replace(p, selection_weight=0) for p in profile.distance_profiles
         ),
     )
-    second = market.generate(1002, [origin.facility_uid])
-    assert market.trade_network is not network
-    assert all(o.origin.label == updated.label for o in second)
-    assert all(o.origin.label == origin.label for o in first)
+    assert not market.candidates.structurally_current(offer)
+    market.candidates._profiles[1] = profile
+    assert not market.candidates.structurally_current(
+        replace(
+            offer,
+            origin_cargo_evidence=replace(
+                offer.origin_cargo_evidence, confidence=0
+            ),
+        )
+    )
+
+
+def test_candidate_value_invariants_reject_invalid_context(city_market):
+    market, owned, fleet, _, _ = city_market
+    candidate = market.candidates.build((fleet[0].city_uid,), fleet)[0]
+    for changes in (
+        {"weight": 0},
+        {"weight": float("inf")},
+        {"vehicles": ()},
+        {"profile": replace(candidate.profile, nhm_row_id=999)},
+        {
+            "distance_profile": replace(
+                candidate.distance_profile, selection_weight=0
+            )
+        },
+        {
+            "vehicles": (
+                replace(
+                    candidate.vehicles[0],
+                    vehicle=replace(fleet[0], city_uid="elsewhere"),
+                ),
+            )
+        },
+    ):
+        with pytest.raises(ValueError):
+            replace(candidate, **changes)
+    for changes in (
+        {"model_id": ""},
+        {"capacity_tons": 0},
+        {"scale": "invalid"},
+    ):
+        with pytest.raises(ValueError):
+            replace(fleet[0], **changes)
+    for weight in (0, -1, 2):
+        with pytest.raises(ValueError):
+            replace(candidate.vehicles[0], suitability=weight)

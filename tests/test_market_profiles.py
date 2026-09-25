@@ -60,11 +60,17 @@ def test_market_profile_small_values_reject_invalid_weights():
         ("long", 1, 0.9, 0.2),
     ):
         with pytest.raises(ValueError):
-            DistanceLoadProfile(*args)
+            replace(
+                DistanceLoadProfile("short", 1, 0.2, 0.9),
+                distance_band=args[0],
+                selection_weight=args[1],
+                load_factor_min=args[2],
+                load_factor_max=args[3],
+            )
     with pytest.raises(ValueError):
         TransportCapability("unknown", 1)
     with pytest.raises(ValueError):
-        VehicleScaleProfile("unknown", 1)
+        replace(VehicleScaleProfile("van", 1), vehicle_scale="unknown")
     for segment, scale in SEGMENT_SCALES.items():
         assert vehicle_scale_for_segment(segment) == scale
     with pytest.raises(ValueError):
