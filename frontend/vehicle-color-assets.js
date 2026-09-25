@@ -1,10 +1,14 @@
-import { colorizeVehicleSvg, normalizeVehicleColor } from "./map/vehicle-assets.js";
-import { getVehicleAssets } from "./vehicle-assets.js";
+import { composeVehiclePaint } from "./vehicle-paint.js";
+import { normalizeVehicleColor } from "./vehicle-color.js";
+import { getVehicleAssets, getVehiclePaintDescriptor } from "./vehicle-assets.js";
 
 /** Own shared SVG sources and reference-counted colored object URLs. */
 export class VehicleColorAssets {
-  /** @param {(path: string) => Promise<string>} load */
-  constructor(load) {
+  /** @param {(path: string) => Promise<string>} load
+   * @param {typeof composeVehiclePaint} [compose] */
+  constructor(load, compose = composeVehiclePaint) {
+    this.compose = compose;
+    this.compositions = new Map();
     this.load = load;
     this.sources = new Map();
     this.variants = new Map();
@@ -16,8 +20,25 @@ export class VehicleColorAssets {
    * @param {string} color
    */
   async source(model, role, color) {
-    const path = getVehicleAssets(model)?.[role];
-    if (!path) throw new Error("Fahrzeugasset nicht verfügbar.");
+    const descriptor = getVehiclePaintDescriptor(model, role);
+    if (!descriptor) throw new Error("Fahrzeugasset nicht verfügbar.");
+    const key = this.key(model, role, color);
+    if (!this.compositions.has(key)) {
+      const pending = Promise.all([
+        this.readSource(descriptor.original),
+        this.readSource(descriptor.mask),
+      ])
+        .then(([original, mask]) => this.compose(original, mask, normalizeVehicleColor(color)))
+        .catch((error) => {
+          this.compositions.delete(key);
+          throw error;
+        });
+      this.compositions.set(key, pending);
+    }
+    return this.compositions.get(key);
+  }
+  /** Cache immutable original and mask sources, allowing failed loads to retry. */
+  readSource(path) {
     if (!this.sources.has(path)) {
       const pending = this.load(path).catch((error) => {
         this.sources.delete(path);
@@ -25,7 +46,7 @@ export class VehicleColorAssets {
       });
       this.sources.set(path, pending);
     }
-    return colorizeVehicleSvg(await this.sources.get(path), color);
+    return this.sources.get(path);
   }
   /** @param {string} model @param {string} role @param {string} color */
   key(model, role, color) {
@@ -77,5 +98,6 @@ export class VehicleColorAssets {
     for (const entry of this.variants.values()) if (entry.url) URL.revokeObjectURL(entry.url);
     this.variants.clear();
     this.sources.clear();
+    this.compositions.clear();
   }
 }

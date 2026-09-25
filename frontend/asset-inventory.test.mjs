@@ -7,12 +7,17 @@ import { getVehicleAssets } from "./vehicle-assets.js";
 const root = new URL("../", import.meta.url);
 const inventory = JSON.parse(readFileSync(new URL("assets/inventory.json", root), "utf8")).files;
 
+const masks = JSON.parse(readFileSync(new URL("assets/paint-inventory.json", root), "utf8")).masks;
+
 test("inventory preserves every SVG and its independently captured content", () => {
   const shipped = readdirSync(new URL("assets/", root), { recursive: true })
     .filter((path) => String(path).endsWith(".svg"))
     .map((path) => "assets/" + String(path).replaceAll("\\", "/"));
   assert.equal(inventory.length, 134);
-  assert.deepEqual(new Set(shipped), new Set(inventory.map((entry) => entry.target_path)));
+  assert.deepEqual(
+    new Set(shipped),
+    new Set([...inventory.map((entry) => entry.target_path), ...masks.map((entry) => entry.path)]),
+  );
   for (const entry of inventory) {
     assert.equal(
       createHash("sha256")
@@ -46,4 +51,16 @@ test("model assets are immutable and unknown or absent identities have no mappin
     assets.front = "/other.svg";
   }, TypeError);
   assert.equal(getVehicleAssets("iveco_sway_500"), assets);
+});
+
+test("all 42 paint masks have independently tracked content", () => {
+  assert.equal(masks.length, 42);
+  for (const entry of masks)
+    assert.equal(
+      createHash("sha256")
+        .update(readFileSync(new URL(entry.path, root)))
+        .digest("hex"),
+      entry.sha256,
+      entry.path,
+    );
 });

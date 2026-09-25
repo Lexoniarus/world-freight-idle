@@ -1413,7 +1413,8 @@ input::placeholder {
   height: 150px;
   min-height: 0;
   padding: 7px;
-  background: radial-gradient(circle at 50% 38%, #27465a 0, #173142 42%, #102333 72%);
+  background: transparent;
+  border: 0;
 }
 
 .vehicle-game-asset .vehicle-photo-frame img {
@@ -1826,9 +1827,11 @@ input::placeholder {
 .vehicle-group {
   width: 56px;
   height: 56px;
-  border-color: var(--company-color, #526d82);
-  background: #fff;
+  border: 0;
+  padding: 0;
+  background: transparent;
   position: relative;
+  pointer-events: none;
 }
 
 .vehicle-group.foreign {
@@ -2417,21 +2420,13 @@ input::placeholder {
 
 /* Vehicle visuals remain recognizable at regional zoom. */
 
-.vehicle-group img {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-}
-
-.vehicle-group.own {
-  box-shadow: 0 0 0 3px var(--company-color, #526d82);
-}
-
 .vehicle-group-count {
   position: absolute;
   right: -5px;
-  bottom: -5px;
+  top: -5px;
+  pointer-events: auto;
   padding: 2px 6px;
+  border: 1px solid var(--company-color, #526d82);
   border-radius: 12px;
   background: #102b3c;
   color: #fff;
@@ -2473,4 +2468,10 @@ input::placeholder {
 .cost-breakdown dd {
   margin: 0;
   text-align: right;
+}
+
+/* State partitions share geography, but their count controls remain distinct. */
+.vehicle-group[data-movement="idle"] .vehicle-group-count {
+  right: auto;
+  left: -5px;
 }

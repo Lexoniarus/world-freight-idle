@@ -1,0 +1,172 @@
+{
+  "masks": [
+    {
+      "path": "assets/vehicles/daf_xg_plus_480/front-paint.svg",
+      "sha256": "043e8e40d1a0c1c5fdc3ac0def1b743db0cdcc120c770ecb400048b340615661"
+    },
+    {
+      "path": "assets/vehicles/daf_xg_plus_480/map-paint.svg",
+      "sha256": "146992935e382914c737cd172d0400134abce04c6ca198d2afba0270842acd66"
+    },
+    {
+      "path": "assets/vehicles/daf_xg_plus_480/side-left-paint.svg",
+      "sha256": "ce84b65fb0a8e964c163151869fb554235035ed9cd8e14b125aedf5dac4413f2"
+    },
+    {
+      "path": "assets/vehicles/iveco_daily_35s18/front-paint.svg",
+      "sha256": "c6588d971e24fef2f24c9d3a2c16347de744ecf72bfc2cc6fa568bbb9b3836c9"
+    },
+    {
+      "path": "assets/vehicles/iveco_daily_35s18/map-paint.svg",
+      "sha256": "f3675a49cc9873e223238d56f8067288366680d309f34ef358d84c44b26931e9"
+    },
+    {
+      "path": "assets/vehicles/iveco_daily_35s18/side-left-paint.svg",
+      "sha256": "c25f28e2c7c96cfee61782735992b15248566b98b4bc2c5811bdfd700cde0db6"
+    },
+    {
+      "path": "assets/vehicles/iveco_sway_500/front-paint.svg",
+      "sha256": "c8b49d28f7d5e22f49c2de8584a922af20780ae88dbddeca2392ee28fa54e14b"
+    },
+    {
+      "path": "assets/vehicles/iveco_sway_500/map-paint.svg",
+      "sha256": "47f3b4c691814ad8ced2e176ce3d9622837ac8239e9c06f44eec529628c1b8ed"
+    },
+    {
+      "path": "assets/vehicles/iveco_sway_500/side-left-paint.svg",
+      "sha256": "11fe1b586f8009a29685451c0563ba593f62bd160046220b43c576f83e23b3d2"
+    },
+    {
+      "path": "assets/vehicles/man_tgl_12_250/front-paint.svg",
+      "sha256": "a2432191c56d42203e412710b6ca6f2aec28c5f98c336c3747ead145f318e132"
+    },
+    {
+      "path": "assets/vehicles/man_tgl_12_250/map-paint.svg",
+      "sha256": "7b74b59f63fef8e490b9f4998ff19fe5e73acacd003a35af4ddb20edc313e8bd"
+    },
+    {
+      "path": "assets/vehicles/man_tgl_12_250/side-left-paint.svg",
+      "sha256": "30ed40dcb5138378c907fe42ab159e9e295b6e579de2c3ef9687db056968a9de"
+    },
+    {
+      "path": "assets/vehicles/man_tgx_520/front-paint.svg",
+      "sha256": "7b42dcf721aab9c33e4b3a13da500cf1a2e71e6b06afbc0ba45fdbef80c9b48d"
+    },
+    {
+      "path": "assets/vehicles/man_tgx_520/map-paint.svg",
+      "sha256": "72812160992ca0c8a32c159f893fa7a7cade4a3f6f724da5295d7f105927e467"
+    },
+    {
+      "path": "assets/vehicles/man_tgx_520/side-left-paint.svg",
+      "sha256": "ddedbdf330b78ac62a771b4db1d56dc996f4719a19ac5ebcd25a3d5b069631f7"
+    },
+    {
+      "path": "assets/vehicles/mercedes_actros_l_380/front-paint.svg",
+      "sha256": "43cfd4c34bca0aa3d21246977045c6d58754ac0d8cebf425886e8923b3e96a84"
+    },
+    {
+      "path": "assets/vehicles/mercedes_actros_l_380/map-paint.svg",
+      "sha256": "1171c1636954bd4142fde701605877a67c0794814c1c4e28b4df826764b47955"
+    },
+    {
+      "path": "assets/vehicles/mercedes_actros_l_380/side-left-paint.svg",
+      "sha256": "9ae98a6744945d39f38771d6362e65a1cd279bbf0a41cf025154088a0a3e9966"
+    },
+    {
+      "path": "assets/vehicles/mercedes_atego_1224_l/front-paint.svg",
+      "sha256": "cb97bfbbe8af6c3beb11b2022013bb6bef7a4685df3e5ff49ecb18cd36581a73"
+    },
+    {
+      "path": "assets/vehicles/mercedes_atego_1224_l/map-paint.svg",
+      "sha256": "174885e9dc06a97537178520290bce6085dde2f9f8b782432effe89076657133"
+    },
+    {
+      "path": "assets/vehicles/mercedes_atego_1224_l/side-left-paint.svg",
+      "sha256": "17b9a1a7f6eaf4ffbda8105a2489e18dcda59d27d790d12b8b0a2b00f0d38d8b"
+    },
+    {
+      "path": "assets/vehicles/mercedes_atego_818_l/front-paint.svg",
+      "sha256": "c11b3d8d626b5fc99c38ff751a54244ef72a41af23b325cda49467ff1793ca46"
+    },
+    {
+      "path": "assets/vehicles/mercedes_atego_818_l/map-paint.svg",
+      "sha256": "53ddfc10546c7722269cfedaa707deadcc7c70a50fba918696ace7ca570c14fc"
+    },
+    {
+      "path": "assets/vehicles/mercedes_atego_818_l/side-left-paint.svg",
+      "sha256": "f18f2e3761951bef8641fe453ba36c15c280ebfd174f55019535c555c16e57a8"
+    },
+    {
+      "path": "assets/vehicles/mercedes_eactros_600/front-paint.svg",
+      "sha256": "06c246162492e5ce4293ca81b47616e293c8e62c2c6fd29c53d5c02d3238e31f"
+    },
+    {
+      "path": "assets/vehicles/mercedes_eactros_600/map-paint.svg",
+      "sha256": "1c6668f2bb11546a3a6ab70f91eed17b18bede6e6a8a9996af46b3a8bb536776"
+    },
+    {
+      "path": "assets/vehicles/mercedes_eactros_600/side-left-paint.svg",
+      "sha256": "e426b194bd9a28c8404a97bdd0f8a1fba5b92943db310a29e01f655f5014728e"
+    },
+    {
+      "path": "assets/vehicles/mercedes_sprinter_317_cdi/front-paint.svg",
+      "sha256": "9e74e380879fbf74c909229edc2adda95e51eabdf51a4ed011fdc7ef6109ab8e"
+    },
+    {
+      "path": "assets/vehicles/mercedes_sprinter_317_cdi/map-paint.svg",
+      "sha256": "09783de64dad7ab762dc26bbdad4ab1daa1bc112c9fdde4bea3448eaf30f0ec8"
+    },
+    {
+      "path": "assets/vehicles/mercedes_sprinter_317_cdi/side-left-paint.svg",
+      "sha256": "db9a6bfb5dde8129e166e549b37520dc0fc2ae812b9a0675dd8298411dd76b65"
+    },
+    {
+      "path": "assets/vehicles/renault_t_high_520/front-paint.svg",
+      "sha256": "9bbc2b42dca3dc462a56abdeeecbdd5dbd7dc8da4f78e5d1edcebfb5218b0478"
+    },
+    {
+      "path": "assets/vehicles/renault_t_high_520/map-paint.svg",
+      "sha256": "1c751fc976866444b840fbf6d7f3fa61f33e7357d2a9675d7491602073a723b7"
+    },
+    {
+      "path": "assets/vehicles/renault_t_high_520/side-left-paint.svg",
+      "sha256": "47a5a7338b3d681904e4b90d96584639f88685bdf77e3b9946fa24248b93aa1e"
+    },
+    {
+      "path": "assets/vehicles/scania_r460_gas/front-paint.svg",
+      "sha256": "56ea1d2c38b238f5a276239a2c3acf40893bd78797b7e8a3df5944066cdabe0b"
+    },
+    {
+      "path": "assets/vehicles/scania_r460_gas/map-paint.svg",
+      "sha256": "61260c92cca1b0fb7748011520f12ec6f012109a28b514b3134e74e30c08dfcd"
+    },
+    {
+      "path": "assets/vehicles/scania_r460_gas/side-left-paint.svg",
+      "sha256": "43274cc1bc46937b2f355bb8d3225ea8706454f2f6a87613e4f1866b4910c2b0"
+    },
+    {
+      "path": "assets/vehicles/volvo_fh_aero_500_isave/front-paint.svg",
+      "sha256": "7dfc0146e5b399727e0b2e47ec6def057243a0e1909e881a2611fd7bb3a1e945"
+    },
+    {
+      "path": "assets/vehicles/volvo_fh_aero_500_isave/map-paint.svg",
+      "sha256": "069d4c1fcbd0630c9ab5f66ed21d00acca46203260bc80abf02f0b43ecc4a463"
+    },
+    {
+      "path": "assets/vehicles/volvo_fh_aero_500_isave/side-left-paint.svg",
+      "sha256": "0d7f3c5b62b09299cad99c1b968154bd431d4061d12bc5ee957c7206ef880f53"
+    },
+    {
+      "path": "assets/vehicles/vw_crafter_35_130kw/front-paint.svg",
+      "sha256": "d86bcfb4e1f4f457275240e80fdaf572b6799982478fda7ea751893db6900789"
+    },
+    {
+      "path": "assets/vehicles/vw_crafter_35_130kw/map-paint.svg",
+      "sha256": "b227cb4511dfc77ae680731d5c3d759c63183b6025008f5327a5433b3c00504f"
+    },
+    {
+      "path": "assets/vehicles/vw_crafter_35_130kw/side-left-paint.svg",
+      "sha256": "7956051b31208e2060face4fb11bec72b289c5b590967befe19bf2df36084efb"
+    }
+  ]
+}

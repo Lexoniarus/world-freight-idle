@@ -10,8 +10,12 @@ import { selectedLocations } from "./selection.js";
 import { Opportunities } from "./opportunities.js";
 import { VehicleGroups } from "./vehicle-groups.js";
 
-const OWN_VEHICLE_LAYERS = ["vehicles", "vehicles-fallback"];
-const MULTIPLAYER_VEHICLE_LAYERS = ["multiplayer-vehicles", "multiplayer-vehicles-fallback"];
+const OWN_VEHICLE_LAYERS = ["vehicles", "vehicles-idle", "vehicles-fallback"];
+const MULTIPLAYER_VEHICLE_LAYERS = [
+  "multiplayer-vehicles",
+  "multiplayer-vehicles-idle",
+  "multiplayer-vehicles-fallback",
+];
 const HIT_LAYERS = [
   ...OWN_VEHICLE_LAYERS,
   ...MULTIPLAYER_VEHICLE_LAYERS,
@@ -41,6 +45,7 @@ export class WorldMap {
       multiplayer: true,
       routes: true,
     };
+    this.facilityProjection = "";
     this.ready = false;
     this.disposed = false;
     this.preview = null;
@@ -74,7 +79,7 @@ export class WorldMap {
       reducedMotion,
     });
     this.map.touchZoomRotate.disableRotation();
-    this.groups = new VehicleGroups(this.map, navigate, reducedMotion, assets);
+    this.groups = new VehicleGroups(this.map, navigate, reducedMotion);
     this.opportunities = new Opportunities(this.map, navigate);
     this.map.addControl(new maplibregl.AttributionControl({ compact: false }), "bottom-left");
     this.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
@@ -91,6 +96,9 @@ export class WorldMap {
         );
     });
     this.map.on("load", () => this.initializeOverlays());
+    this.map.on("move", () => {
+      if (this.ready) this.drawTraffic();
+    });
     this.map.on("moveend", () => {
       if (this.ready) {
         this.groups.last = -Infinity;
@@ -133,7 +141,6 @@ export class WorldMap {
   update(state) {
     this.overlays.update(state);
     if (!this.ready || this.disposed) return;
-    this.setSourceData("hubs", this.overlays.hubFeatures(this.visible.vehicles));
     this.setSourceData("orders", this.overlays.locationFeatures(state.contracts, "origin_hub_id"));
     this.setSourceData("parked", { type: "FeatureCollection", features: [] });
     this.setSourceData("routes", this.overlays.routeFeatures());
@@ -183,7 +190,7 @@ export class WorldMap {
   async syncVehicleIcons(traffic) {
     const imageIds = await this.vehicleIcons.ensure(traffic);
     if (this.disposed) return;
-    this.overlays.setVehicleIcons(imageIds);
+    this.overlays.setVehicleIcons(imageIds, this.vehicleIcons.bounds);
     this.drawTraffic();
   }
 
@@ -199,6 +206,7 @@ export class WorldMap {
       ...(this.visible.multiplayer ? other : []),
     ];
     const ungrouped = this.groups.update(visible, this.selected);
+    this.updateFacilityProjection(ungrouped);
     this.setSourceData("vehicles", {
       type: "FeatureCollection",
       features: ungrouped.filter((item) => item.properties.isOwn),
@@ -214,6 +222,15 @@ export class WorldMap {
           item.properties.id === this.selected || item.properties.vehicleId === this.selected,
       ),
     });
+  }
+
+  /** Publish facility visibility only when its rendered occupancy changes. */
+  updateFacilityProjection(features) {
+    const data = this.overlays.hubFeatures(features);
+    const signature = JSON.stringify(data);
+    if (signature === this.facilityProjection) return;
+    this.facilityProjection = signature;
+    this.setSourceData("hubs", data);
   }
 
   setGrouping(value) {
@@ -339,8 +356,6 @@ export class WorldMap {
 
   toggle(name, visible) {
     this.visible[name] = visible;
-    if (this.ready && name === "vehicles")
-      this.setSourceData("hubs", this.overlays.hubFeatures(visible));
     const layers =
       name === "hubs"
         ? ["hub-clusters", "hub-points"]

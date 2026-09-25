@@ -11,10 +11,12 @@ export class OverlayData {
     this.routes = new Map();
     this.trafficRoutes = new Map();
     this.availableVehicleIcons = new Set();
+    this.iconBounds = new Map();
     this.state = { vehicles: [], contracts: [], transports: [], traffic: [], marketLoaded: false };
   }
 
-  setVehicleIcons(imageIds) {
+  setVehicleIcons(imageIds, bounds = new Map()) {
+    this.iconBounds = new Map(bounds);
     this.availableVehicleIcons = new Set(imageIds);
   }
 
@@ -53,19 +55,16 @@ export class OverlayData {
         this.trafficRoutes.set(trip.id, prepareTransportRoute(trip));
   }
 
-  hubFeatures(vehiclesVisible = false) {
+  /** Suppress facilities only beneath rendered own idle representatives. */
+  hubFeatures(rendered = []) {
+    const occupied = new Set(
+      rendered
+        .filter((feature) => feature.properties.isOwn && feature.properties.idle)
+        .map((feature) => feature.geometry.coordinates.join(",")),
+    );
     return collection(
       this.hubs
-        .filter(
-          (hub) =>
-            !vehiclesVisible ||
-            !this.state.vehicles.some((vehicle) => {
-              const location = vehicle.location_snapshot ?? vehicle.hub;
-              return (
-                vehicle.status === "idle" && location?.lon === hub.lon && location?.lat === hub.lat
-              );
-            }),
-        )
+        .filter((hub) => !occupied.has([hub.lon, hub.lat].join(",")))
         .map((hub) => pointFeature([hub.lon, hub.lat], this.hubProperties(hub))),
     );
   }
@@ -132,10 +131,12 @@ export class OverlayData {
             modelName: vehicle.name,
             iconImage,
             hasIcon: this.availableVehicleIcons.has(iconImage),
+            iconBounds: this.iconBounds.get(iconImage),
             bearing: 0,
             playerColor: this.companyColor,
             isOwn: true,
             idle: true,
+            movementState: "idle",
           }),
         ];
       });
@@ -165,7 +166,10 @@ export class OverlayData {
             modelName: trip.model_name,
             iconImage: hasIcon ? iconImage : "",
             hasIcon,
+            iconBounds: this.iconBounds.get(iconImage),
             bearing: pose.bearing,
+            movementState: "enroute",
+            idle: false,
             playerColor: color,
             username: trip.username,
             isOwn: trip.is_own,

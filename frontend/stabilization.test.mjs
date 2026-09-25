@@ -15,11 +15,17 @@ import { matchVehicleImages } from "./ui/preserve-vehicle-images.js";
 
 const model = "iveco_sway_500";
 const source = "<svg style='--vehicle-color:#ffffff'></svg>";
+const compose = async (_original, _mask, color) => `<svg style="--vehicle-color:${color}"></svg>`;
+class TestColorAssets extends VehicleColorAssets {
+  constructor(load) {
+    super(load, compose);
+  }
+}
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 test("color assets share sources, separate colors and release leases", async () => {
   let reads = 0;
-  const service = new VehicleColorAssets(async () => {
+  const service = new TestColorAssets(async () => {
     reads++;
     return source;
   });
@@ -28,7 +34,7 @@ test("color assets share sources, separate colors and release leases", async () 
     service.acquire(model, "front", "#e45756"),
     service.acquire(model, "front", "#4c78a8"),
   ]);
-  assert.equal(reads, 1);
+  assert.equal(reads, 2);
   assert.equal(a.url, b.url);
   assert.notEqual(a.url, c.url);
   assert.match(await (await fetch(a.url)).text(), /--vehicle-color:#e45756/);
@@ -43,11 +49,12 @@ test("color assets share sources, separate colors and release leases", async () 
 
 test("late asset loads cannot repaint disposed image bindings", async () => {
   let finish;
-  const service = new VehicleColorAssets(
-    () =>
-      new Promise((resolve) => {
-        finish = resolve;
-      }),
+  const service = new TestColorAssets((path) =>
+    path.endsWith("-paint.svg")
+      ? Promise.resolve(source)
+      : new Promise((resolve) => {
+          finish = resolve;
+        }),
   );
   const controller = new VehicleImageController(service);
   const image = document.createElement("img");
@@ -67,7 +74,7 @@ test("late asset loads cannot repaint disposed image bindings", async () => {
 });
 
 test("colored panel polling preserves actual image nodes", async () => {
-  const service = new VehicleColorAssets(async () => source);
+  const service = new TestColorAssets(async () => source);
   const controller = new VehicleImageController(service);
   const vehicle = { model_id: model, name: "Truck", capacity_tons: 24 };
   const current = document.createElement("div");
@@ -99,8 +106,8 @@ test("idle front uses company color and hides only the facility projection", () 
   overlay.setVehicleIcons([icon]);
   assert.equal(overlay.vehicleFeatures(0).features[0].properties.iconImage, icon);
   assert.equal(overlay.vehicleFeatures(0).features[0].properties.playerColor, "#e45756");
-  assert.equal(overlay.hubFeatures(true).features.length, 0);
-  assert.equal(overlay.hubFeatures(false).features.length, 1);
+  assert.equal(overlay.hubFeatures(overlay.vehicleFeatures(0).features).features.length, 0);
+  assert.equal(overlay.hubFeatures().features.length, 1);
   assert.equal(
     overlay.locationFeatures(overlay.state.contracts, "origin_hub_id").features.length,
     1,
@@ -122,12 +129,13 @@ test("group visuals retain a deterministic vehicle and count; foreign owners rem
   assert.equal(groupVehicles(members, () => ({ x: 0, y: 0 })).length, 2);
   const button = document.createElement("button");
   VehicleGroups.prototype.renderVisual(button, members);
-  assert.equal(button.querySelector("img").dataset.vehicleModel, model);
-  assert.equal(button.querySelector("img").dataset.vehicleRole, "front");
+  assert.equal(button.dataset.representative, "one");
+  assert.equal(button.dataset.movement, "idle");
+  assert.equal(button.querySelector("img"), null);
   assert.equal(button.querySelector(".vehicle-group-count").textContent, "2");
-  const image = button.querySelector("img");
+  const badge = button.querySelector(".vehicle-group-count");
   VehicleGroups.prototype.renderVisual(button, members);
-  assert.equal(button.querySelector("img"), image);
+  assert.equal(button.querySelector(".vehicle-group-count"), badge);
 });
 
 test("market city options exclude destinations and enroute checkpoints", async () => {
@@ -167,7 +175,7 @@ test("market city options exclude destinations and enroute checkpoints", async (
 });
 
 test("image replacement transfers its lease before revoking the displayed URL", async () => {
-  const assets = new VehicleColorAssets(async () => source);
+  const assets = new TestColorAssets(async () => source);
   const controller = new VehicleImageController(assets);
   const root = document.createElement("div");
   root.append(renderVehicleImage({ model_id: model, name: "Truck" }));
@@ -189,11 +197,12 @@ test("image replacement transfers its lease before revoking the displayed URL", 
 
 test("a late old-color image cannot overwrite the current selection", async () => {
   let finish;
-  const assets = new VehicleColorAssets(
-    () =>
-      new Promise((resolve) => {
-        finish = resolve;
-      }),
+  const assets = new TestColorAssets((path) =>
+    path.endsWith("-paint.svg")
+      ? Promise.resolve(source)
+      : new Promise((resolve) => {
+          finish = resolve;
+        }),
   );
   const controller = new VehicleImageController(assets);
   const image = document.createElement("img");

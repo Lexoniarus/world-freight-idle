@@ -1,3 +1,4 @@
+import { VEHICLE_SIZE_STOPS } from "./vehicle-footprint.js";
 import { collection } from "../geometry.js";
 import { ZOOM_TIERS } from "./grouping.js";
 
@@ -110,7 +111,7 @@ export function addOverlayLayers(map) {
       "icon-pitch-alignment": "map",
       "icon-allow-overlap": true,
       "icon-ignore-placement": true,
-      "icon-size": ["interpolate", ["linear"], ["zoom"], 5, 0.55, 9, 0.75, 13, 1, 17, 1.15],
+      "icon-size": ["interpolate", ["linear"], ["zoom"], ...VEHICLE_SIZE_STOPS],
     },
   });
   map.addLayer({
@@ -137,7 +138,7 @@ export function addOverlayLayers(map) {
       "icon-pitch-alignment": "map",
       "icon-allow-overlap": true,
       "icon-ignore-placement": true,
-      "icon-size": ["interpolate", ["linear"], ["zoom"], 5, 0.55, 9, 0.75, 13, 1, 17, 1.15],
+      "icon-size": ["interpolate", ["linear"], ["zoom"], ...VEHICLE_SIZE_STOPS],
     },
   });
   map.addLayer({
@@ -182,6 +183,17 @@ export function addOverlayLayers(map) {
       "icon-allow-overlap": true,
     },
   });
+  for (const id of ["vehicles", "multiplayer-vehicles", "selected-vehicle-assets"]) {
+    const original = map.getLayer(id);
+    const idle = original.serialize();
+    idle.id = id + "-idle";
+    idle.filter = ["all", ["==", ["get", "hasIcon"], true], ["==", ["get", "idle"], true]];
+    idle.layout["icon-rotate"] = 0;
+    idle.layout["icon-rotation-alignment"] = "viewport";
+    idle.layout["icon-pitch-alignment"] = "viewport";
+    map.setFilter(id, ["all", ["==", ["get", "hasIcon"], true], ["!=", ["get", "idle"], true]]);
+    map.addLayer(idle);
+  }
   for (const name of ["companies", "depots"])
     map.addLayer({
       id: name,

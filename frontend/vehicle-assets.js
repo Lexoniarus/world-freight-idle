@@ -81,3 +81,14 @@ const VEHICLE_ASSETS = Object.freeze({
 export function getVehicleAssets(modelId) {
   return modelId && Object.hasOwn(VEHICLE_ASSETS, modelId) ? VEHICLE_ASSETS[modelId] : null;
 }
+
+/** Bind a shipped original to its explicit mask without modifying either.
+ * @param {string} modelId @param {string} role
+ * @returns {{original: string, mask: string, northBearing: number} | null}
+ */
+export function getVehiclePaintDescriptor(modelId, role) {
+  const original = getVehicleAssets(modelId)?.[role];
+  return original
+    ? { original, mask: original.replace(/\.svg$/, "-paint.svg"), northBearing: 0 }
+    : null;
+}

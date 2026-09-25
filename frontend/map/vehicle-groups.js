@@ -1,5 +1,3 @@
-import { getVehicleAssets } from "../vehicle-assets.js";
-import { VehicleImageController } from "../vehicle-image-bindings.js";
 import { Marker, Popup } from "maplibre-gl";
 import { nearestLongitude } from "../geometry.js";
 import { groupVehicles, GROUP_INTERVAL, ZOOM_TIERS } from "./grouping.js";
@@ -9,10 +7,9 @@ export class VehicleGroups {
   /** @param {import("maplibre-gl").Map} map
    * @param {import("../types.js").Navigate} navigate
    * @param {() => boolean} reducedMotion
-   * @param {import("../vehicle-color-assets.js").VehicleColorAssets} [assets]
    */
-  constructor(map, navigate, reducedMotion, assets) {
-    this.images = assets ? new VehicleImageController(assets) : null;
+  constructor(map, navigate, reducedMotion) {
+    this.signature = "";
     this.map = map;
     this.navigate = navigate;
     this.reducedMotion = reducedMotion;
@@ -24,8 +21,27 @@ export class VehicleGroups {
   }
   update(features, selected, force = false) {
     const time = performance.now();
-    if (!force && time - this.last < (this.reducedMotion() ? 1000 : GROUP_INTERVAL))
+    const signature =
+      features
+        .map(
+          (feature) =>
+            `${feature.properties.key}:${feature.properties.movementState ?? feature.properties.idle}:${feature.properties.iconImage}:${feature.properties.hasIcon}`,
+        )
+        .sort()
+        .join("|") +
+      ":" +
+      selected +
+      ":" +
+      this.enabled;
+    if (
+      !force &&
+      signature === this.signature &&
+      time - this.last < (this.reducedMotion() ? 1000 : GROUP_INTERVAL)
+    ) {
+      this.updatePoses(features);
       return features.filter((feature) => !this.hidden.has(feature.properties.key));
+    }
+    this.signature = signature;
     this.last = time;
     const groups = groupVehicles(
       features,
@@ -36,23 +52,15 @@ export class VehicleGroups {
         ]),
       selected,
       this.enabled,
+      this.map.getZoom(),
+      this.map.getBearing(),
     );
     const active = new Set();
     this.hidden.clear();
-    for (const group of groups.filter(
-      (item) =>
-        item.members.length > 1 ||
-        (this.enabled &&
-          this.map.getZoom() < ZOOM_TIERS.regional &&
-          !item.members.some(
-            (member) =>
-              member.properties.isOwn &&
-              (member.properties.id === selected || member.properties.vehicleId === selected),
-          )),
-    )) {
+    for (const group of groups.filter((item) => item.members.length > 1)) {
       const key = group.members[0].properties.key;
       active.add(key);
-      for (const item of group.members) this.hidden.add(item.properties.key);
+      for (const item of group.members.slice(1)) this.hidden.add(item.properties.key);
       let entry = this.markers.get(key);
       if (!entry) {
         const button = document.createElement("button");
@@ -76,7 +84,7 @@ export class VehicleGroups {
       this.renderVisual(entry.button, group.members);
       entry.button.setAttribute(
         "aria-label",
-        `${group.members.length} ${group.own ? "eigene" : "fremde"} Fahrzeuge – Gruppe öffnen`,
+        `${group.members.length} ${group.own ? "eigene" : "fremde"} ${group.members[0].properties.idle ? "einsatzbereite" : "fahrende"} Fahrzeuge – Gruppe öffnen`,
       );
       const coordinate = group.members[0].geometry.coordinates;
       entry.marker
@@ -88,33 +96,33 @@ export class VehicleGroups {
         entry.marker.remove();
         this.markers.delete(key);
       }
-    this.images?.update(
-      [...this.markers.values()].flatMap((entry) => [
-        ...entry.button.querySelectorAll("img[data-vehicle-model]"),
-      ]),
-    );
     return features.filter((feature) => !this.hidden.has(feature.properties.key));
   }
+  /** Update current representative coordinates independently of regrouping. */
+  updatePoses(features) {
+    const current = new Map(features.map((feature) => [feature.properties.key, feature]));
+    for (const [key, entry] of this.markers) {
+      entry.members = entry.members.map((member) => current.get(member.properties.key) ?? member);
+      const coordinate = current.get(key)?.geometry.coordinates;
+      if (coordinate)
+        entry.marker.setLngLat([
+          nearestLongitude(coordinate[0], this.map.getCenter().lng),
+          coordinate[1],
+        ]);
+    }
+  }
+  /** Render only the badge; the representative uses the normal symbol layer. */
   renderVisual(button, members) {
-    const representative = members.find((item) => getVehicleAssets(item.properties.modelId));
-    const props = (representative ?? members[0]).properties;
-    const role = members.every((item) => item.properties.idle) ? "front" : "map";
-    const signature = `${props.modelId}:${role}:${props.playerColor}:${members.length}`;
-    if (button.dataset.visual === signature) return;
-    button.dataset.visual = signature;
+    const props = members[0].properties;
     button.style.setProperty("--company-color", props.playerColor);
-    const count = document.createElement("span");
-    count.className = "vehicle-group-count";
-    count.textContent = String(members.length);
-    const visual = document.createElement(representative ? "img" : "span");
-    if (visual instanceof HTMLImageElement) {
-      visual.alt = "";
-      visual.src = getVehicleAssets(props.modelId)[role];
-      visual.dataset.vehicleModel = props.modelId;
-      visual.dataset.vehicleRole = role;
-      visual.dataset.vehicleColor = props.playerColor;
-    } else visual.textContent = "🚚";
-    button.replaceChildren(visual, count);
+    button.dataset.representative = props.key;
+    button.dataset.movement = props.movementState ?? (props.idle ? "idle" : "enroute");
+    const count = String(members.length);
+    if (button.textContent === count) return;
+    const badge = document.createElement("span");
+    badge.className = "vehicle-group-count";
+    badge.textContent = count;
+    button.replaceChildren(badge);
   }
   showList(features, coordinate) {
     this.popup?.remove();
@@ -141,7 +149,6 @@ export class VehicleGroups {
     list.querySelector("button")?.focus();
   }
   destroy() {
-    this.images?.destroy();
     for (const entry of this.markers.values()) entry.marker.remove();
     this.markers.clear();
     this.popup?.remove();
