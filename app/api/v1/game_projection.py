@@ -11,14 +11,26 @@ from app.domain.contracts import (
     HistoricalContractSnapshot,
 )
 from app.domain.game import OwnedVehicle, PlayerState
-from app.domain.results import ContractQuote, FleetCatalogue, GameSnapshot
+from app.domain.results import (
+    AvailableContract,
+    ContractQuote,
+    FleetCatalogue,
+    GameSnapshot,
+)
 from app.domain.transports import ActiveTransport
 
 
 def project_contract(
-    offer: ContractOffer | ContractOfferSnapshot | HistoricalContractSnapshot,
+    offer: ContractOffer
+    | ContractOfferSnapshot
+    | HistoricalContractSnapshot
+    | AvailableContract,
 ) -> dict[str, Any]:
     """Expose an offer using the established v1 field names."""
+    eligible: tuple[str, ...] | None = None
+    if isinstance(offer, AvailableContract):
+        eligible = offer.eligible_vehicle_ids
+        offer = offer.offer
     origin = project_location(offer.origin)
     destination = project_location(offer.destination)
     origin_evidence = (
@@ -53,7 +65,13 @@ def project_contract(
         "cargo_basis": offer.cargo_basis,
         "trade_match_type": offer.trade_match_type,
         "tons": offer.tons,
-        "payload_band": offer.payload_band,
+        **({"payload_band": offer.payload_band} if offer.payload_band else {}),
+        **(asdict(offer.market_context) if offer.market_context else {}),
+        **(
+            {"eligible_vehicle_ids": list(eligible)}
+            if eligible is not None
+            else {}
+        ),
         "rate_eur_per_km_ton": offer.rate_eur_per_km_ton,
         "created_at": offer.created_at,
         "expires_at": offer.expires_at,

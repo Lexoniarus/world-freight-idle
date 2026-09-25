@@ -542,3 +542,11 @@ FUNCTION_TESTS.update(
         ),
     }
 )
+
+
+FUNCTION_TESTS.update(
+    {
+        "app.main.vehicle_catalogue_error": "test_market_reference_errors_have_explicit_http_responses",
+        "app.main.unresolved_vehicle_model": "test_market_reference_errors_have_explicit_http_responses",
+    }
+)

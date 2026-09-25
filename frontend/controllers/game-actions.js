@@ -61,7 +61,7 @@ export class GameActions {
   }
   /** Request a quote and publish it only for the current selection. */
   async calculateQuote() {
-    if (this.disposed || this.panel.view.busy) return;
+    if (this.disposed || this.panel.view.busy || !this.panel.view.selectedVehicle) return;
     const contractId = this.panel.view.url.pathname.split("/").at(-1);
     const vehicleId = this.panel.view.selectedVehicle || null;
     const request = this.quoteRequest.start();

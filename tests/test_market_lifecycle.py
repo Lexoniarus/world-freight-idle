@@ -299,3 +299,43 @@ async def test_dispatch_resolves_only_missing_exact_facility_snapshot(game):
     assert game.get_vehicle(vehicle.id).location is None
     trip = await game.dispatch(offer.id, vehicle.id)
     assert game.get_vehicle(vehicle.id).location == trip.origin
+
+
+async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(game):
+    offer = game.list_contracts()[0]
+    vehicle = game.get_vehicle("truck_01")
+    quote = await game.quote_contract(offer.id, vehicle.id)
+    vehicle._operating_cost_eur_per_km = None
+    with pytest.raises(ValueError, match="Fahrzeugkosten"):
+        game._calculate_quote(offer, quote.route, vehicle)
+    model = next(
+        m for m in game.catalogue.list_models() if m.id == vehicle.model_id
+    )
+    unsupported = replace(
+        model,
+        transport_capabilities=tuple(
+            replace(c, suitability_game=0)
+            for c in model.transport_capabilities
+        ),
+    )
+    with patch.object(
+        game.catalogue, "list_models", return_value=(unsupported,)
+    ):
+        with pytest.raises(ValueError, match="Transportklasse"):
+            await game.quote_contract(offer.id, vehicle.id)
+        with pytest.raises(ValueError, match="Transportklasse"):
+            await game.dispatch(offer.id, vehicle.id)
+        assert not game.refresh_market()
+    assert not game.state_repository.list_active_transports()
+
+
+def test_generation_does_not_route_and_manual_refresh_only_rerolls_city(game):
+    with patch.object(game.router, "route", side_effect=AssertionError):
+        retained = game.list_contracts()
+        assert game.list_contracts() == retained
+        regenerated = game.refresh_contracts()
+        assert regenerated
+        assert not ({o.id for o in retained} & {o.id for o in regenerated})
+        assert {o.origin.city.city_uid for o in regenerated} == {
+            game.get_vehicle("truck_01").location.city.city_uid
+        }

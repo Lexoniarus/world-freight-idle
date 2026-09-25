@@ -129,7 +129,7 @@ test("parallel trips persist across navigation and map controls work without reb
   for (const vehicle of fleet) {
     await page.request.post("/api/v1/contracts/refresh", { headers });
     const contracts = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
-    const contract = contracts.find((item) => item.origin_hub_id === vehicle.hub_id && item.tons <= vehicle.capacity_tons);
+    const contract = contracts.find((item) => item.eligible_vehicle_ids.includes(vehicle.id));
     const dispatch = await page.request.post("/api/v1/contracts/" + contract.id + "/accept", { headers, data: { vehicle_id: vehicle.id } });
     expect(dispatch.ok()).toBeTruthy();
   }
@@ -289,7 +289,7 @@ test("starter game assets survive polling and changed transport panel content", 
   await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
   const headers = { "X-Freight-Request": "1" };
   const contracts = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
-  const contract = contracts.find(item => item.origin_hub_id === vehicles[0].hub_id && item.tons <= vehicles[0].capacity_tons);
+  const contract = contracts.find(item => item.eligible_vehicle_ids.includes(vehicles[0].id));
   const response = await page.request.post("/api/v1/contracts/" + contract.id + "/accept", { headers, data: { vehicle_id: vehicles[0].id } });
   expect(response.ok()).toBeTruthy();
   await expect(page.locator(".vehicle-card .badge")).toHaveText("Unterwegs", { timeout: 15000 });
@@ -315,16 +315,17 @@ test("facility identities, lazy market scope and catalogue outages preserve the 
 
   const allResult = await (await page.request.get("/api/v1/map/facilities")).json();
   expect(allResult.unavailable_count).toBe(0);
-  expect(allResult.facilities).toHaveLength(352);
+  expect(allResult.facilities).toHaveLength(559);
 
   const localJobs = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
-  expect(new Set(localJobs.map(job => job.origin_facility_uid))).toEqual(new Set([berlin.facility_uid]));
-  expect(localJobs.every(job => job.market_model === "nhm_v1")).toBeTruthy();
+  expect(new Set(localJobs.map(job => job.origin.city_uid))).toEqual(new Set([berlin.city_uid]));
+  expect(new Set(localJobs.map(job => job.origin_facility_uid)).size).toBeGreaterThan(1);
+  expect(localJobs.every(job => job.market_model === "nhm_v2")).toBeTruthy();
   expect(localJobs.every(job => ["documented", "derived"].includes(job.cargo_basis))).toBeTruthy();
   expect(localJobs.every(job => job.cargo_evidence)).toBeTruthy();
 
   const viewportJobs = (await (await page.request.get("/api/v1/contracts?bbox=8,48,15,54&zoom=7")).json()).contracts;
-  expect(new Set(viewportJobs.map(job => job.origin_facility_uid)).size).toBeGreaterThan(1);
+  expect(viewportJobs).toEqual(localJobs);
 
   await page.goto("/contracts?hub=berlin_westhafen");
   const originalCanvas = await page.locator(".maplibregl-canvas").elementHandle();
@@ -334,7 +335,7 @@ test("facility identities, lazy market scope and catalogue outages preserve the 
   expect(await originalCanvas.evaluate(element => element.isConnected)).toBeTruthy();
 
   await page.getByRole("link", { name: "Flotte", exact: true }).click();
-  await page.route("**/api/v1/contracts?*", route => route.fulfill({
+  await page.route("**/api/v1/contracts", route => route.fulfill({
     status: 503,
     json: { detail: "Weltkatalog derzeit nicht verfügbar." },
   }));
@@ -381,3 +382,35 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     expect((await (await page.request.get("/api/v1/dashboard")).json()).player.completed).toBe(1);
   });
 }
+
+
+test("city offers survive pan and zoom without market requests", async ({ page }) => {
+  await page.clock.install();
+  await register(page);
+  await page.getByRole("link", { name: "Aufträge", exact: true }).click();
+  await expect(page.locator(".job-card").first()).toBeVisible();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+  const requests = [];
+  page.on("request", request => {
+    if (new URL(request.url()).pathname.startsWith("/api/v1/contracts"))
+      requests.push(request.url());
+  });
+  const before = await page.locator(".job-card").allTextContents();
+  await page.locator(".maplibregl-ctrl-zoom-out").click();
+  await page.mouse.move(500, 400);
+  await page.mouse.down();
+  await page.mouse.move(650, 400, { steps: 5 });
+  await page.mouse.up();
+  await page.clock.runFor(1200);
+  expect(requests).toEqual([]);
+  expect(await page.locator(".job-card").allTextContents()).toEqual(before);
+  await expect(page.locator(".job-card").first()).toContainText(/ca\. .*km/);
+  await page.screenshot({path: screenshot("market-v2-desktop"), animations: "disabled"});
+  await page.locator(".job-card").first().click();
+  await expect(page.locator("#panel-content")).toContainText("Warenwert");
+  await page.setViewportSize({width:390,height:844});
+  await page.emulateMedia({reducedMotion:"reduce"});
+  await page.clock.runFor(100);
+  await page.screenshot({path: screenshot("market-v2-mobile"), animations: "disabled"});
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+});

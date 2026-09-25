@@ -1,12 +1,11 @@
 import { LatestRequest } from "../state.js";
 
-/** Own viewport-scoped contract reads independently of global game sync. */
+/** Own city-market reads independently of map navigation. */
 export class ContractMarketController {
-  /** @param {{state: import("../state.js").GameState, request: import("../types.js").RequestJson, map: import("../map/world-map.js").WorldMap | null, notify: import("../types.js").Notify, currentUrl: () => URL}} dependencies */
-  constructor({ state, request, map, notify, currentUrl }) {
+  /** @param {{state: import("../state.js").GameState, request: import("../types.js").RequestJson, notify: import("../types.js").Notify, currentUrl: () => URL}} dependencies */
+  constructor({ state, request, notify, currentUrl }) {
     this.state = state;
     this.request = request;
-    this.map = map;
     this.notify = notify;
     this.currentUrl = currentUrl;
     this.pending = new LatestRequest();
@@ -41,7 +40,7 @@ export class ContractMarketController {
 
   async loadList(force) {
     const request = this.pending.start();
-    const path = this.marketPath(force);
+    const path = force ? "/contracts/refresh" : "/contracts";
     try {
       const result = await this.request(path, {
         method: force ? "POST" : "GET",
@@ -58,7 +57,6 @@ export class ContractMarketController {
   }
 
   async loadDetail(id) {
-    if (this.state.data.contracts.some((item) => item.id === id)) return;
     const request = this.pending.start();
     try {
       const contract = await this.request("/contracts/" + encodeURIComponent(id), {
@@ -67,20 +65,10 @@ export class ContractMarketController {
       if (request.isCurrent()) this.state.replaceContracts([contract]);
     } catch (error) {
       if (request.isCurrent() && error.name !== "AbortError") {
+        if (error.status === 404) this.state.replaceContracts([]);
         this.notify(error.message);
       }
     }
-  }
-
-  marketPath(force) {
-    const viewport = this.map?.marketViewport();
-    const base = force ? "/contracts/refresh" : "/contracts";
-    if (!viewport) return base;
-    const params = new URLSearchParams({
-      bbox: viewport.bbox.join(","),
-      zoom: String(viewport.zoom),
-    });
-    return `${base}?${params}`;
   }
 
   destroy() {

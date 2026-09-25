@@ -223,8 +223,14 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
         model_id=vehicle.model_id,
         location=vehicle.location,
     )
+    from app.domain.world_scopes import WorldScope
+
+    other_city = WorldScope(game.world.read()).facility("hamburg_cta")
     for changes, message in (
-        ({"facility_uid": "hamburg_cta", "location": None}, "Abholstadt"),
+        (
+            {"facility_uid": other_city.facility_uid, "location": None},
+            "Abholstadt",
+        ),
         ({"capacity_tons": 0.1}, "kapazität"),
         ({"mode": "ship"}, "Fahrzeugtyp"),
         ({"status": "enroute"}, "verfügbar"),

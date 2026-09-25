@@ -45,7 +45,14 @@ class FakeGame:
             1, 1, PlayerState(1, 0, 0), (self.vehicle,), (self.trip,)
         )
 
-    def list_contracts(self, query=None, zoom=None):
+    def contract_choices(self, offers):
+        from app.domain.results import AvailableContract
+
+        return tuple(
+            AvailableContract(offer, ("truck_01",)) for offer in offers
+        )
+
+    def list_contracts(self):
         return [self.offer]
 
     def get_contract(self, contract_id):
@@ -53,7 +60,7 @@ class FakeGame:
             raise KeyError("missing")
         return self.offer
 
-    async def quote_contract(self, contract_id, vehicle_id=None):
+    async def quote_contract(self, contract_id, vehicle_id):
         if contract_id == "routing-error":
             raise RoutingError("down")
         if contract_id == "missing":
@@ -75,7 +82,7 @@ class FakeGame:
             raise RoutingError("down")
         return self.trip
 
-    def refresh_contracts(self, query=None, zoom=None):
+    def refresh_contracts(self):
         return [replace(self.offer, id="fresh")]
 
     def list_vehicles(self):
@@ -158,21 +165,38 @@ def test_v1_resource_endpoints_and_error_mapping(tmp_path: Path, game):
             == "c1"
         )
         assert (
-            client.get("/api/v1/contracts?bbox=bad&zoom=7").status_code == 422
+            client.get("/api/v1/contracts?bbox=bad&zoom=7").status_code == 200
         )
         assert client.get("/api/v1/contracts/c1").json()["id"] == "c1"
         assert client.get("/api/v1/contracts/missing").status_code == 404
         assert (
-            client.post("/api/v1/contracts/c1/quote").json()["distance_km"]
+            client.post(
+                "/api/v1/contracts/c1/quote", json={"vehicle_id": "truck_01"}
+            ).json()["distance_km"]
             == 10
         )
         assert (
-            client.post("/api/v1/contracts/missing/quote").status_code == 404
+            client.post(
+                "/api/v1/contracts/missing/quote",
+                json={"vehicle_id": "truck_01"},
+            ).status_code
+            == 404
         )
         assert (
-            client.post("/api/v1/contracts/routing-error/quote").status_code
+            client.post(
+                "/api/v1/contracts/routing-error/quote",
+                json={"vehicle_id": "truck_01"},
+            ).status_code
             == 502
         )
+        for body in ({}, {"vehicle_id": None}, {"vehicle_id": ""}):
+            assert (
+                client.post(
+                    "/api/v1/contracts/c1/quote", json=body
+                ).status_code
+                == 422
+            )
+        assert client.post("/api/v1/contracts/c1/quote").status_code == 422
         accepted = client.post(
             "/api/v1/contracts/c1/accept", json={"vehicle_id": "truck_01"}
         )
@@ -207,7 +231,7 @@ def test_v1_resource_endpoints_and_error_mapping(tmp_path: Path, game):
             client.post(
                 "/api/v1/contracts/refresh?bbox=bad&zoom=7"
             ).status_code
-            == 422
+            == 200
         )
         assert (
             client.get("/api/v1/fleet").json()["vehicles"][0]["id"]
@@ -264,3 +288,27 @@ def test_persistence_outage_does_not_expose_database_details(tmp_path):
     assert response.json() == {"detail": "Spielstand derzeit nicht verfügbar."}
     assert "private" not in response.text
     assert response.headers["x-trace-id"]
+
+
+def test_market_reference_errors_have_explicit_http_responses(tmp_path, game):
+    from unittest.mock import patch
+
+    from app.domain.errors import CatalogueError, UnresolvedVehicleModel
+
+    make_static_files(tmp_path)
+    app = create_app(make_settings(tmp_path))
+    app.dependency_overrides[get_game_service] = lambda: game
+    with TestClient(app) as client:
+        for error, status, message in (
+            (CatalogueError("private path"), 503, "Fahrzeugkatalog"),
+            (
+                UnresolvedVehicleModel("private identity"),
+                409,
+                "Bestand prüfen",
+            ),
+        ):
+            with patch.object(game, "list_contracts", side_effect=error):
+                response = client.get("/api/v1/contracts")
+            assert response.status_code == status
+            assert message in response.json()["detail"]
+            assert "private" not in response.text

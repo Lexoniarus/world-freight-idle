@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 
 from app.domain.contracts import ContractOffer
+from app.domain.errors import UnresolvedVehicleModel
 from app.domain.game import OwnedVehicle
 from app.domain.market import (
     CompatibleVehicle,
@@ -63,7 +64,7 @@ class MarketCandidateService:
                 continue
             model = models.get(vehicle.model_id or "")
             if model is None:
-                raise ValueError(
+                raise UnresolvedVehicleModel(
                     "Fahrzeugmodell ist nicht auflösbar; Bestand prüfen."
                 )
             location = (

@@ -92,19 +92,11 @@ function createGameApplication(api, user, redirect) {
   let application;
   const router = new BrowserRouter(window, (url) => application.navigateTo(url));
   const navigate = (path) => router.navigate(path);
-  let contractMarket;
-  const map = createWorldMap(
-    navigate,
-    notify,
-    () => state.now(),
-    api.requestAsset,
-    () => void contractMarket?.refresh(),
-  );
+  const map = createWorldMap(navigate, notify, () => state.now(), api.requestAsset);
   const sync = new GameSync({ state, panel, map, notify });
-  contractMarket = new ContractMarketController({
+  const contractMarket = new ContractMarketController({
     state,
     request: api.request,
-    map,
     notify,
     currentUrl: () => view.url,
   });
@@ -149,7 +141,7 @@ function createGameApplication(api, user, redirect) {
 }
 
 /** Keep game controls usable when the browser cannot initialize WebGL. */
-function createWorldMap(navigate, notify, now, loadAsset, onViewportChange) {
+function createWorldMap(navigate, notify, now, loadAsset) {
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   try {
     return new WorldMap("world-map", {
@@ -160,7 +152,6 @@ function createWorldMap(navigate, notify, now, loadAsset, onViewportChange) {
       provider: createBasemap(),
       reducedMotion: () => reducedMotion.matches,
       isHidden: () => document.hidden,
-      onViewportChange,
       viewport: () => ({
         width: innerWidth,
         height: innerHeight,
