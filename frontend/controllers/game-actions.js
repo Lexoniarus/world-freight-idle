@@ -29,6 +29,7 @@ export class GameActions {
       "focus-trip": () => this.focusTransport(id),
       "retry-panel": () => this.panel.loadDetails(),
       retry: () => this.refresh(),
+      "choose-vehicle": () => this.selectVehicle(id),
       quote: () => this.calculateQuote(),
       buy: () => this.runMutation(() => this.purchaseVehicle(id)),
       dispatch: () => this.runMutation(() => this.dispatchTransport(), false),
@@ -55,6 +56,8 @@ export class GameActions {
   selectVehicle(vehicleId) {
     this.cancelQuote();
     this.panel.view.selectedVehicle = vehicleId;
+    this.panel.view.url.searchParams.set("vehicle", vehicleId);
+    window.history.replaceState({}, "", this.panel.view.url.pathname + this.panel.view.url.search);
     this.panel.view.quote = null;
     this.map?.setPreview(null);
     this.panel.render();
@@ -76,7 +79,6 @@ export class GameActions {
       if (!request.isCurrent() || vehicleId !== (this.panel.view.selectedVehicle || null)) return;
       this.panel.view.quote = quote;
       this.map?.setPreview(quote);
-      this.map?.focusRoute(quote.route_geojson);
     } catch (error) {
       if (request.isCurrent() && error.name !== "AbortError") this.notify(error.message);
     } finally {
@@ -137,7 +139,6 @@ export class GameActions {
     await this.state.afterMutation();
     if (!this.disposed && path === this.panel.view.url.href) {
       this.navigate("/transports/" + trip.id);
-      this.map?.focusRoute(trip.route_geojson);
     }
   }
   /** Replace the player's available contract market. */

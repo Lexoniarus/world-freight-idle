@@ -1,112 +1,119 @@
-# Qualitätsbericht: Market v2
+# Qualitätsbericht: Frontend v2
 
-Stand: 25.09.2026. Lokale Umsetzung auf `feature/city-market-v2`, ausgehend
-von main `75e3d8a`. Python 3.11.9, Node 24, Windows und Microsoft Edge.
-Veröffentlichung und Merge sind nicht Teil dieser Umsetzung.
+Stand: 25.09.2026. Lokaler Branch `feature/frontend-v2`, Basis ist der vor
+Arbeitsbeginn erneut geladene main `614ec730fc09a43151f9751d644190ace17a14be`.
+Repository-Hooks sind aktiv. Keine Veröffentlichung und kein Merge.
+Umgebung: Windows, Python 3.11.9, Node 24, Microsoft Edge / Codex In-app Browser.
 
-## Produkt und Daten
+## Implementierter Umfang
 
-- Ausschließlich City-UID-Märkte eigener idle Fahrzeuge; keine Viewport- oder
-  PayloadBand-Generierung. Alle geeigneten Origins der aktiven Stadt,
-  katalogweite NHM-Ziele, getrennte Candidate-/Fahrzeuggewichtung.
-- Facility-Coverage und mindestens drei Angebote je verfügbarem Band;
-  Retention gültiger fahrbarer V2-Angebote, sechs Stunden Angebotslaufzeit.
-- Quote/Dispatch verlangen ein Fahrzeug. Same-City-Reposition, Reservierung,
-  Abbuchung, Transport, Offer-Verbrauch und Pruning committen atomar. Refill
-  besitzt danach seine eigene Transaktion und kann den Dispatch nicht umkehren.
-- World 4.2.0 und Vehicle 2.2.0 werden read-only validiert. Die bereitgestellte
-  World-Datei wurde unverändert unter dem kanonischen Namen übernommen.
-  Spielschema 1.1.0 und historische Snapshot-Hüllen bleiben unverändert.
-- Alle bestehenden OwnedVehicles im lokalen Spielstand wurden read-only
-  geprüft: keine fehlenden oder unauflösbaren model_id, keine fehlenden
-  Standort-Snapshots. Keine Heuristik und keine Bestandsmigration notwendig.
-  Eine konkrete Fahrzeuganzahl ist ausdrücklich kein Architekturvertrag.
-- Alle vorhandenen offenen Offers und historischen Transport-Snapshots wurden
-  zusätzlich read-only mit den neuen Mappern gelesen: ohne Fehler oder Writes.
-  Beide Referenzdateien stimmen nach den Tests mit den eingeführten Git-Blobs
-  überein; die Tests haben ihre Inhalte nicht verändert.
+- Map-first HUD, graphitfarbene Managementflächen, lokale Barlow-/Inter-Schriften,
+  semantische UI-/Kartenfarben, Context-/Management-Drawer und mobile Sheets.
+- CityContext nach city_uid, deterministische Defaults, bewusste inaktive Städte,
+  ungefilterte Auswahl, Browserhistorie, Fahrzeugvorwahl und Legacy-Hub-Auflösung.
+- Stadtmarkt mit serverseitiger Eignung und deutschen Dimensionslabels,
+  kompakten Cargo-Karten, getrenntem Listen-/Detailzustand und Quote-Verwerfung.
+- Flotte nach Stadt und Richtung/Status, Modell-/Namensfilter und zustandsbezogene
+  Front-/Side-/Map-Ansichten. Keine neuen Assets; Hash-Inventar bleibt erhalten.
+- Layer-Presets und lokale Overrides nach stabiler authentifizierter user.id,
+  Reset je Ansicht, unabhängige temporäre Auswahl, Gruppierung mit Count-Badges,
+  Tastaturlisten, World Wrapping und echten unveränderten Koordinaten.
+- Authentifizierte Analytics und exakte City-/Facility-Lookups. Analytics besitzt
+  einen eigenen Reader-Port/Service/SQLite-Lesepfad, ausschließlich skalare
+  JSON-Projektion und konsistenten Lesestand. Keine Transport-/Routenhydration.
+- Unternehmen mit KPIs, UTC-Zeitreihen, Scopes, Ergebnisbalken und zugänglichen
+  Tabellen. Importierter Fortschritt, belegte Historie und laufende Erwartungen
+  sind getrennt. Keine historische Modellstatistik.
 
 ## Ausgeführte Prüfungen
 
-`python scripts/quality.py` wurde mit dem Projektinterpreter vollständig
-und mit Exitcode 0 ausgeführt. `npm run test:e2e` wurde auf demselben
-unveränderten Code-Stand mit Exitcode 0 ausgeführt.
+Der vollständige Qualitätslauf wurde auf dem finalen Quellstand erfolgreich
+ausgeführt. Die Browserregression hat anschließend denselben Produktionsbuild bestätigt.
 
-| Prüfung | Tatsächliches Ergebnis |
+| Prüfung | Ergebnis |
 | --- | --- |
-| Python einschließlich Manifest und Architekturtests | 354 bestanden |
-| app-Statement-Coverage | 3.852 Statements, 0 ungedeckt, 100 % |
-| Ruff und Format (79 Zeichen) | bestanden |
-| mypy / Pyright | 97 Quelldateien fehlerfrei / 0 Fehler |
-| Frontend-Verhalten | 61 bestanden |
-| ESLint, Stylelint, Prettier, checkJs | bestanden |
-| Vite-Produktionsbuild und compileall | bestanden |
-| Playwright | 14 bestanden, Desktop/Mobil/Reduced Motion |
+| python scripts/quality.py | bestanden |
+| Python einschließlich Manifest/Architektur | 372 Verhaltenstests bestanden |
+| App-Statement-Coverage | 100 %; 3979 Statements, keine Lücke |
+| Ruff / Format, mypy / Pyright | bestanden; 101 Quelldateien / 0 Fehler |
+| Frontend-Verhalten | 75 bestanden |
+| ESLint, Stylelint, Prettier, checkJs, Vite | bestanden |
+| npm run test:e2e | 18 bestanden; 4,3 Minuten |
 | git diff --check | bestanden |
 
-Gezielte Gegenproben prüfen getrennte Auswahl, Retention, Historien und Import,
-Dispatch-Rollback sowie einen Refill-Schreibfehler nach nachweislichem Commit.
-Eine zweite SQLite-Verbindung beobachtet den gestarteten Transport, bevor
-der Refill beginnt. Ein späterer Refresh bestätigt unveränderten Transport
-und nur einmalige Abbuchung. Katalogausfälle und ungeklärte Altmodelle besitzen
-explizite HTTP-Fehlerübersetzung ohne interne Pfade. Pan/Zoom erzeugt im
-Browsertest keine Marktanfragen; entfernte Offers und verspätete Antworten
-werden verworfen. Tests wurden weder übersprungen noch von Coverage ausgenommen.
+Die letzten verbindlichen Logs heißen `artifacts-frontend-v2-quality-final.log`
+und `artifacts-frontend-v2-e2e-verified.log` (lokal, nicht versioniert). Zwischenläufe
+während der Umsetzung sind keine Abnahme: dabei wurden unter anderem mobile
+Navigationsebenen, zusammengepresste KPI-Gitter und mehrdeutige Testselektoren
+gefunden und korrigiert. Kein Test und keine Coverage-Regel wurde deaktiviert.
 
-Die Desktop-Angebotskarten, mobilen Angebotsdetails, Quote, Flotte und
-Energieansicht wurden zusätzlich anhand der erzeugten Screenshots visuell
-geprüft. Kein horizontaler Overflow; Karte, Attribution und Navigation bleiben
-zugänglich. Lange NHM-Bezeichnungen brechen innerhalb der scrollbaren Panels um.
+## Verhalten und Datenschutz
 
-Lokale, nicht versionierte Protokolle: `artifacts-quality-final.log`,
-`artifacts-e2e-final.log` und `artifacts-readonly-audit.log`. Screenshots liegen
-im temporären Verzeichnis unter `world-freight-market-v2-desktop.png`,
-`world-freight-market-v2-mobile.png` und den bestehenden Regressionstiteln.
-Zwei vorhandene Starlette/httpx-/AnyIO-Deprecation-Warnungen bleiben ohne
-Testfehler. Frühere fehlgeschlagene Zwischenläufe sind durch diese vollständigen
-Läufe auf dem korrigierten Stand ersetzt.
+Analytics-Gegenproben verbieten load_transport_record, load_transport sowie
+RouteSnapshot-/ActiveTransport-Konstruktion und erhalten dennoch korrekte
+Aggregate aus gespeicherten Fixtures mit großen Koordinatenarrays. Python
+bekommt ausschließlich skalare Werte; JSON-Hülle, Version und Pflichtwerte
+werden validiert. PRAGMA query_only sichert die Aggregation gegen Writes ab.
+Gleichnamige beziehungsweise identische lokale Fahrzeug-IDs anderer Accounts
+geben keine fremden Kennzahlen frei. Exact-Lookups und Analytics verlangen
+Sessions. Fehlerantworten enthalten keine SQL-/Datei-/privaten Bestandsdetails.
 
-## Architekturreview
+Ankunft wird durch die vorhandene idempotente Settlement-Logik reconciled.
+Der zweite Analytics-Aufruf bucht weder Kapital noch Fortschritt erneut.
+Die Tageszuordnung verwendet historisches arrives_at in UTC, nicht Loginzeit.
+V1-Historie bleibt für Unternehmen/Stadt/Fahrzeug nutzbar, ohne erfundene
+Transportklasse/Distanzband-Zuordnung. Aktuelle Unternehmenswerte bleiben
+unternehmensweit, Zeitraumauswertungen folgen dem gewählten Scope.
 
-81 neue oder wesentlich geänderte konkrete öffentliche/private Core-Callables
-wurden einzeln geprüft: Zweck, Schicht, Abhängigkeiten und Seiteneffekte.
-Die vollständige Einzelaufstellung steht in
-[MARKET_V2_REVIEW.md](docs/MARKET_V2_REVIEW.md).
+Frontend-Gegenproben prüfen UUIDs trotz gleicher Stadtnamen, explizite bekannte
+Stadt ohne Markt, Verlust des letzten idle Fahrzeugs, Session-Auswahl, verspätete
+Reads und unabhängige Marktlisten/-details. Eligibility wird ausschließlich
+über eligible_vehicle_ids gelesen. Gruppen trennen eigene/fremde Objekte,
+respektieren Auswahl, Wrapping und deaktivierte Gruppierung. Relative
+Koordinaten bleiben unverändert. Auswahlquellen umgehen ausgeblendete normale
+Layer, ohne lokale Präferenzen zu verändern.
 
-Domainwerte sind immutable; OwnedVehicle schützt eigene Zustandsübergänge.
-Scope, NHM-Relation, Candidate-Kompatibilität, Coverage, Materialisierung und
-Markttransaktion sind getrennte Bausteine. Services erhalten Ports statt SQL-
-Verbindungen. MarketGenerator orchestriert ausschließlich. Gemeinsame reine
-Kompatibilitätsfunktionen verbinden Candidate, Retention, Quote und Dispatch.
-Views nutzen serverseitige Eignungs-IDs. Das explizite Function-Test-Manifest
-bleibt Teil des ausführbaren Gates; Zeilenzahl und Coverage ersetzen das Review
-nicht. Keine offene Vermischung von Core-Verantwortlichkeiten festgestellt.
+## Browser und visuelle Abnahme
 
-## Datenbedingte Coverage-Grenzen
+E2E-Größen: 1440×900, 1024×768 und 390×844; zusätzlich Reduced Motion.
+Der vollständige Ablauf umfasst Anmeldung, Fahrzeug/Stadt, Auftrag, visuelle
+Fahrzeugwahl, Quote, Dispatch, Transport, Unternehmen, alle Zeiträume und Scopes.
+Geprüft werden Tastatur-/Rückkehrfokus, mobile Sheet-Höhen mit inert-Karte,
+Canvas-Kontinuität, Pan/Zoom ohne Marktreads, unveränderte Bilder beim Polling,
+Layer-Persistenz, Gruppenliste bei identischen Koordinaten, Analytics-Fehler/Retry
+und KPI-Layout.
 
-Der gelieferte Referenzstand enthält 559 routbare Facilities in 333 Städten,
-284 Unternehmen, 95 verifizierte und 464 ausdrücklich geschätzte Positionen.
-Diese Zahlen beschreiben Datenqualität, keine vorgeschriebene Marktgröße.
-Eine reale Datenlücke bleibt: Campari Group Sesto San Giovanni Headquarters
-besitzt kein ausgehendes NHM-Profil und erhält deshalb keine erfundenen
-Origin-Angebote. Für jede operative Transportklasse existiert im ausgelieferten
-Fahrzeugkatalog mindestens eine positive Capability; die konkrete Flotte muss
-dennoch zur jeweiligen Ware passen.
+Manuelle OSM-Prüfung im isolierten lokalen Prüfserver: Europa-/Regionalzoom
+zeigt lesbare Count-Marker beziehungsweise kompakte Fahrzeuge; Stadtzoom
+ordnet Angebote nach Origin-Facility; Nahzoom zeigt Modellasset und Auswahlhalo
+über Straßen/Labels. Aufklappbare Filter lassen den Aufträgen Platz. Lange
+NHM-Namen behalten zugänglichen Volltext. Desktop-KPIs, Fahrzeugbilder und
+mobile Vollhöhenansicht wurden zusätzlich anhand gerenderter Screenshots
+kontrolliert. Im automatisierten Lauf ersetzen lokale PNGs OSM-Kacheln;
+die echte Kartenprüfung wurde separat über Browserbedienung durchgeführt.
 
-Der read-only Bestandsaudit prüfte die tatsächlich aktive Stadt Palermo:
-1.127 kompatible Candidates, zwei geeignete Origin-Facilities und keine
-fehlenden Distanzbänder. Die Berliner Starterflotte deckt ebenfalls alle drei
-Bands ab. Das ist keine Zusage vollständiger Coverage für jede mögliche
-Stadt-/Flottenkombination: fehlende NHM-Relationen, Fähigkeiten, positive
-Scale-Suitability oder Distance-Weights können Bands ausschließen. Solche
-Lücken werden als unmet_bands protokolliert und nicht mit erfundenen Angeboten
-gefüllt. Fixtures prüfen explizit leere und nur teilweise verfügbare Bands.
-Die Generierung berechnet keine globalen Origin-Relationen.
+Screenshots liegen im temporären Verzeichnis unter
+`world-freight-frontend-v2-company-desktop.png`, `...-tablet.png`, `...-mobile.png`
+sowie `world-freight-frontend-v2-selected-hidden-layer.png`,
+`world-freight-market-v2-desktop.png`, `...-mobile.png` und unter
+`artifacts/assets-current/`. Keine physischen Mobilgeräte oder Safari-Abnahme
+werden behauptet. Zwei bestehende Starlette/httpx-/AnyIO-Deprecation-Warnungen
+sind keine Testfehler.
 
-## Grenzen der Abnahme
+## Architekturreview und Grenzen
 
-Browserprüfungen nutzen isolierte Testspielstände, Mock-Routing und lokale
-Kacheln. Sie ersetzen weder eine reale iPad-/Safari-Abnahme noch einen
-Live-Valhalla-Test. Kein Docker-Build, Deployment, Push oder Merge durchgeführt.
-Spieler-DBs, Backups, Screenshots und Prüfprotokolle werden nicht versioniert.
-Die bestehende Energie- und historische Transportlogik bleibt abgedeckt.
+Views rendern ohne Requests. frontend/api.js bleibt der einzige Spiel-API-Zugang.
+Controller besitzen Auswahl, Requests und Cleanup. WorldMap rendert/interagiert;
+CityContext, Gruppenberechnung, Präferenzen und Analytics sind separate Module.
+Panel- und Application-Orchestrierung enthalten keine neue Simulation oder
+Eligibility-Logik. Listener und ausstehende Requests werden beendet; versteckte
+Karten pausieren unnötige Bewegung. Bilddateien und Referenzkataloge wurden nicht
+verändert. Statische globale Facility-/History-Downloads wurden nicht ergänzt.
+
+Market v2 blieb fachlich unverändert; lediglich die irreführende anfängliche
+TradeOptions-Gesamtzahl wurde aus dem Log entfernt. Dispatch-/Refill-Transaktionen
+wurden nicht optimiert. World 4.2.0, Vehicle Catalogue 2.2.0 und Spielschema 1.1.0
+bleiben bestehen. Keine Persistenzmigration. Fehlende historische Geld-/Strecken-
+oder Tonnenwerte werden weder aus Fortschrittszählern noch heutigen Modellen
+rekonstruiert. Die all-time Summen benötigen eigene belegte historische Skalare;
+Routengeometrien werden dafür nicht nach Python übertragen.

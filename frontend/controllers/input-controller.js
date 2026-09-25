@@ -55,8 +55,6 @@ export class InputController {
     const target = event.target;
     if (!(target instanceof HTMLSelectElement) && !(target instanceof HTMLInputElement)) return;
     if (target.id === "vehicle-choice") this.actions.selectVehicle(target.value);
-    if (target.dataset.layer)
-      this.map?.toggle(target.dataset.layer, /** @type {HTMLInputElement} */ (target).checked);
   }
   /** Reveal loaded photos or retain their illustration after a network failure.
    * @param {Event} event

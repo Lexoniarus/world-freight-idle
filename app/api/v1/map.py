@@ -18,6 +18,35 @@ from app.services.map_locations import MapLocationService
 router = APIRouter(prefix="/map", tags=["map"])
 
 
+@router.get("/facilities/{identifier}")
+def exact_facility(
+    identifier: str,
+    service: MapLocationService = Depends(get_map_service),
+) -> dict:
+    """Resolve a session-bound legacy link using one exact reference."""
+    try:
+        return project_location(service.exact_facility(identifier))
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(404, "Standort nicht gefunden.") from exc
+
+
+@router.get("/cities/{city_uid}")
+def exact_city(
+    city_uid: str,
+    service: MapLocationService = Depends(get_map_service),
+) -> dict:
+    """Return only the requested city identity for authenticated navigation."""
+    try:
+        city = service.exact_city(city_uid)
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(404, "Stadt nicht gefunden.") from exc
+    return {
+        "city_uid": city.city_uid,
+        "city": city.name,
+        "country": city.country.code,
+    }
+
+
 @router.get("/hubs")
 async def list_map_hubs(
     service: MapLocationService = Depends(get_map_service),

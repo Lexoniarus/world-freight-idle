@@ -56,6 +56,15 @@ export class MobileSheet {
   setHeight(height) {
     this.height = height;
     this.panel.style.setProperty("--sheet-height", height + "dvh");
+    const map = document.querySelector("#world-map");
+    if (map instanceof HTMLElement) map.inert = height === 90 && window.innerWidth <= 759;
+    this.panel.dataset.sheet = height === 90 ? "full" : height === 60 ? "half" : "compact";
+    document.querySelector("#game")?.classList.toggle("sheet-full", height === 90);
+    this.handle.setAttribute(
+      "aria-label",
+      "Panelhöhe ändern · " +
+        (height === 90 ? "volle Höhe" : height === 60 ? "halbe Höhe" : "kompakt"),
+    );
   }
   /** Release pointer and click listeners. */
   destroy() {

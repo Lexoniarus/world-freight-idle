@@ -1,4 +1,112 @@
-# 42. Primary Map Interface – Die Weltkarte als Haupt-UI
+# Frontend v2 – Map-First-Logistik-Tycoon
+
+Stand: 25.09.2026. Dieser implementierte Stand hat Vorrang vor der unten
+archivierten langfristigen Designvision. Keine neuen Depots, Satelliten,
+Fahrzeugmodelle, Assets oder Spielregeln gehören zu diesem Ausbau.
+
+> Map first, management second. Die reale Welt bleibt das zentrale Spielbrett.
+
+## Gestaltung und Flächen
+
+Graphit-/Marineflächen und helle Schrift schützen den operativen Kartenraum.
+Barlow strukturiert Überschriften, Inter Bedienung und Zahlen; beide lokal.
+Zentrale CSS-Tokens unterscheiden Surface, Raised, Overlay, Texte, Accent,
+Selection, Success, Warning, Danger, Information und Kartenrollen. Bernstein
+kennzeichnet Hauptaktionen. Kartenobjekte verwenden eigene kontrastreiche
+Farben, Konturen, Größen, Count-Badges und einen violetten Auswahlhalo.
+Status ist zusätzlich beschriftet. OSM bleibt unverändert die reale Basiskarte.
+
+Das kompakte HUD zeigt Kapital, Reputation, Flottenzahl und aktuelle Stadt.
+Navigation: Weltkarte, Aufträge, Flotte, Fahrzeugshop, Transporte, Unternehmen,
+Rangliste. Der Shop ist ein Flotten-Unterbereich. Rechts öffnet ein `context`-
+Drawer (420 px); `management` erweitert bis min(760 px, 60 vw). Unternehmen
+startet erweitert. Der Benutzer kann die Breite umschalten. Navigation
+verwendet dieselbe MapLibre-Instanz und erhält die Kamera.
+
+Mobil gibt es kompakte, halbe und volle Sheets. Der Griff ist per Klick,
+Tastatur oder Ziehen bedienbar. Volle Sheets sperren die Karte mit `inert`
+und Pointer-Schutz. Escape schließt Overlays, Rückkehrfokus bleibt erhalten.
+Die zusätzliche Navigation liegt unter „Mehr“. Reduced Motion unterdrückt
+Übergangsanimationen und verringert Kartenaktualisierungen.
+
+## City Context und Disposition
+
+`CityContextController` verwendet ausschließlich `city_uid`, nie Stadtnamen.
+Explizite URL-/Benutzerauswahl einschließlich „Alle Städte“ bleibt beim Polling
+erhalten. Eine bekannte Stadt ohne idle Fahrzeug ist weiterhin auswählbar,
+besitzt dadurch aber keinen aktiven Markt. Automatische Defaults sind nach UID
+deterministisch. Links verwenden `?city=...&vehicle=...`; Browser-Zurück stellt
+beides wieder her. Legacy-`hub` wird aus Fahrzeug-, Contract-, dann Transport-
+Snapshots oder einem authentifizierten Exact-Lookup aufgelöst. `city` gewinnt.
+Nicht auflösbare Links erklären den Fehler und zeigen alle Städte.
+
+Bewusste Stadtwechsel und „Aktuelle Stadt“ rahmen bekannte relevante Positionen.
+Polling verschiebt die Kamera nicht. Pan/Zoom erzeugt keine Marktrequests.
+Marktlisten und ausgewählte Details besitzen getrennte Zustände und Request-
+Invalidierung. Marktbestand ist vor dem ersten Read unbekannt; relevante
+Flottenänderungen markieren ihn veraltet. Reads erfolgen bei Nutzung des
+Markts/Auftragslayers, Refresh und Disposition. Eligibility stammt ausschließlich
+aus `eligible_vehicle_ids`; Fahrzeugwechsel verwirft die fahrzeuggebundene Quote.
+
+Der Markt filtert Stadt, Fahrzeug, Distanzband, Transportklasse, Ziel und Ware.
+NHM-Namen bleiben vollständig zugänglich; Klassen erhalten deutsche Labels.
+Cargo, konkrete Facility/Adresse und Wirtschaft sind getrennt. Warenwert ist
+kein Transporterlös. Exakte Straßenstrecke und Ergebnis erscheinen erst nach
+Quote. Visuelle Fahrzeugrows ergänzen eine tastaturbedienbare Auswahlliste.
+
+Die Flotte gruppiert nach Stadt und stationierten, ausgehenden oder ankommenden
+Fahrzeugen. Lokale Fahrten zählen innerhalb der Stadtgruppe einmal. Modell,
+Status und Name sind filterbar. Front ist dominant bei idle Fahrzeugen und im
+Shop, Side bei aktiven Transporten. Details kombinieren Front/Side. Vorhandene
+Map-/Front-/Side-Dateien, Fallbacks, Spielerfarben und stabile Bildknoten bleiben.
+
+## Layer und Kartenlesbarkeit
+
+`layers.js` definiert Darstellung, `layer-presets.js` Ansichtsdefaults,
+`LayerStateController` Nutzervorgaben. Welt betont Flotte/Standorte/Routen,
+Aufträge idle Fahrzeuge/Aufträge/Preview, Flotte eigene Fahrzeuge/Routen,
+Transporte laufende Fahrten, Unternehmen einen ruhigen Kartenmodus und
+Rangliste den Mehrspielerverkehr. Shop verwendet Flotte.
+
+Versionierte lokale Overrides gehören zu **`user.id` aus `/auth/me`** und dem
+jeweiligen Preset, niemals zum Username. Accountwechsel lädt andere Vorgaben.
+„Ansicht zurücksetzen“ löscht nur dieses Preset. Temporäre Auswahl/Preview
+besitzt eigene Quellen und ändert weder Overrides noch ausgeblendete Layer.
+
+Zentrale Zoom-Tiers: unter 7 Aggregate, 7 bis unter 12 kompakte Marker,
+ab 12 Top-Down-Modellassets. `grouping.js` gruppiert in ca. 48 Bildschirm-Pixeln,
+getrennt nach eigenen/fremden Fahrzeugen. Koordinaten bleiben real und World
+Wrapping zählt Fahrzeuge nicht doppelt. Ausgewählte eigene Fahrzeuge bleiben
+separat. Berechnung maximal viermal pro Sekunde (Reduced Motion: einmal),
+unabhängig von Bewegungsframes; versteckte Karten pausieren Updates.
+Gruppenklick zoomt bis 17, danach öffnet eine tastaturbedienbare Fahrzeugliste.
+Auch ohne Gruppierung bleiben identische Treffer als Liste erreichbar.
+„Objekte gruppieren“ ist eine lokale Account-Präferenz.
+
+Aufträge aggregieren unter Zoom 7 nach Stadt, darüber nach Origin-Facility.
+Ausgewählte Opportunities und Transportendpunkte besitzen separate Halos;
+ausgewählte Routen bleiben unabhängig vom normalen Routenlayer sichtbar.
+Facilities stammen aus vorhandenem relevantem Kontext, ohne globalen Download.
+
+## Unternehmen
+
+Die private Managementansicht zeigt aktuellen Unternehmensstatus sowie
+belegte Finanzen, Transporte, Kilometer und Tonnen. 7/30/90/all und die Scopes
+Unternehmen, historische Origin-Stadt, Fahrzeug-ID, Transportklasse und
+Distanzband verwenden serverseitige Analytics. Kein historischer Model-Scope.
+SVG-Zeitreihen besitzen beschriftete, unterschiedlich gestrichelte Linien,
+Finanzen eine gemeinsame Euro-Skala. Leistung kennzeichnet relative Skalen.
+Breakdowns besitzen Ergebnisbalken und Tabellen; jede Zeitreihe hat eine
+Tabellenalternative. Lade-/Leer-/Fehlerzustände und Retry sind enthalten.
+
+Importierter Fortschritt ist getrennt von belegter Historie. Laufende Fahrten
+sind nur erwartete Ergebnisse. Historische Tageszuordnung ist `arrives_at` in
+UTC, nicht der Zeitpunkt des späteren Logins. Details: [API](API.md),
+[Architektur](ARCHITECTURE.md), [Tests](TESTING.md).
+
+---
+
+# Historische Designvision vor Frontend v2
 
 > **Verbindliche Entscheidung 18.09.2026: UI First.** Zuerst wird der
 > spielbare Frontend-Kern auf dem vorhandenen Backend umgesetzt.
@@ -18,7 +126,7 @@
 
 ### Technische Konsolidierung der UI-Basis
 
-Die Gestaltung bleibt unverändert. Views besitzen keine API-Abhängigkeiten;
+Die frühere gestalterische Bindung ist mit Frontend v2 aufgehoben. Views besitzen keine API-Abhängigkeiten;
 Navigation und Panels erhalten die vorhandene Karteninstanz. Provider,
 Overlay-Daten, Layerdarstellung, Kamera und Fahrzeuganimation sind getrennt.
 Timer und Listener werden beim Beenden freigegeben, veraltete Antworten

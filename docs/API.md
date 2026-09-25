@@ -234,3 +234,62 @@ Quote/Accept übersetzen ungültige Fahrzeugauswahl weiterhin mit HTTP 400.
 Ein nicht verfügbarer Fahrzeugkatalog liefert HTTP 503 mit stabiler Meldung,
 ohne interne Pfade offenzulegen. Ein Fehler ausschließlich beim Refill nach
 Dispatch-Commit bleibt eine protokollierte Marktlücke, keine fehlgeschlagene Fahrt.
+
+
+## Authentifizierte API-Ergänzungen – Frontend v2
+
+Alle drei Endpunkte sind private, sessiongebundene Spiel-APIs. Ohne Session:
+HTTP 401. Keine frei wählbare User-ID. Sie sind keine öffentlichen Datenfeeds.
+`/auth/me` liefert bereits stabile `id` und `username`; lokale Layer-Overrides
+verwenden ausschließlich `id` zur Accounttrennung.
+
+### GET /api/v1/company/analytics
+
+| Parameter | Werte / Standard |
+| --- | --- |
+| days | 7, 30, 90, all; Standard 30 |
+| scope | company (Standard), city, vehicle, transport_class, distance_band |
+| scope_id | für jeden Scope außer company erforderlich; bei company verboten |
+
+Ungültige Kombinationen: 422. Gültiger Scope ohne eigene Daten: leere Historie,
+keine Information über fremde Bestände. Antwort: server_time, period (days,
+from, to, timezone=UTC), scope, unternehmensweiter status, totals,
+period_totals, daily, breakdowns, ongoing und coverage. Kennzahlen:
+completed_transports, revenue_eur, operating_cost_eur, profit_eur, distance_km,
+tons sowie profit_per_transport, revenue_per_km und tons_per_transport.
+Nenner null ergibt null. Laufende erwartete Ergebnisse zählen nicht historisch.
+
+Tageszuordnung: gespeichertes arrives_at abgeschlossener Transporte in UTC.
+7/30/90 umfasst den aktuellen UTC-Tag bis server_time und 6/29/89 Vorgängertage.
+all beginnt beim ersten belegten Transport dieses Scopes. Fehlende Tage werden
+mit null Mengen aufgefüllt; ohne Historie bleibt daily leer. status und ongoing
+bleiben unternehmensweit. coverage trennt importierten Fortschritt von belegten
+Fahrten sowie nicht nachträglich klassifizierte V1-Transporte. Breakdowns gelten
+für den gewählten Scope und Zeitraum. Historische Modellstatistik fehlt bewusst.
+
+Analytics verwendet direkte skalare SQLite-JSON-Projektion:
+
+| Wert | JSON-Pfad |
+| --- | --- |
+| Tonnen | `$.data.contract.tons` |
+| Strecke | `$.data.route.distance_km` |
+| Origin-Stadt | `$.data.origin.city.city_uid` |
+| Transportklasse | `$.data.contract.market_context.transport_class` |
+| Distanzband | `$.data.contract.market_context.distance_band` |
+| Marktmodell | `$.data.contract.market_model` |
+
+Beschädigte Hüllen/Pflichtwerte ergeben einen Persistenzfehler ohne interne
+Daten (503). Vor dem read-only Aggregat darf bestehendes idempotentes Settlement
+fällige Transporte verbuchen; keine neue Analytics-Mutation.
+
+### GET /api/v1/map/facilities/{identifier}
+
+Exakte Facility-UID oder ausdrücklich gepflegter Legacy-Alias. Antwort ist eine
+bestehende Standortprojektion einschließlich city_uid. Unbekannt: 404.
+
+### GET /api/v1/map/cities/{city_uid}
+
+Exakte Stadt-UUID, keine Namensauflösung. Antwort: city_uid, city, country.
+Unbekannt: 404. Die Auflösung macht eine Stadt nicht zum aktiven Markt.
+Beide Lookups nutzen die bestehende World-/Map-Schicht und senden nur das
+angefragte Objekt; kein globaler Facility-Download zur Link-Auflösung.

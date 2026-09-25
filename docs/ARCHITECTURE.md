@@ -175,3 +175,36 @@ Interpolation für Karte und Panels, keine zweite serverseitige Spielplanung.
 Die Offline-Energieübernahme kennt das alte relationale Schema ausschließlich
 im Repository `energy_upgrade.py`. CLI und Composition Root orchestrieren
 Backup, Validierung und neue Ausgabe. Die Runtime unterstützt nur Schema 1.1.0.
+
+
+## Frontend v2 und Analytics Read Model
+
+Native ES-Module bleiben: Views rendern sichere DOM-Fragmente, Requests laufen
+über GameApiClient in `frontend/api.js`. CityContextController besitzt die
+Session-Stadtauswahl; LayerStateController besitzt Presets/Overrides nach
+stabiler `user.id`; AnalyticsController besitzt bedarfsgeladene Statistikreads.
+Separate LatestRequest-Instanzen schützen Marktbestand und Auftragsdetail.
+WorldMap rendert; VehicleGroups, Opportunities, Layerdefinitionen und Kamera
+bleiben eigene Module. Karteninstanz und Bildknoten überleben Navigation/Polls.
+
+Analytics API → AnalyticsService → AnalyticsReader (Port) → SqliteAnalyticsReader.
+Die Session liefert die Nutzer-ID, niemals ein Queryparameter. Vor dem Read
+führt die API ausschließlich bestehende Arrival-Reconciliation samt getrenntem
+Refill aus. Der Reader öffnet einen konsistenten SQLite-Lesestand. Kein Schema-
+Update und keine Analytics-Schreibverantwortung im GameService.
+
+Nutzer, Status und oberer Zeitstempel werden relational gefiltert; all-time
+Totals benötigen die belegte Vergangenheit. Relationale Geldwerte und IDs
+werden direkt gelesen, historische Dimensionen per `json_extract` aus der
+Hülle `kind=transport, version=2`. Nur Skalare gelangen nach Python, niemals
+vollständige JSON-Dokumente oder Routengeometrien. Der Reader verwendet weder
+load_transport_record/load_transport noch RouteSnapshot-/ActiveTransport-
+Hydration. Pflichtwerte werden validiert, optionaler V1-Kontext bleibt zulässig.
+Ein verbietender Hydrationstest und SQLite-query_only-Test sichern die Grenze.
+Arrival-Reconciliation darf ihre bestehenden Domainobjekte weiterhin laden.
+
+Scope-Gesamtsummen, Zeitraumserie und Breakdowns entstehen aus demselben
+Lesestand. UTC-Tage richten sich nach gespeichertem arrives_at; abgeschlossene
+V1-Fahrten zählen, bleiben aber ohne V2-Klassifizierung. Kein Join auf heutige
+Fahrzeugmodelle als angebliche Historie. Private Kennzahlen gelangen weder in
+Traffic noch Leaderboard.

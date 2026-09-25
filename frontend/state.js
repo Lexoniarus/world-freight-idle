@@ -6,6 +6,10 @@ export class GameState extends EventTarget {
     this.request = request;
     /** @type {import('./types.js').GameSnapshot | null} */
     this.data = null;
+    this.contractDetail = null;
+    this.contractDetailId = "";
+    this.marketLoaded = false;
+    this.marketStale = true;
     this.offset = 0;
     /** @type {Promise<import('./types.js').GameSnapshot> | null} */
     this.pending = null;
@@ -58,11 +62,18 @@ export class GameState extends EventTarget {
     this.offset = dashboard.server_time - (started + Date.now() / 1000) / 2;
     if (this.disposed) return this.data;
     const previous = this.data;
+    const fleetKey = (vehicles) =>
+      vehicles.map((v) => [v.id, v.status, v.hub_id, v.location?.city_uid]);
+    if (
+      !previous ||
+      JSON.stringify(fleetKey(previous.vehicles)) !== JSON.stringify(fleetKey(fleet.vehicles))
+    )
+      this.marketStale = true;
     this.data = {
       ...dashboard,
       vehicles: fleet.vehicles,
       contracts: this.data?.contracts ?? [],
-      available_contracts: this.data?.contracts?.length ?? 0,
+      available_contracts: this.marketLoaded ? this.data?.contracts?.length : undefined,
       traffic: traffic.transports,
       trafficAvailable: traffic.available,
     };
@@ -80,6 +91,8 @@ export class GameState extends EventTarget {
   replaceContracts(contracts) {
     if (this.disposed || !this.data) return;
     const previous = this.data;
+    this.marketLoaded = true;
+    this.marketStale = false;
     this.data = {
       ...this.data,
       contracts,
@@ -90,6 +103,16 @@ export class GameState extends EventTarget {
         detail: { previous, current: this.data },
       }),
     );
+  }
+
+  /** Publish one selected offer without destroying the full market list. */
+  replaceContractDetail(contract, id = contract?.id ?? "") {
+    this.contractDetail = contract;
+    this.contractDetailId = id;
+    if (this.data)
+      this.dispatchEvent(
+        new CustomEvent("change", { detail: { previous: this.data, current: this.data } }),
+      );
   }
 
   /** Abort reads and prevent late snapshots from publishing. */

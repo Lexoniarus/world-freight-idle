@@ -61,6 +61,7 @@ test("desktop: registration, map, quote, dispatch, purchase, arrival, logout and
   // The speed-limited accelerated trip arrives after approximately 18 seconds.
   await expect(page.locator("#reputation")).toHaveText("1", { timeout: 35000 });
   const cash = await page.locator("#cash").textContent();
+  if (!(await page.getByRole("button", {name: "Abmelden"}).isVisible())) await page.getByRole("button", {name: "Mehr", exact: true}).click();
   await page.getByRole("button", { name: "Abmelden" }).click();
   await expect(page).toHaveURL(/login/);
   await page.getByLabel("Spielername", { exact: true }).fill(username);
@@ -93,6 +94,7 @@ test("mobile: sheets, navigation, keyboard and attribution stay usable", async (
   const catalogue = (await (await page.request.get("/api/v1/fleet/catalogue")).json()).models;
   expect(catalogue.length).toBeGreaterThanOrEqual(8);
   await expect(page.locator(".shop-card")).toHaveCount(catalogue.length);
+  if (!(await page.getByRole("link", { name: "Rangliste", exact: true }).isVisible())) await page.getByRole("button", { name: "Mehr", exact: true }).click();
   await page.getByRole("link", { name: "Rangliste", exact: true }).click();
   await expect(page.locator(".rankings li.you")).toBeVisible();
 });
@@ -171,7 +173,7 @@ test("missing fleet coordinates and tile outages preserve the playable lists", a
   await register(page);
   await expect(page.locator("#map-notice")).toBeVisible();
   await page.getByRole("link", { name: "Flotte", exact: true }).click();
-  await expect(page.getByText("IVECO S-Way 500 XC13", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "IVECO S-Way 500 XC13", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Aufträge", exact: true }).click();
   await expect(page.locator(".job-card").first()).toBeVisible();
 });
@@ -204,6 +206,7 @@ test("DB vehicle selection changes costs, dispatches and settles after relogin",
   await expect(page.getByRole("button", { name: "Transport starten" })).toBeEnabled();
   await page.getByRole("button", { name: "Transport starten" }).click();
   await expect(page).toHaveURL(/transports\//);
+  if (!(await page.getByRole("button", {name: "Abmelden"}).isVisible())) await page.getByRole("button", {name: "Mehr", exact: true}).click();
   await page.getByRole("button", { name: "Abmelden" }).click();
   await expect(page).toHaveURL(/login/);
   // Test server accelerates a four-hour route to 16 seconds.
@@ -221,6 +224,7 @@ test("mobile DB shop preserves focus, shows failure and supports purchase", asyn
   await page.setViewportSize({ width: 390, height: 844 });
   await register(page);
   await page.route("**/api/v1/fleet/catalogue", route => route.fulfill({ status: 503, json: { detail: "Fahrzeugkatalog derzeit nicht verfügbar." } }));
+  await page.getByRole("button", { name: "Mehr", exact: true }).click();
   await page.getByRole("link", { name: "Fahrzeugshop", exact: true }).first().click();
   await expect(page.locator("#panel-content")).toContainText("Erneut");
   await page.unroute("**/api/v1/fleet/catalogue");
@@ -292,7 +296,7 @@ test("starter game assets survive polling and changed transport panel content", 
   const contract = contracts.find(item => item.eligible_vehicle_ids.includes(vehicles[0].id));
   const response = await page.request.post("/api/v1/contracts/" + contract.id + "/accept", { headers, data: { vehicle_id: vehicles[0].id } });
   expect(response.ok()).toBeTruthy();
-  await expect(page.locator(".vehicle-card .badge")).toHaveText("Unterwegs", { timeout: 15000 });
+  await expect(page.locator(".vehicle-card .badge").first()).toHaveText("Unterwegs", { timeout: 15000 });
   await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
 });
 
@@ -329,7 +333,8 @@ test("facility identities, lazy market scope and catalogue outages preserve the 
 
   await page.goto("/contracts?hub=berlin_westhafen");
   const originalCanvas = await page.locator(".maplibregl-canvas").elementHandle();
-  await expect(page.locator(".job-card").first()).toContainText("Berlin Westhafen");
+  await expect(page).toHaveURL(new RegExp("city=" + berlin.city_uid));
+  await expect(page.locator(".job-card")).toHaveCount(localJobs.length);
   await page.locator(".job-card").first().click();
   await expect(page.locator(".footnote").first()).toContainText("Geschäftsbeziehung, Menge und Auftrag simuliert");
   expect(await originalCanvas.evaluate(element => element.isConnected)).toBeTruthy();
@@ -369,6 +374,7 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     expect(await image.evaluate(node => node.isConnected)).toBeTruthy();
     const fleet = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
     expect(fleet[0].energy_level).toBeGreaterThan(10);
+    if (!(await page.getByRole("button", {name: "Abmelden"}).isVisible())) await page.getByRole("button", {name: "Mehr", exact: true}).click();
     await page.getByRole("button", {name:"Abmelden"}).click();
     // Stay logged out past the authoritative arrival; no background settlement job.
     await page.waitForTimeout(31000);
@@ -413,4 +419,107 @@ test("city offers survive pan and zoom without market requests", async ({ page }
   await page.clock.runFor(100);
   await page.screenshot({path: screenshot("market-v2-mobile"), animations: "disabled"});
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+});
+
+for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["tablet", {width:1024,height:768}], ["mobile", {width:390,height:844}]]) {
+  test(`frontend v2 ${device}: city, dispatch, analytics scopes and accessible charts`, async ({page}) => {
+    test.setTimeout(90000);
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({reducedMotion:"reduce"});
+    await register(page);
+    const canvas = await page.locator(".maplibregl-canvas").elementHandle();
+    await page.getByRole("link", {name:"Flotte",exact:true}).click();
+    const city = await page.getByLabel("Stadt", {exact:true}).inputValue();
+    await page.getByLabel("Stadt", {exact:true}).selectOption("");
+    await expect(page).toHaveURL(/city=$/);
+    await page.goBack();
+    await expect(page.getByLabel("Stadt", {exact:true})).toHaveValue(city);
+    await page.getByRole("link", {name:"Passende Aufträge"}).first().click();
+    await expect(page).toHaveURL(/vehicle=truck_01/);
+    await page.locator(".job-card").first().click();
+    await expect(page.getByRole("radio").first()).toBeVisible();
+    await page.getByRole("button", {name:"Route & Ertrag berechnen"}).click();
+    await expect(page.getByRole("button", {name:"Transport starten"})).toBeEnabled();
+    await page.getByRole("button", {name:"Transport starten"}).click();
+    await expect(page.locator(".asset-side")).toBeVisible();
+    await expect(page.locator("#reputation")).toHaveText("1", {timeout:35000});
+    await page.getByRole("link", {name:"Unternehmen",exact:true}).click();
+    await expect(page.locator("#panel")).toHaveAttribute("data-mode","management");
+    await expect(page.getByRole("heading", {name:"Finanzen",exact:true})).toBeVisible();
+    expect(await canvas.evaluate(node=>node.isConnected)).toBe(true);
+    for (const days of ["7","30","90","all"]) {
+      const response = page.waitForResponse(response=>response.url().includes("company/analytics?") && new URL(response.url()).searchParams.get("days")===days);
+      await page.getByLabel("Zeitraum",{exact:true}).selectOption(days);
+      const data = await (await response).json();
+      expect(data.totals.completed_transports).toBe(1);
+      expect(data.period.timezone).toBe("UTC");
+    }
+    for (const scope of ["city","vehicle","transport_class","distance_band","company"]) {
+      const response = page.waitForResponse(response=>response.url().includes("company/analytics?") && new URL(response.url()).searchParams.get("scope")===scope);
+      await page.getByLabel("Auswertung",{exact:true}).selectOption(scope);
+      const data = await (await response).json();
+      expect(data.scope.type).toBe(scope);
+      expect(data.totals.completed_transports).toBe(1);
+    }
+    const grid = page.locator(".company-kpis").first();
+    await expect(grid.locator(".metric")).toHaveCount(8);
+    const gridBox = await grid.boundingBox();
+    const lastMetric = await grid.locator(".metric").last().boundingBox();
+    expect(gridBox.y + gridBox.height).toBeGreaterThanOrEqual(lastMetric.y + lastMetric.height);
+    await page.locator("#panel-content").evaluate(node=>{node.scrollTop=0;});
+    await page.screenshot({path:screenshot(`frontend-v2-company-${device}`),animations:"disabled"});
+    await page.getByText("Werte als Tabelle",{exact:true}).first().click();
+    await expect(page.locator(".chart table").first()).toBeVisible();
+    expect(await page.locator(".chart table").first().locator("tbody tr").count()).toBeGreaterThan(0);
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(viewport.width);
+    if (device === "desktop") {
+      await page.route("**/api/v1/company/analytics?*", route=>route.fulfill({status:503,json:{detail:"Statistik vorübergehend nicht verfügbar"}}));
+      await page.getByRole("button",{name:"Aktualisieren",exact:true}).click();
+      await expect(page.getByRole("alert")).toContainText("Statistik nicht erreichbar");
+      await page.unroute("**/api/v1/company/analytics?*");
+      await page.getByRole("button",{name:"Erneut versuchen",exact:true}).click();
+      await expect(page.getByRole("heading",{name:"Finanzen",exact:true})).toBeVisible();
+    }
+    if(device==="mobile") {
+      await page.getByRole("button", {name:/Panelhöhe ändern/}).click();
+      await expect(page.locator("#world-map")).toHaveAttribute("inert", "");
+      await page.keyboard.press("Escape");
+      await expect(page.locator("#world-map")).not.toHaveAttribute("inert", "");
+    }
+  });
+}
+
+test("frontend v2: account layer overrides, group keyboard access and persistent camera", async ({page}) => {
+  await page.emulateMedia({reducedMotion:"reduce"});
+  await register(page);
+  const user = await (await page.request.get("/api/v1/auth/me")).json();
+  const purchase = await page.request.post("/api/v1/fleet/purchase", {headers:{"X-Freight-Request":"1"},data:{model_id:"iveco_sway_500"}});
+  expect(purchase.ok()).toBeTruthy();
+  await page.reload();
+  await expect(page.locator(".vehicle-group.own")).toHaveText("2");
+  for(let step=0;step<3;step++) {
+    await page.locator(".vehicle-group.own").focus();
+    await page.keyboard.press("Enter");
+  }
+  await page.locator(".vehicle-group.own").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".map-object-list button")).toHaveCount(2);
+  await page.locator(".map-object-list button").first().click();
+  await expect(page).toHaveURL(/fleet\//);
+  await page.locator(".layer-menu summary").click();
+  await page.getByLabel("Eigene Fahrzeuge",{exact:true}).uncheck();
+  await page.getByLabel("Objekte gruppieren",{exact:true}).uncheck();
+  await page.screenshot({path:screenshot("frontend-v2-selected-hidden-layer"),animations:"disabled"});
+  const preferences = await page.evaluate(()=>Object.fromEntries(Object.entries(localStorage).filter(([key])=>key.startsWith("world-freight:layers:"))));
+  expect(Object.keys(preferences)).toEqual(["world-freight:layers:v2:"+user.id]);
+  await page.getByRole("link", {name:"Unternehmen",exact:true}).click();
+  await expect(page.getByLabel("Eigene Fahrzeuge",{exact:true})).toBeChecked();
+  await page.getByRole("link", {name:"Flotte",exact:true}).click();
+  await expect(page.getByLabel("Eigene Fahrzeuge",{exact:true})).not.toBeChecked();
+  await page.getByRole("button", {name:"Ansicht zurücksetzen"}).click();
+  await expect(page.getByLabel("Eigene Fahrzeuge",{exact:true})).toBeChecked();
+  await expect(page.getByLabel("Objekte gruppieren",{exact:true})).not.toBeChecked();
+  await page.reload();
+  await page.locator(".layer-menu summary").click();
+  await expect(page.getByLabel("Objekte gruppieren",{exact:true})).not.toBeChecked();
 });

@@ -18,6 +18,7 @@ from app.domain.read_ports import LeaderboardReader, TrafficReader
 from app.domain.world_scopes import WorldScope
 from app.providers.routing import ValhallaTruckRouter
 from app.repositories.accounts import AccountRepository
+from app.repositories.analytics import SqliteAnalyticsReader
 from app.repositories.cached_world_catalogue import CachedWorldCatalogue
 from app.repositories.energy_upgrade import VehicleEnergyUpgradeRepository
 from app.repositories.game_database import SqliteGameDatabase
@@ -29,6 +30,7 @@ from app.repositories.relational_traffic import SqliteTrafficReader
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.repositories.world_geography import WorldGeographyRepository
+from app.services.analytics import AnalyticsService
 from app.services.contract_factory import ContractFactory
 from app.services.fleet import FleetService
 from app.services.game import GameService
@@ -52,6 +54,13 @@ class GameRuntime:
     market_scope: MarketScopeResolver
     time_scale: float
     clock: Callable[[], float] = time.time
+
+
+def build_analytics_service(
+    runtime: GameRuntime, user_id: str
+) -> AnalyticsService:
+    """Bind private analytics to an authenticated account."""
+    return AnalyticsService(SqliteAnalyticsReader(runtime.database, user_id))
 
 
 def build_game_runtime(

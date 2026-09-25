@@ -53,7 +53,7 @@ function renderTransportDetails(trip, now, vehicle) {
     <div class="dispatch-banner">
       <span class="badge green" data-phase-trip="${trip.id}"
         >${progressDisplay(trip, now).phase}</span
-      >${renderVehicleImage(vehicle || { name: "Lkw", capacity_tons: 24 })}
+      >${renderVehicleImage(vehicle || { name: "Lkw", capacity_tons: 24 }, "side")}
     </div>
     <h2>${trip.origin.city} ${icon("arrow", 22)} ${trip.destination.city}</h2>
     <p>${trip.contract.cargo} · ${number(trip.contract.tons, 2)} t</p>

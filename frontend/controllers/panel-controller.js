@@ -25,21 +25,28 @@ export class PanelController {
    * @param {URL} url
    */
   selectRoute(url) {
+    const sameView = this.view.url.pathname === url.pathname;
+    const scroll = this.content.scrollTop;
     this.returnFocus = document.activeElement?.closest(".nav-item") || this.returnFocus;
     this.pending.cancel();
     Object.assign(this.view, {
       url,
       quote: null,
-      selectedVehicle: "",
+      selectedVehicle: url.searchParams.get("vehicle") ?? "",
       rankings: null,
       panelError: false,
     });
-    this.contentFocus = null;
+    if (!sameView) this.contentFocus = null;
+    if (!sameView || !this.panel.dataset.mode)
+      this.panel.dataset.mode = url.pathname === "/company" ? "management" : "context";
+    document
+      .querySelector("#game")
+      ?.classList.toggle("management-open", this.panel.dataset.mode === "management");
     this.render();
-    this.content.scrollTop = 0;
+    this.content.scrollTop = sameView ? scroll : 0;
     if (url.pathname === "/")
       (this.returnFocus?.isConnected ? this.returnFocus : requiredElement(".nav-item")).focus();
-    else this.title.focus({ preventScroll: true });
+    else if (!sameView) this.title.focus({ preventScroll: true });
     void this.loadDetails();
   }
   /** Fetch selection-specific data; an obsolete response cannot publish. */
@@ -75,6 +82,9 @@ export class PanelController {
     this.reconcileVehicleSelection();
     const open = this.view.url.pathname !== "/";
     this.panel.hidden = !open;
+    const mapElement = document.querySelector("#world-map");
+    if (mapElement instanceof HTMLElement)
+      mapElement.inert = open && this.panel.dataset.sheet === "full" && window.innerWidth <= 759;
     requiredElement("#game").classList.toggle("panel-open", open);
     this.title.textContent = panelTitle(this.view.url);
     document.title = this.title.textContent + " · World Freight";
@@ -91,9 +101,12 @@ export class PanelController {
     const contractId = this.view.url.pathname.startsWith("/contracts/")
       ? this.view.url.pathname.split("/")[2]
       : null;
-    const contract = this.view.state?.contracts.find((item) => item.id === contractId);
+    const contract =
+      this.view.detailId === contractId
+        ? this.view.detailContract
+        : this.view.state?.contracts.find((item) => item.id === contractId);
     const vehicles = contract ? eligibleVehicles(this.view.state.vehicles, contract) : [];
-    if (!vehicles.some((vehicle) => vehicle.id === this.view.selectedVehicle)) {
+    if (contractId && !vehicles.some((vehicle) => vehicle.id === this.view.selectedVehicle)) {
       this.view.selectedVehicle = vehicles[0]?.id || "";
       this.view.quote = null;
     }
@@ -123,10 +136,20 @@ export class PanelController {
         action: focused.dataset.action,
         item: focused.dataset.id,
         href: focused.getAttribute("href"),
+        filter: focused.getAttribute("data-filter"),
       };
     // A player who moved to navigation or the map must keep that focus.
     if (focused !== document.body && !this.content.contains(focused)) this.contentFocus = null;
     const fragment = renderPanel({ ...this.view, now: this.now() });
+    for (const detail of fragment.querySelectorAll("details[data-disclosure]")) {
+      const current = [...this.content.querySelectorAll("details[data-disclosure]")].find(
+        (item) => item.getAttribute("data-disclosure") === detail.getAttribute("data-disclosure"),
+      );
+      if (current)
+        /** @type {HTMLDetailsElement} */ (detail).open = /** @type {HTMLDetailsElement} */ (
+          current
+        ).open;
+    }
     const media = matchVehicleImages(this.content, fragment);
     const same =
       this.content.childNodes.length === fragment.childNodes.length &&
@@ -144,12 +167,14 @@ export class PanelController {
     if (!focus) return;
     const replacement = [...this.content.querySelectorAll("button, a, select, input")].find(
       (element) =>
-        focus.id
-          ? element.id === focus.id
-          : focus.action
-            ? element.getAttribute("data-action") === focus.action &&
-              element.getAttribute("data-id") === focus.item
-            : focus.href && element.getAttribute("href") === focus.href,
+        focus.filter
+          ? element.getAttribute("data-filter") === focus.filter
+          : focus.id
+            ? element.id === focus.id
+            : focus.action
+              ? element.getAttribute("data-action") === focus.action &&
+                element.getAttribute("data-id") === focus.item
+              : focus.href && element.getAttribute("href") === focus.href,
     );
     if (replacement instanceof HTMLElement && !replacement.hasAttribute("disabled"))
       replacement.focus({ preventScroll: true });

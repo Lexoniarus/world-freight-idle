@@ -55,19 +55,6 @@ export function actionButton(action, label, disabled = false, className = "prima
   </button>`;
 }
 
-/** Render the active public-hub filter.
- * @param {URL} url
- * @returns {DocumentFragment | null}
- */
-export function hubFilter(url) {
-  return url.searchParams.has("hub")
-    ? html`<div class="filter-chip">
-        ${icon("pin", 16)} Standortfilter
-        ${routeLink("/" + url.pathname.split("/")[1], "Alle anzeigen")}
-      </div>`
-    : null;
-}
-
 /** Render fleet navigation shared by fleet and shop views.
  * @param {boolean} [shop]
  * @returns {DocumentFragment | null}

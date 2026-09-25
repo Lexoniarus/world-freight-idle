@@ -1,3 +1,4 @@
+import { layerLabels } from "../layer-presets.js";
 import { html } from "../ui/dom.js";
 import { icon } from "../ui/illustrations.js";
 import { routeLink } from "../ui/components.js";
@@ -23,8 +24,12 @@ export function renderShell(user) {
         </div>
         <div class="hud-stat"><span>REPUTATION</span><strong id="reputation">—</strong></div>
         <div class="hud-stat fleet-stat">
-          <span>FLOTTE</span><strong id="fleet-count">—</strong>
+          <span>FLOTTE</span><strong id="fleet-count">—</strong
+          ><small id="fleet-state">Status wird geladen</small>
         </div>
+        <button class="city-context-button" data-action="focus-city">
+          <span>AKTUELLE STADT</span><strong id="current-city-label">Alle Städte</strong>
+        </button>
         <div class="player-chip">
           <span class="avatar">${user.username.slice(0, 2).toUpperCase()}</span
           ><span><strong>${user.username}</strong><small id="connection">Verbinde …</small></span>
@@ -34,14 +39,19 @@ export function renderShell(user) {
         ${navItems.map(([path, name, label]) =>
           routeLink(path, [icon(name), html`<span>${label}</span>`], "nav-item"),
         )}
+        <button
+          class="nav-item more-navigation"
+          data-action="more-navigation"
+          aria-expanded="false"
+        >
+          ${icon("layers")}<span>Mehr</span>
+        </button>
         <button class="nav-item logout" data-action="logout" aria-label="Abmelden">
           ${icon("logout")}<span>Abmelden</span>
         </button>
       </nav>
       <div id="welcome" class="mission-card" hidden>
-        <div class="eyebrow">DEIN NÄCHSTER SCHRITT</div>
-        <h2>Die Straße gehört dir.</h2>
-        <p>Dein erster Lkw steht bereit.<br />Zeit für deinen ersten Auftrag.</p>
+        <h2>Dein erster Auftrag wartet.</h2>
         ${routeLink("/contracts", ["Auftrag auswählen ", icon("arrow", 17)], "button primary")}
       </div>
       <section id="panel" class="context-panel" aria-labelledby="panel-title" hidden>
@@ -53,6 +63,13 @@ export function renderShell(user) {
             <span class="eyebrow">DISPOSITION / WORLD FREIGHT</span>
             <h1 id="panel-title" tabindex="-1"></h1>
           </div>
+          <button
+            class="icon-button"
+            data-action="panel-mode"
+            aria-label="Managementansicht umschalten"
+          >
+            ${icon("layers")}
+          </button>
           <button class="icon-button" data-action="close" aria-label="Panel schließen">
             ${icon("close")}
           </button>
@@ -60,6 +77,9 @@ export function renderShell(user) {
         <div id="panel-content" class="panel-content"></div>
       </section>
       <div class="map-tools">
+        <button class="map-tool" data-action="focus-city" aria-label="Aktuelle Stadt">
+          ${icon("pin")}<span>Aktuelle Stadt</span>
+        </button>
         <button class="map-tool" data-action="focus-fleet" aria-label="Flotte zentrieren">
           ${icon("target")}<span>Meine Flotte</span>
         </button>
@@ -67,17 +87,12 @@ export function renderShell(user) {
           <summary aria-label="Kartenlayer">${icon("layers")}<span>Layer</span></summary>
           <div>
             <h3>Kartenlayer</h3>
-            ${[
-              ["hubs", "Frachtstandorte"],
-              ["orders", "Aufträge"],
-              ["vehicles", "Meine Fahrzeuge"],
-              ["multiplayer", "Multiplayer-Verkehr"],
-              ["routes", "Transportrouten"],
-            ].map(
+            ${Object.entries(layerLabels).map(
               ([name, label]) =>
                 html`<label><input type="checkbox" data-layer="${name}" checked />${label}</label>`,
             )}
-            <p>Firmen & eigene Depots folgen.</p>
+            <label><input type="checkbox" id="object-grouping" checked />Objekte gruppieren</label>
+            <button class="button quiet" data-action="reset-layers">Ansicht zurücksetzen</button>
           </div>
         </details>
       </div>

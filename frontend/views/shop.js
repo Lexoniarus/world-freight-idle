@@ -35,7 +35,7 @@ function renderOffer(model, deliveryHub, cash, reputation, busy) {
     <div class="card-kicker">
       <span class="badge">Neufahrzeug</span><span>Straßentransport</span>
     </div>
-    ${renderVehicleImage(model)}
+    ${renderVehicleImage(model, "shop")}
     <h3>${model.name}</h3>
     <p>${number(model.capacity_tons, 2)} t Nutzlast · Lieferung nach ${deliveryHub}</p>
     <p>

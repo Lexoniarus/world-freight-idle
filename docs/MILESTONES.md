@@ -159,3 +159,17 @@ Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
 den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
 Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
 [Qualitätsbericht](../QUALITY_REPORT.md).
+
+
+## Frontend v2 – lokaler Implementierungsstand
+
+Ausgangspunkt ist der geprüfte Market-v2-main `614ec730fc09a43151f9751d644190ace17a14be`.
+Branch: `feature/frontend-v2`. Phasen: City Context/Design/Panel Modes und Layer-
+State; Kartenlesbarkeit und Gruppen; Flotten-/Assetrollen; Stadtmarkt und
+Fahrzeugwahl; Analytics Read Model/API; Unternehmen/Charts; Responsive/A11y;
+Regression und Dokumentation. Veröffentlichung und Merge sind nicht umfasst.
+
+Market v2, World 4.2.0 und Catalogue 2.2.0 bleiben fachlich erhalten. Der einzige
+Markt-Cleanup entfernt die irreführende initiale TradeOptions-Gesamtzahl im Log.
+Transaktionsoptimierung, neue Modelle/Assets und zusätzliche Gameplay-Systeme
+bleiben außerhalb dieses Meilensteins. Prüfstatus: [Qualitätsbericht](../QUALITY_REPORT.md).

@@ -1,9 +1,13 @@
+import { cityFilter, selectFilter, searchFilter } from "../ui/filters.js";
+import { renderVehicleImage } from "../ui/vehicle-image.js";
+import { renderEnergyMeter } from "../ui/vehicle-energy.js";
+import { distanceLabels, classLabels, humanLabel } from "../labels.js";
 import { html } from "../ui/dom.js";
 import { icon } from "../ui/illustrations.js";
-import { actionButton, emptyState, hubFilter, metric, routeLink } from "../ui/components.js";
+import { actionButton, emptyState, metric, routeLink } from "../ui/components.js";
 import { money, number } from "../format.js";
 import { formatDuration } from "../time.js";
-import { eligibleVehicles, matchesFacility } from "../geometry.js";
+import { eligibleVehicles } from "../geometry.js";
 
 /** Render the contract market or the selected contract.
  * @param {import('../types.js').PanelView} view
@@ -12,45 +16,94 @@ import { eligibleVehicles, matchesFacility } from "../geometry.js";
 export function renderContracts(view) {
   const id = view.url.pathname.split("/")[2];
   if (id) {
-    const contract = view.state.contracts.find((item) => item.id === id);
+    const contract =
+      view.detailId === id
+        ? view.detailContract
+        : view.state.contracts.find((item) => item.id === id);
     return contract
       ? renderContractDetails(contract, view)
-      : html`${emptyState("Auftrag nicht mehr verfügbar", "Er wurde angenommen oder ist abgelaufen.")}${routeLink("/contracts", "Zur Auftragsbörse", "button primary")}`;
+      : view.detailId !== id
+        ? html`<p role="status">Auftrag wird geladen …</p>`
+        : html`${emptyState("Auftrag nicht mehr verfügbar", "Er wurde angenommen oder ist abgelaufen.")}${routeLink("/contracts", "Zur Auftragsbörse", "button primary")}`;
   }
-  const hubId = view.url.searchParams.get("hub");
-  const contracts = view.state.contracts
-    .filter((item) => matchesFacility(item.origin, hubId))
-    .sort(
-      (a, b) =>
-        Number(eligibleVehicles(view.state.vehicles, b).length > 0) -
-        Number(eligibleVehicles(view.state.vehicles, a).length > 0),
-    );
-  return html`<p class="panel-intro">
-      Reale Frachtstandorte, simulierte Aufträge.<br />Finde einen Auftrag für deine Flotte.
-    </p>
+  const params = view.url.searchParams;
+  const contracts = filterContracts(view.state.contracts, view.cityUid, params);
+  const city = view.cities?.find((item) => item.city_uid === view.cityUid);
+  const active = !view.cityUid || view.activeCities?.includes(view.cityUid);
+  return html`<div class="market-heading">
+      <span class="eyebrow">STADTMARKT</span>
+      <h2>${city?.city ?? "Alle Marktstädte"}</h2>
+      <p>
+        ${view.marketLoaded === false ? "Auftragszahl noch unbekannt" : contracts.length + (view.marketStale ? " Aufträge · wird aktualisiert" : " verfügbare Aufträge")}
+      </p>
+    </div>
+    ${active ? null : html`<p class="inline-notice">In dieser Stadt steht kein eigenes einsatzbereites Fahrzeug. Hier ist aktuell kein Stadtmarkt aktiv.</p>`}
+    <div class="distance-summary">
+      ${Object.entries(distanceLabels).map(([code, label]) => html`<span>${label}<strong>${view.marketLoaded === false || view.marketStale ? "–" : contracts.filter((item) => item.distance_band === code).length}</strong></span>`)}
+    </div>
+    <div class="filter-grid">
+      ${cityFilter(view)}
+      ${selectFilter(
+        "vehicle",
+        "Geeignetes Fahrzeug",
+        view.state.vehicles
+          .filter((item) => item.status === "idle")
+          .map((item) => [item.id, item.name]),
+        params.get("vehicle"),
+      )}
+    </div>
+    <details
+      class="filter-details"
+      data-disclosure="market-filters"
+      open="${["band", "class", "destination", "cargo"].some((key) => params.get(key))}"
+    >
+      <summary>Weitere Filter · Entfernung, Fracht und Ziel</summary>
+      <div class="filter-grid">
+        ${selectFilter("band", "Entfernungsklasse", Object.entries(distanceLabels), params.get("band"))}
+        ${selectFilter("class", "Transportklasse", Object.entries(classLabels), params.get("class"))}
+        ${searchFilter("destination", "Zielstadt", view.url)}${searchFilter("cargo", "Ware", view.url)}
+      </div>
+    </details>
     <div class="section-toolbar">
-      <span>${contracts.length} verfügbare Aufträge</span
+      <span>Reale Standorte · simulierte Aufträge</span
       >${actionButton("refresh-market", [icon("refresh", 17), " Erneuern"], view.busy, "quiet")}
     </div>
-    ${hubFilter(view.url)}
     <div class="card-list">
-      ${contracts.length ? contracts.map((contract) => renderContractCard(contract, view.state.vehicles)) : emptyState("Keine Aufträge", "Erneuere die Börse oder wähle einen anderen Standort.")}
+      ${view.marketLoaded === false ? html`<p role="status">Stadtmarkt wird geladen …</p>` : contracts.length ? contracts.map((contract) => renderContractCard(contract, view.state.vehicles, params)) : emptyState("Keine passenden Aufträge", "Passe die Filter an oder erneuere den Stadtmarkt.")}
     </div>`;
 }
 
+/** Filter only authoritative offer facts, never rebuild vehicle eligibility. */
+export function filterContracts(contracts, cityUid, params) {
+  const hasText = (value, key) =>
+    String(value)
+      .toLocaleLowerCase("de")
+      .includes((params.get(key) ?? "").toLocaleLowerCase("de"));
+  return contracts.filter(
+    (item) =>
+      (!cityUid || item.origin.city_uid === cityUid) &&
+      (!params.get("vehicle") || item.eligible_vehicle_ids?.includes(params.get("vehicle"))) &&
+      (!params.get("band") || item.distance_band === params.get("band")) &&
+      (!params.get("class") || item.transport_class === params.get("class")) &&
+      hasText(item.destination.city, "destination") &&
+      hasText(item.cargo, "cargo"),
+  );
+}
+
 /** Render one market listing and vehicle eligibility. */
-function renderContractCard(contract, vehicles) {
+function renderContractCard(contract, vehicles, params = new URLSearchParams()) {
   const ready = eligibleVehicles(vehicles, contract).length > 0;
   return routeLink(
-    "/contracts/" + contract.id,
+    "/contracts/" + contract.id + "?" + params,
     html`<div class="card-kicker">
-        <span>${contract.cargo} · ${number(contract.tons, 2)} t</span
+        <span title="${contract.cargo}">${contract.cargo}</span
+        ><strong class="cargo-amount">${number(contract.tons, 2)} t</strong
         ><span class="badge ${ready ? "green" : ""}"
-          >${ready ? "Lkw bereit" : "Kein passender Lkw"}</span
+          >${ready ? "Lkw bereit · " + eligibleVehicles(vehicles, contract).length + " Fahrzeuge verfügbar" : "Kein passender Lkw"}</span
         >
       </div>
       <h3>${contract.origin.city} ${icon("arrow", 17)} ${contract.destination.city}</h3>
-      ${contract.distance_band ? html`<p class="footnote">${contract.distance_band} · ca. ${number(contract.estimated_distance_km)} km Luftlinie</p>` : null}
+      ${contract.distance_band ? html`<p class="footnote">${humanLabel(contract.distance_band)} · ca. ${number(contract.estimated_distance_km)} km Luftlinie</p>` : null}
       <div class="card-bottom"><span>${contract.origin.label}</span>${icon("arrow", 19)}</div>`,
     "job-card",
   );
@@ -75,8 +128,11 @@ export function renderContractDetails(contract, view) {
       Reale Standorte und Referenzunternehmen · Geschäftsbeziehung, Menge und Auftrag simuliert
     </p>
     ${contract.cargo_basis === "derived" ? html`<p class="footnote">NHM-Warenprofil für diesen Standort simuliert; konkrete Geschäftsbeziehung und Auftrag bleiben Spielsimulation.</p>` : null}
-    ${contract.market_model === "nhm_v2" ? html`<p class="footnote">${contract.transport_class} · Warenwert ${money(contract.cargo_value_eur)} (Spielwert, kein Transporterlös)</p>` : null}
-    ${renderQuote(view)}${renderDispatchForm(contract, view)}`;
+    ${contract.market_model === "nhm_v2" ? html`<p class="footnote">${humanLabel(contract.transport_class)} · Warenwert ${money(contract.cargo_value_eur)} (Spielwert, kein Transporterlös)</p>` : null}
+    <div class="metrics">
+      ${metric("NHM-Code", contract.cargo_code ?? "—")}${metric("Geschätzte Luftlinie", number(contract.estimated_distance_km) + " km")}
+    </div>
+    ${renderDispatchForm(contract, view)}${renderQuote(view)}`;
 }
 
 /** Render a real public facility and its reference company. */
@@ -108,6 +164,30 @@ function renderDispatchForm(contract, view) {
   const vehicles = eligibleVehicles(view.state.vehicles, contract);
   const insufficientFunds = view.quote && view.state.player.cash < view.quote.operating_cost_eur;
   return html`<div class="dispatch-form">
+    <h3>Fahrzeug disponieren</h3>
+    <div class="vehicle-choices" role="radiogroup" aria-label="Geeignete Fahrzeuge">
+      ${vehicles.map(
+        (vehicle) =>
+          html`<button
+            type="button"
+            class="vehicle-choice"
+            role="radio"
+            aria-checked="${view.selectedVehicle === vehicle.id}"
+            data-action="choose-vehicle"
+            data-id="${vehicle.id}"
+            disabled="${view.mutating}"
+          >
+            ${renderVehicleImage(vehicle, "front")}<span
+              ><strong>${vehicle.name}</strong
+              ><span
+                >${number(vehicle.capacity_tons, 2)} t Nutzlast · ${number(contract.tons, 2)} t
+                Auftrag</span
+              ><span>${vehicle.hub?.city} · ${vehicle.hub?.label}</span
+              >${renderEnergyMeter(vehicle, null, view.now)}</span
+            >
+          </button>`,
+      )}
+    </div>
     <label for="vehicle-choice">Fahrzeug disponieren</label> ${
       vehicles.length
         ? html`<select id="vehicle-choice" disabled="${view.mutating}">

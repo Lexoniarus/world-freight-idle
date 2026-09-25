@@ -22,9 +22,16 @@ export class GameSync {
   publish({ previous, current }) {
     if (this.disposed) return;
     this.panel.view.state = current;
+    this.panel.view.detailContract = this.state.contractDetail;
+    this.panel.view.detailId = this.state.contractDetailId;
+    this.panel.view.marketLoaded = this.state.marketLoaded;
+    this.panel.view.marketStale = this.state.marketStale;
     requiredElement("#cash").textContent = money(current.player.cash);
     requiredElement("#reputation").textContent = String(current.player.reputation);
     requiredElement("#fleet-count").textContent = String(current.vehicles.length);
+    const fleetStatus = document.querySelector("#fleet-state");
+    if (fleetStatus)
+      fleetStatus.textContent = `${current.vehicles.filter((v) => v.status === "idle").length} bereit · ${current.vehicles.filter((v) => v.status === "enroute").length} unterwegs`;
     requiredElement("#connection").textContent = "Spielstand synchronisiert";
     requiredElement("#sync-notice").hidden = true;
     if (previous && current.player.completed > previous.player.completed)
@@ -38,7 +45,10 @@ export class GameSync {
       );
     if (current.trafficAvailable === true && previous?.trafficAvailable === false)
       this.notify("Gemeinsamer Live-Verkehr ist wieder verbunden.", "map");
-    this.map?.update(current);
+    this.map?.update({ ...current, marketLoaded: this.state.marketLoaded });
+    const path = this.panel.view.url.pathname;
+    if (path.startsWith("/contracts/"))
+      this.map?.select(path.split("/")[2], this.state.contractDetail);
     if (!this.panel.view.busy) this.panel.render();
   }
 

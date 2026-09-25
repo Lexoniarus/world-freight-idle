@@ -4,6 +4,7 @@ import { renderContracts } from "./views/contracts.js";
 import { renderFleet } from "./views/fleet.js";
 import { renderShop } from "./views/shop.js";
 import { renderTransports } from "./views/transports.js";
+import { renderCompany } from "./views/company.js";
 import { renderRanking } from "./views/ranking.js";
 
 /** Select a presentation module for a product URL.
@@ -18,6 +19,7 @@ export function renderPanel(view) {
     return html`<div class="loading"><span class="spinner"></span> Spielstand wird geladen …</div>`;
   const section = view.url.pathname.split("/")[1];
   const views = {
+    company: renderCompany,
     contracts: renderContracts,
     fleet: view.url.searchParams.get("tab") === "shop" ? renderShop : renderFleet,
     transports: renderTransports,

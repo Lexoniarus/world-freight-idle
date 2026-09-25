@@ -263,6 +263,8 @@ def test_product_pages_are_distinct_routes(tmp_path: Path):
             "/contracts": "contracts.html",
             "/contracts/c1": "contract-detail.html",
             "/fleet": "fleet.html",
+            "/fleet/truck_01": "fleet-detail.html",
+            "/company": "company.html",
             "/transports": "transports.html",
             "/transports/t1": "transport-detail.html",
         }

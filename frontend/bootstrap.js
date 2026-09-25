@@ -1,3 +1,7 @@
+import { CityContextController } from "./controllers/city-context-controller.js";
+import { LayerStateController } from "./controllers/layer-state-controller.js";
+import { AnalyticsController } from "./controllers/analytics-controller.js";
+import { ManagementInput } from "./controllers/management-input.js";
 import { GameApiClient, ApiError } from "./api.js";
 import { GameState } from "./state.js";
 import { BrowserRouter } from "./navigation.js";
@@ -61,7 +65,7 @@ export async function bootstrap() {
 
 /** Wire stateful game components around a single persistent shell.
  * @param {GameApiClient} api
- * @param {{username: string}} user
+ * @param {{id: string, username: string}} user
  * @param {(path: string) => void} redirect
  * @returns {GameApplication}
  */
@@ -93,12 +97,26 @@ function createGameApplication(api, user, redirect) {
   const router = new BrowserRouter(window, (url) => application.navigateTo(url));
   const navigate = (path) => router.navigate(path);
   const map = createWorldMap(navigate, notify, () => state.now(), api.requestAsset);
+  const city = new CityContextController({ state, view, request: api.request, notify, map });
+  const layers = new LayerStateController({ userId: user.id, map });
+  const analytics = new AnalyticsController({ request: api.request, panel });
   const sync = new GameSync({ state, panel, map, notify });
   const contractMarket = new ContractMarketController({
     state,
     request: api.request,
     notify,
     currentUrl: () => view.url,
+  });
+  contractMarket.ordersVisible = () => layers.effective().orders;
+  const managementInput = new ManagementInput({
+    page: document,
+    view,
+    navigate,
+    city,
+    layers,
+    analytics,
+    panel,
+    market: contractMarket,
   });
   const actions = new GameActions({
     request: api.request,
@@ -135,6 +153,10 @@ function createGameApplication(api, user, redirect) {
     input,
     sheet,
     notifications,
+    city,
+    layers,
+    analytics,
+    managementInput,
     redirect,
   });
   return application;

@@ -20,6 +20,7 @@ import { formatDuration } from "./time.js";
 
 const hub = {
   id: "berlin",
+  city_uid: "city-berlin",
   label: "Westhafen",
   city: "Berlin",
   address: "Westhafen 1",
@@ -445,13 +446,14 @@ test("map projections derive relevant locations, discard invalid hubs and remove
     [179, 0],
     [181, 0],
   ]);
-  assert.equal(data.fleetCoordinates(50).length, 2);
+  assert.equal(data.fleetCoordinates(50).length, 1); // Active vehicle has one real position.
   assert.equal(previewFeatures(quote).features.length, 1);
   assert.equal(previewFeatures(null).features.length, 0);
   data.update({ ...data.state, transports: [], traffic: [] });
   assert.equal(data.routes.size, 0);
   assert.equal(data.trafficRoutes.size, 0);
-  assert.equal(data.vehicleFeatures(200).features.length, 0);
+  assert.equal(data.vehicleFeatures(200).features.length, 1);
+  assert.equal(data.vehicleFeatures(200).features[0].properties.idle, true);
 });
 
 test("mobile sheet handles keyboard clicks and a drag without double advancement", () => {
@@ -545,8 +547,10 @@ test("application disposal releases every component exactly once", () => {
 test("all feature views render active, empty, unavailable and shop states", () => {
   const view = createView("/contracts");
   assert.equal(renderPanel(view).querySelectorAll(".job-card").length, 1);
-  view.url = new URL("http://test/contracts?hub=missing");
-  assert.match(renderPanel(view).textContent, /Keine Aufträge/);
+  view.url = new URL("http://test/contracts?city=missing");
+  view.cityUid = "missing";
+  assert.match(renderPanel(view).textContent, /Keine passenden Aufträge/);
+  view.cityUid = "";
   view.url = new URL("http://test/fleet");
   assert.equal(renderPanel(view).querySelectorAll(".vehicle-card").length, 1);
   view.url = new URL("http://test/fleet?tab=shop");
@@ -711,7 +715,8 @@ test("facility snapshots preserve map locations during catalogue outage and lega
   const container = document.createElement("div");
   container.append(renderPanel(view));
   assert.equal(container.querySelectorAll(".job-card").length, 1);
-  view.url = new URL("http://test/contracts?hub=unknown");
+  view.url = new URL("http://test/contracts?city=unknown");
+  view.cityUid = "unknown";
   container.replaceChildren(renderPanel(view));
   assert.equal(container.querySelectorAll(".job-card").length, 0);
 });
@@ -790,12 +795,16 @@ test("shipment quantities preserve hundredths for light vehicle selection", () =
   assert.doesNotMatch(container.textContent, /1,2 Tonnen/);
 });
 
-test("city market requests have no viewport parameters and removed details clear offers", async () => {
+test("city market requests have no viewport parameters and removed details preserve the list", async () => {
   const { ContractMarketController } = await import("./controllers/contract-market-controller.js");
   const paths = [];
   let url = new URL("http://test/contracts?bbox=0,0,1,1&zoom=12");
   const state = {
     data: { contracts: [contract] },
+    detail: contract,
+    replaceContractDetail(value) {
+      this.detail = value;
+    },
     replaceContracts(contracts) {
       this.data.contracts = contracts;
     },
@@ -816,6 +825,7 @@ test("city market requests have no viewport parameters and removed details clear
   assert.deepEqual(paths, ["/contracts", "/contracts/refresh"]);
   url = new URL("http://test/contracts/removed");
   await controller.refresh();
-  assert.deepEqual(state.data.contracts, []);
+  assert.deepEqual(state.data.contracts, [contract]);
+  assert.equal(state.detail, null);
   controller.destroy();
 });

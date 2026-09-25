@@ -137,3 +137,31 @@ Routing erneut; ein veränderter Energiecheckpoint verhindert Teilabrechnungen.
 Das manuelle Review jeder geänderten Core-Funktion steht im Qualitätsbericht
 und im zugehörigen [SRP-Review](MARKET_V2_REVIEW.md). Die dortigen Befunde sind
 zusätzlich zum expliziten Function-Test-Manifest erforderlich.
+
+
+## Frontend v2 – Regressionen
+
+`tests/test_analytics.py` prüft Authentifizierung, Nutzertrennung, alle Zeiträume
+und Scopes, UTC-Grenzen, leere/negative/V1-Historie, beschädigte Hüllen, laufende
+Fahrten, Importlücken und idempotente Offline-Ankunft. Monkeypatch-Gegenproben
+verbieten load_transport_record, load_transport, RouteSnapshot und ActiveTransport
+im Reader. Große Koordinatenarrays bleiben in SQLite; Python erhält nur Skalare.
+Zusätzlich erzwingt PRAGMA query_only die rein lesende Aggregation.
+Neue Core-Callables stehen im Function-Test-Manifest.
+
+`frontend/frontend-v2.test.mjs` ergänzt UUID-Stadtauswahl, bekannte inaktive
+Städte, Deep Links/Legacy-Auflösung, verspätete Antworten, accountgebundene
+Layer-Presets/Overrides, Gruppierung ohne Koordinatenänderungen, serverseitige
+Eligibility, getrennte Listen-/Detailzustände, Assetrollen und Charttabellen.
+Vorhandene Quote-/Dispatch-/Cleanup-/Bildstabilitätsprüfungen bleiben erhalten.
+
+Playwright prüft den kompletten Dispositionsablauf sowie mobile Sheets,
+Browserhistorie, Kamera-/Canvas-Kontinuität und keine Marktrequests bei Pan/Zoom.
+Frontend-v2-Prüfungen ergänzen Unternehmens-Scopes, Auswahl-/Layerkontinuität,
+Gruppenbedienung und Desktop 1440×900, Tablet 1024×768, Mobile 390×844.
+Automatisierte OSM-Tiles werden durch lokale Testbilder ersetzt; reale
+Kartenlesbarkeit wird separat manuell geprüft, ohne automatisierte Tile-Downloads.
+
+Pflichtgates bleiben `python scripts/quality.py` und `npm run test:e2e`.
+100 % App-Statement-Coverage, Asset-Hashes und Manifest sind unverändert bindend.
+Tatsächlich ausgeführte Ergebnisse stehen im [Qualitätsbericht](../QUALITY_REPORT.md).

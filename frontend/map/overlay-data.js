@@ -10,7 +10,7 @@ export class OverlayData {
     this.routes = new Map();
     this.trafficRoutes = new Map();
     this.availableVehicleIcons = new Set();
-    this.state = { vehicles: [], contracts: [], transports: [], traffic: [] };
+    this.state = { vehicles: [], contracts: [], transports: [], traffic: [], marketLoaded: false };
   }
 
   setVehicleIcons(imageIds) {
@@ -74,11 +74,14 @@ export class OverlayData {
       id: hub.id,
       label: hub.label,
       city: hub.city,
+      cityUid: hub.city_uid,
       idleTruckCount: this.state.vehicles.filter(
         (vehicle) => vehicle.status === "idle" && vehicle.hub_id === hub.id,
       ).length,
-      orderCount: this.state.contracts.filter((contract) => contract.origin_hub_id === hub.id)
-        .length,
+      orderCount:
+        this.state.marketLoaded === false
+          ? null
+          : this.state.contracts.filter((contract) => contract.origin_hub_id === hub.id).length,
     };
   }
 
@@ -100,7 +103,34 @@ export class OverlayData {
   }
 
   vehicleFeatures(now) {
-    return this.trafficFeatures(now, true);
+    const moving = this.trafficFeatures(now, true);
+    const idle = this.state.vehicles
+      .filter(
+        (vehicle) =>
+          vehicle.status === "idle" &&
+          !this.state.transports.some((trip) => trip.vehicle_id === vehicle.id),
+      )
+      .flatMap((vehicle) => {
+        const location = vehicle.location_snapshot ?? vehicle.hub;
+        if (!Number.isFinite(location?.lon) || !Number.isFinite(location?.lat)) return [];
+        const iconImage = vehicleIconId(vehicle.model_id);
+        return [
+          pointFeature([location.lon, location.lat], {
+            id: vehicle.id,
+            key: "own:" + vehicle.id,
+            vehicleId: vehicle.id,
+            modelId: vehicle.model_id,
+            modelName: vehicle.name,
+            iconImage,
+            hasIcon: this.availableVehicleIcons.has(iconImage),
+            bearing: 0,
+            playerColor: "#f6bc43",
+            isOwn: true,
+            idle: true,
+          }),
+        ];
+      });
+    return collection([...moving.features, ...idle]);
   }
 
   multiplayerVehicleFeatures(now) {
@@ -119,6 +149,7 @@ export class OverlayData {
         return [
           pointFeature(pose.coordinate, {
             id: trip.id,
+            key: (trip.is_own ? "own:" : trip.username + ":") + trip.vehicle_id,
             vehicleId: trip.vehicle_id,
             modelId: trip.model_id,
             modelName: trip.model_name,
@@ -136,14 +167,12 @@ export class OverlayData {
 
   fleetCoordinates(now) {
     return [
-      ...this.hubs
-        .filter((hub) =>
-          this.state.vehicles.some(
-            (vehicle) => vehicle.status === "idle" && vehicle.hub_id === hub.id,
-          ),
-        )
-        .map((hub) => [hub.lon, hub.lat]),
-      ...this.vehicleFeatures(now).features.map((feature) => feature.geometry.coordinates),
+      ...new Map(
+        this.vehicleFeatures(now).features.map((feature) => [
+          feature.geometry.coordinates.join(","),
+          feature.geometry.coordinates,
+        ]),
+      ).values(),
     ];
   }
 }

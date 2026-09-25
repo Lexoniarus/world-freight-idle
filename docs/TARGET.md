@@ -217,3 +217,19 @@ Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
 den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
 Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
 [Qualitätsbericht](../QUALITY_REPORT.md).
+
+
+## Frontend v2 – Abnahmeziel
+
+Stadt und Fahrzeug führen zur verständlichen Transportentscheidung auf der
+fortbestehenden realen Karte. Context-/Management-Drawer, drei mobile Sheet-
+Höhen, City-UID-Links, private Unternehmensstatistik und lokal pro user.id
+überschreibbare Layer-Presets bilden die neue Oberfläche. Ausgewählte Objekte
+bleiben sichtbar, Gruppen bleiben bis zur Fahrzeugliste bedienbar. Bestehende
+Market-v2-Regeln werden nicht im Frontend nachgebaut.
+
+Abnahme umfasst Desktop/Tablet/Mobile, Reduced Motion, Tastatur/Fokus,
+Kamerakontinuität, stabile Bilder, Nah-/Stadt-/Regional-/Europa-Zoom sowie
+vollständige Quality-/E2E-Gates. Historische Finanz-/Leistungswerte stammen nur
+aus belegten Transporten; kein historischer Model-Scope. Die tatsächlichen
+Prüfnachweise und Grenzen stehen im [Qualitätsbericht](../QUALITY_REPORT.md).

@@ -82,7 +82,7 @@ export class VehicleIconRegistry {
   }
 
   /** Ensure every visible model/color combination exists in the sprite atlas.
-   * @param {import("../types.js").PublicTransport[]} transports
+   * @param {{model_id?: string, player_color: string}[]} transports
    * @returns {Promise<Set<string>>}
    */
   async ensure(transports) {

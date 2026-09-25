@@ -162,3 +162,17 @@ Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
 den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
 Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
 [Qualitätsbericht](../QUALITY_REPORT.md).
+
+
+## Frontend v2 – operatives Unternehmen auf der Weltkarte
+
+Die Stadt ist der zentrale Dispositionskontext, ihre UUID die Identität.
+Eine bewusst gewählte Stadt bleibt auch ohne aktiven Markt erhalten; Markt v2
+wird weiterhin ausschließlich durch eigene idle Fahrzeuge aktiviert. Flotte
+unterscheidet stationierte, abfahrende und ankommende Fahrzeuge, der Stadtmarkt
+verbindet Cargo, Facility, geeignetes Fahrzeug und fahrzeuggebundene Quote.
+Unternehmen ergänzt private belegte Finanz-/Leistungsstatistik. Importierte
+Fortschrittszähler und laufende erwartete Ergebnisse sind separat bezeichnet.
+Map-first, echte Routengeometrie, OSM, World 4.2.0 und Catalogue 2.2.0 bleiben.
+Keine Änderung an Marktregeln, Preisen, Refill-/Dispatch-Transaktionsgrenzen.
+Gestaltung und Bedienung: [UI DESIGN](UI%20DESIGN.md).

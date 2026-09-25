@@ -1,8 +1,9 @@
 """Query public catalogue locations without HTTP or geocoding knowledge."""
 
+from app.domain.geography import City
 from app.domain.ports import WorldCatalogue
 from app.domain.results import FacilityPage
-from app.domain.world import FacilityQuery
+from app.domain.world import FacilityLocationSnapshot, FacilityQuery
 from app.domain.world_scopes import WorldScope
 
 
@@ -25,3 +26,18 @@ class MapLocationService:
                 not facility.is_routable() for facility in snapshot.facilities
             ),
         )
+
+    def exact_facility(self, identifier: str) -> FacilityLocationSnapshot:
+        """Resolve one UID or maintained alias without listing the world."""
+        return (
+            WorldScope(self.world.read())
+            .facility(identifier)
+            .location_snapshot()
+        )
+
+    def exact_city(self, city_uid: str) -> City:
+        """Require a stable city UID, never a potentially ambiguous name."""
+        city = WorldScope(self.world.read()).city(city_uid).city
+        if city.city_uid != city_uid:
+            raise KeyError("Stadt-ID nicht gefunden")
+        return city

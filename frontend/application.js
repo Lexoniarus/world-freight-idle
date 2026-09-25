@@ -14,7 +14,16 @@ export class GameApplication {
     sheet,
     notifications,
     redirect,
+    city,
+    layers,
+    analytics,
+    managementInput,
   }) {
+    this.city = city;
+    this.layers = layers;
+    this.analytics = analytics;
+    this.managementInput = managementInput;
+    this.navigationVersion = 0;
     this.api = api;
     this.state = state;
     this.panel = panel;
@@ -34,31 +43,43 @@ export class GameApplication {
   async start() {
     for (const component of [
       this.router,
+      this.city,
+      this.managementInput,
       this.sync,
       this.contractMarket,
       this.input,
       this.sheet,
       this.scheduler,
     ])
-      component.start();
+      component?.start();
     this.panel.render();
     await Promise.all([this.panel.loadDetails(), this.sync.refreshGameState()]);
     if (this.disposed) return;
-    await this.contractMarket.refresh();
-    if (!this.disposed) this.selectTransport();
+    await this.navigateTo(this.panel.view.url);
   }
 
-  navigateTo(url) {
+  async navigateTo(url) {
+    const version = ++this.navigationVersion;
     this.actions.cancelQuote();
+    await this.city?.selectRoute(url);
+    if (version !== this.navigationVersion || this.disposed) return;
+    this.layers?.select(url);
     this.panel.selectRoute(url);
     this.map?.setPreview(null);
     this.selectTransport();
     void this.contractMarket.refresh();
+    void this.analytics?.refresh();
   }
 
   selectTransport() {
     const path = this.panel.view.url.pathname;
-    this.map?.select(path.startsWith("/transports/") ? path.split("/").at(-1) : "");
+    this.map?.select(
+      path.startsWith("/transports/") ||
+        path.startsWith("/fleet/") ||
+        path.startsWith("/contracts/")
+        ? path.split("/").at(-1)
+        : "",
+    );
   }
 
   async logout() {
@@ -72,6 +93,10 @@ export class GameApplication {
     this.disposed = true;
     for (const component of [
       this.scheduler,
+      this.city,
+      this.layers,
+      this.analytics,
+      this.managementInput,
       this.input,
       this.sheet,
       this.router,

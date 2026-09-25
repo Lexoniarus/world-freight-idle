@@ -9,8 +9,10 @@ export class ContractMarketController {
     this.notify = notify;
     this.currentUrl = currentUrl;
     this.pending = new LatestRequest();
+    this.detailPending = new LatestRequest();
     this.started = false;
     this.disposed = false;
+    this.ordersVisible = () => false;
   }
 
   start() {
@@ -20,16 +22,13 @@ export class ContractMarketController {
   async refresh() {
     if (!this.started || this.disposed || !this.state.data) return;
     const path = this.currentUrl().pathname;
-    if (path === "/contracts") {
-      await this.loadList(false);
-      return;
-    }
-    if (path.startsWith("/contracts/")) {
-      await this.loadDetail(path.split("/")[2]);
-      return;
-    }
-    this.pending.cancel();
-    if (this.state.data.contracts.length) this.state.replaceContracts([]);
+    const detailId = path.startsWith("/contracts/") ? path.split("/")[2] : "";
+    const tasks = [];
+    if (path === "/contracts" || this.ordersVisible()) tasks.push(this.loadList(false));
+    else this.pending.cancel();
+    if (detailId) tasks.push(this.loadDetail(detailId));
+    else this.detailPending.cancel();
+    await Promise.all(tasks);
   }
 
   async forceRefresh() {
@@ -57,15 +56,15 @@ export class ContractMarketController {
   }
 
   async loadDetail(id) {
-    const request = this.pending.start();
+    const request = this.detailPending.start();
     try {
       const contract = await this.request("/contracts/" + encodeURIComponent(id), {
         signal: request.signal,
       });
-      if (request.isCurrent()) this.state.replaceContracts([contract]);
+      if (request.isCurrent()) this.state.replaceContractDetail(contract, id);
     } catch (error) {
       if (request.isCurrent() && error.name !== "AbortError") {
-        if (error.status === 404) this.state.replaceContracts([]);
+        if (error.status === 404) this.state.replaceContractDetail(null, id);
         this.notify(error.message);
       }
     }
@@ -74,5 +73,6 @@ export class ContractMarketController {
   destroy() {
     this.disposed = true;
     this.pending.cancel();
+    this.detailPending.cancel();
   }
 }
