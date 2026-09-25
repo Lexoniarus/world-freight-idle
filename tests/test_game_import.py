@@ -663,5 +663,13 @@ def legacy_transport_projection(trip):
     return {
         key: value
         for key, value in project_transport(trip).items()
-        if key not in {"journey", "progress"}
+        if key
+        not in {
+            "journey",
+            "progress",
+            "start",
+            "approach_distance_km",
+            "delivery_distance_km",
+            "route_legs",
+        }
     }

@@ -73,7 +73,9 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
         "coordinates",
         "distance_km",
         "segments",
+        "route_legs",
     }
+    assert rows[0].route_legs == ()
     assert set(asdict(rows[0].segments[0])) == {
         "phase",
         "starts_at",
