@@ -484,3 +484,17 @@ FUNCTION_TESTS.update(
         "app.api.v1.game_projection.project_fleet": "test_energy_quote_dispatch_pause_and_offline_settlement",
     }
 )
+
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.market_profiles.require_unit_weight": "test_market_profile_small_values_reject_invalid_weights",
+        "app.domain.market_profiles.vehicle_scale_for_segment": "test_market_profile_small_values_reject_invalid_weights",
+        "app.domain.market_profiles.TransportCapability.__post_init__": "test_market_profile_small_values_reject_invalid_weights",
+        "app.domain.market_profiles.DistanceLoadProfile.__post_init__": "test_market_profile_small_values_reject_invalid_weights",
+        "app.domain.market_profiles.VehicleScaleProfile.__post_init__": "test_market_profile_small_values_reject_invalid_weights",
+        "app.domain.market_profiles.NhmMarketProfile.__post_init__": "test_market_profiles_require_complete_immutable_values",
+        "app.repositories.market_profile_reader.read_market_profiles": "test_world_market_profile_corruption_is_rejected",
+        "app.repositories.vehicle_catalogue.read_transport_capabilities": "test_vehicle_market_profile_corruption_is_rejected",
+    }
+)

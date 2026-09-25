@@ -6,6 +6,10 @@ from dataclasses import dataclass
 from typing import Literal
 
 from app.domain.energy import EnergyProfile
+from app.domain.market_profiles import (
+    TransportCapability,
+    vehicle_scale_for_segment,
+)
 from app.domain.validation import require_finite
 
 VehicleStatus = Literal["idle", "enroute"]
@@ -38,11 +42,17 @@ class VehicleModel:
     unlock_reputation: int
     energy: EnergyProfile
     top_speed_kmh: float
+    segment: str
+    transport_capabilities: tuple[TransportCapability, ...]
     mode: str = "truck"
     image: VehicleImage | None = None
 
     def __post_init__(self) -> None:
         """Require a usable speed limit and typed energy specification."""
+        vehicle_scale_for_segment(self.segment)
+        classes = [p.transport_class for p in self.transport_capabilities]
+        if not classes or len(set(classes)) != len(classes):
+            raise ValueError("Missing or duplicate transport capabilities.")
         require_finite(self.top_speed_kmh, "Top speed", 0.000001)
         if not isinstance(self.energy, EnergyProfile):
             raise ValueError("Vehicle energy profile is missing.")

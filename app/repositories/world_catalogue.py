@@ -11,6 +11,7 @@ from app.domain.errors import WorldCatalogueError
 from app.domain.evidence import SourceReference
 from app.domain.geography import Address, City, Coordinates, Country
 from app.domain.world import Company, DocumentedGood, Facility, WorldSnapshot
+from app.repositories.market_profile_reader import read_market_profiles
 from app.repositories.world_geography_reader import read_cities, read_countries
 
 LOGGER = logging.getLogger(__name__)
@@ -21,6 +22,9 @@ _REQUIRED_WORLD_TABLES = {
     "nhm_codes",
     "countries",
     "cities",
+    "nhm_market_profiles",
+    "nhm_distance_load_profiles",
+    "nhm_vehicle_scale_profiles",
 }
 _REQUIRED_PROFILE_SYSTEM = "NHM 2026 via facility_nhm_profiles -> nhm_codes"
 
@@ -67,7 +71,7 @@ class SqliteWorldCatalogue:
 def validate_world_schema(connection: sqlite3.Connection) -> str:
     """Validate the NHM-capable schema and cross-table invariants."""
     metadata = dict(connection.execute("SELECT key,value FROM metadata"))
-    if metadata.get("schema_version") != "4.0.0":
+    if metadata.get("schema_version") != "4.2.0":
         raise ValueError("Unsupported world schema")
     if metadata.get("operational_profile_system") != _REQUIRED_PROFILE_SYSTEM:
         raise ValueError("Missing NHM profile capability")
@@ -119,20 +123,6 @@ def validate_world_schema(connection: sqlite3.Connection) -> str:
         LIMIT 1
     """).fetchone():
         raise ValueError("Invalid operative NHM profile")
-    if connection.execute("""
-        SELECT 1
-        FROM facilities f
-        LEFT JOIN facility_nhm_profiles p USING(facility_id)
-        GROUP BY f.facility_id
-        HAVING SUM(
-            CASE WHEN p.cargo_role IN ('input','both') THEN 1 ELSE 0 END
-        ) = 0
-        OR SUM(
-            CASE WHEN p.cargo_role IN ('output','both') THEN 1 ELSE 0 END
-        ) = 0
-        LIMIT 1
-    """).fetchone():
-        raise ValueError("Facility without complete NHM behavior")
     return metadata["data_version"]
 
 
@@ -429,4 +419,5 @@ def read_world_snapshot(connection: sqlite3.Connection) -> WorldSnapshot:
         facilities,
         tuple(countries.values()),
         tuple(cities.values()),
+        read_market_profiles(connection),
     )

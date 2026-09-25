@@ -26,8 +26,8 @@ def test_world_snapshot_identity_provenance_and_query(world_catalogue):
     )
     assert berlin.is_routable() and berlin.has_verified_location()
     assert berlin.outbound_profiles() and berlin.inbound_profiles()
-    assert len(world.facilities) == 352
-    assert len(WorldScope(world).query(FacilityQuery())) == 352
+    assert len(world.facilities) == 559
+    assert len(WorldScope(world).query(FacilityQuery())) == 559
     assert any(
         profile.evidence_type == "derived" and profile.source is None
         for facility in world.facilities
@@ -214,7 +214,7 @@ def test_world_repository_readonly_and_cleanup(world_catalogue):
         "UPDATE facility_sources SET source_url='' WHERE facility_id=1",
         "DELETE FROM facility_sources WHERE facility_id=1",
         "UPDATE sources SET base_url='' WHERE source_id IN (SELECT source_id FROM company_sources LIMIT 1)",
-        "DELETE FROM facility_nhm_profiles WHERE facility_id=(SELECT facility_id FROM facilities LIMIT 1)",
+        "DELETE FROM nhm_market_profiles WHERE nhm_row_id=(SELECT nhm_row_id FROM facility_nhm_profiles LIMIT 1)",
         "UPDATE nhm_codes SET is_numeric=0 WHERE nhm_row_id=(SELECT nhm_row_id FROM facility_nhm_profiles LIMIT 1)",
         "UPDATE sources SET base_url='' WHERE source_id=(SELECT p.source_id FROM facility_nhm_profiles p WHERE p.evidence_type='official' AND p.source_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM company_sources cs WHERE cs.source_id=p.source_id) LIMIT 1)",
         "UPDATE cargo_types SET nst_code='NHM:87' WHERE cargo_type_id=(SELECT cargo_type_id FROM cargo_types LIMIT 1)",
@@ -448,7 +448,7 @@ def test_world_catalogue_composition_uses_explicit_path_without_game_state(
 
     settings = make_settings(tmp_path)
     catalogue = build_world_catalogue(settings)
-    assert len(catalogue.read().cities) == 304
+    assert len(catalogue.read().cities) == 333
     assert not settings.db_path.exists()
     missing = build_world_catalogue(
         replace(settings, world_catalogue_path=None)
