@@ -105,3 +105,11 @@ Katalogfeld. Energiepreise sind Gameplaykonstanten; Käufe stammen aus dem
 gespeicherten Journey-Plan. NHM-Faktoren/Lastgrenzen kommen aus World.
 Die 20-%-Referenzmarge ist eine Tarifentscheidung, keine Gewinngarantie.
 Warenwert bleibt ohne Einfluss auf Vergütung. [Details](ECONOMY_V2.md).
+
+## Fahrzeug-Lackmasken
+
+`assets/paint-inventory.json` erfasst 42 explizite, separat gepflegte Masken
+für die 14 aktuellen Modelle und ihre drei Ansichten. Sie sind additive
+Produktionsassets; die 134 Original-/Referenz-SVGs im bisherigen Inventar
+bleiben bytegleich. Die Laufzeit verwendet keine Helligkeitsheuristik und
+keine Ganzbildtönung. Belegbilder und Vergleichsraster sind lokale Artefakte.

@@ -51,3 +51,8 @@ durch lokal erzeugte PNGs.
 
 Bei Kartenfehlern bleiben Spielaktionen verfügbar, während ein Hinweis
 erscheint. Nicht auflösbare Standorte erhalten keine Ersatzkoordinaten.
+
+Fahrzeuggruppen werden unabhängig vom Kartenprovider anhand überlappender
+Assetflächen gebildet. Dafür gelten dieselben Skalierungen und Bearings wie
+bei Einzelassets. Eine Kartenzoomstufe schaltet Gruppierung nicht ein oder
+aus. Kartenbewegung fordert weiterhin keinen neuen Stadtmarkt an.

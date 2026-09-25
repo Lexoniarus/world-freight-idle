@@ -249,3 +249,14 @@ Marktstart, aktive Stadtmarktauswahl, Account-Farben, Fahrzeuggruppen und
 lesbare Analyticslabels. Prüfnachweise und verbleibende Datenlücken stehen im
 [Qualitätsbericht](../QUALITY_REPORT.md), fachliche Verträge in
 [ECONOMY_V2.md](ECONOMY_V2.md). Veröffentlichung ist nicht Teil dieser Umsetzung.
+
+Kartenstabilisierung: gemeinsame Fahrzeugrenderpfade, ausschließlich
+überlappungsbasierte Statusgruppen, selektive Lackierung und einmaliger
+Navigationsfokus. Keine Änderung an Tarifen, Kosten oder Marktregeln.
+
+
+Ergänzung zum freigegebenen Navigationsmodell: Weltkarte als Überblick ohne
+„Alle Städte“-Scope. Fahrzeug → Transport beziehungsweise idle Fahrzeug →
+Stadtmarkt. Dieser zeigt alle Angebote der Fahrzeugstadt mit serverseitiger
+Eignung, statt ungeeignete Angebote auszublenden. Der ausgewählte Kontext wird
+bei Abfahrt geleert; keine automatische andere Stadt beim Polling.

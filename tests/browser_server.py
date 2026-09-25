@@ -36,6 +36,7 @@ app.router.lifespan_context = browser_lifespan
 
 @app.post("/__tests__/energy-fixture")
 def prepare_energy_fixture(
+    single_stop: bool = False,
     game: GameService = Depends(get_game_service),
 ) -> dict:
     """Configure short-range test energy solely inside the isolated server."""
@@ -43,12 +44,15 @@ def prepare_energy_fixture(
     model = next(
         m for m in game.catalogue.list_models() if m.id == vehicle.model_id
     )
+    capacity = 1000 if single_stop else 100
     vehicle.apply_model(
         replace(
-            model, energy=EnergyProfile("electric", "kWh", 100, 100, 35, 0.1)
+            model,
+            energy=EnergyProfile("electric", "kWh", capacity, 100, 35, 0.1),
         )
     )
-    vehicle.consume_energy(90)
+    vehicle.refill_energy()
+    vehicle.consume_energy(capacity * 0.9)
     with game.unit_of_work.transaction():
         game.state_repository.save_vehicle(vehicle)
     return {"vehicle_id": vehicle.id}

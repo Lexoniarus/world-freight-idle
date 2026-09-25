@@ -182,7 +182,7 @@ Backup, Validierung und neue Ausgabe. Die Runtime unterstützt nur Schema 1.1.0.
 
 Native ES-Module bleiben: Views rendern sichere DOM-Fragmente, Requests laufen
 über GameApiClient in `frontend/api.js`. CityContextController besitzt die
-Session-Stadtauswahl; LayerStateController besitzt Presets/Overrides nach
+routenlokale Stadtauswahl; LayerStateController besitzt Presets/Overrides nach
 stabiler `user.id`; AnalyticsController besitzt bedarfsgeladene Statistikreads.
 Separate LatestRequest-Instanzen schützen Marktbestand und Auftragsdetail.
 WorldMap rendert; VehicleGroups, Opportunities, Layerdefinitionen und Kamera
@@ -271,3 +271,32 @@ werden nicht gecacht. Ein neuer Katalogstand erfordert einen Serverneustart
 mit erneuter Validierung und globalem Marktneuaufbau. Offline-Werkzeuge lesen
 weiterhin explizit ihren gewählten Katalog. Historische Transporte bleiben
 von neuen Revisionen unabhängig.
+
+## Kartenregressionsfix: Darstellungsgrenzen
+
+`groupVehicles` partitioniert nach Eigentümer und Bewegungszustand. Reine
+Footprint-Funktionen prüfen die Überlappung sichtbarer gedrehter Assetflächen
+mit den identischen Skalierungsstops des Renderers. `VehicleGroups` besitzt
+nur Gruppenzustand, Badges und Interaktion; Representative und Singleton
+verwenden dieselben MapLibre-Symbole. Badge-Posen folgen jedem Bewegungsupdate.
+
+`VehicleColorAssets` besitzt Quellen-/Masken-/Varianten-Caches und Leases.
+`vehicle-paint` trennt sichere Rasterextraktion, Pixelfärbung und Browser-I/O.
+`PreferencesController` besitzt Read-Abbruch, serialisierte Writes und die
+bestätigte/vorgemerkte Farbe. Views projizieren Zustände ohne Requests.
+
+`MapFocusController` konsumiert genau einen Fokus pro Navigationswechsel.
+`focusCoordinates` projiziert gespeicherte Routen und aktuelle Journey-Posen;
+`MapCamera` übernimmt nur Geometrie, Padding und Bewegungseinstellungen.
+Flottenfilter sind aus der View in `fleet-selection` ausgelagert.
+Einzelreview und Abnahme: [MAP_REGRESSION_REVIEW.md](MAP_REGRESSION_REVIEW.md).
+
+
+### Fahrzeugkontext statt globalem Stadt-Scope
+
+Die Weltkarte besitzt keinen operativen Scope. `market-context.js` löst das
+idle Referenzfahrzeug rein aus Snapshot und URL auf. `CityContextController`
+übernimmt ausschließlich den routenlokalen Ort; Liste und Eignungsanzeige
+bleiben getrennt. Ein explizit ungeeignetes Fahrzeug darf der Panelcontroller
+nicht automatisch ersetzen. Listenfilter der Flotte und fachliche Analytics-
+Scopes bleiben eigenständige Ansichten, keine globale Kartenbeschränkung.

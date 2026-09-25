@@ -189,3 +189,18 @@ Ergänzt: Beta(3,1)-Beladung, gespeicherter NHM-Tarif, getrennte Wartung und
 Energieeinkäufe, global atomarer Marktneuaufbau, persistente Firmenfarben,
 Asset-Gruppen und Analyticsnamen. Lokale Umsetzung auf dem erhaltenen
 Anfahrtsfix. Aktuelle Gates und Review: [Qualitätsbericht](../QUALITY_REPORT.md).
+
+## Frontend-v2 Regressionspass
+
+Karten-/Asset-/Fokus-Korrekturen auf `feature/frontend-v2`, Ausgangspunkt
+`c962696`. Abnahme umfasst reale Richtungsrenderings, Firmenfarben-Lifecycle,
+maskierte Pixel, navigationsgebundenen Fokus und unveränderte Economy.
+Prüfnachweise und Funktionsreview: `MAP_REGRESSION_REVIEW.md`,
+finale Gate-Ergebnisse: `../QUALITY_REPORT.md`. Keine Veröffentlichung.
+
+
+Ergänzung zum freigegebenen Navigationsmodell: Weltkarte als Überblick ohne
+„Alle Städte“-Scope. Fahrzeug → Transport beziehungsweise idle Fahrzeug →
+Stadtmarkt. Dieser zeigt alle Angebote der Fahrzeugstadt mit serverseitiger
+Eignung, statt ungeeignete Angebote auszublenden. Der ausgewählte Kontext wird
+bei Abfahrt geleert; keine automatische andere Stadt beim Polling.

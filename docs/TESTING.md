@@ -204,3 +204,29 @@ Den Frontend-Build vor dem Browserlauf abschließen. Vite ersetzt `static/dist`;
 ein gleichzeitig ausgeführter Build kann Anmeldeseiten/Assets kurzzeitig
 entfernen und erzeugt ungültige Browser-Testbedingungen. Empfohlene Reihenfolge:
 Quality-Gate einschließlich Build abschließen, danach `npm run test:e2e`.
+
+## Karten-, Paint- und Fokusregressionen
+
+`map-regressions.test.mjs` prüft Überschneidung statt Mittelpunkt-Radius,
+Status-/Eigentümerpartitionen, Pose-Aktualisierung, Maskenmathematik,
+Fokusverbrauch und schnelle/fehlgeschlagene Farbwechsel.
+`tests/browser/map-regressions.spec.js` verwendet echte MapLibre-Layer
+mit den Produktionsmodulen in einer ausschließlich im Test abgefangenen
+Modulumgebung. Richtungen werden an gerenderten Pixeln und Screenshots
+geprüft; alle 42 Rollen erhalten Alpha-/Bauteil-/Farb-Gegenproben.
+Die normalen Browserfälle ergänzen sichtbare Palette, Retry, Navigation
+sowie einen und mehrere tatsächliche Energieeinkäufe. Keine OSM-Downloads.
+
+Vollständiges Quality-Gate und E2E nacheinander ausführen; ein Vite-Build
+darf dem laufenden Browserregressionsserver nicht seine Assets entfernen.
+Lokale Renderer-Belege: `artifacts/map-regressions/`, Lackierungs-Proofs:
+`artifacts/masks/`, normale UI-Belege im konfigurierten Temp-Verzeichnis.
+
+
+Die Ergänzung `market-context` prüft den scopefreien Kartenüberblick,
+Fahrzeugpriorität vor widersprechender Stadt-URL, alle Stadtangebote mit
+geeignet/ungeeignet sowie das Leeren nach Abfahrt. Ein explizit ungeeignetes
+Fahrzeug blockiert die Quote bis zur bewussten Neuwahl. Browserregression
+verifiziert auch Back/Forward und die Rückkehr zur Weltkarte ohne Stadtparameter.
+Die Rendererprüfung deckt zusätzlich gedrehte Karten, fremde Gruppen und
+Facility-Wiederherstellung bei unveränderten Auftragsmarkern ab.

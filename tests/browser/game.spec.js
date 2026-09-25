@@ -433,12 +433,14 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["tablet
     await register(page);
     const canvas = await page.locator(".maplibregl-canvas").elementHandle();
     await page.getByRole("link", {name:"Flotte",exact:true}).click();
-    const city = await page.getByLabel("Stadt", {exact:true}).inputValue();
+    const cities = await page.getByLabel("Stadt", {exact:true}).locator("option").evaluateAll(nodes => nodes.map(node => node.value));
+    await page.getByLabel("Stadt", {exact:true}).selectOption(cities[1]);
+    const city = cities[1];
     await page.getByLabel("Stadt", {exact:true}).selectOption("");
-    await expect(page).toHaveURL(/city=$/);
+    await expect(page).not.toHaveURL(/city=/);
     await page.goBack();
     await expect(page.getByLabel("Stadt", {exact:true})).toHaveValue(city);
-    await page.getByRole("link", {name:"Passende Aufträge"}).first().click();
+    await page.getByRole("link", {name:"Stadtmarkt öffnen"}).first().click();
     await expect(page).toHaveURL(/vehicle=truck_01/);
     await page.locator(".job-card").first().click();
     await expect(page.getByRole("radio").first()).toBeVisible();
@@ -588,7 +590,6 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     const active = [...new Set(fleet.filter(v=>v.status==="idle").map(v=>v.hub.city_uid))].sort();
     await expect.poll(async()=>page.locator('[data-filter="city"] option').evaluateAll(nodes=>nodes.map(n=>n.value).filter(Boolean).sort())).toEqual(active);
     await page.goto("/company");
-    await page.locator('details[data-disclosure="company-color"] summary').click();
     await expect(page.locator("[data-company-color]")).toHaveCount(10);
     const choice = page.locator("[data-company-color]").nth(1);
     const color = await choice.getAttribute("data-company-color");
@@ -601,17 +602,16 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     await front.evaluate(image=>{window.stableLiveryImage=image;});
     await page.getByRole("button",{name:"Aktualisieren",exact:true}).click();
     await expect.poll(()=>front.evaluate(image=>image===window.stableLiveryImage)).toBe(true);
-    await page.locator('details[data-disclosure="company-color"] summary').scrollIntoViewIfNeeded();
+    await page.getByRole("heading",{name:"Firmenfarbe",exact:true}).scrollIntoViewIfNeeded();
     await page.screenshot({path:screenshot(`livery-${device}`),animations:"disabled"});
     await page.reload();
-    await page.locator('details[data-disclosure="company-color"] summary').click();
     await expect(page.locator(`[data-company-color="${color}"]`)).toHaveAttribute("aria-pressed","true");
     expect((await (await page.request.get("/api/v1/auth/me")).json()).company_color).toBe(color);
     await page.goto("/");
     await expect(page.locator("#world-map")).toHaveAttribute("aria-busy","false");
     for (let index=0;index<5;index++) await page.getByRole("button",{name:"Zoom out",exact:true}).click();
-    await expect(page.locator(".vehicle-group img").first()).toBeVisible();
-    await expect(page.locator(".vehicle-group-count").first()).toHaveText("1");
+    await expect(page.locator(".vehicle-group")).toHaveCount(0);
+    await expect(page.locator(".maplibregl-canvas")).toBeVisible();
     await page.screenshot({path:screenshot(`regional-livery-${device}`),animations:"disabled"});
     expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(viewport.width);
   });
@@ -625,8 +625,8 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     await register(page);
     const offers = (await (await page.request.get("/api/v1/contracts")).json()).contracts.sort((a,b)=>a.tons-b.tons);
     expect(offers.length).toBeGreaterThan(1);
-    for (const [label, offer, stops] of [["low", offers[0], false], ["high", offers.at(-1), false], ["purchases", offers[0], true]]) {
-      if (stops) expect((await page.request.post("/__tests__/energy-fixture", {headers:{"X-Freight-Request":"1"}})).ok()).toBeTruthy();
+    for (const [label, offer, stops] of [["low", offers[0], false], ["high", offers.at(-1), false], ["one-stop", offers[0], "single"], ["purchases", offers[0], "multiple"]]) {
+      if (stops) expect((await page.request.post("/__tests__/energy-fixture"+(stops === "single" ? "?single_stop=true" : ""), {headers:{"X-Freight-Request":"1"}})).ok()).toBeTruthy();
       await page.goto("/contracts/"+offer.id);
       const response = page.waitForResponse(value=>value.url().includes("/quote") && value.request().method()==="POST");
       await page.getByRole("button",{name:"Route & Ertrag berechnen"}).click();
@@ -634,7 +634,9 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
       const costs = quote.cost_breakdown;
       expect(costs.total_cost_eur).toBe(80+costs.maintenance_cost_eur+costs.purchases.reduce((sum,p)=>sum+p.cost_eur,0));
       expect(costs.total_cost_eur).toBe(quote.operating_cost_eur);
-      expect(costs.purchases.length>0).toBe(stops);
+      expect(costs.purchases.length>0).toBe(Boolean(stops));
+      if (stops === "single") expect(costs.purchases).toHaveLength(1);
+      if (stops === "multiple") expect(costs.purchases.length).toBeGreaterThan(1);
       expect(quote.contract.tons).toBe(offer.tons);
       expect(quote.contract.tariff).toEqual(offer.tariff);
       const details = page.locator('details[data-disclosure="costs"]');
@@ -649,3 +651,61 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     }
   });
 }
+
+
+test("palette retry and navigation surfaces remain usable without reload after saving", async ({page}) => {
+  await page.emulateMedia({reducedMotion:"reduce"});
+  await register(page);
+  let failing=true;
+  await page.route("**/api/v1/auth/preferences", route=>failing && route.request().method()==="GET" ? route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({detail:"offline"})}) : route.continue());
+  await page.goto("/company");
+  await expect(page.getByText("Firmenfarben konnten nicht geladen werden.")).toBeVisible();
+  failing=false;
+  await page.locator("[data-preference-retry]").click();
+  await expect(page.locator("[data-company-color]")).toHaveCount(10);
+  await page.screenshot({path:screenshot("palette-retried"),animations:"disabled"});
+  const vehicle=(await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
+  await page.goto("/fleet/"+vehicle.id);
+  await expect(page.locator('img[data-vehicle-role="front"]').first()).toHaveAttribute("src",/^blob:/);
+  await page.screenshot({path:screenshot("focused-vehicle-detail"),animations:"disabled"});
+  await page.goto("/contracts");
+  const offers=(await (await page.request.get("/api/v1/contracts")).json()).contracts;
+  const offer=offers.find(o=>o.eligible_vehicle_ids.includes(vehicle.id));
+  await page.goto("/contracts/"+offer.id);
+  await page.screenshot({path:screenshot("focused-contract-endpoints"),animations:"disabled"});
+  await page.getByRole("button",{name:"Route & Ertrag berechnen"}).click();
+  await expect(page.getByRole("button",{name:"Transport starten"})).toBeEnabled();
+  await page.screenshot({path:screenshot("focused-contract-quote"),animations:"disabled"});
+  await page.getByRole("button",{name:"Transport starten"}).click();
+  await expect(page).toHaveURL(/\/transports\//);
+  await page.screenshot({path:screenshot("focused-transport-detail"),animations:"disabled"});
+  await page.goto("/transports");
+  await page.screenshot({path:screenshot("focused-transport-list"),animations:"disabled"});
+});
+
+
+test("world overview is unscoped and vehicle city shows suitable and unsuitable offers", async ({page}) => {
+  await register(page);
+  await expect(page.locator("#current-city-label")).toHaveCount(0);
+  await expect(page).not.toHaveURL(/city=/);
+  const vehicle = (await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
+  const offers = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
+  const unsuitable = {...offers[0], eligible_vehicle_ids: []};
+  await page.route("**/api/v1/contracts", route => route.fulfill({json:{contracts:[unsuitable,...offers.slice(1)]}}));
+  await page.route("**/api/v1/contracts/"+unsuitable.id, route => route.fulfill({json:unsuitable}));
+  await page.goto("/fleet/"+vehicle.id);
+  await page.getByRole("link",{name:"Stadtmarkt öffnen"}).click();
+  await expect(page).toHaveURL(/vehicle=truck_01/);
+  await expect(page.locator('[data-filter="city"]')).toHaveCount(0);
+  await expect(page.locator(".job-card")).toHaveCount(offers.length);
+  await expect(page.locator(".job-card").first()).toContainText("nicht geeignet");
+  await page.screenshot({path:screenshot("vehicle-city-market"),animations:"disabled"});
+  await page.locator(".job-card").first().click();
+  await expect(page.getByRole("button",{name:"Route & Ertrag berechnen"})).toBeDisabled();
+  await expect(page.getByText(/Wähle ausdrücklich ein anderes Fahrzeug/)).toBeVisible();
+  await page.goBack();
+  await expect(page.locator(".job-card")).toHaveCount(offers.length);
+  await page.getByRole("link",{name:"Weltkarte",exact:true}).click();
+  await expect(page).not.toHaveURL(/city=|vehicle=/);
+  await expect(page.locator("#panel")).toBeHidden();
+});

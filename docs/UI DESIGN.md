@@ -16,7 +16,8 @@ kennzeichnet Hauptaktionen. Kartenobjekte verwenden eigene kontrastreiche
 Farben, Konturen, Größen, Count-Badges und einen violetten Auswahlhalo.
 Status ist zusätzlich beschriftet. OSM bleibt unverändert die reale Basiskarte.
 
-Das kompakte HUD zeigt Kapital, Reputation, Flottenzahl und aktuelle Stadt.
+Das kompakte HUD zeigt Kapital, Reputation und Flottenzahl. Die Weltkarte
+ist ein Kartenüberblick ohne globalen Stadt-Scope.
 Navigation: Weltkarte, Aufträge, Flotte, Fahrzeugshop, Transporte, Unternehmen,
 Rangliste. Der Shop ist ein Flotten-Unterbereich. Rechts öffnet ein `context`-
 Drawer (420 px); `management` erweitert bis min(760 px, 60 vw). Unternehmen
@@ -31,16 +32,25 @@ Die zusätzliche Navigation liegt unter „Mehr“. Reduced Motion unterdrückt
 
 ## City Context und Disposition
 
-`CityContextController` verwendet ausschließlich `city_uid`, nie Stadtnamen.
-Explizite URL-/Benutzerauswahl einschließlich „Alle Städte“ bleibt beim Polling
-erhalten. Eine bekannte Stadt ohne idle Fahrzeug ist weiterhin auswählbar,
-besitzt dadurch aber keinen aktiven Markt. Automatische Defaults sind nach UID
-deterministisch. Links verwenden `?city=...&vehicle=...`; Browser-Zurück stellt
-beides wieder her. Legacy-`hub` wird aus Fahrzeug-, Contract-, dann Transport-
-Snapshots oder einem authentifizierten Exact-Lookup aufgelöst. `city` gewinnt.
-Nicht auflösbare Links erklären den Fehler und zeigen alle Städte.
+`CityContextController` löst ausschließlich den Kontext der aktuellen Route
+über `city_uid` auf. Die Weltkarte übernimmt weder Stadt noch Fahrzeug aus
+vorherigen Ansichten. Der erste operative Kontext ist das Fahrzeug: unterwegs
+führt es zum Transport, idle zum Stadtmarkt seines tatsächlichen Standorts.
 
-Bewusste Stadtwechsel und „Aktuelle Stadt“ rahmen bekannte relevante Positionen.
+Im Stadtmarkt wird ein idle Referenzfahrzeug ausgewählt; beim direkten Einstieg
+wird das nach stabiler ID erste verfügbare Fahrzeug vorausgewählt. Alte Stadt-/
+Facility-Links werden auf ein dortiges idle Fahrzeug aufgelöst. Ohne passendes
+Fahrzeug erscheint eine Leermeldung, niemals ein städteübergreifender Markt.
+Ein Fahrzeugwechsel bestimmt die Stadt neu. Abfahrt entfernt diesen Kontext;
+Polling wählt kein anderes Fahrzeug. Zur Weltkarte zurückzukehren entfernt
+`city` und `vehicle` aus der URL. Flotten-Stadtfilter bleiben lokale Listenfilter.
+
+Alle Angebote der Fahrzeugstadt bleiben sichtbar, auch ungeeignete. Die Karten
+zeigen die serverseitige Eignung für das Referenzfahrzeug. Ein ungeeignetes
+Fahrzeug wird im Auftragsdetail nicht automatisch ersetzt: Quote bleibt bis
+zur bewussten Auswahl eines geeigneten Fahrzeugs deaktiviert. Tonnage, Tarif
+und serverseitige Annahmeregeln bleiben unverändert.
+
 Polling verschiebt die Kamera nicht. Pan/Zoom erzeugt keine Marktrequests.
 Marktlisten und ausgewählte Details besitzen getrennte Zustände und Request-
 Invalidierung. Marktbestand ist vor dem ersten Read unbekannt; relevante
@@ -48,7 +58,8 @@ Flottenänderungen markieren ihn veraltet. Reads erfolgen bei Nutzung des
 Markts/Auftragslayers, Refresh und Disposition. Eligibility stammt ausschließlich
 aus `eligible_vehicle_ids`; Fahrzeugwechsel verwirft die fahrzeuggebundene Quote.
 
-Der Markt filtert Stadt, Fahrzeug, Distanzband, Transportklasse, Ziel und Ware.
+Der Markt verwendet die Fahrzeugstadt und filtert Distanzband, Transportklasse,
+Ziel und Ware. Das Referenzfahrzeug filtert keine Angebote heraus.
 NHM-Namen bleiben vollständig zugänglich; Klassen erhalten deutsche Labels.
 Cargo, konkrete Facility/Adresse und Wirtschaft sind getrennt. Warenwert ist
 kein Transporterlös. Exakte Straßenstrecke und Ergebnis erscheinen erst nach
@@ -73,12 +84,17 @@ jeweiligen Preset, niemals zum Username. Accountwechsel lädt andere Vorgaben.
 „Ansicht zurücksetzen“ löscht nur dieses Preset. Temporäre Auswahl/Preview
 besitzt eigene Quellen und ändert weder Overrides noch ausgeblendete Layer.
 
-Zentrale Zoom-Tiers: unter 7 Aggregate, 7 bis unter 12 kompakte Marker,
-ab 12 Top-Down-Modellassets. `grouping.js` gruppiert in ca. 48 Bildschirm-Pixeln,
-getrennt nach eigenen/fremden Fahrzeugen. Koordinaten bleiben real und World
-Wrapping zählt Fahrzeuge nicht doppelt. Ausgewählte eigene Fahrzeuge bleiben
-separat. Berechnung maximal viermal pro Sekunde (Reduced Motion: einmal),
-unabhängig von Bewegungsframes; versteckte Karten pausieren Updates.
+Fahrzeuge verwenden auf allen Zoomstufen ihre Assets. Gruppierung entsteht
+nur bei Überlappung der sichtbaren, gedrehten Assetrechtecke im Bildschirmraum;
+es gibt weder eine Gruppierungs-Zoomschwelle noch einen festen Abstandsradius.
+`vehicle-footprint.js` teilt die Skalierung mit den MapLibre-Layern und misst
+die Alpha-Ausdehnung der registrierten Bilder ohne transparentes Padding.
+Eigentümer sowie idle/enroute bilden getrennte Partitionen. Die stabile
+Fahrzeugidentität bestimmt den Representative; seine Koordinate und sein
+Bearing bleiben real. Ein Fahrzeug ist niemals eine Gruppe. Ausgewählte
+Fahrzeuge bleiben separat. Mitgliedschaften werden höchstens viermal pro
+Sekunde berechnet (Reduced Motion einmal), die sichtbare Position wird bei
+jedem Bewegungsupdate aktualisiert. Versteckte Karten pausieren Updates.
 Gruppenklick zoomt bis 17, danach öffnet eine tastaturbedienbare Fahrzeugliste.
 Auch ohne Gruppierung bleiben identische Treffer als Liste erreichbar.
 „Objekte gruppieren“ ist eine lokale Account-Präferenz.
@@ -889,10 +905,10 @@ Reduced Motion und Fahrzeugbilder behalten ihr bestehendes Verhalten.
 
 ## Frontend-v2: Stadtmarkt, Firmenfarben und Kosten
 
-Die Markt-Stadtauswahl enthält ausschließlich Städte eigener idle Fahrzeuge.
-Eine inaktiv gewordene Auswahl setzt auch den URL-Parameter auf alle aktiven
-Städte zurück; ohne solche Städte ist die Auswahl deaktiviert. Ziele und
-fahrende Standort-Checkpoints bleiben in anderen Ansichten verfügbar.
+Der Stadtmarkt folgt dem gewählten eigenen idle Fahrzeug. Eine inaktiv
+gewordene Auswahl leert Fahrzeug und Stadt in der URL; es gibt keinen
+Sammelmarkt „Alle Städte“. Ziele und fahrende Standort-Checkpoints bleiben
+in anderen Ansichten verfügbar.
 Pan/Zoom löst keine Marktanfrage aus.
 
 Unter Unternehmen stehen zehn Firmenfarben zur Verfügung. Front, Seite,
@@ -904,12 +920,28 @@ Fahrzeugen werden nur in der Kartenprojektion unterdrückt; nach Abfahrt
 oder deaktivierter Fahrzeugschicht erscheinen sie wieder. Auftragsmarker
 und Detailzugriff bleiben erhalten.
 
-Datenbedingte Assetgrenze: Die gelieferten Front-/Seiten-SVGs enthalten PNGs
-ohne Lackiermaske; Map-SVGs besitzen eine eigene Farbmaske. Front/Seite werden
-zur Laufzeit mit einem expliziten SVG-Farbfilter getönt, der Transparenz und
-Schattierung erhält, aber das ganze Fahrzeug betrifft. Es wird keine
-Karosserie-/Kabinenmaske erfunden und keine Quelldatei verändert.
-Map-Sprites verwenden ihre vorhandene Farbmaske.
+Alle 42 Fahrzeugansichten besitzen eine separat versionierte Paint-Mask.
+Die gemeinsame Pipeline extrahiert das unveränderte Original ohne alte
+Ganzbildfilter und multipliziert ausschließlich die Maskenflächen mit der
+Firmenfarbe. RGB außerhalb der Maske und der ursprüngliche Alpha-Kanal
+bleiben erhalten. Front/Side/Map verwenden dieselbe Komposition; geschützte
+Fenster, Reifen, Lampen, Kühlergrille und Metallteile werden nicht getönt.
+Die freigegebenen Maskenkonturen sind unter `assets/paint-inventory.json`
+mit eigenen Hashes erfasst. Quellen-Inventar und Originaldateien bleiben
+unverändert. Lokale Game-Assets besitzen transparente Bildcontainer.
+
+Firmenfarbe ist eine offene Sektion mit Loading, Fehler/Retry und zehn
+zugänglichen Swatches. Auswahl zeigt sofort eine Vorschau; Schreibzugriffe
+laufen serialisiert. Ein Fehler der letzten Auswahl stellt die zuletzt
+bestätigte Farbe wieder her und bleibt sichtbar.
+
+`MapFocusController` konsumiert Navigationsabsichten einmalig: Fahrzeugdetail
+rahmt die aktuelle Position, Transportdetail die gespeicherte Gesamtroute,
+Übersichten die sichtbare Flotte bzw. alle aktiven Transporte. Auftrag vor
+Quote rahmt Endpunkte, die aktuelle Quote ihre tatsächliche Route. Der Einstieg über ein idle
+Fahrzeug in dessen Stadtmarkt rahmt die Stadt. Back/Forward und Deep Links verwenden
+denselben Pfad; Polling verändert die Kamera nicht. Leere Auswahl lässt die
+Kamera unverändert. Flottenansicht und Fokus nutzen denselben Selektor.
 
 Die Kostenaufteilung zeigt Grundkosten, Wartung mit Satz, Kaufmengen und
 Einzelkosten aller Energiehalte sowie exakte Gesamtkosten. Negative Quotes

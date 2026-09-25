@@ -204,3 +204,20 @@ Der Stadtmarkt zeigt ausschließlich eigene idle-Städte. Firmenfarben sind
 für Front-, Seiten- und Kartendarstellung persistent auswählbar. Analytics
 zeigt aktuelle verständliche Fahrzeugnamen bei unveränderter ID-Gruppierung.
 Verbindliche Formeln: [ECONOMY_V2.md](ECONOMY_V2.md).
+
+## Karten- und Firmenfarbenstabilisierung
+
+Fahrzeuge gruppieren ausschließlich bei tatsächlicher Bildschirmüberlappung
+ihrer dargestellten Assetflächen. Eigentümer und idle/enroute bleiben getrennt;
+Singletons zeigen keinen Count. Gruppen behalten ein reales Fahrzeug samt
+Position und Fahrtrichtung. Firmenfarbe betrifft nur explizite Lackflächen.
+Die Palette ist sichtbar und besitzt Lade-/Fehler-/Retry-Zustände.
+Navigation fokussiert einmalig; anschließendes Pan/Zoom bleibt frei.
+Economy, Markt, Anfahrt und historische Konditionen bleiben unverändert.
+
+
+Ergänzung zum freigegebenen Navigationsmodell: Weltkarte als Überblick ohne
+„Alle Städte“-Scope. Fahrzeug → Transport beziehungsweise idle Fahrzeug →
+Stadtmarkt. Dieser zeigt alle Angebote der Fahrzeugstadt mit serverseitiger
+Eignung, statt ungeeignete Angebote auszublenden. Der ausgewählte Kontext wird
+bei Abfahrt geleert; keine automatische andere Stadt beim Polling.
