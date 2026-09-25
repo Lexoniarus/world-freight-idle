@@ -6,39 +6,13 @@ from typing import Literal
 
 from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.journeys import JourneyPlan, JourneyProgress
+from app.domain.routes import DispatchRoutePlan, RouteSnapshot
 from app.domain.validation import (
     require_finite,
     require_identity,
     require_integer,
 )
 from app.domain.world import FacilityLocationSnapshot
-
-
-@dataclass(frozen=True, slots=True)
-class RouteSnapshot:
-    """Immutable routed geometry and provider measurements."""
-
-    coordinates: tuple[tuple[float, float], ...]
-    distance_km: float
-    duration_seconds: float
-    provider: str
-
-    def __post_init__(self) -> None:
-        """Reject malformed geometry and invalid provider measurements."""
-        require_finite(self.distance_km, "Distance", 0.000001)
-        require_finite(self.duration_seconds, "Duration", 0.000001)
-        require_identity(self.provider, "Route provider")
-        if not isinstance(self.coordinates, tuple) or any(
-            not isinstance(point, tuple) for point in self.coordinates
-        ):
-            raise ValueError("Route coordinates must be immutable tuples.")
-        if len(self.coordinates) < 2:
-            raise ValueError("A route requires at least two coordinates.")
-        for longitude, latitude in self.coordinates:
-            require_finite(longitude, "Longitude", -180)
-            require_finite(latitude, "Latitude", -90)
-            if longitude > 180 or latitude > 90:
-                raise ValueError("Route coordinate outside WGS84.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +32,7 @@ class ActiveTransport:
     journey: JourneyPlan
     status: Literal["active", "settled"] = "active"
     settled_at: float | None = None
+    dispatch_route: DispatchRoutePlan | None = None
 
     def __post_init__(self) -> None:
         """Protect identities, immutable economics and timeline ordering."""
@@ -75,6 +50,12 @@ class ActiveTransport:
             != self.contract.destination.facility_uid
         ):
             raise ValueError("Transport endpoints differ from its contract.")
+        if self.dispatch_route is not None and (
+            self.dispatch_route.pickup != self.origin
+            or self.dispatch_route.destination != self.destination
+            or self.dispatch_route.total_route != self.route
+        ):
+            raise ValueError("Dispatch route differs from transport facts.")
         if not isinstance(self.journey, JourneyPlan):
             raise ValueError("Transport requires a typed journey.")
         if self.journey.distance_km != self.route.distance_km or not isclose(

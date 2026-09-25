@@ -42,6 +42,7 @@ def project_traffic_row(row: dict) -> SharedTransport:
         departed_at=trip.departed_at,
         arrives_at=trip.arrives_at,
         coordinates=trip.route.coordinates,
+        route_legs=trip.dispatch_route.legs if trip.dispatch_route else (),
         distance_km=trip.journey.distance_km,
         segments=tuple(
             MovementSegment(

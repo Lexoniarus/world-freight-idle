@@ -13,6 +13,7 @@ from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
+from app.services.dispatch_planning import DispatchPlanningService
 from app.services.game import GameService
 from app.services.market_scope import MarketScopeResolver
 
@@ -70,7 +71,8 @@ def game(database, catalogue, world_catalogue) -> GameService:
     service = GameService(
         unit_of_work=SqliteGameUnitOfWork(database, "test-owner"),
         world=world_catalogue,
-        router=FakeRouter(),
+        router=(router := FakeRouter()),
+        dispatch_planning=DispatchPlanningService(router),
         market=market,
         market_scope=MarketScopeResolver(world_catalogue),
         catalogue=catalogue,

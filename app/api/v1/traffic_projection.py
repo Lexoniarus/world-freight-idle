@@ -30,6 +30,7 @@ def project_traffic(
                 "distance_km": row.distance_km,
                 "segments": [asdict(part) for part in row.segments],
             },
+            "route_legs": [asdict(leg) for leg in row.route_legs],
             "id": row.id,
             "vehicle_id": row.vehicle_id,
             "model_id": row.model_id,

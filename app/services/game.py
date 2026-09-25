@@ -8,13 +8,13 @@ from collections.abc import Callable, Sequence
 
 from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.game import OwnedVehicle, PlayerState
-from app.domain.journeys import plan_journey
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
-from app.domain.pricing import calculate_price
 from app.domain.results import AvailableContract, ContractQuote, GameSnapshot
+from app.domain.routes import DispatchRoutePlan
 from app.domain.state_ports import GameUnitOfWork
-from app.domain.transports import ActiveTransport, RouteSnapshot
+from app.domain.transports import ActiveTransport
 from app.domain.world_scopes import WorldScope
+from app.services.dispatch_planning import DispatchPlanningService
 from app.services.fleet import (
     create_starter_vehicle,
     resolve_delivery_facility,
@@ -38,6 +38,7 @@ class GameService:
         catalogue: VehicleCatalogue,
         market_scope: MarketScopeResolver,
         clock: Callable[[], float],
+        dispatch_planning: DispatchPlanningService,
         time_scale: float = 1.0,
     ) -> None:
         """Wire player-scoped orchestration to injected service ports."""
@@ -45,6 +46,7 @@ class GameService:
         self.state_repository = unit_of_work.repository
         self.world = world
         self.router = router
+        self.dispatch_planning = dispatch_planning
         self.market = market
         self.time_scale = max(0.001, time_scale)
         self.catalogue = catalogue
@@ -84,16 +86,8 @@ class GameService:
             self.state_repository.list_vehicles(), vehicle_id
         )
         self._validate_dispatch(vehicle, contract)
-        origin = contract.origin
-        destination = contract.destination
-        if origin.coordinates is None or destination.coordinates is None:
-            raise ValueError("Auftrag enthält keine routbaren Koordinaten.")
-        route = await self.router.route(
-            origin.coordinates.latitude,
-            origin.coordinates.longitude,
-            destination.coordinates.latitude,
-            destination.coordinates.longitude,
-        )
+        assert vehicle.location is not None
+        route = await self.dispatch_planning.route(vehicle.location, contract)
         if self._find_contract(contract_id) != contract:
             raise ValueError("Auftrag wurde während der Kalkulation geändert.")
         vehicle = self.get_vehicle(vehicle_id)
@@ -104,10 +98,13 @@ class GameService:
                 "event": "contract.quote",
                 "data": {
                     "contract_id": contract_id,
-                    "distance_km": route.distance_km,
-                    "duration_seconds": route.duration_seconds,
-                    "origin_facility_uid": origin.facility_uid,
-                    "destination_facility_uid": destination.facility_uid,
+                    "distance_km": route.total_route.distance_km,
+                    "duration_seconds": route.total_route.duration_seconds,
+                    "origin_facility_uid": contract.origin.facility_uid,
+                    "start_facility_uid": route.start.facility_uid,
+                    "destination_facility_uid": (
+                        contract.destination.facility_uid
+                    ),
                 },
             },
         )
@@ -142,7 +139,9 @@ class GameService:
             list(self.state_repository.list_vehicles()), vehicle_id
         )
         self._validate_dispatch(vehicle, contract)
-        quote = self._calculate_quote(contract, quote.route, vehicle)
+        if quote.dispatch_route is None:
+            raise ValueError("Dispatch requires a routed departure plan.")
+        quote = self._calculate_quote(contract, quote.dispatch_route, vehicle)
         player = self._get_player()
         player.debit(quote.economics.operating_cost_eur)
         trip = self._build_trip(
@@ -151,7 +150,6 @@ class GameService:
             quote,
             self.now(),
         )
-        vehicle.reposition_within_city(contract.origin)
         vehicle.start_trip()
         self.state_repository.save_player(player)
         self.state_repository.save_vehicle(vehicle)
@@ -388,6 +386,7 @@ class GameService:
             departed_at=departed_at,
             arrives_at=departed_at + quote.journey.duration_seconds,
             journey=quote.journey,
+            dispatch_route=quote.dispatch_route,
             payout_eur=quote.economics.payout_eur,
             operating_cost_eur=quote.economics.operating_cost_eur,
         )
@@ -396,32 +395,11 @@ class GameService:
     def _calculate_quote(
         self,
         contract: ContractOffer,
-        route: RouteSnapshot,
+        route: DispatchRoutePlan,
         vehicle: OwnedVehicle,
     ) -> ContractQuote:
-        """Calculate economics and energy from current purchased values."""
+        """Revalidate vehicle eligibility before delegating quote planning."""
         self._validate_dispatch(vehicle, contract)
-        cost_per_km = vehicle.operating_cost_eur_per_km
-        if cost_per_km is None:
-            raise ValueError("Gespeicherte Fahrzeugkosten fehlen.")
-        journey = plan_journey(
-            route.distance_km,
-            route.duration_seconds,
-            vehicle.top_speed_kmh,
-            vehicle.energy,
-            vehicle.energy_level,
-            self.time_scale,
-        )
-        return ContractQuote(
-            contract,
-            route,
-            calculate_price(
-                contract.tons,
-                route.distance_km,
-                cost_per_km,
-                contract.rate_eur_per_km_ton,
-            ),
-            vehicle.id,
-            cost_per_km,
-            journey,
+        return self.dispatch_planning.quote(
+            contract, route, vehicle, self.time_scale
         )

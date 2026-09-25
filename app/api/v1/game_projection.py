@@ -3,6 +3,7 @@
 from dataclasses import asdict
 from typing import Any
 
+from app.api.v1.dispatch_projection import project_dispatch_route
 from app.api.v1.location_projection import project_location
 from app.domain.cargo import DocumentedCargo, FacilityNhmProfile
 from app.domain.contracts import (
@@ -119,6 +120,9 @@ def project_vehicle(
 def project_quote(quote: ContractQuote) -> dict[str, Any]:
     """Expose the selected vehicle, historical endpoints and real route."""
     return {
+        **project_dispatch_route(
+            quote.dispatch_route, quote.contract.origin, quote.route
+        ),
         "journey": asdict(quote.journey) if quote.journey else None,
         "energy_consumption": (
             quote.journey.energy.consumption_for(quote.route.distance_km)
@@ -161,6 +165,7 @@ def project_transport(
 ) -> dict[str, Any]:
     """Expose tracking without leaking persistence lifecycle columns."""
     return {
+        **project_dispatch_route(trip.dispatch_route, trip.origin, trip.route),
         "journey": asdict(trip.journey),
         "progress": asdict(trip.progress_at(now)) if now is not None else None,
         "id": trip.id,

@@ -32,6 +32,7 @@ from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.repositories.world_geography import WorldGeographyRepository
 from app.services.analytics import AnalyticsService
 from app.services.contract_factory import ContractFactory
+from app.services.dispatch_planning import DispatchPlanningService
 from app.services.fleet import FleetService
 from app.services.game import GameService
 from app.services.map_locations import MapLocationService
@@ -98,6 +99,7 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
         unit_of_work=SqliteGameUnitOfWork(runtime.database, user_id),
         world=runtime.world,
         router=runtime.router,
+        dispatch_planning=DispatchPlanningService(runtime.router),
         market=runtime.market,
         catalogue=runtime.catalogue,
         market_scope=runtime.market_scope,

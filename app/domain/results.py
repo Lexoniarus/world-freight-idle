@@ -6,6 +6,7 @@ from app.domain.contracts import ContractOffer
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.journeys import JourneyPlan
 from app.domain.pricing import PriceQuote
+from app.domain.routes import DispatchRoutePlan
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.domain.vehicles import VehicleModel
 from app.domain.world import FacilityLocationSnapshot
@@ -21,6 +22,7 @@ class ContractQuote:
     vehicle_id: str
     operating_cost_eur_per_km: float
     journey: JourneyPlan | None = None
+    dispatch_route: DispatchRoutePlan | None = None
 
 
 @dataclass(frozen=True, slots=True)

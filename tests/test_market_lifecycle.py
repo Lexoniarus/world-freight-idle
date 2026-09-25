@@ -22,14 +22,17 @@ def other_facility_offer(game):
     )
 
 
-async def test_same_city_dispatch_repositions_and_prunes_atomically(game):
+async def test_same_city_dispatch_preserves_departure_and_prunes_atomically(
+    game,
+):
     offer = other_facility_offer(game)
     before = game.get_vehicle("truck_01")
     quote = await game.quote_contract(offer.id, before.id)
     trip = await game.dispatch(offer.id, before.id)
     vehicle = game.get_vehicle(before.id)
-    assert vehicle.facility_uid == offer.origin.facility_uid
-    assert vehicle.location == offer.origin == trip.origin
+    assert vehicle.facility_uid == before.facility_uid
+    assert vehicle.location == before.location == trip.dispatch_route.start
+    assert trip.origin == offer.origin
     assert vehicle.status == "enroute"
     assert trip.journey == quote.journey
     assert trip.operating_cost_eur == quote.economics.operating_cost_eur
@@ -37,7 +40,7 @@ async def test_same_city_dispatch_repositions_and_prunes_atomically(game):
     assert game.state_repository.list_offers() == ()
 
 
-async def test_dispatch_failure_rolls_back_reposition_and_market(game):
+async def test_dispatch_failure_rolls_back_reservation_and_market(game):
     offer = other_facility_offer(game)
     before_vehicle = game.get_vehicle("truck_01")
     before_cash = game._get_player().cash
@@ -67,7 +70,7 @@ async def test_refill_failure_cannot_undo_committed_dispatch(game, caplog):
     ):
         trip = await game.dispatch(offer.id, "truck_01")
     assert game.get_vehicle("truck_01").status == "enroute"
-    assert game.get_vehicle("truck_01").location == offer.origin
+    assert game.get_vehicle("truck_01").location == trip.dispatch_route.start
     assert game._get_player().cash == cash - trip.operating_cost_eur
     assert game.state_repository.list_active_transports() == (trip,)
     assert not game.state_repository.list_offers()
@@ -298,7 +301,8 @@ async def test_dispatch_resolves_only_missing_exact_facility_snapshot(game):
     await game.quote_contract(offer.id, vehicle.id)
     assert game.get_vehicle(vehicle.id).location is None
     trip = await game.dispatch(offer.id, vehicle.id)
-    assert game.get_vehicle(vehicle.id).location == trip.origin
+    assert game.get_vehicle(vehicle.id).location == location
+    assert trip.dispatch_route.start == location
 
 
 async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(game):
@@ -307,7 +311,7 @@ async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(game):
     quote = await game.quote_contract(offer.id, vehicle.id)
     vehicle._operating_cost_eur_per_km = None
     with pytest.raises(ValueError, match="Fahrzeugkosten"):
-        game._calculate_quote(offer, quote.route, vehicle)
+        game._calculate_quote(offer, quote.dispatch_route, vehicle)
     model = next(
         m for m in game.catalogue.list_models() if m.id == vehicle.model_id
     )
