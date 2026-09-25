@@ -1,114 +1,112 @@
-# Qualitätsbericht: Fahrzeugenergie und automatische Pausen
+# Qualitätsbericht: Market v2
 
-Stand: 23.09.2026. Umfang: `feature/vehicle-energy` gegenüber main b068191
-(nach PR #10). Lokale Umgebung: Windows, Python 3.11.9, Node 24 und
-Microsoft Edge. Keine reale iPad-/Safari-Abnahme und kein Docker-Build.
+Stand: 25.09.2026. Lokale Umsetzung auf `feature/city-market-v2`, ausgehend
+von main `75e3d8a`. Python 3.11.9, Node 24, Windows und Microsoft Edge.
+Veröffentlichung und Merge sind nicht Teil dieser Umsetzung.
 
-## Verhalten und Erhaltung
+## Produkt und Daten
 
-- Alle 14 Modelle aus dem angereicherten Katalogschema 2.1.0 verwenden
-  validierte Energieprofile. Nutzerquellen und Bildmetadaten bleiben erhalten.
-- OwnedVehicle kapselt Kauf-Snapshot und persistenten Energiecheckpoint.
-  JourneyPlan berechnet Verbrauch, Geschwindigkeit, Reserve und mehrere Halte.
-  Pausenende füllt vollständig auf; Zielankunft mit Reserve erzeugt keinen Halt.
-- ActiveTransport besitzt den historischen Plan. Settlement speichert
-  Endfüllstand, Standort, Auszahlung und Status atomar und genau einmal.
-- Valhalla-Daten, bisherige Kilometerkosten und Auszahlungen bleiben erhalten.
-  Es gibt keine zusätzlichen Kraftstoffgebühren oder reale Stationssuche.
-- Flotte, Shop und Transporte zeigen Energie. Karte und Panels interpolieren
-  denselben Serverplan. Die öffentliche Projektion enthält ausschließlich
-  Bewegung, Phasen und Zeitintervalle, keine privaten Energiemengen.
-- Bestehende Assets, Bildauswahl, Farbmasken und Bildknoten bleiben erhalten.
-  `git diff b068191 -- assets` enthält keine Änderungen.
+- Ausschließlich City-UID-Märkte eigener idle Fahrzeuge; keine Viewport- oder
+  PayloadBand-Generierung. Alle geeigneten Origins der aktiven Stadt,
+  katalogweite NHM-Ziele, getrennte Candidate-/Fahrzeuggewichtung.
+- Facility-Coverage und mindestens drei Angebote je verfügbarem Band;
+  Retention gültiger fahrbarer V2-Angebote, sechs Stunden Angebotslaufzeit.
+- Quote/Dispatch verlangen ein Fahrzeug. Same-City-Reposition, Reservierung,
+  Abbuchung, Transport, Offer-Verbrauch und Pruning committen atomar. Refill
+  besitzt danach seine eigene Transaktion und kann den Dispatch nicht umkehren.
+- World 4.2.0 und Vehicle 2.2.0 werden read-only validiert. Die bereitgestellte
+  World-Datei wurde unverändert unter dem kanonischen Namen übernommen.
+  Spielschema 1.1.0 und historische Snapshot-Hüllen bleiben unverändert.
+- Alle bestehenden OwnedVehicles im lokalen Spielstand wurden read-only
+  geprüft: keine fehlenden oder unauflösbaren model_id, keine fehlenden
+  Standort-Snapshots. Keine Heuristik und keine Bestandsmigration notwendig.
+  Eine konkrete Fahrzeuganzahl ist ausdrücklich kein Architekturvertrag.
+- Alle vorhandenen offenen Offers und historischen Transport-Snapshots wurden
+  zusätzlich read-only mit den neuen Mappern gelesen: ohne Fehler oder Writes.
+  Beide Referenzdateien stimmen nach den Tests mit den eingeführten Git-Blobs
+  überein; die Tests haben ihre Inhalte nicht verändert.
 
-## Werkzeugprüfungen
+## Ausgeführte Prüfungen
 
-Vollständiges Quality Gate und Browserregression auf dem Implementierungsstand
-b484ac2 sind in [GitHub Actions](https://github.com/Lexoniarus/world-freight-idle/actions/runs/35891338391)
-bestanden:
+`python scripts/quality.py` wurde mit dem Projektinterpreter vollständig
+und mit Exitcode 0 ausgeführt. `npm run test:e2e` wurde auf demselben
+unveränderten Code-Stand mit Exitcode 0 ausgeführt.
 
-Auch der abschließende lokale Lauf `python scripts/quality.py` ist vollständig
-bestanden: 317 Python-Tests, 100 % Core-Statement-Coverage und sämtliche
-Frontend-/Build-Prüfungen. Frühere fehlgeschlagene Zwischenläufe sind damit
-durch einen vollständigen Lauf auf dem korrigierten Stand ersetzt.
-
-| Prüfung | Ergebnis |
+| Prüfung | Tatsächliches Ergebnis |
 | --- | --- |
-| Python, Manifest, Architektur-/Gegentests | 317 bestanden |
-| Core-Statement-Coverage | 3488 Statements, 0 ungedeckt, 100 % |
-| Ruff und Format | bestanden |
-| mypy / Pyright | 88 Quelldateien fehlerfrei / 0 Fehler |
-| Frontendverhalten | 60 Tests bestanden |
+| Python einschließlich Manifest und Architekturtests | 354 bestanden |
+| app-Statement-Coverage | 3.852 Statements, 0 ungedeckt, 100 % |
+| Ruff und Format (79 Zeichen) | bestanden |
+| mypy / Pyright | 97 Quelldateien fehlerfrei / 0 Fehler |
+| Frontend-Verhalten | 61 bestanden |
 | ESLint, Stylelint, Prettier, checkJs | bestanden |
-| Vite-Produktionsbuild | bestanden |
-| Browser | 13 bestanden, lokal Edge und CI Chromium |
+| Vite-Produktionsbuild und compileall | bestanden |
+| Playwright | 14 bestanden, Desktop/Mobil/Reduced Motion |
+| git diff --check | bestanden |
 
-Weitere Nachweise:
+Gezielte Gegenproben prüfen getrennte Auswahl, Retention, Historien und Import,
+Dispatch-Rollback sowie einen Refill-Schreibfehler nach nachweislichem Commit.
+Eine zweite SQLite-Verbindung beobachtet den gestarteten Transport, bevor
+der Refill beginnt. Ein späterer Refresh bestätigt unveränderten Transport
+und nur einmalige Abbuchung. Katalogausfälle und ungeklärte Altmodelle besitzen
+explizite HTTP-Fehlerübersetzung ohne interne Pfade. Pan/Zoom erzeugt im
+Browsertest keine Marktanfragen; entfernte Offers und verspätete Antworten
+werden verworfen. Tests wurden weder übersprungen noch von Coverage ausgenommen.
 
-- 60 Frontendtests; ESLint, Stylelint, Prettier, checkJs und Vite-Produktionsbuild.
-- 13 Desktop-/Mobil-Browserszenarien vollständig bestanden (1440 × 900,
-  390 × 844), darunter Laden/Weiterfahrt, Logout/Offline-Ankunft und Restenergie.
-- Python-/JavaScript-Zeitachsen verwenden eine gemeinsame Fixture für exakte
-  Fahrt-/Pausengrenzen. Eigene und fremde Fahrzeuge stehen während der Pause
-  an derselben Streckenposition.
-- Gezielte Regressionen für konkurrierende Disposition, Rollback, Katalogausfall,
-  abweichende Energiecheckpoints und fehlerhafte Importdokumente.
+Die Desktop-Angebotskarten, mobilen Angebotsdetails, Quote, Flotte und
+Energieansicht wurden zusätzlich anhand der erzeugten Screenshots visuell
+geprüft. Kein horizontaler Overflow; Karte, Attribution und Navigation bleiben
+zugänglich. Lange NHM-Bezeichnungen brechen innerhalb der scrollbaren Panels um.
 
-Lokale Prüfprotokolle liegen unter `artifacts/vehicle-energy-quality-complete.log`
-und `artifacts/vehicle-energy-e2e-final.log`, außerhalb von Git.
-Der vollständige CI-Auszug liegt lokal in `artifacts/energy-ci-verified.log`.
+Lokale, nicht versionierte Protokolle: `artifacts-quality-final.log`,
+`artifacts-e2e-final.log` und `artifacts-readonly-audit.log`. Screenshots liegen
+im temporären Verzeichnis unter `world-freight-market-v2-desktop.png`,
+`world-freight-market-v2-mobile.png` und den bestehenden Regressionstiteln.
+Zwei vorhandene Starlette/httpx-/AnyIO-Deprecation-Warnungen bleiben ohne
+Testfehler. Frühere fehlgeschlagene Zwischenläufe sind durch diese vollständigen
+Läufe auf dem korrigierten Stand ersetzt.
 
-## Architektur- und Änderungsreview
+## Architekturreview
 
-Manuell geprüft: Domain-Invarianten, Funktionsverantwortung, DI,
-Transaktionsgrenzen, API-/Persistenzmapping, Datenschutz der öffentlichen
-Projektion und Frontend-Ressourcenbesitz.
+81 neue oder wesentlich geänderte konkrete öffentliche/private Core-Callables
+wurden einzeln geprüft: Zweck, Schicht, Abhängigkeiten und Seiteneffekte.
+Die vollständige Einzelaufstellung steht in
+[MARKET_V2_REVIEW.md](docs/MARKET_V2_REVIEW.md).
 
-- Reine Planung liest weder Systemzeit noch SQL. Services orchestrieren;
-  SQL und Dokumentmapping bleiben in bestehenden Repositories.
-- Routing läuft außerhalb der Schreibtransaktion. Angebot und Fahrzeugwerte
-  werden anschließend erneut gelesen; die Disposition plant unter Schreibsperre
-  abschließend neu. Keine Schreibzugriffe pro Animationstakt.
-- Keine zusätzliche Adapterhierarchie oder parallele Alt-/Neulaufzeit.
-  Alte Schemata sind ausschließlich in expliziten Offline-Werkzeugen bekannt.
-- Die neue Anzeige benutzt vorhandene Taktgeber. DOM-Texte und Meterwerte werden
-  aktualisiert, ohne Bilder neu anzulegen. Bestehendes Cleanup bleibt erhalten.
-- Im Review korrigiert: erneute Angebotsprüfung nach Routing, Ablehnung falscher
-  Snapshot-Container/Versionstypen und unbekannter Fahrtplanfelder. Gegentests
-  sichern diese Befunde und die öffentliche Feld-Whitelist ab.
+Domainwerte sind immutable; OwnedVehicle schützt eigene Zustandsübergänge.
+Scope, NHM-Relation, Candidate-Kompatibilität, Coverage, Materialisierung und
+Markttransaktion sind getrennte Bausteine. Services erhalten Ports statt SQL-
+Verbindungen. MarketGenerator orchestriert ausschließlich. Gemeinsame reine
+Kompatibilitätsfunktionen verbinden Candidate, Retention, Quote und Dispatch.
+Views nutzen serverseitige Eignungs-IDs. Das explizite Function-Test-Manifest
+bleibt Teil des ausführbaren Gates; Zeilenzahl und Coverage ersetzen das Review
+nicht. Keine offene Vermischung von Core-Verantwortlichkeiten festgestellt.
 
-Desktop- und Mobil-Screenshots mit isolierten Testdaten wurden visuell geprüft.
-Browsertests simulieren Routing und Tiles. Sie ersetzen keinen Nachweis echter
-Tankstellen, externer Verfügbarkeit oder einer realen iPad-Bedienung.
+## Datenbedingte Coverage-Grenzen
 
-## Bestandsübernahme und Betrieb
+Der gelieferte Referenzstand enthält 559 routbare Facilities in 333 Städten,
+284 Unternehmen, 95 verifizierte und 464 ausdrücklich geschätzte Positionen.
+Diese Zahlen beschreiben Datenqualität, keine vorgeschriebene Marktgröße.
+Eine reale Datenlücke bleibt: Campari Group Sesto San Giovanni Headquarters
+besitzt kein ausgehendes NHM-Profil und erhält deshalb keine erfundenen
+Origin-Angebote. Für jede operative Transportklasse existiert im ausgelieferten
+Fahrzeugkatalog mindestens eine positive Capability; die konkrete Flotte muss
+dennoch zur jeweiligen Ware passen.
 
-Nach bestandenem vollständigem CI-Quality-Gate und lokaler Browserregression
-wurde der Spielserver gestoppt und Schema 1.0.0 explizit nach 1.1.0 übernommen.
-SQLite-Backup, read-only Quellprüfung, neue Zieldatei, Integritäts-/Fremdschlüssel-
-prüfung und vollständiger Datensatzvergleich waren erfolgreich. Ein zusätzlicher
-unabhängiger Vergleich bestätigte sämtliche alten Spalten und Snapshotdaten:
+Der read-only Bestandsaudit prüfte die tatsächlich aktive Stadt Palermo:
+1.127 kompatible Candidates, zwei geeignete Origin-Facilities und keine
+fehlenden Distanzbänder. Die Berliner Starterflotte deckt ebenfalls alle drei
+Bands ab. Das ist keine Zusage vollständiger Coverage für jede mögliche
+Stadt-/Flottenkombination: fehlende NHM-Relationen, Fähigkeiten, positive
+Scale-Suitability oder Distance-Weights können Bands ausschließen. Solche
+Lücken werden als unmet_bands protokolliert und nicht mit erfundenen Angeboten
+gefüllt. Fixtures prüfen explizit leere und nur teilweise verfügbare Bands.
+Die Generierung berechnet keine globalen Origin-Relationen.
 
-- 3 Konten und Spielerstände, 21 Fahrzeuge, 9 offene Angebote, 21 Transporte.
-- 18 aktive und 3 bereits abgerechnete Transporte; unveränderte Zeiten, Routen,
-  Standorte, IDs, Kaufwerte, Guthaben, Reputation und wirtschaftliche Fakten.
-- 1 vorhandene Session, Passwort-Hashes und Auth-Daten unverändert bewahrt.
-- Alle Fahrzeuge einmalig mit vollem Energieinhalt; Alttransporte ungemessen.
+## Grenzen der Abnahme
 
-Die geprüfte Datei wurde als `data/game.db` aktiviert. SQLite-Backup und
-unveränderte Originaldatei bleiben unter `data/backups/` außerhalb von Git.
-Alle drei Profile, Fahrzeuge und Transporte wurden über die neuen Repositories
-vollständig gelesen. `python main.py` läuft wieder auf `0.0.0.0:8000`;
-Loginseite und Health-Endpunkt antworten mit HTTP 200. Echte Profilpasswörter
-wurden weder benötigt noch geändert. Bereits offene Browserseiten neu laden.
-Vorhandene Sessions werden beim Energie-Upgrade bewahrt; der getrennte
-KV-Altformatimport hat weiterhin seine ausdrücklich andere Session-Regel.
-
-## Dokumentationsabgleich und Grenzen
-
-README, GOAL, UI DESIGN, Produkt, Zielstand, Meilensteine, Architektur, Domain,
-Persistenz, API, Datenquellen, Tests und Beobachtbarkeit sind mit der Umsetzung
-abgeglichen. Technische Katalogwerte bleiben von Spielannahmen unterscheidbar.
-M1 und öffentlicher Produktionsbetrieb sind damit nicht vollständig abgenommen.
-Wetter, Beladungseinflüsse, Wartung, Ladeverläufe und Stations-APIs bleiben offen.
-Ein tatsächlicher Docker-Build wurde mangels installiertem Docker nicht ausgeführt.
+Browserprüfungen nutzen isolierte Testspielstände, Mock-Routing und lokale
+Kacheln. Sie ersetzen weder eine reale iPad-/Safari-Abnahme noch einen
+Live-Valhalla-Test. Kein Docker-Build, Deployment, Push oder Merge durchgeführt.
+Spieler-DBs, Backups, Screenshots und Prüfprotokolle werden nicht versioniert.
+Die bestehende Energie- und historische Transportlogik bleibt abgedeckt.

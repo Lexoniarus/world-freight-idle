@@ -50,6 +50,7 @@ function renderContractCard(contract, vehicles) {
         >
       </div>
       <h3>${contract.origin.city} ${icon("arrow", 17)} ${contract.destination.city}</h3>
+      ${contract.distance_band ? html`<p class="footnote">${contract.distance_band} · ca. ${number(contract.estimated_distance_km)} km Luftlinie</p>` : null}
       <div class="card-bottom"><span>${contract.origin.label}</span>${icon("arrow", 19)}</div>`,
     "job-card",
   );
@@ -74,6 +75,7 @@ export function renderContractDetails(contract, view) {
       Reale Standorte und Referenzunternehmen · Geschäftsbeziehung, Menge und Auftrag simuliert
     </p>
     ${contract.cargo_basis === "derived" ? html`<p class="footnote">NHM-Warenprofil für diesen Standort simuliert; konkrete Geschäftsbeziehung und Auftrag bleiben Spielsimulation.</p>` : null}
+    ${contract.market_model === "nhm_v2" ? html`<p class="footnote">${contract.transport_class} · Warenwert ${money(contract.cargo_value_eur)} (Spielwert, kein Transporterlös)</p>` : null}
     ${renderQuote(view)}${renderDispatchForm(contract, view)}`;
 }
 
@@ -88,14 +90,14 @@ function renderStop(label, hub, customer) {
 }
 
 /** Render server-calculated economics or the quote action. */
-function renderQuote({ quote, state, busy }) {
+function renderQuote({ quote, state, busy, selectedVehicle }) {
   if (!quote)
     return html`<div class="quote-placeholder">
       <p>Wie viel steckt in diesem Auftrag?</p>
-      ${actionButton("quote", busy ? "Route wird berechnet …" : "Route & Ertrag berechnen", busy)}
+      ${actionButton("quote", busy ? "Route wird berechnet …" : "Route & Ertrag berechnen", busy || !selectedVehicle)}
     </div>`;
   return html`<div class="metrics">
-      ${metric("Strecke", number(quote.distance_km) + " km")}${metric("Gesamtdauer im Spiel", formatDuration(quote.total_duration_seconds ?? quote.duration_seconds / state.time_scale))}${metric("Erlös", money(quote.payout_eur))}${metric("Betriebskosten", money(quote.operating_cost_eur))}${metric("Dein Gewinn", money(quote.profit_eur), "profit wide")}
+      ${metric("Straßenstrecke", number(quote.distance_km) + " km")}${metric("Gesamtdauer im Spiel", formatDuration(quote.total_duration_seconds ?? quote.duration_seconds / state.time_scale))}${metric("Erlös", money(quote.payout_eur))}${metric("Betriebskosten", money(quote.operating_cost_eur))}${metric("Dein Gewinn", money(quote.profit_eur), "profit wide")}
     </div>
     ${quote.journey ? html`<p class="footnote">${quote.energy_stop_count} Tank-/Ladepausen · ${formatDuration(quote.pause_seconds)} Pause insgesamt · Verbrauch ${number(quote.energy_consumption, 1)} ${quote.journey.energy.unit}. Haltepositionen sind simuliert.</p>` : null}
     ${actionButton("focus-quote", [icon("target", 17), " Route anzeigen"], false, "quiet")}`;
@@ -112,7 +114,8 @@ function renderDispatchForm(contract, view) {
             ${vehicles.map((vehicle) => html`<option value="${vehicle.id}" selected="${view.selectedVehicle === vehicle.id}">${vehicle.name} · ${number(vehicle.capacity_tons, 2)} t</option>`)}
           </select>`
         : html`<p class="inline-notice">
-            Kein passender Lkw am Abholort. Standort, Nutzlast und Verfügbarkeit müssen passen.
+            Kein passender Lkw in der Abholstadt. Nutzlast, Transportklasse und Fahrzeuggröße müssen
+            passen.
           </p>`
     }
     ${actionButton("dispatch", view.busy ? "Bitte warten …" : ["Transport starten ", icon("arrow", 18)], view.busy || !view.quote || view.quote.vehicle_id !== view.selectedVehicle || !vehicles.length || insufficientFunds)}

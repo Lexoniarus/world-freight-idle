@@ -41,7 +41,7 @@ test("route interpolation uses distance, not vertex count", () => {
   assert.ok(Math.abs(routePosition(route, 0.5)[0] - 2) < 1e-6);
 });
 
-test("dispatch eligibility includes owner fleet location, payload, mode and status", () => {
+test("dispatch choices use server eligibility rather than duplicating market rules", () => {
   const base = { id: "valid", hub_id: "berlin", capacity_tons: 24, mode: "truck", status: "idle" };
   const fleet = [
     base,
@@ -51,7 +51,7 @@ test("dispatch eligibility includes owner fleet location, payload, mode and stat
     { ...base, id: "rail", mode: "rail" },
   ];
   assert.deepEqual(
-    eligibleVehicles(fleet, { origin_hub_id: "berlin", tons: 15, mode: "truck" }).map((v) => v.id),
+    eligibleVehicles(fleet, { eligible_vehicle_ids: ["valid"] }).map((v) => v.id),
     ["valid"],
   );
 });

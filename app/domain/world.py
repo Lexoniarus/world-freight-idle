@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from app.domain.cargo import DocumentedCargo, FacilityNhmProfile
 from app.domain.evidence import SourceReference
 from app.domain.geography import Address, City, Coordinates, Country
+from app.domain.market_profiles import NhmMarketProfile
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,3 +214,4 @@ class WorldSnapshot:
     facilities: tuple[Facility, ...]
     countries: tuple[Country, ...]
     cities: tuple[City, ...]
+    market_profiles: tuple[NhmMarketProfile, ...] = ()

@@ -9,12 +9,13 @@ from urllib.parse import urlsplit
 
 from app.domain.energy import EnergyKind, EnergyProfile, EnergyUnit
 from app.domain.errors import CatalogueError
+from app.domain.market_profiles import TransportCapability
 from app.domain.vehicles import VehicleImage, VehicleModel
 from app.simulation import DIESEL_STOP_MINUTES, ENERGY_RESERVE_FRACTION
 
 LOGGER = logging.getLogger(__name__)
 QUERY = """
-SELECT m.vehicle_id AS id,
+SELECT m.vehicle_id AS id, m.segment,
        maker.name || ' ' || m.model || ' ' || m.variant AS name,
        maker.name AS manufacturer, m.powertrain, m.top_speed_kmh,
        m.consumption_value, m.consumption_unit,
@@ -56,16 +57,20 @@ class SqliteVehicleCatalogue:
             with closing(sqlite3.connect(uri, uri=True)) as connection:
                 connection.row_factory = sqlite3.Row
                 connection.execute("PRAGMA foreign_keys = ON")
+                connection.execute("PRAGMA query_only = ON")
+                connection.execute("BEGIN")
                 version = connection.execute(
                     "SELECT value FROM catalog_metadata "
                     "WHERE key = 'schema_version'"
                 ).fetchone()
-                if not version or version[0] != "2.1.0":
+                if not version or version[0] != "2.2.0":
                     raise ValueError("Unsupported catalogue schema")
                 if connection.execute("PRAGMA foreign_key_check").fetchone():
                     raise ValueError("Broken catalogue references")
+                capabilities = read_transport_capabilities(connection)
                 models = tuple(
-                    self._read_model(row) for row in connection.execute(QUERY)
+                    self._read_model(row, capabilities.get(row["id"], ()))
+                    for row in connection.execute(QUERY)
                 )
                 if not models:
                     raise ValueError("Empty catalogue")
@@ -82,7 +87,11 @@ class SqliteVehicleCatalogue:
                 "Fahrzeugkatalog derzeit nicht verfügbar."
             ) from exc
 
-    def _read_model(self, row: sqlite3.Row) -> VehicleModel:
+    def _read_model(
+        self,
+        row: sqlite3.Row,
+        capabilities: tuple[TransportCapability, ...],
+    ) -> VehicleModel:
         """Reject incomplete or invalid gameplay values before projection."""
         values = dict(row)
         energy = read_energy_profile(values)
@@ -107,7 +116,10 @@ class SqliteVehicleCatalogue:
         ):
             raise ValueError("Invalid catalogue range")
         return VehicleModel(
-            **values, energy=energy, image=self._read_image(image_values)
+            **values,
+            energy=energy,
+            image=self._read_image(image_values),
+            transport_capabilities=capabilities,
         )
 
     def _read_image(self, values: dict) -> VehicleImage | None:
@@ -173,3 +185,19 @@ def read_energy_profile(values: dict) -> EnergyProfile:
         stop_minutes=DIESEL_STOP_MINUTES if kind == "diesel" else stop,
         reserve_fraction=ENERGY_RESERVE_FRACTION,
     )
+
+
+def read_transport_capabilities(
+    connection: sqlite3.Connection,
+) -> dict[str, tuple[TransportCapability, ...]]:
+    """Project validated capability rows without model heuristics."""
+    result: dict[str, list[TransportCapability]] = {}
+    for row in connection.execute(
+        "SELECT * FROM vehicle_transport_capabilities"
+    ):
+        result.setdefault(row["vehicle_id"], []).append(
+            TransportCapability(
+                row["transport_class"], row["suitability_game"]
+            )
+        )
+    return {key: tuple(value) for key, value in result.items()}

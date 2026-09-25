@@ -13,7 +13,12 @@ from fastapi.staticfiles import StaticFiles
 from app.api.v1.router import build_v1_router
 from app.bootstrap import build_game_runtime
 from app.config import Settings
-from app.domain.errors import PersistenceError, WorldCatalogueError
+from app.domain.errors import (
+    CatalogueError,
+    PersistenceError,
+    UnresolvedVehicleModel,
+    WorldCatalogueError,
+)
 from app.logging_config import configure_logging
 from app.repositories.accounts import AccountRepository
 from app.services.auth import AuthService, PasswordHasher
@@ -52,6 +57,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = active_settings
     app.add_exception_handler(WorldCatalogueError, world_catalogue_error)
+    app.add_exception_handler(CatalogueError, vehicle_catalogue_error)
+    app.add_exception_handler(UnresolvedVehicleModel, unresolved_vehicle_model)
     app.add_exception_handler(PersistenceError, persistence_error)
     app.add_middleware(TraceIdMiddleware)
     app.mount(
@@ -89,6 +96,26 @@ async def persistence_error(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(
         status_code=503,
         content={"detail": "Spielstand derzeit nicht verfügbar."},
+    )
+
+
+async def vehicle_catalogue_error(
+    request: Request, exc: Exception
+) -> JSONResponse:
+    """Translate unavailable vehicle references without leaking internals."""
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Fahrzeugkatalog derzeit nicht verfügbar."},
+    )
+
+
+async def unresolved_vehicle_model(
+    request: Request, exc: Exception
+) -> JSONResponse:
+    """Report the explicit legacy-model repair requirement at the HTTP edge."""
+    return JSONResponse(
+        status_code=409,
+        content={"detail": "Fahrzeugmodell nicht auflösbar; Bestand prüfen."},
     )
 
 

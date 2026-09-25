@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.domain.cargo import DocumentedCargo, FacilityNhmProfile, NhmProduct
+from app.domain.market_terms import OfferMarketContext
 from app.domain.validation import require_finite, require_identity
 from app.domain.world import FacilityLocationSnapshot
 
@@ -32,6 +33,7 @@ class ContractOfferSnapshot:
     expires_at: float
     mode: str
     relationship_simulated: bool
+    market_context: OfferMarketContext | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,9 +59,14 @@ class ContractOffer:
     expires_at: float
     mode: str
     relationship_simulated: bool
+    market_context: OfferMarketContext | None = None
 
     def __post_init__(self) -> None:
         """Reject invalid offer terms before an offer enters a use case."""
+        if self.market_model == "nhm_v2":
+            if self.market_context is None or self.cargo_system != "NHM2026":
+                raise ValueError("V2 offer requires complete market context.")
+            self.market_context.validate_tonnage(self.tons)
         require_identity(self.id, "Contract ID")
         require_identity(self.market_model, "Market model")
         require_finite(self.tons, "Tonnage", 0.01)
@@ -85,6 +92,7 @@ class ContractOffer:
         return cls(
             id=snapshot.id,
             market_model=snapshot.market_model,
+            market_context=snapshot.market_context,
             cargo_system=snapshot.cargo_system,
             origin=snapshot.origin,
             destination=snapshot.destination,
@@ -131,6 +139,7 @@ class HistoricalContractSnapshot:
     cargo_basis: str
     payload_band: str
     rate_eur_per_km_ton: float
+    market_context: OfferMarketContext | None = None
     market_model: str | None = None
     cargo_system: str | None = None
     origin_cargo_evidence: FacilityNhmProfile | None = None
@@ -187,6 +196,7 @@ class HistoricalContractSnapshot:
             payload_band=offer.payload_band,
             rate_eur_per_km_ton=offer.rate_eur_per_km_ton,
             market_model=offer.market_model,
+            market_context=offer.market_context,
             cargo_system=offer.cargo_system,
             origin_cargo_evidence=offer.origin_cargo_evidence,
             destination_cargo_evidence=offer.destination_cargo_evidence,

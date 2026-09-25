@@ -31,3 +31,7 @@ class DuplicateAccountError(ValueError):
 
 class AmbiguousWorldReference(ValueError):
     """A name identifies multiple references within the selected scope."""
+
+
+class UnresolvedVehicleModel(ValueError):
+    """An owned vehicle requires an explicit catalogue model assignment."""

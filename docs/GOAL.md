@@ -1854,23 +1854,39 @@ verbindlich: injizierte Grenzen, klare Module und zusammenhängende Funktionen.
 Reale Facilities ergänzen die UI-First-Basis; keine Spielerunternehmen oder
 eigenen Depots. Stand, stabile Identitäten, Quellenprüfung und explizite
 Bestandsmigration: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md). Die umfassendere
-Wirtschaftsvision bleibt Zielbild. 352 Facilities sind spielbar; 79
-Positionen sind verifiziert und 273 ausdrücklich für die Simulation geschätzt.
+Wirtschaftsvision bleibt Zielbild. 559 Facilities sind spielbar; 95
+Positionen sind verifiziert und 464 ausdrücklich für die Simulation geschätzt.
 Neue Aufträge verwenden ausschließlich NHM-basierte Warenprofile; konkrete
 Geschäftsbeziehungen und Einzelaufträge bleiben simuliert.
 
-Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
-Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
-erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
-bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
+Market v2 ergänzt Angebote für geeignete Facilities aktiver Fahrzeugstädte
+und deren verfügbare Distanzbänder. Mengen verwenden gespeicherte Kapazität
+und NHM-Load-Factors; reale Warenbelege bleiben von simulierten Aufträgen
+getrennt. Historische payload_band-Werte bleiben ausschließlich lesbar.
+Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
 
 
 ## Aktuelle technische Grundlage
 
 Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
-WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
+WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
 Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).
 Aktuelle Prüfungen und Grenzen stehen im [Qualitätsbericht](../QUALITY_REPORT.md).
 Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abnahme.
+
+
+## Market v2 – implementierter Stand vom 25.09.2026
+
+Stadtmärkte eigener idle Fahrzeuge ersetzen Nutzlastklassen und Viewport-Scope.
+V2 bewahrt gültige fahrbare Angebote und ergänzt Facility-/Distanz-Coverage.
+Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Same-City-
+Reposition ist kostenlos; Dispatch und anschließender Markt-Refill besitzen
+getrennte Transaktionen. Historische Transporte und gespeicherte Konditionen
+bleiben erhalten. Trailer, Versicherungen und weitere Simulationen sind nicht
+Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
+Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
+den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
+Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
+[Qualitätsbericht](../QUALITY_REPORT.md).

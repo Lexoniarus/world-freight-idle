@@ -21,8 +21,16 @@ def add_transport(
     offer = game.state_repository.list_offers()[0]
     offer = replace(offer, created_at=0, expires_at=max(arrives_at, 10))
     if tons is not None:
-        offer = replace(offer, tons=tons)
+        context = offer.market_context
+        assert context is not None
+        context = replace(
+            context,
+            generated_capacity_tons=max(context.generated_capacity_tons, tons),
+            cargo_value_eur=round(tons * context.cargo_value_eur_per_t),
+        )
+        offer = replace(offer, tons=tons, market_context=context)
     vehicle = game.state_repository.list_vehicles()[0]
+    vehicle.reposition_within_city(offer.origin)
     vehicle.start_trip()
     trip = ActiveTransport(
         transport_id,

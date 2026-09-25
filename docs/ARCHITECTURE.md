@@ -1,6 +1,6 @@
 # Architektur
 
-Stand: 23.09.2026. Die Anwendung besitzt genau eine relationale Laufzeit.
+Stand: 25.09.2026. Die Anwendung besitzt genau eine relationale Laufzeit.
 UI First, native ES-Module, FastAPI und `python main.py` bleiben Grundlage.
 
 ## Schichten und Zuständigkeiten
@@ -73,22 +73,39 @@ Die Schemaversion ist 1.1.0; die Energieübernahme erfolgt explizit offline.
 
 ## Referenzwelt und Markt
 
-WorldCatalogue 4.0.0 liefert gemeinsame Country-/City-Objekte. Facility
+WorldCatalogue 4.2.0 liefert gemeinsame Country-/City-Objekte. Facility
 komponiert Address und Coordinates. Company bleibt unabhängig von einer Stadt.
 Immutable World-/Country-/City-/Company-Scopes filtern Facilities. Mehrdeutige
 Namen werden abgewiesen; UUIDs und gepflegte Legacy-Aliase sind eindeutig.
 
-CachedWorldCatalogue besitzt eine validierte unveränderliche Revision pro
-Prozess. MarketGenerator hält daraus abgeleitete NHM-Handelsoptionen; seine
-Invalidierung vergleicht Referenzwerte und nicht lediglich Standort-IDs.
-NhmProduct beschreibt Kategorie und Hierarchie, FacilityNhmProfile die
-standortbezogene Rolle und Evidenz. DocumentedGood bleibt ein Quellenbeleg.
+CachedWorldCatalogue hält genau eine validierte immutable Revision pro Prozess.
+NhmProduct enthält nur Identität, Code, Namen und Hierarchie. Operative
+Market-, Distance-, Scale- und Capability-Profile sind eigene Domainwerte.
 
-MarketScopeResolver umfasst eigene idle Fahrzeuge und ab Zoom 7 zusätzliche
-Facilities im Kartenbereich. MarketGenerator kennt keinen Viewport und erzeugt
-Aufträge ausschließlich für die übergebenen Origins. Mengenklassen folgen den
-Nutzlasten aus Fahrzeugkatalog und Bestand. Reale Fakten und Simulation bleiben
-getrennt; siehe [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).
+| Baustein | Fachlicher Zweck |
+| --- | --- |
+| MarketScopeResolver | Stabile City-UIDs eigener idle Fahrzeuge |
+| TradeNetwork | Globale NHM-Zielindizes und lazy Origin-Relationen |
+| MarketCandidateService | Distanz, Warenprofile und Fahrzeugkompatibilität |
+| MarketCoverageService | Retention anrechnen und Coverage-Auswahl planen |
+| ContractFactory | Candidate mit separat gewähltem Fahrzeugkontext materialisieren |
+| MarketGenerator | Diese drei Schritte orchestrieren |
+| MarketLifecycleService | Retention, Pruning, Markttransaktion und Projektion der Eignung koordinieren |
+| GameService | Spielabläufe koordinieren und Domainregeln delegieren |
+
+Stateful Services und Repository-Grenzen sind injizierte Klassen. Gemeinsame
+reine Funktionen prüfen Fahrzeugklasse/Scale; Haversine, Band, Gewichtung und
+Tonnage bleiben kleine typisierte Funktionen. Der Generator kennt keine
+Filterdetails, Coverage-Schleifen, SQL oder Transaktionen. Coverage liefert
+einen immutable Plan und Diagnosen, keine materialisierten Angebote.
+
+Routing findet vor der Dispatch-Schreibtransaktion statt. Danach werden alle
+veränderlichen Voraussetzungen erneut gelesen. Same-City-Reposition,
+Reservierung, Abbuchung, Transportanlage, Offer-Verbrauch und notwendiges
+Pruning committen gemeinsam. Erst anschließend startet eine separate
+Markttransaktion mit erneut gelesener Flotte und Retention. Refill-Fehler rollen
+nur diese zweite Transaktion zurück und protokollieren `market.refill_failed`.
+Der erfolgreiche Transport wird zurückgegeben; ein späterer Refresh füllt auf.
 
 ## Frontend
 
@@ -103,8 +120,8 @@ verwirft überholte Detailantworten. RefreshScheduler pollt nur bei Sichtbarkeit
 GameState verhindert überlappende Reads. Nach unsicheren Schreibantworten folgt
 nach älteren Reads zwingend ein frischer Read; Mutationen werden nicht wiederholt.
 
-ContractMarketController besitzt die bedarfsabhängigen Marktanfragen; die Karte
-liefert nur neutrale Zoom-/BBox-Werte. Standortmarker entstehen aus eigener
+ContractMarketController besitzt die Stadtmarktanfragen. Pan und Zoom lösen
+keine Marktanfragen aus; Flotten-/Spielaktionen und Refresh aktualisieren sie. Standortmarker entstehen aus eigener
 Flotte, Transport-Snapshots und der aktuellen Auftragsscheibe. Spielerfarben
 und öffentliche Transporte bleiben von privaten Wirtschaftsangaben getrennt.
 World Wrapping, Clustering, Tastatur, mobile Panels und Reduced Motion bleiben.

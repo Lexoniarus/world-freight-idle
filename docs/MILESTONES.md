@@ -36,7 +36,7 @@ Der aktuelle Hub ist ein öffentlicher Frachtstandort, kein gekauftes Depot.
 
 ## M2 – Real Economy Data
 
-Vorgezogen: reale Referenzunternehmen, 352 spielbare Facilities und ein
+Vorgezogen: reale Referenzunternehmen, 559 spielbare Facilities und ein
 NHM-basiertes IN/OUT/BOTH-Verhaltensmodell aus dem WorldCatalogue. Geplant
 bleiben Branchen-/Eurostat-Warenströme und
 regionale Wirtschaftsprofile. Geschäftsbeziehungen und Einzelaufträge bleiben
@@ -138,9 +138,24 @@ Die gemeinsame Asset-Zuordnung und Modellordner ändern keine Spielmechanik.
 ## Aktuelle technische Grundlage
 
 Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
-WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
+WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
 Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).
 Aktuelle Prüfungen und Grenzen stehen im [Qualitätsbericht](../QUALITY_REPORT.md).
 Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abnahme.
+
+
+## Market v2 – implementierter Stand vom 25.09.2026
+
+Stadtmärkte eigener idle Fahrzeuge ersetzen Nutzlastklassen und Viewport-Scope.
+V2 bewahrt gültige fahrbare Angebote und ergänzt Facility-/Distanz-Coverage.
+Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Same-City-
+Reposition ist kostenlos; Dispatch und anschließender Markt-Refill besitzen
+getrennte Transaktionen. Historische Transporte und gespeicherte Konditionen
+bleiben erhalten. Trailer, Versicherungen und weitere Simulationen sind nicht
+Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
+Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
+den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
+Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
+[Qualitätsbericht](../QUALITY_REPORT.md).

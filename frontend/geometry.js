@@ -99,14 +99,7 @@ export function routePosition(route, fraction) {
 /** @param {import('./types.js').Vehicle[]} vehicles
  * @param {import('./types.js').Contract} contract */
 export function eligibleVehicles(vehicles, contract) {
-  return vehicles.filter(
-    (vehicle) =>
-      vehicle.status === "idle" &&
-      (vehicle.facility_uid ?? vehicle.hub_id) ===
-        (contract.origin_facility_uid ?? contract.origin_hub_id) &&
-      vehicle.capacity_tons >= contract.tons &&
-      vehicle.mode === contract.mode,
-  );
+  return vehicles.filter((vehicle) => contract.eligible_vehicle_ids?.includes(vehicle.id));
 }
 
 /** Match a stable facility UID or an explicitly retained old URL alias.

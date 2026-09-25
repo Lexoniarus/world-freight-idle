@@ -6,6 +6,7 @@ from app.domain.cargo import DocumentedCargo, FacilityNhmProfile, NhmProduct
 from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.evidence import SourceReference
 from app.domain.geography import City, Coordinates, Country
+from app.domain.market_terms import OfferMarketContext
 from app.domain.world import (
     CompanyIdentity,
     DocumentedGood,
@@ -94,6 +95,7 @@ def load_offer(value: dict[str, Any]) -> ContractOffer:
             "origin": load_location(value["origin"]),
             "destination": load_location(value["destination"]),
             "cargo": load_product(value["cargo"]),
+            "market_context": load_market_context(value.get("market_context")),
             "origin_cargo_evidence": load_profile(
                 value["origin_cargo_evidence"]
             ),
@@ -130,6 +132,7 @@ def load_historical_contract(
             **value,
             "origin": load_location(value["origin"]),
             "destination": load_location(value["destination"]),
+            "market_context": load_market_context(value.get("market_context")),
             "cargo": load_product(value["cargo"])
             if "nhm_row_id" in value["cargo"]
             else load_documented_cargo(value["cargo"]),
@@ -145,3 +148,10 @@ def load_historical_contract(
             else None,
         }
     )
+
+
+def load_market_context(
+    value: dict[str, Any] | None,
+) -> OfferMarketContext | None:
+    """Restore optional historical V2 terms without reference lookups."""
+    return OfferMarketContext(**value) if value is not None else None

@@ -37,6 +37,7 @@ const contract = {
   cargo: "Steel",
   shipper_name: "A",
   consignee_name: "B",
+  eligible_vehicle_ids: ["truck"],
 };
 const vehicle = {
   id: "truck",
@@ -623,6 +624,7 @@ test("uncertain writes wait for old polls then read a fresh snapshot", async () 
 test("vehicle changes invalidate pending quotes and preserve the selected vehicle", async () => {
   const panel = mountPanel();
   panel.view.state.vehicles.push({ ...vehicle, id: "second", name: "Second" });
+  panel.view.state.contracts = [{ ...contract, eligible_vehicle_ids: ["truck", "second"] }];
   const pending = [];
   const actions = new GameActions({
     panel,
@@ -714,7 +716,7 @@ test("facility snapshots preserve map locations during catalogue outage and lega
   assert.equal(container.querySelectorAll(".job-card").length, 0);
 });
 
-test("viewport market ignores late results after disposal and preserves saved contracts on errors", async () => {
+test("city market ignores late results after disposal and preserves saved contracts on errors", async () => {
   const { ContractMarketController } = await import("./controllers/contract-market-controller.js");
   const notices = [];
   const saved = { ...contract, id: "saved" };
@@ -723,12 +725,6 @@ test("viewport market ignores late results after disposal and preserves saved co
     replaceContracts(contracts) {
       this.data.contracts = contracts;
     },
-  };
-  const map = {
-    marketViewport: () => ({
-      zoom: 7,
-      bbox: [13, 52, 14, 53],
-    }),
   };
   const currentUrl = () => new URL("http://test/contracts");
 
@@ -739,7 +735,6 @@ test("viewport market ignores late results after disposal and preserves saved co
       new Promise((done) => {
         resolve = done;
       }),
-    map,
     notify: (message) => notices.push(message),
     currentUrl,
   });
@@ -755,7 +750,6 @@ test("viewport market ignores late results after disposal and preserves saved co
     request: async () => {
       throw new Error("503");
     },
-    map,
     notify: (message) => notices.push(message),
     currentUrl,
   });
@@ -794,4 +788,34 @@ test("shipment quantities preserve hundredths for light vehicle selection", () =
   container.append(renderPanel(view));
   assert.match(container.textContent, /1,15 Tonnen/);
   assert.doesNotMatch(container.textContent, /1,2 Tonnen/);
+});
+
+test("city market requests have no viewport parameters and removed details clear offers", async () => {
+  const { ContractMarketController } = await import("./controllers/contract-market-controller.js");
+  const paths = [];
+  let url = new URL("http://test/contracts?bbox=0,0,1,1&zoom=12");
+  const state = {
+    data: { contracts: [contract] },
+    replaceContracts(contracts) {
+      this.data.contracts = contracts;
+    },
+  };
+  const controller = new ContractMarketController({
+    state,
+    currentUrl: () => url,
+    notify: () => {},
+    request: async (path) => {
+      paths.push(path);
+      if (path === "/contracts/removed") throw Object.assign(new Error("removed"), { status: 404 });
+      return { contracts: [contract] };
+    },
+  });
+  controller.start();
+  await controller.refresh();
+  await controller.forceRefresh();
+  assert.deepEqual(paths, ["/contracts", "/contracts/refresh"]);
+  url = new URL("http://test/contracts/removed");
+  await controller.refresh();
+  assert.deepEqual(state.data.contracts, []);
+  controller.destroy();
 });

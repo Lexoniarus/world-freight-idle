@@ -115,3 +115,25 @@ Fehlgeschlagene Abgleiche entfernen die Ausgabe, bewahren die Quelle und melden
 ein strukturiertes Rollback-Ereignis. Runtime-Snapshots weisen unbekannte
 Fahrtplanfelder zurück. Konkurrierende Dispositionen prüfen das Angebot nach
 Routing erneut; ein veränderter Energiecheckpoint verhindert Teilabrechnungen.
+
+
+## Stadtmarkt-Abnahme
+
+- Referenzversionen 4.2.0/2.2.0, Pflichtprofile, FKs, Read-only, Segmentmapping,
+  endliche Werte, positive Preise, Unit-Weights und Load-Factor-Grenzen.
+- City-UID-Scope, Same-City-Relationen, fehlender Standort-Snapshot, explizite
+  Modellauflösung, lazy Origin-Indizes und Generierung ohne Router.
+- Exakte Distanzgrenzen, Facility-/Band-Coverage, geplante Angebote mitzählen,
+  Vielfalt und Wiederholungen, Tonnage und gespeicherte Konditionen.
+- Maximalwert für Candidate-Gewicht und getrennte gewichtete Fahrzeugwahl.
+- Retention nach Flottenänderung, V1-Verwerfen, Ankunft, historische Snapshots.
+- Same-City-Reposition, konkurrierender Dispatch und vollständiger Rollback.
+- Refill erst nach Dispatch-Commit; separate SQLite-Verbindung beobachtet den
+  gestarteten Transport, Refill-Schreibfehler rollt ausschließlich neue Offers
+  zurück. Späterer Refresh führt keinen zweiten Dispatch aus.
+- Pflichtfahrzeug HTTP 422, serverseitige eligible_vehicle_ids, Auswahlwechsel,
+  entfernte Angebote und verspätete Antworten. Browser-Pan/Zoom ohne Marktread.
+
+Das manuelle Review jeder geänderten Core-Funktion steht im Qualitätsbericht
+und im zugehörigen [SRP-Review](MARKET_V2_REVIEW.md). Die dortigen Befunde sind
+zusätzlich zum expliziten Function-Test-Manifest erforderlich.

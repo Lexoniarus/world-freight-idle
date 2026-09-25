@@ -10,13 +10,13 @@ from pydantic import BaseModel, Field
 class DispatchRequest(BaseModel):
     """Vehicle selection for accepting one contract."""
 
-    vehicle_id: str = Field(default="truck_01", min_length=1)
+    vehicle_id: str = Field(min_length=1)
 
 
 class QuoteRequest(BaseModel):
-    """Optional owned vehicle for an authoritative cost preview."""
+    """Required owned vehicle for an authoritative cost preview."""
 
-    vehicle_id: str | None = Field(default=None, min_length=1)
+    vehicle_id: str = Field(min_length=1)
 
 
 class Credentials(BaseModel):

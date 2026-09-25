@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from app.bootstrap import GameRuntime
+from app.bootstrap import GameRuntime, build_market_generator
 from app.domain.transports import RouteSnapshot
 from app.domain.world_scopes import WorldScope
 from app.repositories.game_database import SqliteGameDatabase
@@ -14,7 +14,6 @@ from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.services.game import GameService
-from app.services.market import MarketGenerator
 from app.services.market_scope import MarketScopeResolver
 
 
@@ -65,7 +64,9 @@ def world_catalogue(tmp_path):
 
 @pytest.fixture
 def game(database, catalogue, world_catalogue) -> GameService:
-    market = MarketGenerator(world_catalogue, random.Random(7), catalogue)
+    market = build_market_generator(
+        world_catalogue, random.Random(7), catalogue
+    )
     service = GameService(
         unit_of_work=SqliteGameUnitOfWork(database, "test-owner"),
         world=world_catalogue,

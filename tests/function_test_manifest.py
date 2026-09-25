@@ -20,7 +20,6 @@ FUNCTION_TESTS = {
     "app.domain.validation.require_finite": "test_domain_value_validators_reject_invalid_values",
     "app.domain.validation.require_integer": "test_domain_value_validators_reject_invalid_values",
     "app.domain.validation.require_identity": "test_domain_value_validators_reject_invalid_values",
-    "app.simulation.build_payload_bands": "test_payload_bands_cover_catalogue_and_reject_invalid_capacities",
     "app.api.v1.map.list_map_hubs": "test_map_endpoint_requires_session_and_uses_game_provider",
     "app.api.v1.contracts.accept_contract": "test_v1_resource_endpoints_and_error_mapping",
     "app.api.v1.contracts.get_contract": "test_v1_resource_endpoints_and_error_mapping",
@@ -48,9 +47,6 @@ FUNCTION_TESTS = {
     "app.providers.routing.ValhallaTruckRouter.route": "test_route_calls_valhalla_and_caches",
     "app.providers.routing.decode_polyline6": "test_decode_polyline6_and_invalid_input",
     "app.services.game.GameService._build_trip": "test_build_trip_contains_tracking_timestamps",
-    "app.services.game.GameService._current_market_for_scope": "test_list_and_get_contracts_return_real_addresses",
-    "app.services.game.GameService._generate_scoped_market": "test_list_and_get_contracts_return_real_addresses",
-    "app.services.game.GameService._store_market": "test_vehicle_catalogue_outage_preserves_only_current_market",
     "app.services.game.GameService._find_contract": "test_find_contract_returns_match_and_raises",
     "app.services.game.GameService._find_vehicle": "test_find_vehicle_returns_match_and_raises",
     "app.services.game.GameService._validate_dispatch": "test_validate_dispatch_checks_location_capacity_mode_and_status",
@@ -77,14 +73,13 @@ FUNCTION_TESTS = {
     "app.domain.game.OwnedVehicle.start_trip": "test_owned_vehicle_domain_rules",
     "app.domain.game.OwnedVehicle.arrive": "test_owned_vehicle_domain_rules",
     "app.domain.game.OwnedVehicle.apply_model": "test_owned_vehicle_domain_rules",
-    "app.services.contract_factory.ContractFactory.build": "test_build_contract_has_expiry_and_valid_nhm_cargo",
-    "app.services.market.MarketGenerator._select_trade_option": "test_build_contract_has_expiry_and_valid_nhm_cargo",
-    "app.services.trade_network.TradeNetwork.__init__": "test_build_contract_has_expiry_and_valid_nhm_cargo",
-    "app.services.trade_network.TradeNetwork._build_trade_options": "test_build_contract_has_expiry_and_valid_nhm_cargo",
-    "app.services.trade_network.TradeNetwork._index_inbound_profiles": "test_build_contract_has_expiry_and_valid_nhm_cargo",
-    "app.services.trade_network.TradeNetwork.options_for": "test_build_contract_has_expiry_and_valid_nhm_cargo",
-    "app.services.market.MarketGenerator.generate": "test_every_routable_facility_has_nhm_work_without_generic_freight",
-    "app.services.market_scope.MarketScopeResolver.resolve": "test_market_scope_combines_idle_trucks_and_zoomed_viewport",
+    "app.services.contract_factory.ContractFactory.build": "test_materialization_snapshots_profile_terms_and_validates_context",
+    "app.services.trade_network.TradeNetwork.__init__": "test_reference_cache_and_empty_origin_relations",
+    "app.services.trade_network.TradeNetwork._build_trade_options": "test_reference_cache_and_empty_origin_relations",
+    "app.services.trade_network.TradeNetwork._index_inbound_profiles": "test_reference_cache_and_empty_origin_relations",
+    "app.services.trade_network.TradeNetwork.options_for": "test_reference_cache_and_empty_origin_relations",
+    "app.services.market.MarketGenerator.generate": "test_city_coverage_preserves_ids_and_never_invents_relations",
+    "app.services.market_scope.MarketScopeResolver.resolve": "test_city_scope_uses_only_distinct_idle_city_identities",
     "app.tracing.TraceIdMiddleware.dispatch": "test_trace_id_middleware_propagates_header_and_context",
     "app.tracing.get_trace_id": "test_get_trace_id_default",
     "app.tracing.new_trace_id": "test_new_trace_id_is_unique_hex",
@@ -482,5 +477,76 @@ FUNCTION_TESTS.update(
     {
         "app.services.game.GameService._calculate_quote": "test_energy_quote_dispatch_pause_and_offline_settlement",
         "app.api.v1.game_projection.project_fleet": "test_energy_quote_dispatch_pause_and_offline_settlement",
+    }
+)
+
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.market_profiles.require_unit_weight": "test_market_profile_small_values_reject_invalid_weights",
+        "app.domain.market_profiles.vehicle_scale_for_segment": "test_market_profile_small_values_reject_invalid_weights",
+        "app.domain.market_profiles.TransportCapability.__post_init__": "test_market_profile_small_values_reject_invalid_weights",
+        "app.domain.market_profiles.DistanceLoadProfile.__post_init__": "test_market_profile_small_values_reject_invalid_weights",
+        "app.domain.market_profiles.VehicleScaleProfile.__post_init__": "test_market_profile_small_values_reject_invalid_weights",
+        "app.domain.market_profiles.NhmMarketProfile.__post_init__": "test_market_profiles_require_complete_immutable_values",
+        "app.repositories.market_profile_reader.read_market_profiles": "test_world_market_profile_corruption_is_rejected",
+        "app.repositories.vehicle_catalogue.read_transport_capabilities": "test_vehicle_market_profile_corruption_is_rejected",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.bootstrap.build_market_generator": "test_city_coverage_preserves_ids_and_never_invents_relations",
+        "app.domain.game.OwnedVehicle.reposition_within_city": "test_reposition_rejects_busy_other_city_and_missing_location",
+        "app.domain.market_calculations.distance_band": "test_distance_and_tonnage_are_deterministic_and_bounded",
+        "app.domain.market_calculations.great_circle_km": "test_distance_and_tonnage_are_deterministic_and_bounded",
+        "app.domain.market_calculations.shipment_tons": "test_distance_and_tonnage_are_deterministic_and_bounded",
+        "app.domain.market_calculations.evidence_weight": "test_candidate_compatibility_and_weighting_are_separate",
+        "app.domain.market_compatibility.market_vehicle": "test_candidate_compatibility_and_weighting_are_separate",
+        "app.domain.market_compatibility.vehicle_suitability": "test_candidate_compatibility_and_weighting_are_separate",
+        "app.domain.market_compatibility.can_carry_offer": "test_candidate_compatibility_and_weighting_are_separate",
+        "app.domain.market.MarketVehicle.__post_init__": "test_candidate_value_invariants_reject_invalid_context",
+        "app.domain.market.CompatibleVehicle.__post_init__": "test_candidate_value_invariants_reject_invalid_context",
+        "app.domain.market.MarketCandidate.__post_init__": "test_candidate_value_invariants_reject_invalid_context",
+        "app.domain.market_terms.OfferMarketContext.__post_init__": "test_materialization_snapshots_profile_terms_and_validates_context",
+        "app.domain.market_terms.OfferMarketContext.validate_tonnage": "test_materialization_snapshots_profile_terms_and_validates_context",
+        "app.repositories.snapshot_mapping.load_market_context": "test_historical_v2_and_missing_context_roundtrip_without_catalogue",
+        "app.services.game.GameService.contract_choices": "test_retention_prunes_v1_unavailable_fleet_and_expiring_offers",
+        "app.services.market_candidates.MarketCandidateService.__init__": "test_reference_cache_and_empty_origin_relations",
+        "app.services.market_candidates.MarketCandidateService.reference": "test_reference_cache_and_empty_origin_relations",
+        "app.services.market_candidates.MarketCandidateService.resolve_fleet": "test_model_resolution_is_explicit_and_saved_capacity_wins",
+        "app.services.market_candidates.MarketCandidateService.build": "test_candidate_compatibility_and_weighting_are_separate",
+        "app.services.market_candidates.MarketCandidateService._candidate": "test_candidate_compatibility_and_weighting_are_separate",
+        "app.services.market_candidates.MarketCandidateService.eligible_ids": "test_retention_requires_structure_and_actual_vehicle_compatibility",
+        "app.services.market_candidates.MarketCandidateService.structurally_current": "test_retention_requires_structure_and_actual_vehicle_compatibility",
+        "app.services.market_coverage.CityCoverage.record": "test_city_coverage_preserves_ids_and_never_invents_relations",
+        "app.services.market_coverage.CityCoverage.rank": "test_city_coverage_preserves_ids_and_never_invents_relations",
+        "app.services.market_coverage.CityCoverage.add_candidate": "test_city_coverage_preserves_ids_and_never_invents_relations",
+        "app.services.market_coverage.MarketCoverageService.plan": "test_city_coverage_preserves_ids_and_never_invents_relations",
+        "app.services.market_coverage.MarketCoverageService._plan_city": "test_city_coverage_preserves_ids_and_never_invents_relations",
+        "app.services.market_coverage.MarketCoverageService._select": "test_city_coverage_preserves_ids_and_never_invents_relations",
+        "app.services.market_lifecycle.MarketLifecycleService.refresh": "test_retention_prunes_v1_unavailable_fleet_and_expiring_offers",
+        "app.services.market_lifecycle.MarketLifecycleService._retained": "test_retention_prunes_v1_unavailable_fleet_and_expiring_offers",
+        "app.services.market_lifecycle.MarketLifecycleService._store": "test_refill_uses_separate_transaction_and_rolls_back_only_new_offers",
+        "app.services.market_lifecycle.MarketLifecycleService.present": "test_retention_prunes_v1_unavailable_fleet_and_expiring_offers",
+        "app.services.market_lifecycle.MarketLifecycleService.prune_in_transaction": "test_same_city_dispatch_repositions_and_prunes_atomically",
+        "app.services.market_lifecycle.MarketLifecycleService.refill_after_commit": "test_refill_failure_cannot_undo_committed_dispatch",
+    }
+)
+
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.game.OwnedVehicle.restore_location": (
+            "test_dispatch_resolves_only_missing_exact_facility_snapshot"
+        ),
+    }
+)
+
+
+FUNCTION_TESTS.update(
+    {
+        "app.main.vehicle_catalogue_error": "test_market_reference_errors_have_explicit_http_responses",
+        "app.main.unresolved_vehicle_model": "test_market_reference_errors_have_explicit_http_responses",
     }
 )

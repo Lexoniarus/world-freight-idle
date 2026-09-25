@@ -20,7 +20,6 @@ from app.domain.journeys import unmetered_journey
 from app.domain.pricing import PriceQuote
 from app.domain.results import ContractQuote
 from app.domain.transports import RouteSnapshot
-from app.domain.world import FacilityQuery
 from app.domain.world_scopes import WorldScope
 from app.services.game import GameService
 from tests.conftest import BERLIN_UID
@@ -74,7 +73,9 @@ def test_refresh_market_reuses_fresh_market_and_can_force(game: GameService):
 @pytest.mark.asyncio
 async def test_quote_contract_geocodes_routes_and_prices(game: GameService):
     contract = first_berlin_contract(game)
-    quote = project_quote(await game.quote_contract(contract["id"]))
+    quote = project_quote(
+        await game.quote_contract(contract["id"], "truck_01")
+    )
     assert (
         quote["origin"]["address"]
         == WorldScope(game.world.read())
@@ -185,7 +186,7 @@ def test_refresh_market_drops_legacy_offers_but_keeps_active_trips(
     trip = add_transport(game, arrives_at=game.now() + 1000)
     game.state_repository.replace_offers((legacy, *current))
     refreshed = [project_contract(value) for value in game.refresh_market()]
-    assert all(item.get("market_model") == "nhm_v1" for item in refreshed)
+    assert all(item.get("market_model") == "nhm_v2" for item in refreshed)
     assert all(item["id"] != "legacy-offer" for item in refreshed)
     assert [
         asdict(item)
@@ -219,9 +220,17 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
         capacity_tons=vehicle.capacity_tons,
         facility_uid=vehicle.facility_uid,
         status=vehicle.status,
+        model_id=vehicle.model_id,
+        location=vehicle.location,
     )
+    from app.domain.world_scopes import WorldScope
+
+    other_city = WorldScope(game.world.read()).facility("hamburg_cta")
     for changes, message in (
-        ({"facility_uid": "hamburg_cta"}, "Abholadresse"),
+        (
+            {"facility_uid": other_city.facility_uid, "location": None},
+            "Abholstadt",
+        ),
         ({"capacity_tons": 0.1}, "kapazität"),
         ({"mode": "ship"}, "Fahrzeugtyp"),
         ({"status": "enroute"}, "verfügbar"),
@@ -311,25 +320,17 @@ def test_dashboard_returns_product_projection(game: GameService):
 def test_list_and_get_contracts_return_real_addresses(game: GameService):
     contracts = [project_contract(value) for value in game.list_contracts()]
     assert contracts
-    assert {item["origin_hub_id"] for item in contracts} == {BERLIN_UID}
-
-    viewport = [
-        project_contract(value)
-        for value in game.list_contracts(
-            FacilityQuery.parse("-10,35,30,60"),
-            game.market_scope.minimum_zoom,
-        )
-    ]
-    assert len(viewport) > len(contracts)
-
-    refreshed = [
-        project_contract(value)
-        for value in game.refresh_contracts(
-            FacilityQuery.parse("-10,35,30,60"),
-            game.market_scope.minimum_zoom,
-        )
-    ]
-    assert refreshed != viewport
+    location = game.get_vehicle("truck_01").location
+    assert location is not None
+    assert {item["origin"]["city_uid"] for item in contracts} == {
+        location.city.city_uid
+    }
+    assert len({item["origin_hub_id"] for item in contracts}) > 1
+    assert [
+        project_contract(value) for value in game.list_contracts()
+    ] == contracts
+    refreshed = [project_contract(value) for value in game.refresh_contracts()]
+    assert refreshed != contracts
     contract = project_contract(game.get_contract(refreshed[0]["id"]))
     assert contract["origin"]["address"]
     assert contract["destination"]["address"]

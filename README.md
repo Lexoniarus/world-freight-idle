@@ -28,9 +28,10 @@ freigegebener öffentlicher Produktionsdienst.
 Offen: eigenständige Spielerunternehmen, eigene Depots, gemeinsamer knapper Markt,
 Wartung, Stationssuche, Ladeverläufe und Satelliten. Öffentliche Frachtstandorte sind keine
 eigenen Depots. Reale Referenzunternehmen, Facilities, dokumentierte Güter und
-Koordinaten kommen aus dem separaten read-only WorldCatalogue. 352 Facilities
-sind spielbar: 79 mit verifizierten und 273 mit ausdrücklich
-für die Simulation geschätzten Koordinaten. Neue Aufträge verwenden NHM-Profile.
+Koordinaten kommen aus dem separaten read-only WorldCatalogue. 559 Facilities
+verwenden verifizierte oder ausdrücklich für die Simulation geschätzte
+Koordinaten. Market v2 aktiviert Stadtmärkte eigener idle Fahrzeuge anhand
+von NHM-, Distanz-, Scale- und Capability-Profilen.
 Valhalla erhält gespeicherte Koordinaten; Geschäftsbeziehungen, Mengen,
 Einzelaufträge und Wirtschaftswerte bleiben simuliert.
 Es gibt keinen erfundenen Ersatz für ausgefallene Straßenrouten.
@@ -88,7 +89,7 @@ $env:HOST = "127.0.0.1"
 | HOST / PORT | 0.0.0.0 / 8000 |
 | DATA_DIR / DB_PATH | data/ bzw. data/game.db; private Spielstände |
 | VEHICLE_CATALOGUE_PATH | Mitgelieferter data/world_freight_vehicle_catalog.sqlite3 |
-| WORLD_CATALOGUE_PATH | Mitgelieferter data/world_freight_company_facility_mvp.sqlite3, Schema 4.0.0 |
+| WORLD_CATALOGUE_PATH | Mitgelieferter data/world_freight_company_facility_mvp.sqlite3, Schema 4.2.0 |
 | GAME_TIME_SCALE | 1 = Echtzeit; Beschleunigung nur für lokale Tests |
 | COOKIE_SECURE | false für lokales HTTP; true bei HTTPS-Betrieb |
 | VALHALLA_URL | Routing gespeicherter Facility-Koordinaten |

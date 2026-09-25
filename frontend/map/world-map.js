@@ -22,23 +22,12 @@ const FACILITY_HOVER_LAYERS = new Set(["orders", "parked", "hub-points"]);
 export class WorldMap {
   constructor(
     container,
-    {
-      navigate,
-      notify,
-      now,
-      loadAsset,
-      provider,
-      viewport,
-      reducedMotion,
-      isHidden,
-      onViewportChange,
-    },
+    { navigate, notify, now, loadAsset, provider, viewport, reducedMotion, isHidden },
   ) {
     this.navigate = navigate;
     this.notify = notify;
     this.now = now;
     this.reducedMotion = reducedMotion;
-    this.onViewportChange = onViewportChange;
     this.overlays = new OverlayData();
     this.selected = "";
     this.visible = {
@@ -107,9 +96,6 @@ export class WorldMap {
       this.map.getCanvas().style.cursor = feature ? "pointer" : "";
       this.updateFacilityHover(feature, event.lngLat);
     });
-    this.map.on("moveend", () => {
-      if (this.ready && !this.disposed) this.onViewportChange();
-    });
   }
 
   initializeOverlays() {
@@ -122,23 +108,6 @@ export class WorldMap {
     this.setPreview(this.preview);
     this.select(this.selected);
     this.animator.start();
-  }
-
-  marketViewport() {
-    const bounds = this.map.getBounds();
-    const normalize = (longitude) => {
-      const wrapped = ((((longitude + 180) % 360) + 360) % 360) - 180;
-      return Number(wrapped.toFixed(6));
-    };
-    return {
-      zoom: Number(this.map.getZoom().toFixed(2)),
-      bbox: [
-        normalize(bounds.getWest()),
-        Number(Math.max(-90, bounds.getSouth()).toFixed(6)),
-        normalize(bounds.getEast()),
-        Number(Math.min(90, bounds.getNorth()).toFixed(6)),
-      ],
-    };
   }
 
   update(state) {

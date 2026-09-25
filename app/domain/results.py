@@ -18,7 +18,7 @@ class ContractQuote:
     contract: ContractOffer
     route: RouteSnapshot
     economics: PriceQuote
-    vehicle_id: str | None
+    vehicle_id: str
     operating_cost_eur_per_km: float
     journey: JourneyPlan | None = None
 
@@ -50,3 +50,11 @@ class FacilityPage:
     facilities: tuple[FacilityLocationSnapshot, ...]
     catalogue_version: str
     unavailable_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class AvailableContract:
+    """One offer with transient, server-calculated vehicle choices."""
+
+    offer: ContractOffer
+    eligible_vehicle_ids: tuple[str, ...]

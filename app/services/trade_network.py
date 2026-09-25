@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 
-from app.domain.cargo import FacilityNhmProfile, NhmProduct
+from app.domain.cargo import FacilityNhmProfile
 from app.domain.errors import WorldCatalogueError
+from app.domain.market import TradeOption
 from app.domain.world import Facility
 
 LOGGER = logging.getLogger(__name__)
@@ -15,22 +15,11 @@ InboundEntry = tuple[Facility, FacilityNhmProfile]
 InboundIndex = dict[int, tuple[InboundEntry, ...]]
 
 
-@dataclass(frozen=True, slots=True)
-class TradeOption:
-    """One compatible origin/destination NHM relation."""
-
-    origin: Facility
-    origin_cargo: FacilityNhmProfile
-    destination: Facility
-    destination_cargo: FacilityNhmProfile
-    cargo: NhmProduct
-    match_type: str
-
-
 class TradeNetwork:
-    """Precompute all NHM trade options for one immutable world revision."""
+    """Index destinations and lazily derive NHM trades for one revision."""
 
     def __init__(self, facilities: tuple[Facility, ...]) -> None:
+        """Index routable destinations without computing origin relations."""
         candidates = tuple(
             facility for facility in facilities if facility.is_routable()
         )
@@ -39,14 +28,10 @@ class TradeNetwork:
         inbound_by_row, inbound_by_ancestor = self._index_inbound_profiles(
             candidates
         )
-        self._options_by_origin = {
-            origin.facility_uid: self._build_trade_options(
-                origin,
-                inbound_by_row,
-                inbound_by_ancestor,
-            )
-            for origin in candidates
-        }
+        self._origins = {f.facility_uid: f for f in candidates}
+        self._inbound_by_row = inbound_by_row
+        self._inbound_by_ancestor = inbound_by_ancestor
+        self._options_by_origin: dict[str, tuple[TradeOption, ...]] = {}
         LOGGER.info(
             "NHM trade network indexed",
             extra={
@@ -62,13 +47,16 @@ class TradeNetwork:
         )
 
     def options_for(self, facility_uid: str) -> tuple[TradeOption, ...]:
-        """Return immutable precomputed trade options for one origin."""
-        try:
-            return self._options_by_origin[facility_uid]
-        except KeyError as exc:
-            raise WorldCatalogueError(
-                "Kein kompatibler NHM-Warenstrom für diesen Standort."
-            ) from exc
+        """Resolve and cache trade options for one requested origin."""
+        if facility_uid not in self._origins:
+            raise WorldCatalogueError("Unbekannter Frachtstandort.")
+        if facility_uid not in self._options_by_origin:
+            self._options_by_origin[facility_uid] = self._build_trade_options(
+                self._origins[facility_uid],
+                self._inbound_by_row,
+                self._inbound_by_ancestor,
+            )
+        return self._options_by_origin[facility_uid]
 
     @staticmethod
     def _index_inbound_profiles(
@@ -134,8 +122,4 @@ class TradeNetwork:
                         match_type,
                     )
                 )
-        if not options:
-            raise WorldCatalogueError(
-                "Kein kompatibler NHM-Warenstrom für diesen Standort."
-            )
         return tuple(options)

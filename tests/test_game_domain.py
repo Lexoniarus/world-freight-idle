@@ -58,18 +58,18 @@ def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
     )
 
     assert vehicle.location == location
-    vehicle.validate_dispatch("truck", berlin.facility_uid, 20)
+    vehicle.validate_dispatch("truck", location.city.city_uid, 20)
 
-    with pytest.raises(ValueError, match="Abholadresse"):
+    with pytest.raises(ValueError, match="Abholstadt"):
         vehicle.validate_dispatch("truck", "elsewhere", 20)
     with pytest.raises(ValueError, match="kapazität"):
-        vehicle.validate_dispatch("truck", berlin.facility_uid, 25)
+        vehicle.validate_dispatch("truck", location.city.city_uid, 25)
     with pytest.raises(ValueError, match="Fahrzeugtyp"):
-        vehicle.validate_dispatch("ship", berlin.facility_uid, 20)
+        vehicle.validate_dispatch("ship", location.city.city_uid, 20)
 
     vehicle.start_trip()
     with pytest.raises(ValueError, match="verfügbar"):
-        vehicle.validate_dispatch("truck", berlin.facility_uid, 20)
+        vehicle.validate_dispatch("truck", location.city.city_uid, 20)
     with pytest.raises(ValueError, match="verfügbar"):
         vehicle.start_trip()
 
@@ -119,6 +119,7 @@ def test_contract_offer_domain_rules(game):
     snapshot = ContractOfferSnapshot(
         id=offer.id,
         market_model=offer.market_model,
+        market_context=offer.market_context,
         cargo_system=offer.cargo_system,
         origin=offer.origin,
         destination=offer.destination,
