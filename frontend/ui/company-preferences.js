@@ -8,8 +8,17 @@ import { getVehicleAssets } from "../vehicle-assets.js";
 export function renderCompanyPreferences(view) {
   const vehicle = view.state?.vehicles[0];
   const assets = getVehicleAssets(vehicle?.model_id);
-  return html`<details data-disclosure="company-color">
-    <summary>Firmenfarbe</summary>
+  return html`<section aria-label="Firmenfarbe">
+    <h3>Firmenfarbe</h3>
+    ${
+      view.preferenceStatus === "error"
+        ? html`<p role="alert">Firmenfarben konnten nicht geladen werden.</p>
+            <button data-preference-retry>Erneut versuchen</button>`
+        : !view.companyPalette
+          ? html`<p role="status">Farben werden geladen …</p>`
+          : null
+    }
+    ${view.preferenceSaveError ? html`<p role="alert">Firmenfarbe konnte nicht gespeichert werden. Bitte wähle die Farbe erneut.</p>` : null}
     <div class="company-palette" role="group" aria-label="Firmenfarbe">
       ${(view.companyPalette ?? []).map(
         (color, index) =>
@@ -37,5 +46,5 @@ export function renderCompanyPreferences(view) {
         : null
     }
     <p class="footnote">Deine Firmenfarbe ist auch für andere Spieler sichtbar.</p>
-  </details>`;
+  </section>`;
 }
