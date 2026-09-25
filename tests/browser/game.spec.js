@@ -37,6 +37,7 @@ async function register(page) {
 }
 
 test("desktop: registration, map, quote, dispatch, purchase, arrival, logout and login", async ({ page }) => {
+  test.setTimeout(90000);
   const errors = [];
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
   const username = await register(page);
@@ -58,8 +59,8 @@ test("desktop: registration, map, quote, dispatch, purchase, arrival, logout and
   await expect(page.locator("#panel")).toBeHidden();
   await page.goBack();
   await expect(page.locator("#panel")).toBeVisible();
-  // The speed-limited accelerated trip arrives after approximately 18 seconds.
-  await expect(page.locator("#reputation")).toHaveText("1", { timeout: 35000 });
+  // Two speed-limited sections take about 36 seconds plus polling.
+  await expect(page.locator("#reputation")).toHaveText("1", { timeout: 45000 });
   const cash = await page.locator("#cash").textContent();
   if (!(await page.getByRole("button", {name: "Abmelden"}).isVisible())) await page.getByRole("button", {name: "Mehr", exact: true}).click();
   await page.getByRole("button", { name: "Abmelden" }).click();
@@ -180,6 +181,7 @@ test("missing fleet coordinates and tile outages preserve the playable lists", a
 
 
 test("DB vehicle selection changes costs, dispatches and settles after relogin", async ({ page }) => {
+  test.setTimeout(90000);
   const username = await register(page);
   await page.getByRole("link", { name: "Fahrzeugshop", exact: true }).first().click();
   const catalogue = (await (await page.request.get("/api/v1/fleet/catalogue")).json()).models;
@@ -202,15 +204,15 @@ test("DB vehicle selection changes costs, dispatches and settles after relogin",
   await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
   const quote = await (await response).json();
   expect(quote.operating_cost_eur_per_km).toBe(purchased.operating_cost_eur_per_km);
-  expect(quote.operating_cost_eur).toBe(Math.round(80 + 400 * purchased.operating_cost_eur_per_km));
+  expect(quote.operating_cost_eur).toBe(Math.round(80 + quote.distance_km * purchased.operating_cost_eur_per_km));
   await expect(page.getByRole("button", { name: "Transport starten" })).toBeEnabled();
   await page.getByRole("button", { name: "Transport starten" }).click();
   await expect(page).toHaveURL(/transports\//);
   if (!(await page.getByRole("button", {name: "Abmelden"}).isVisible())) await page.getByRole("button", {name: "Mehr", exact: true}).click();
   await page.getByRole("button", { name: "Abmelden" }).click();
   await expect(page).toHaveURL(/login/);
-  // Test server accelerates a four-hour route to 16 seconds.
-  await page.waitForTimeout(17000);
+  // Wait past both routed legs before exercising offline settlement.
+  await page.waitForTimeout(quote.total_duration_seconds * 1000 + 1000);
   await page.getByLabel("Spielername", { exact: true }).fill(username);
   await page.getByLabel("Passwort", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Anmelden", exact: true }).last().click();
@@ -296,7 +298,7 @@ test("starter game assets survive polling and changed transport panel content", 
   const contract = contracts.find(item => item.eligible_vehicle_ids.includes(vehicles[0].id));
   const response = await page.request.post("/api/v1/contracts/" + contract.id + "/accept", { headers, data: { vehicle_id: vehicles[0].id } });
   expect(response.ok()).toBeTruthy();
-  await expect(page.locator(".vehicle-card .badge").first()).toHaveText("Unterwegs", { timeout: 15000 });
+  await expect(page.locator(".vehicle-card .badge").first()).toHaveText(/Zur Abholung|Fracht unterwegs/, { timeout: 15000 });
   await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
 });
 
@@ -357,8 +359,10 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     const prepared = await page.request.post("/__tests__/energy-fixture", {headers:{"X-Freight-Request":"1"}});
     expect(prepared.ok()).toBeTruthy();
     await page.reload();
-    await page.getByRole("link", {name:"Aufträge",exact:true}).click();
-    await page.locator(".job-card").filter({hasText:"Lkw bereit"}).first().click();
+    const fleetBefore = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
+    const offers = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
+    const direct = offers.find(offer => offer.origin_facility_uid === fleetBefore[0].facility_uid);
+    await page.goto("/contracts/" + direct.id);
     await page.getByRole("button", {name:"Route & Ertrag berechnen"}).click();
     await expect(page.getByText(/5 Tank-\/Ladepausen/)).toBeVisible();
     await page.getByRole("button", {name:"Transport starten"}).click();
@@ -370,7 +374,7 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     await expect(meter).toHaveAttribute("value", "10");
     await meter.scrollIntoViewIfNeeded();
     await page.screenshot({path:screenshot(`energy-${device}`),animations:"disabled"});
-    await expect(page.locator("[data-phase-trip]")).toHaveText("Unterwegs");
+    await expect(page.locator("[data-phase-trip]")).toHaveText("Fracht unterwegs");
     expect(await image.evaluate(node => node.isConnected)).toBeTruthy();
     const fleet = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
     expect(fleet[0].energy_level).toBeGreaterThan(10);
@@ -442,7 +446,7 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["tablet
     await expect(page.getByRole("button", {name:"Transport starten"})).toBeEnabled();
     await page.getByRole("button", {name:"Transport starten"}).click();
     await expect(page.locator(".asset-side")).toBeVisible();
-    await expect(page.locator("#reputation")).toHaveText("1", {timeout:35000});
+    await expect(page.locator("#reputation")).toHaveText("1", {timeout:45000});
     await page.getByRole("link", {name:"Unternehmen",exact:true}).click();
     await expect(page.locator("#panel")).toHaveAttribute("data-mode","management");
     await expect(page.getByRole("heading", {name:"Finanzen",exact:true})).toBeVisible();
@@ -523,3 +527,51 @@ test("frontend v2: account layer overrides, group keyboard access and persistent
   await page.locator(".layer-menu summary").click();
   await expect(page.getByLabel("Objekte gruppieren",{exact:true})).not.toBeChecked();
 });
+
+
+for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile", {width:390,height:844}]]) {
+  test(`${device}: actual departure, automatic pickup and reload use both road legs`, async ({page}) => {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({reducedMotion:"reduce"});
+    await register(page);
+    const start = (await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
+    const offers = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
+    const offer = offers.find(item => item.origin_facility_uid !== start.facility_uid && item.eligible_vehicle_ids.includes(start.id));
+    expect(offer).toBeTruthy();
+    await page.goto("/contracts/" + offer.id);
+    await expect(page.getByRole("radio").first()).toHaveAttribute("aria-checked", "true");
+    await expect(page.locator(".itinerary")).toContainText(start.hub.label);
+    await expect(page.locator(".itinerary")).toContainText(offer.origin.label);
+    const quoted = page.waitForResponse(response => response.url().endsWith("/quote"));
+    await page.getByRole("button", {name:"Route & Ertrag berechnen"}).click();
+    const quote = await (await quoted).json();
+    expect(quote.start.facility_uid).toBe(start.facility_uid);
+    expect(quote.route_legs.map(leg=>leg.purpose)).toEqual(["approach", "delivery"]);
+    expect(quote.approach_distance_km).toBe(400);
+    expect(quote.delivery_distance_km).toBe(400);
+    await expect(page.getByText("Anfahrt zur Abholung", {exact:true})).toBeVisible();
+    const accepted = page.waitForResponse(response => response.url().endsWith("/accept"));
+    await page.getByRole("button", {name:"Transport starten"}).click();
+    const trip = await (await accepted).json();
+    await expect(page.locator("[data-phase-trip]")).toHaveText("Zur Abholung");
+    expect(trip.origin.facility_uid).toBe(offer.origin_facility_uid);
+    expect(trip.route_legs[0].coordinates[0]).toEqual([start.hub.lon, start.hub.lat]);
+    expect(trip.route_legs[0].coordinates.at(-1)).toEqual(trip.route_legs[1].coordinates[0]);
+    await page.reload();
+    await expect(page.locator("[data-phase-trip]")).toHaveText("Zur Abholung");
+    const moving = (await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
+    expect(moving.facility_uid).toBe(start.facility_uid);
+    expect(moving.status).toBe("enroute");
+    await page.locator("#panel-content").evaluate(node=>{node.scrollTop=0;});
+    await page.screenshot({path:screenshot(`approach-${device}`),animations:"disabled"});
+    await expect(page.locator("[data-phase-trip]")).toHaveText("Fracht unterwegs", {timeout:25000});
+    await page.reload();
+    await expect(page.locator("[data-phase-trip]")).toHaveText("Fracht unterwegs");
+    await expect(page.locator("#world-map")).toHaveAttribute("aria-busy", "false");
+    await page.getByRole("button", {name:"Route auf der Karte"}).click();
+    await page.locator("#panel-content").evaluate(node=>{node.scrollTop=0;});
+    await page.screenshot({path:screenshot(`delivery-${device}`),animations:"disabled"});
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(viewport.width);
+    expect((await (await page.request.get("/api/v1/fleet")).json()).vehicles[0].facility_uid).toBe(start.facility_uid);
+  });
+}

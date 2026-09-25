@@ -107,7 +107,7 @@ function renderVehicle(vehicle, trip, now, detail = false) {
     <div class="vehicle-info">
       <div class="card-kicker">
         <span class="badge ${trip ? "gold" : "green"}" data-phase-trip="${trip?.id ?? ""}"
-          >${trip ? phaseLabel(transportProgress(trip, now).phase) : "Einsatzbereit"}</span
+          >${trip ? phaseLabel(transportProgress(trip, now).phase, transportProgress(trip, now).stage) : "Einsatzbereit"}</span
         ><span>${number(vehicle.capacity_tons, 2)} t</span>
       </div>
       <h3>

@@ -1,5 +1,5 @@
-import { collection, pointFeature, prepareRoute, routePose, unwrapRoute } from "../geometry.js";
-import { transportProgress } from "../journey.js";
+import { collection, pointFeature, unwrapRoute } from "../geometry.js";
+import { prepareTransportRoute, transportRoutePose } from "./route-plan.js";
 import { vehicleIconId } from "./vehicle-assets.js";
 
 export const routeGeometry = (route) => (route.type === "Feature" ? route.geometry : route);
@@ -21,6 +21,7 @@ export class OverlayData {
     this.state = { ...state, traffic: state.traffic ?? [] };
     const snapshots = [
       ...state.transports.flatMap((trip) => [
+        trip.start,
         trip.origin_snapshot ?? trip.origin,
         trip.destination_snapshot ?? trip.destination,
       ]),
@@ -41,18 +42,14 @@ export class OverlayData {
     const active = new Set(state.transports.map((trip) => trip.id));
     for (const id of this.routes.keys()) if (!active.has(id)) this.routes.delete(id);
     for (const trip of state.transports)
-      if (!this.routes.has(trip.id))
-        this.routes.set(trip.id, prepareRoute(routeGeometry(trip.route_geojson).coordinates));
+      if (!this.routes.has(trip.id)) this.routes.set(trip.id, prepareTransportRoute(trip));
 
     const activeTraffic = new Set(this.state.traffic.map((trip) => trip.id));
     for (const id of this.trafficRoutes.keys())
       if (!activeTraffic.has(id)) this.trafficRoutes.delete(id);
     for (const trip of this.state.traffic)
       if (!this.trafficRoutes.has(trip.id))
-        this.trafficRoutes.set(
-          trip.id,
-          prepareRoute(routeGeometry(trip.route_geojson).coordinates),
-        );
+        this.trafficRoutes.set(trip.id, prepareTransportRoute(trip));
   }
 
   hubFeatures() {
@@ -142,7 +139,7 @@ export class OverlayData {
       this.state.traffic.flatMap((trip) => {
         if (trip.is_own !== isOwn) return [];
         const route = this.trafficRoutes.get(trip.id);
-        const pose = route && routePose(route, transportProgress(trip, now).fraction);
+        const pose = route && transportRoutePose(route, trip, now);
         if (!pose) return [];
         const iconImage = vehicleIconId(trip.model_id, trip.player_color);
         const hasIcon = Boolean(iconImage && this.availableVehicleIcons.has(iconImage));

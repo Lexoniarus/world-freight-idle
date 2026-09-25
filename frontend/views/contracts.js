@@ -115,6 +115,8 @@ function renderContractCard(contract, vehicles, params = new URLSearchParams()) 
  * @returns {DocumentFragment}
  */
 export function renderContractDetails(contract, view) {
+  const vehicle = view.state.vehicles.find((item) => item.id === view.selectedVehicle);
+  const start = view.quote?.start ?? vehicle?.location_snapshot ?? vehicle?.hub;
   return html`${routeLink("/contracts", [icon("back", 16), " Alle Aufträge"], "back-link")}
     <div class="cargo-heading">
       ${icon("contracts", 28)}<span
@@ -122,6 +124,7 @@ export function renderContractDetails(contract, view) {
       >
     </div>
     <div class="itinerary">
+      ${start ? renderStop("FAHRZEUGSTANDORT", start, "Fahrtbeginn") : null}
       ${renderStop("ABHOLUNG", contract.origin, contract.shipper_name)}${renderStop("ZUSTELLUNG", contract.destination, contract.consignee_name)}
     </div>
     <p class="footnote">
@@ -153,7 +156,8 @@ function renderQuote({ quote, state, busy, selectedVehicle }) {
       ${actionButton("quote", busy ? "Route wird berechnet …" : "Route & Ertrag berechnen", busy || !selectedVehicle)}
     </div>`;
   return html`<div class="metrics">
-      ${metric("Straßenstrecke", number(quote.distance_km) + " km")}${metric("Gesamtdauer im Spiel", formatDuration(quote.total_duration_seconds ?? quote.duration_seconds / state.time_scale))}${metric("Erlös", money(quote.payout_eur))}${metric("Betriebskosten", money(quote.operating_cost_eur))}${metric("Dein Gewinn", money(quote.profit_eur), "profit wide")}
+      ${metric("Anfahrt zur Abholung", number(quote.approach_distance_km ?? 0) + " km")}${metric("Frachtstrecke", number(quote.delivery_distance_km ?? quote.distance_km) + " km")}
+      ${metric("Straßenstrecke gesamt", number(quote.distance_km) + " km")}${metric("Gesamtdauer im Spiel", formatDuration(quote.total_duration_seconds ?? quote.duration_seconds / state.time_scale))}${metric("Erlös", money(quote.payout_eur))}${metric("Betriebskosten", money(quote.operating_cost_eur))}${metric("Dein Gewinn", money(quote.profit_eur), "profit wide")}
     </div>
     ${quote.journey ? html`<p class="footnote">${quote.energy_stop_count} Tank-/Ladepausen · ${formatDuration(quote.pause_seconds)} Pause insgesamt · Verbrauch ${number(quote.energy_consumption, 1)} ${quote.journey.energy.unit}. Haltepositionen sind simuliert.</p>` : null}
     ${actionButton("focus-quote", [icon("target", 17), " Route anzeigen"], false, "quiet")}`;
