@@ -117,7 +117,9 @@ async def test_game_workflows_return_typed_values_and_reject_changed_offer(
         route = await original_route(*coordinates)
         game.state_repository.replace_offers(
             tuple(
-                replace(item, tons=item.tons + 0.01)
+                replace(
+                    item, rate_eur_per_km_ton=item.rate_eur_per_km_ton + 0.01
+                )
                 if item.id == offer.id
                 else item
                 for item in game.state_repository.list_offers()
@@ -143,5 +145,5 @@ async def test_quote_rejects_missing_snapshot_coordinates_before_routing(game):
     )
     game.router.route = AsyncMock()
     with pytest.raises(ValueError, match="Koordinaten"):
-        await game.quote_contract(offer.id)
+        await game.quote_contract(offer.id, "truck_01")
     game.router.route.assert_not_awaited()

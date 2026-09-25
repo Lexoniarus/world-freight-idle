@@ -46,7 +46,14 @@ def legacy_source(tmp_path, game):
         if o.origin.facility_uid == vehicle.facility_uid
         and o.tons <= vehicle.capacity_tons
     )
-    offer = replace(offer, created_at=now - 500, expires_at=now + 500)
+    offer = replace(
+        offer,
+        created_at=now - 500,
+        expires_at=now + 500,
+        market_model="nhm_v1",
+        market_context=None,
+        payload_band="heavy",
+    )
     trip = ActiveTransport(
         "trip-1",
         vehicle.id,
@@ -103,7 +110,7 @@ CREATE TABLE route_cache(cache_key TEXT,payload TEXT,updated_at REAL);
     importer = LegacyGameImporter(
         path,
         WorldScope(game.world.read()),
-        game.market.model_id,
+        "nhm_v1",
         game.catalogue.list_models(),
     )
     return path, importer, state, now, password_hash

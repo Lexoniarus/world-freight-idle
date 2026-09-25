@@ -131,10 +131,20 @@ class OwnedVehicle:
         self._facility_uid = facility_uid
         self._location = location
 
+    def restore_location(self, location: FacilityLocationSnapshot) -> None:
+        """Restore an absent snapshot from the exact stored facility ID."""
+        if location.facility_uid != self._facility_uid:
+            raise ValueError("Restored location differs from stored facility.")
+        if self._location is not None and self._location != location:
+            raise ValueError(
+                "An existing location snapshot cannot be replaced."
+            )
+        self._location = location
+
     def validate_dispatch(
         self,
         contract_mode: str,
-        origin_facility_uid: str,
+        origin_city_uid: str,
         tons: float,
     ) -> None:
         """Validate whether this vehicle can accept one contract."""
@@ -143,10 +153,25 @@ class OwnedVehicle:
             raise ValueError("Fahrzeug ist nicht verfügbar.")
         if self._mode != contract_mode:
             raise ValueError("Fahrzeugtyp passt nicht zum Auftrag.")
-        if self._facility_uid != origin_facility_uid:
-            raise ValueError("Fahrzeug steht nicht an der Abholadresse.")
+        if (
+            self._location is None
+            or self._location.city.city_uid != origin_city_uid
+        ):
+            raise ValueError("Fahrzeug steht nicht in der Abholstadt.")
         if self._capacity_tons < tons:
             raise ValueError("Fahrzeugkapazität reicht nicht aus.")
+
+    def reposition_within_city(self, origin: FacilityLocationSnapshot) -> None:
+        """Reposition an idle vehicle within its city without time or costs."""
+        if self._status != "idle":
+            raise ValueError("Only an idle vehicle can reposition.")
+        if (
+            self._location is None
+            or self._location.city.city_uid != origin.city.city_uid
+        ):
+            raise ValueError("Reposition requires the same city.")
+        self._facility_uid = origin.facility_uid
+        self._location = origin
 
     def start_trip(self) -> None:
         """Mark the vehicle as reserved for an active transport."""

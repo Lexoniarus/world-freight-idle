@@ -90,6 +90,7 @@ def test_catalogue_failures_are_explicit(catalogue, failure):
             connection.execute(sql)
             if failure == "empty":
                 for table in (
+                    "vehicle_transport_capabilities",
                     "vehicle_images",
                     "vehicle_balance",
                     "vehicle_models",
@@ -171,16 +172,18 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
         energy_level=100,
         top_speed_kmh=90,
     )
-    game.state_repository.save_vehicle(legacy)
     contract = first_berlin_contract(game)
+    game.state_repository.save_vehicle(legacy)
+    with pytest.raises(ValueError, match="Bestand"):
+        await game.quote_contract(contract["id"], "truck_01")
+    game.state_repository.save_vehicle(original)
+    original._operating_cost_eur_per_km = 0.5
+    game.state_repository.save_vehicle(original)
     first = project_quote(
         await game.quote_contract(contract["id"], "truck_01")
     )
-    assert first["operating_cost_eur_per_km"] == 0.62
+    assert first["operating_cost_eur_per_km"] == 0.5
     assert first["vehicle_id"] == "truck_01"
-    assert (project_quote(await game.quote_contract(contract["id"])))[
-        "vehicle_id"
-    ] is None
     vehicle = project_vehicle(
         FleetService(game.unit_of_work, catalogue, game.world).purchase(
             "iveco_sway_500"
@@ -261,7 +264,7 @@ def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
             ]
             == "truck_01"
         )
-        assert client.post(url).json()["vehicle_id"] is None
+        assert client.post(url).status_code == 422
         assert len(client.get("/api/v1/fleet/catalogue").json()["models"]) >= 8
         app.state.settings = replace(
             settings, vehicle_catalogue_path=tmp_path / "missing.db"

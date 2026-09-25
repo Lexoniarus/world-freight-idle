@@ -7,20 +7,20 @@ import uuid
 from collections.abc import Callable, Sequence
 
 from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
-from app.domain.errors import CatalogueError
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.journeys import plan_journey
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
 from app.domain.pricing import calculate_price
-from app.domain.results import ContractQuote, GameSnapshot
+from app.domain.results import AvailableContract, ContractQuote, GameSnapshot
 from app.domain.state_ports import GameUnitOfWork
 from app.domain.transports import ActiveTransport, RouteSnapshot
-from app.domain.world import FacilityQuery
+from app.domain.world_scopes import WorldScope
 from app.services.fleet import (
     create_starter_vehicle,
     resolve_delivery_facility,
 )
 from app.services.market import MarketGenerator
+from app.services.market_lifecycle import MarketLifecycleService
 from app.services.market_scope import MarketScopeResolver
 
 LOGGER = logging.getLogger(__name__)
@@ -40,6 +40,7 @@ class GameService:
         clock: Callable[[], float],
         time_scale: float = 1.0,
     ) -> None:
+        """Wire player-scoped orchestration to injected service ports."""
         self.unit_of_work = unit_of_work
         self.state_repository = unit_of_work.repository
         self.world = world
@@ -49,6 +50,9 @@ class GameService:
         self.catalogue = catalogue
         self.market_scope = market_scope
         self.now = clock
+        self.market_lifecycle = MarketLifecycleService(
+            unit_of_work, market, market_scope, lambda: self.now()
+        )
 
     def ensure_initial_state(self) -> None:
         """Atomically create missing state, including for direct callers."""
@@ -67,88 +71,19 @@ class GameService:
             )
 
     def refresh_market(self, force: bool = False) -> list[ContractOffer]:
-        """Synchronize the always-available idle-truck market."""
-        vehicles = list(self.state_repository.list_vehicles())
-        origins = self.market_scope.resolve(vehicles)
-        with self.unit_of_work.transaction():
-            retained = [] if force else self._current_market_for_scope(origins)
-            try:
-                contracts = self._generate_scoped_market(
-                    origins,
-                    vehicles,
-                    retained,
-                )
-            except CatalogueError:
-                if force:
-                    raise
-                LOGGER.warning(
-                    "World market unavailable",
-                    extra={"event": "market.catalogue_unavailable"},
-                )
-                contracts = retained
-            self._store_market(contracts, len(origins))
-            return contracts
-
-    def _current_market_for_scope(
-        self, origin_ids: tuple[str, ...]
-    ) -> list[ContractOffer]:
-        """Select fresh typed offers for the requested facility scope."""
-        now = self.now()
-        scope = set(origin_ids)
-        return [
-            offer
-            for offer in self.state_repository.list_offers()
-            if offer.expires_at > now + 60
-            and offer.market_model == self.market.model_id
-            and offer.origin.facility_uid in scope
-        ]
-
-    def _generate_scoped_market(
-        self,
-        origin_ids: tuple[str, ...],
-        vehicles: Sequence[OwnedVehicle],
-        retained: list[ContractOffer],
-    ) -> list[ContractOffer]:
-        """Generate and persist one already-resolved market scope."""
-        return self.market.generate(
-            self.now(),
-            list(origin_ids),
-            existing_contracts=retained,
-            owned_capacities=[v.capacity_tons for v in vehicles],
-        )
-
-    def _store_market(
-        self, contracts: list[ContractOffer], origin_count: int
-    ) -> None:
-        """Persist changed typed offers in the already-open unit of work."""
-        offers = tuple(contracts)
-        if offers == self.state_repository.list_offers():
-            return
-        self.state_repository.replace_offers(offers)
-        LOGGER.info(
-            "Contract market refreshed",
-            extra={
-                "event": "market.refresh",
-                "data": {
-                    "contract_count": len(offers),
-                    "scope_origin_count": origin_count,
-                },
-            },
-        )
+        """Delegate city market lifecycle to its transactional service."""
+        return self.market_lifecycle.refresh(force)
 
     async def quote_contract(
-        self, contract_id: str, vehicle_id: str | None = None
+        self, contract_id: str, vehicle_id: str
     ) -> ContractQuote:
         """Route snapshot coordinates and calculate simulated economics."""
         self.reconcile_arrival()
         contract = self._find_contract(contract_id)
-        vehicle: OwnedVehicle | None = None
-        if vehicle_id is not None:
-            vehicle = self._find_vehicle(
-                list(self.state_repository.list_vehicles()),
-                vehicle_id,
-            )
-            self._validate_dispatch(vehicle, contract)
+        vehicle = self._find_vehicle(
+            self.state_repository.list_vehicles(), vehicle_id
+        )
+        self._validate_dispatch(vehicle, contract)
         origin = contract.origin
         destination = contract.destination
         if origin.coordinates is None or destination.coordinates is None:
@@ -161,9 +96,7 @@ class GameService:
         )
         if self._find_contract(contract_id) != contract:
             raise ValueError("Auftrag wurde während der Kalkulation geändert.")
-        vehicle = (
-            self.get_vehicle(vehicle_id) if vehicle_id is not None else None
-        )
+        vehicle = self.get_vehicle(vehicle_id)
         quote = self._calculate_quote(contract, route, vehicle)
         LOGGER.info(
             "Contract quoted",
@@ -194,7 +127,9 @@ class GameService:
         quote = await self.quote_contract(contract_id, vehicle_id)
         # Never hold a write transaction across an external API await.
         with self.unit_of_work.transaction():
-            return self._commit_dispatch(contract_id, vehicle_id, quote)
+            trip = self._commit_dispatch(contract_id, vehicle_id, quote)
+        self.market_lifecycle.refill_after_commit()
+        return trip
 
     def _commit_dispatch(
         self, contract_id: str, vehicle_id: str, quote: ContractQuote
@@ -216,11 +151,13 @@ class GameService:
             quote,
             self.now(),
         )
+        vehicle.reposition_within_city(contract.origin)
         vehicle.start_trip()
         self.state_repository.save_player(player)
         self.state_repository.save_vehicle(vehicle)
         self.state_repository.save_transport(trip)
         self.state_repository.remove_offer(contract_id)
+        self.market_lifecycle.prune_in_transaction()
         LOGGER.info(
             "Trip dispatched",
             extra={
@@ -247,7 +184,7 @@ class GameService:
                 return False
             for trip in arrived:
                 self._complete_trip(trip, now)
-        self.refresh_market()
+        self.market_lifecycle.refill_after_commit()
         return True
 
     def _complete_trip(self, trip: ActiveTransport, now: float) -> None:
@@ -313,52 +250,25 @@ class GameService:
                 self.state_repository.list_active_transports(),
             )
 
-    def list_contracts(
-        self,
-        query: FacilityQuery | None = None,
-        zoom: float | None = None,
-    ) -> list[ContractOffer]:
-        """Synchronize and return the current lazy market scope."""
+    def list_contracts(self) -> list[ContractOffer]:
+        """Reconcile arrivals and return retained/refilled city markets."""
         self.reconcile_arrival()
-        vehicles = list(self.state_repository.list_vehicles())
-        origins = self.market_scope.resolve(vehicles, query, zoom)
-        with self.unit_of_work.transaction():
-            retained = self._current_market_for_scope(origins)
-            try:
-                contracts = self._generate_scoped_market(
-                    origins,
-                    vehicles,
-                    retained,
-                )
-            except CatalogueError:
-                LOGGER.warning(
-                    "World market unavailable",
-                    extra={"event": "market.catalogue_unavailable"},
-                )
-                contracts = retained
-            self._store_market(contracts, len(origins))
-        return contracts
+        return self.refresh_market()
 
-    def refresh_contracts(
-        self,
-        query: FacilityQuery | None = None,
-        zoom: float | None = None,
-    ) -> list[ContractOffer]:
-        """Regenerate the current lazy market scope."""
+    def refresh_contracts(self) -> list[ContractOffer]:
+        """Explicitly regenerate offers only for current active cities."""
         self.reconcile_arrival()
-        vehicles = list(self.state_repository.list_vehicles())
-        origins = self.market_scope.resolve(vehicles, query, zoom)
-        with self.unit_of_work.transaction():
-            contracts = self._generate_scoped_market(
-                origins,
-                vehicles,
-                [],
-            )
-            self._store_market(contracts, len(origins))
-        return contracts
+        return self.refresh_market(force=True)
+
+    def contract_choices(
+        self, offers: Sequence[ContractOffer]
+    ) -> tuple[AvailableContract, ...]:
+        """Expose server-side vehicle choices for already read offers."""
+        return self.market_lifecycle.present(offers)
 
     def get_contract(self, contract_id: str) -> ContractOffer:
         """Return one available offer with historical endpoint values."""
+        self.list_contracts()
         return self._find_contract(contract_id)
 
     def list_vehicles(self) -> tuple[OwnedVehicle, ...]:
@@ -443,11 +353,20 @@ class GameService:
         contract: ContractOffer,
     ) -> None:
         """Delegate vehicle-specific dispatch invariants to the entity."""
+        if vehicle.location is None:
+            vehicle.restore_location(
+                WorldScope(self.world.read())
+                .facility(vehicle.facility_uid)
+                .location_snapshot()
+            )
         vehicle.validate_dispatch(
             contract.mode,
-            contract.origin.facility_uid,
+            contract.origin.city.city_uid,
             contract.tons,
         )
+        fleet = self.market.candidates.resolve_fleet((vehicle,))
+        if not self.market.candidates.eligible_ids(contract, fleet):
+            raise ValueError("Transportklasse oder Fahrzeuggröße passt nicht.")
 
     def _build_trip(
         self,
@@ -478,23 +397,21 @@ class GameService:
         self,
         contract: ContractOffer,
         route: RouteSnapshot,
-        vehicle: OwnedVehicle | None,
+        vehicle: OwnedVehicle,
     ) -> ContractQuote:
         """Calculate economics and energy from current purchased values."""
-        journey = None
-        cost_per_km = 0.62
-        if vehicle is not None:
-            self._validate_dispatch(vehicle, contract)
-            if vehicle.operating_cost_eur_per_km is not None:
-                cost_per_km = vehicle.operating_cost_eur_per_km
-            journey = plan_journey(
-                route.distance_km,
-                route.duration_seconds,
-                vehicle.top_speed_kmh,
-                vehicle.energy,
-                vehicle.energy_level,
-                self.time_scale,
-            )
+        self._validate_dispatch(vehicle, contract)
+        cost_per_km = vehicle.operating_cost_eur_per_km
+        if cost_per_km is None:
+            raise ValueError("Gespeicherte Fahrzeugkosten fehlen.")
+        journey = plan_journey(
+            route.distance_km,
+            route.duration_seconds,
+            vehicle.top_speed_kmh,
+            vehicle.energy,
+            vehicle.energy_level,
+            self.time_scale,
+        )
         return ContractQuote(
             contract,
             route,
@@ -504,7 +421,7 @@ class GameService:
                 cost_per_km,
                 contract.rate_eur_per_km_ton,
             ),
-            vehicle.id if vehicle is not None else None,
+            vehicle.id,
             cost_per_km,
             journey,
         )

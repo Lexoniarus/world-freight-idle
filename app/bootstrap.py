@@ -29,10 +29,13 @@ from app.repositories.relational_traffic import SqliteTrafficReader
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.repositories.world_geography import WorldGeographyRepository
+from app.services.contract_factory import ContractFactory
 from app.services.fleet import FleetService
 from app.services.game import GameService
 from app.services.map_locations import MapLocationService
 from app.services.market import MarketGenerator
+from app.services.market_candidates import MarketCandidateService
+from app.services.market_coverage import MarketCoverageService
 from app.services.market_scope import MarketScopeResolver
 from app.services.profile_maintenance import ProfileMaintenanceService
 
@@ -71,7 +74,9 @@ def build_game_runtime(
         database=database,
         world=world,
         router=router,
-        market=MarketGenerator(world, random.Random(rng_seed), catalogue),
+        market=build_market_generator(
+            world, random.Random(rng_seed), catalogue
+        ),
         catalogue=catalogue,
         market_scope=MarketScopeResolver(world),
         time_scale=settings.game_time_scale,
@@ -182,4 +187,17 @@ def build_energy_upgrade(
     """Inject catalogue snapshots into the explicit offline state upgrade."""
     return VehicleEnergyUpgradeRepository(
         source, build_vehicle_catalogue(settings).list_models()
+    )
+
+
+def build_market_generator(
+    world: WorldCatalogue,
+    rng: random.Random,
+    catalogue: VehicleCatalogue,
+) -> MarketGenerator:
+    """Inject independent candidate, coverage and materialization services."""
+    return MarketGenerator(
+        MarketCandidateService(world, catalogue),
+        MarketCoverageService(rng),
+        ContractFactory(rng),
     )

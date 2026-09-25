@@ -37,9 +37,8 @@ async def test_energy_quote_dispatch_pause_and_offline_settlement(
     now = [game.now()]
     game.now = lambda: now[0]
     contract = first_berlin_contract(game)
-    generic = project_quote(await game.quote_contract(contract["id"]))
-    assert generic["journey"] is None
-    assert generic["energy_consumption"] is None
+    with pytest.raises(TypeError):
+        await game.quote_contract(contract["id"])
     quote = project_quote(
         await game.quote_contract(contract["id"], vehicle.id)
     )
@@ -153,7 +152,9 @@ async def test_quote_rejects_offer_changed_during_routing(game):
         offers = game.state_repository.list_offers()
         game.state_repository.replace_offers(
             tuple(
-                replace(o, tons=o.tons + 0.01) if o.id == contract["id"] else o
+                replace(o, rate_eur_per_km_ton=o.rate_eur_per_km_ton + 0.01)
+                if o.id == contract["id"]
+                else o
                 for o in offers
             )
         )
@@ -172,7 +173,9 @@ async def test_dispatch_rejects_offer_changed_after_quote(game):
     before = game._get_player()
     game.state_repository.replace_offers(
         tuple(
-            replace(offer, tons=offer.tons + 0.01)
+            replace(
+                offer, rate_eur_per_km_ton=offer.rate_eur_per_km_ton + 0.01
+            )
             if offer.id == contract["id"]
             else offer
             for offer in game.state_repository.list_offers()
