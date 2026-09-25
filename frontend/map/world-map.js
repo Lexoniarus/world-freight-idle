@@ -242,12 +242,16 @@ export class WorldMap {
   setPreset(preset) {
     this.preset = preset;
     if (!this.ready) return;
-    const opacity = preset === "leaderboard" ? 0.95 : 0.45;
-    this.map.setPaintProperty("multiplayer-vehicles-fallback", "circle-opacity", opacity);
+
+    // A visible multiplayer layer must render vehicles fully opaque.
+    // Presets control visibility, not transparency.
+    this.map.setPaintProperty("multiplayer-vehicles-fallback", "circle-opacity", 1);
+    this.map.setPaintProperty("multiplayer-vehicles", "icon-opacity", 1);
+    this.map.setPaintProperty("multiplayer-vehicles-idle", "icon-opacity", 1);
+
     this.map.setPaintProperty("vehicles", "icon-opacity", preset === "company" ? 0.65 : 1);
     this.groups.last = -Infinity;
     this.drawTraffic();
-    this.map.setPaintProperty("multiplayer-vehicles", "icon-opacity", opacity);
   }
 
   setSourceData(name, data) {

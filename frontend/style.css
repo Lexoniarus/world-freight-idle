@@ -1835,7 +1835,7 @@ input::placeholder {
 }
 
 .vehicle-group.foreign {
-  opacity: 0.8;
+  opacity: 1;
 }
 
 .map-object-list {
