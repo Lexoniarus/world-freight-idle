@@ -72,3 +72,12 @@ def shipment_tons(capacity_tons: float, load_factor: float) -> float:
     if not 0 < load_factor <= 1:
         raise ValueError("Invalid load factor.")
     return max(0.01, math.floor(capacity_tons * load_factor * 100) / 100)
+
+
+def biased_load_factor(minimum: float, maximum: float, draw: float) -> float:
+    """Transform a uniform draw into a bounded Beta(3, 1) load factor."""
+    for value in (minimum, maximum, draw):
+        require_finite(value, "Load distribution input")
+    if not 0 < minimum <= maximum <= 1 or draw > 1:
+        raise ValueError("Invalid load distribution bounds or draw.")
+    return minimum + (maximum - minimum) * draw ** (1 / 3)

@@ -9,7 +9,7 @@ from typing import ClassVar
 
 from app.domain.contracts import ContractOfferSnapshot
 from app.domain.market import MarketCandidate
-from app.domain.market_calculations import shipment_tons
+from app.domain.market_calculations import biased_load_factor, shipment_tons
 from app.domain.market_terms import OfferMarketContext
 from app.simulation import STANDARD_RATE
 
@@ -38,7 +38,9 @@ class ContractFactory:
         load = candidate.distance_profile
         tons = shipment_tons(
             selected.capacity_tons,
-            self.rng.uniform(load.load_factor_min, load.load_factor_max),
+            biased_load_factor(
+                load.load_factor_min, load.load_factor_max, self.rng.random()
+            ),
         )
         profile = candidate.profile
         context = OfferMarketContext(

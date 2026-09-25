@@ -574,3 +574,7 @@ FUNCTION_TESTS.update(
         "app.main.unresolved_vehicle_model": "test_market_reference_errors_have_explicit_http_responses",
     }
 )
+
+FUNCTION_TESTS["app.domain.market_calculations.biased_load_factor"] = (
+    "test_load_distribution_rejects_invalid_inputs_and_preserves_endpoints"
+)
