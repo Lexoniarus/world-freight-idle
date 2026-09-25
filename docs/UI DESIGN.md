@@ -875,3 +875,13 @@ Halts stehen Marker und Streckenfortschritt. Energie wird am Pausenende aufgefü
 Text-/Meterupdates behalten vorhandene Bildknoten; Polling, Spielerfarben,
 World Wrapping und Kameraposition bleiben erhalten. Fremde Fahrzeuge veröffentlichen
 nur die notwendigen Bewegungsintervalle, keine privaten Energieinhalte.
+
+
+## Anfahrt und automatische Abholung
+
+Auftragsdetails beginnen mit dem ausgewählten Fahrzeugstandort; Abholung und
+Zustellung folgen als getrennte Stationen. Quote und Transport zeigen Anfahrts-
+und Frachtkilometer sowie Gesamtzeit/-kosten. Statuslabels „Zur Abholung“ und
+„Fracht unterwegs“ folgen den gespeicherten Abschnittsgrenzen; Energiehalte
+überschreiben die Fahrphase mit „Tankt“ beziehungsweise „Lädt“. Mobile Sheets,
+Reduced Motion und Fahrzeugbilder behalten ihr bestehendes Verhalten.

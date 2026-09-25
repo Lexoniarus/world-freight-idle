@@ -95,3 +95,12 @@ oder Migrationsauftrag für den aktuellen 4.2.0-Referenzkatalog.
 Prüfstrategie: [TESTING.md](TESTING.md), Zuständigkeiten:
 [ARCHITECTURE.md](ARCHITECTURE.md), tatsächliche Abnahme:
 [QUALITY_REPORT.md](../QUALITY_REPORT.md).
+
+
+## Abholanfahrt und Marktentfernung
+
+Market v2 erzeugt weiterhin ohne Routing und bewertet die Luftlinie zwischen
+Abholung B und Lieferung C. Das angebotene Distanzband beschreibt diese
+Frachtrelation. Die spätere Fahrzeugquote ergänzt die tatsächliche Anfahrt
+A → B und Straßenkilometer beider Abschnitte; sie verändert weder Candidates
+noch Coverage-Bands. Kataloge und deren read-only Zugriff bleiben unverändert.

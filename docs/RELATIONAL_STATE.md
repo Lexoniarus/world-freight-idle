@@ -134,3 +134,17 @@ ihren bisherigen Zeiten, ohne zusätzliche Halte oder Energieabrechnung.
 Fehler entfernen die neue Zieldatei; die Quelle bleibt unangetastet. Das Werkzeug
 aktiviert keine Datei und startet keinen Server. Profilpflege ist nur für freie
 Fahrzeuge zulässig und überträgt den Füllgrad auf die neue Kapazität.
+
+
+## Optionaler Dispatch-Routenplan
+
+Spiel-Schema 1.1.0 und Snapshot-Hüllen bleiben unverändert. Neue Transportdaten
+speichern `dispatch_route` mit start/pickup/destination, delivery und optionalem
+approach. Alle Geometrien und Providerwerte sind historische Werte. Die
+Gesamtroute bleibt für bestehende Projektionen enthalten. Der Mapper liest
+fehlenden Plan als None, ohne Katalog-/Routerzugriff und ohne Migration.
+Historische aktive/settled Snapshots werden nicht nachträglich ergänzt.
+
+Reservierung, Abbuchung, Transport, Offer-Verbrauch und Pruning committen atomar.
+Der Abfahrtsstandort wird dabei bewahrt; Settlement schreibt erst das Ziel C.
+Refill hat eine zweite Transaktion und kann den Dispatch nicht zurückrollen.

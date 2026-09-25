@@ -112,3 +112,23 @@ gleiche Stadt-UUID; Facility-ID und Snapshot ändern sich gemeinsam, ohne
 Kosten, Zeit oder Energie. Kein generiertes Angebot bindet ein Fahrzeug.
 AvailableContract ergänzt flüchtige eligible_vehicle_ids ausschließlich für
 die HTTP-Auswahl. Historische Konditionen benötigen keinen aktuellen Katalog.
+
+
+## Abfahrtscheckpoint und Routenabschnitte
+
+Dispatch ruft `OwnedVehicle.start_trip` auf und verändert den Standort nicht.
+`reposition_within_city` bleibt eine explizite Entity-Operation für idle Fahrzeuge,
+wird aber bei Auftragsannahme nicht mehr verwendet. Der gespeicherte Standort
+und Energiefüllstand bilden den Checkpoint; laufende Werte kommen aus dem Trip.
+
+`RouteSnapshot` in `domain/routes.py` hält immutable Straßenkilometer,
+Routingsekunden und Geometrie. `DispatchRoutePlan` komponiert tatsächlichen
+Start, Abholung, Ziel, optionale Anfahrt und Frachtstrecke. Er verlangt
+Koordinaten und gemeinsame Start-/Abholstadt. `RouteLeg` projiziert geordnete
+öffentliche Abschnittsgrenzen. `ActiveTransport` schützt die Übereinstimmung
+von gespeichertem Auftrag, Routenplan, Gesamtroute und JourneyPlan.
+
+`plan_dispatch_journey` ist eine deterministische Komposition bestehender
+Energiepläne, keine Reservierung. Abholung folgt aus der halboffenen Grenze
+zwischen Anfahrt und Lieferung. Der Fahrzeugstatus bleibt durchgehend enroute.
+Historische Transporte ohne DispatchRoutePlan bleiben unveränderte Einzelfahrten.

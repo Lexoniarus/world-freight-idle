@@ -208,8 +208,8 @@ Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abn
 
 Stadtmärkte eigener idle Fahrzeuge ersetzen Nutzlastklassen und Viewport-Scope.
 V2 bewahrt gültige fahrbare Angebote und ergänzt Facility-/Distanz-Coverage.
-Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Same-City-
-Reposition ist kostenlos; Dispatch und anschließender Markt-Refill besitzen
+Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Die tatsächliche
+Anfahrt wird mitgeplant; Dispatch und anschließender Markt-Refill besitzen
 getrennte Transaktionen. Historische Transporte und gespeicherte Konditionen
 bleiben erhalten. Trailer, Versicherungen und weitere Simulationen sind nicht
 Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
@@ -233,3 +233,11 @@ Kamerakontinuität, stabile Bilder, Nah-/Stadt-/Regional-/Europa-Zoom sowie
 vollständige Quality-/E2E-Gates. Historische Finanz-/Leistungswerte stammen nur
 aus belegten Transporten; kein historischer Model-Scope. Die tatsächlichen
 Prüfnachweise und Grenzen stehen im [Qualitätsbericht](../QUALITY_REPORT.md).
+
+
+## Ergänzung: echte Abholanfahrt
+
+Auftragsannahme plant Standort A → Abholung B → Lieferung C. Gesamtdauer,
+Verbrauch und Kosten schließen A → B ein, Frachterlös ausschließlich B → C.
+Kein Teleport beim Dispatch, keine Ladezeit oder zweite Aktion bei B.
+Historische Fahrten, Stadtmarkt-Eignung und relationale Schemaversion bleiben.

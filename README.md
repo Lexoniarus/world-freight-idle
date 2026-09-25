@@ -218,3 +218,11 @@ Erst nach erfolgreichem Abgleich die neue Datei als `game.db` aktivieren und mit
 unverändert; vorhandene Transporte erhalten keine nachträglichen Pausen oder
 Energieabzüge. Bei unbekannten Modellen bricht die Übernahme ab. Kein automatisches
 Upgrade beim Serverstart. Details: [Persistenz](docs/RELATIONAL_STATE.md).
+
+
+### Tatsächliche Abholanfahrt
+
+Aufträge starten am Fahrzeugstandort und führen über die Abholung zum Lieferziel.
+Anfahrt zählt zu Zeit, Energie und Kosten; Frachterlös nur zur Frachtstrecke.
+Details: [Routenarchitektur](docs/ARCHITECTURE.md) und
+[Funktionsreview](docs/DISPATCH_APPROACH_REVIEW.md).

@@ -1,119 +1,113 @@
-# Qualitätsbericht: Frontend v2
+# Qualitätsbericht: tatsächliche Abholanfahrt
 
-Stand: 25.09.2026. Lokaler Branch `feature/frontend-v2`, Basis ist der vor
-Arbeitsbeginn erneut geladene main `614ec730fc09a43151f9751d644190ace17a14be`.
-Repository-Hooks sind aktiv. Keine Veröffentlichung und kein Merge.
-Umgebung: Windows, Python 3.11.9, Node 24, Microsoft Edge / Codex In-app Browser.
+Abgenommener Quellstand: `548336f`, 25.09.2026. Umsetzung auf dem ausdrücklich gewählten Branch
+`feature/frontend-v2`, ausgehend von `fbeca0b`. Bestehende Frontendänderungen
+wurden erhalten. Repository-Hooks sind aktiv; keine Veröffentlichung, kein Merge.
+Umgebung: Windows, Python 3.11.9, Node 24, Microsoft Edge / Playwright.
 
-## Implementierter Umfang
+## Ergebnis
 
-- Map-first HUD, graphitfarbene Managementflächen, lokale Barlow-/Inter-Schriften,
-  semantische UI-/Kartenfarben, Context-/Management-Drawer und mobile Sheets.
-- CityContext nach city_uid, deterministische Defaults, bewusste inaktive Städte,
-  ungefilterte Auswahl, Browserhistorie, Fahrzeugvorwahl und Legacy-Hub-Auflösung.
-- Stadtmarkt mit serverseitiger Eignung und deutschen Dimensionslabels,
-  kompakten Cargo-Karten, getrenntem Listen-/Detailzustand und Quote-Verwerfung.
-- Flotte nach Stadt und Richtung/Status, Modell-/Namensfilter und zustandsbezogene
-  Front-/Side-/Map-Ansichten. Keine neuen Assets; Hash-Inventar bleibt erhalten.
-- Layer-Presets und lokale Overrides nach stabiler authentifizierter user.id,
-  Reset je Ansicht, unabhängige temporäre Auswahl, Gruppierung mit Count-Badges,
-  Tastaturlisten, World Wrapping und echten unveränderten Koordinaten.
-- Authentifizierte Analytics und exakte City-/Facility-Lookups. Analytics besitzt
-  einen eigenen Reader-Port/Service/SQLite-Lesepfad, ausschließlich skalare
-  JSON-Projektion und konsistenten Lesestand. Keine Transport-/Routenhydration.
-- Unternehmen mit KPIs, UTC-Zeitreihen, Scopes, Ergebnisbalken und zugänglichen
-  Tabellen. Importierter Fortschritt, belegte Historie und laufende Erwartungen
-  sind getrennt. Keine historische Modellstatistik.
+- Fahrzeuge starten am gespeicherten Standort A, fahren automatisch zur
+  Abholung B und weiter nach C. Der gespeicherte Standort bleibt bis zur
+  Zielankunft der Abfahrtscheckpoint. Status bleibt enroute.
+- Injizierter DispatchPlanningService und immutable DispatchRoutePlan trennen
+  tatsächlichen Start, Abholung, Straßenabschnitte und historische Providerwerte.
+  GameService delegiert Routing, Energieplanung und Wirtschaftskalkulation.
+- Abschnittsweise Geschwindigkeitsbegrenzung, kontinuierliche Energie und
+  automatische Halte; Gesamtkosten für beide Strecken, Erlös nur für B → C.
+  Grundbeträge werden jeweils einmal berechnet.
+- Additive API-/Snapshotfelder, getrennte Kilometer, gemeinsames Abschnitts-
+  Tracking für eigene/öffentliche Fahrzeuge und zwei Fahrphasen in der UI.
+- Routing bleibt außerhalb der Schreibtransaktion. Angebot, Fahrzeug und
+  tatsächlicher Start werden vor Commit erneut validiert. Dispatch/Pruning
+  bleiben atomar; Refill besitzt weiterhin eine separate Transaktion.
+- Historische Transporte ohne neuen Plan bleiben unveränderte Einzelfahrten.
+  World 4.2.0, Vehicle 2.2.0 und Spielschema 1.1.0 bleiben unverändert.
 
 ## Ausgeführte Prüfungen
 
-Der vollständige Qualitätslauf wurde auf dem finalen Quellstand erfolgreich
-ausgeführt. Die Browserregression hat anschließend denselben Produktionsbuild bestätigt.
-
 | Prüfung | Ergebnis |
 | --- | --- |
-| python scripts/quality.py | bestanden |
-| Python einschließlich Manifest/Architektur | 372 Verhaltenstests bestanden |
-| App-Statement-Coverage | 100 %; 3979 Statements, keine Lücke |
-| Ruff / Format, mypy / Pyright | bestanden; 101 Quelldateien / 0 Fehler |
-| Frontend-Verhalten | 75 bestanden |
-| ESLint, Stylelint, Prettier, checkJs, Vite | bestanden |
-| npm run test:e2e | 18 bestanden; 4,3 Minuten |
+| Gezielte Backend-/Lifecycle-/Manifesttests | 20 bestanden |
+| Ergänzte Anfahrts-/Konkurrenz-/Rollbacktests | 9 bestanden; zusätzlicher strikter Mapper-Gegentest separat bestanden |
+| Frontend-Verhalten | 77 bestanden |
+| python scripts/quality.py, finaler Quellstand | 381 Tests bestanden; 4086 Statements, 100 % Coverage; alle Gates bestanden |
+| npm run test:e2e, finaler Quellstand | 20 bestanden; 8,4 Minuten |
+| Einzelreview aller geänderten Core-Funktionen | 24 Python-Funktionen einzeln plus Frontendfunktionen geprüft |
 | git diff --check | bestanden |
 
-Die letzten verbindlichen Logs heißen `artifacts-frontend-v2-quality-final.log`
-und `artifacts-frontend-v2-e2e-verified.log` (lokal, nicht versioniert). Zwischenläufe
-während der Umsetzung sind keine Abnahme: dabei wurden unter anderem mobile
-Navigationsebenen, zusammengepresste KPI-Gitter und mehrdeutige Testselektoren
-gefunden und korrigiert. Kein Test und keine Coverage-Regel wurde deaktiviert.
+Verbindliche finale Logs: `artifacts-approach-quality-verified.log` und
+`artifacts-approach-e2e-verified.log`, lokal und nicht versioniert. Zwischenläufe
+waren keine Abnahme: ein Formatierungsfehler im Manifest wurde korrigiert;
+der erste vollständige Quality-Lauf wurde nach dem Review vorzeitig beendet,
+um die strengere Snapshot-Decodierung und zusätzliche Konkurrenztests gemeinsam
+auf dem finalen Stand zu prüfen. Im ersten beendeten Gesamt-Pythonlauf
+wurden außerdem Altimport-Fixtures auf ihr tatsächliches historisches Feldformat
+und die öffentliche Verkehrs-Feldliste auf die neue Projektion korrigiert.
+Der Importer selbst wurde nicht geändert; 18 Import- und drei Verkehrstests
+bestanden danach separat. Die Browserregression hatte alte Warteannahmen für nur eine Strecke. Die Offline-Wartezeit folgt jetzt der Quote,
+die UI-Settlement-Wartefenster berücksichtigen die längere Gesamtfahrt. Kein
+Test, keine Coverage-Schwelle und keine Architekturregel wurde deaktiviert.
 
-## Verhalten und Datenschutz
+## Fachliche Gegenproben
 
-Analytics-Gegenproben verbieten load_transport_record, load_transport sowie
-RouteSnapshot-/ActiveTransport-Konstruktion und erhalten dennoch korrekte
-Aggregate aus gespeicherten Fixtures mit großen Koordinatenarrays. Python
-bekommt ausschließlich skalare Werte; JSON-Hülle, Version und Pflichtwerte
-werden validiert. PRAGMA query_only sichert die Aggregation gegen Writes ab.
-Gleichnamige beziehungsweise identische lokale Fahrzeug-IDs anderer Accounts
-geben keine fremden Kennzahlen frei. Exact-Lookups und Analytics verlangen
-Sessions. Fehlerantworten enthalten keine SQL-/Datei-/privaten Bestandsdetails.
+A ≠ B, A = B und unterschiedliche Facilities mit gleichen Koordinaten werden
+separat geprüft. Verschiedene Providerzeiten und Höchstgeschwindigkeiten gelten
+je Abschnitt. Tests kontrollieren die exakte Grenze bei B, Halte davor, direkt
+bei B und danach, kontinuierlichen Verbrauch sowie den neuen Füllstand erst am
+Pausenende. Wirtschaftstests sichern Frachterlös nur auf B → C und einmalige
+Grundbeträge einschließlich negativer Gewinne.
 
-Ankunft wird durch die vorhandene idempotente Settlement-Logik reconciled.
-Der zweite Analytics-Aufruf bucht weder Kapital noch Fortschritt erneut.
-Die Tageszuordnung verwendet historisches arrives_at in UTC, nicht Loginzeit.
-V1-Historie bleibt für Unternehmen/Stadt/Fahrzeug nutzbar, ohne erfundene
-Transportklasse/Distanzband-Zuordnung. Aktuelle Unternehmenswerte bleiben
-unternehmensweit, Zeitraumauswertungen folgen dem gewählten Scope.
+Ein zweiter SQLite-Writer kann während Routing geöffnet werden. Standortwechsel
+während Routing oder zwischen Quote und Commit verhindert Dispatch ohne
+Abbuchung. Überlappende Routings führen nur zu einem Transport und einer
+Abbuchung. Fehler nach Transportanlage oder beim Pruning rollen Fahrzeugstatus,
+Geld, Transport und Offers gemeinsam zurück. Bestehende Lifecycle-Tests belegen
+Refill nach sichtbarem Commit, isolierten Refill-Rollback und späteren Refresh
+ohne erneuten Dispatch. Reload/Offline-Fortschritt in beiden Abschnitten und
+Settlement schreiben Ziel, Endenergie und Auszahlung einmalig.
 
-Frontend-Gegenproben prüfen UUIDs trotz gleicher Stadtnamen, explizite bekannte
-Stadt ohne Markt, Verlust des letzten idle Fahrzeugs, Session-Auswahl, verspätete
-Reads und unabhängige Marktlisten/-details. Eligibility wird ausschließlich
-über eligible_vehicle_ids gelesen. Gruppen trennen eigene/fremde Objekte,
-respektieren Auswahl, Wrapping und deaktivierte Gruppierung. Relative
-Koordinaten bleiben unverändert. Auswahlquellen umgehen ausgeblendete normale
-Layer, ohne lokale Präferenzen zu verändern.
+Neue Snapshots werden roundtripped, unbekannte Felder und leere Anfahrtsobjekte
+abgelehnt. Alte Snapshots benötigen weder aktuellen Katalog noch neue Route.
+Öffentliche route_legs und Journey-Intervalle enthalten keine Kosten, Erlöse,
+Energiefüllstände oder Verbrauchsprofile. Die JS-Gegenprobe verwendet bewusst
+gegensätzliche Geometrie-/Straßenlängen; eigene/fremde Fahrzeuge erreichen B
+exakt am selben Abschnittswechsel, nicht bei einer Gesamtrouten-Fraction.
 
-## Browser und visuelle Abnahme
+## Browser und visuelle Prüfung
 
-E2E-Größen: 1440×900, 1024×768 und 390×844; zusätzlich Reduced Motion.
-Der vollständige Ablauf umfasst Anmeldung, Fahrzeug/Stadt, Auftrag, visuelle
-Fahrzeugwahl, Quote, Dispatch, Transport, Unternehmen, alle Zeiträume und Scopes.
-Geprüft werden Tastatur-/Rückkehrfokus, mobile Sheet-Höhen mit inert-Karte,
-Canvas-Kontinuität, Pan/Zoom ohne Marktreads, unveränderte Bilder beim Polling,
-Layer-Persistenz, Gruppenliste bei identischen Koordinaten, Analytics-Fehler/Retry
-und KPI-Layout.
+Neue Playwright-Fälle: Desktop 1440×900 und Mobile 390×844 mit Reduced Motion,
+Fahrzeugwahl, sichtbare Start-/Abholstationen, getrennte Kilometer, „Zur Abholung“,
+automatischer Wechsel zu „Fracht unterwegs“ sowie Reload auf beiden Abschnitten.
+Bestehende Desktop-/Tablet-/Mobilfälle decken Markt, Auswahlwechsel, verspätete
+Quotes, Pan/Zoom ohne Marktreads, Energiehalte, Offline-Ankunft und Analytics ab.
 
-Manuelle OSM-Prüfung im isolierten lokalen Prüfserver: Europa-/Regionalzoom
-zeigt lesbare Count-Marker beziehungsweise kompakte Fahrzeuge; Stadtzoom
-ordnet Angebote nach Origin-Facility; Nahzoom zeigt Modellasset und Auswahlhalo
-über Straßen/Labels. Aufklappbare Filter lassen den Aufträgen Platz. Lange
-NHM-Namen behalten zugänglichen Volltext. Desktop-KPIs, Fahrzeugbilder und
-mobile Vollhöhenansicht wurden zusätzlich anhand gerenderter Screenshots
-kontrolliert. Im automatisierten Lauf ersetzen lokale PNGs OSM-Kacheln;
-die echte Kartenprüfung wurde separat über Browserbedienung durchgeführt.
+Die gerenderten Screenshots `world-freight-approach-desktop.png` und
+`world-freight-approach-mobile.png` wurden visuell geprüft: Statuslabel,
+Fahrzeugabbildung, Start-/Abholfolge und responsive Panels bleiben lesbar,
+kein horizontaler Überlauf. Delivery-Screenshots dokumentieren den Wechsel.
+Alle Bilder liegen im temporären Verzeichnis und werden nicht versioniert.
+Automatisierte OSM-Kacheln sind lokale Testbilder. Reale Straßenprovider werden
+über die vorhandenen Port-/Provider-Tests geprüft; dieser Regressionslauf ist
+keine neue Live-Valhalla- oder physische Mobilgeräte-/Safari-Abnahme.
 
-Screenshots liegen im temporären Verzeichnis unter
-`world-freight-frontend-v2-company-desktop.png`, `...-tablet.png`, `...-mobile.png`
-sowie `world-freight-frontend-v2-selected-hidden-layer.png`,
-`world-freight-market-v2-desktop.png`, `...-mobile.png` und unter
-`artifacts/assets-current/`. Keine physischen Mobilgeräte oder Safari-Abnahme
-werden behauptet. Zwei bestehende Starlette/httpx-/AnyIO-Deprecation-Warnungen
-sind keine Testfehler.
+## Architekturreview und verbleibende Grenzen
 
-## Architekturreview und Grenzen
+Das [Einzelreview](docs/DISPATCH_APPROACH_REVIEW.md) benennt für jede neue oder
+wesentlich geänderte öffentliche/private Core-Funktion Zweck, Schicht,
+Abhängigkeiten und Seiteneffekte. Es wurde zusätzlich zum Manifest durchgeführt.
+Keine neue Markt-, SQL- oder HTTP-Verantwortung wurde in GameService verlagert.
+Planung bleibt deterministisch, Services injiziert, Repositories auf Mapping
+und Speicherung begrenzt, Views auf Darstellung. Öffentliches Tracking nutzt
+dieselben Abschnittsgrenzen wie eigenes Tracking. Keine Assets/Kataloge wurden
+verändert, keine Spieler-DBs, Backups oder Prüfartefakte aufgenommen.
 
-Views rendern ohne Requests. frontend/api.js bleibt der einzige Spiel-API-Zugang.
-Controller besitzen Auswahl, Requests und Cleanup. WorldMap rendert/interagiert;
-CityContext, Gruppenberechnung, Präferenzen und Analytics sind separate Module.
-Panel- und Application-Orchestrierung enthalten keine neue Simulation oder
-Eligibility-Logik. Listener und ausstehende Requests werden beendet; versteckte
-Karten pausieren unnötige Bewegung. Bilddateien und Referenzkataloge wurden nicht
-verändert. Statische globale Facility-/History-Downloads wurden nicht ergänzt.
-
-Market v2 blieb fachlich unverändert; lediglich die irreführende anfängliche
-TradeOptions-Gesamtzahl wurde aus dem Log entfernt. Dispatch-/Refill-Transaktionen
-wurden nicht optimiert. World 4.2.0, Vehicle Catalogue 2.2.0 und Spielschema 1.1.0
-bleiben bestehen. Keine Persistenzmigration. Fehlende historische Geld-/Strecken-
-oder Tonnenwerte werden weder aus Fortschrittszählern noch heutigen Modellen
-rekonstruiert. Die all-time Summen benötigen eigene belegte historische Skalare;
-Routengeometrien werden dafür nicht nach Python übertragen.
+100 % Statement-Coverage ist eine Codeprüfung, keine Behauptung vollständiger
+geografischer Daten. Katalogseitig bleiben 559 Facilities, davon 95 mit
+verifizierten und 464 mit ausdrücklich geschätzten Koordinaten. Fehlende
+NHM-/Fahrzeug-kompatible Distanzbänder bleiben datenbedingte unmet Coverage;
+diese Änderung erfindet dafür weder Relationen noch Angebote. Kein neuer
+Vollscan sämtlicher Stadt-/Flottenkombinationen wurde behauptet. Historische
+Transporte erhalten keine nachträgliche Anfahrt oder aus aktuellen Katalogen
+rekonstruierte Konditionen. Provider-Snapping und vereinfachter konstanter
+Energieverbrauch bleiben bestehende Modellgrenzen.

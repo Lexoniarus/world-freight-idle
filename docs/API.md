@@ -217,7 +217,7 @@ einer Fahrt wird dieser Wert aus dem unveränderlichen Fahrtplan berechnet.
 Fahrzeugquotes ergänzen `journey`, `energy_consumption`, `energy_stop_count`,
 `driving_seconds`, `pause_seconds` und `total_duration_seconds`. Die drei neuen
 Dauern sind bereits mit dem Spielzeitfaktor skaliert. `duration_seconds` bleibt
-die unveränderte Valhalla-Fahrzeit. Ohne Fahrzeug sind die Planungsfelder null.
+die unveränderte Valhalla-Fahrzeit. Quotes erfordern eine explizite Fahrzeug-ID.
 
 Eigene Transporte enthalten den gespeicherten Plan sowie zeitabhängiges
 `progress` (Phase, Entfernung, Bruchteil, Energiestand, Phasenrestzeit).
@@ -293,3 +293,33 @@ Exakte Stadt-UUID, keine Namensauflösung. Antwort: city_uid, city, country.
 Unbekannt: 404. Die Auflösung macht eine Stadt nicht zum aktiven Markt.
 Beide Lookups nutzen die bestehende World-/Map-Schicht und senden nur das
 angefragte Objekt; kein globaler Facility-Download zur Link-Auflösung.
+
+
+## Quote und Transport: tatsächlicher Fahrtbeginn
+
+`origin`, `origin_snapshot` und Origin-IDs behalten die Bedeutung Abholung B.
+Quote und eigener Transport ergänzen:
+
+| Feld | Bedeutung |
+| --- | --- |
+| start | Standortprojektion des tatsächlichen Fahrtbeginns A |
+| approach_distance_km | Straßenkilometer A → B, sonst 0 |
+| delivery_distance_km | Straßenkilometer B → C, Grundlage des Frachterlöses |
+| route_legs | Geordnete approach-/delivery-Abschnitte |
+
+Jeder Abschnitt enthält `purpose`, `start_km`, `end_km`,
+`routing_duration_seconds` und `coordinates`. Kilometergrenzen beziehen sich
+auf die gesamte Fahrt. Providerzeiten sind unskaliert. Die zugehörigen
+skalierten Fahrt-/Pausenzeiten stehen in `journey.segments`. Gesamtroute,
+`distance_km`, Quote-Dauern sowie Transport-Abfahrt/Ankunft beziehen sich auf
+A → B → C. Bei Ankunft an B beginnt automatisch der delivery-Abschnitt.
+
+`GET /api/v1/map/traffic` ergänzt dieselben route_legs ohne Auftrags-,
+Wirtschafts- oder Energiedaten. Historische Transporte ohne gespeicherten Plan
+liefern `start = origin`, Anfahrt 0, Frachtkilometer gleich Gesamtkilometern und
+leere route_legs; Clients verwenden dann unverändert die Gesamtroute.
+
+Geänderter Startstandort nach Routing: HTTP 400, keine Annahme/Abbuchung.
+Providerfehler bleiben HTTP 502; ein erneuter Benutzerauftrag kann neu planen.
+Die explizite vehicle_id-Pflicht und bestehende Eignungsregeln bleiben bestehen.
+Analytische Gesamtkilometer enthalten bei neuen Fahrten auch die Anfahrt.

@@ -165,3 +165,23 @@ Kartenlesbarkeit wird separat manuell geprüft, ohne automatisierte Tile-Downloa
 Pflichtgates bleiben `python scripts/quality.py` und `npm run test:e2e`.
 100 % App-Statement-Coverage, Asset-Hashes und Manifest sind unverändert bindend.
 Tatsächlich ausgeführte Ergebnisse stehen im [Qualitätsbericht](../QUALITY_REPORT.md).
+
+
+## Anfahrt zur Abholung
+
+`tests/test_dispatch_approach.py` prüft Abschnitts- und Snapshot-Invarianten,
+A ≠ B, A = B, gleiche Koordinaten, fehlende Koordinaten, Routingausfall,
+Provider-/Geschwindigkeitsgrenzen, Energiehalte vor, auf und nach B,
+kontinuierlichen Füllstand, getrennte Kosten/Erlöse und einfache Grundbeträge.
+Separate SQLite-Verbindungen belegen Routing außerhalb der Schreibtransaktion.
+Standortänderung während Routing und vor Commit, parallele Annahme, Rollback
+nach Transportanlage/Offer-Verbrauch sowie Reload/Offline-Settlement sind
+explizite Gegenfälle. Markt-Lifecycle-Tests sichern weiterhin Refill-Isolation.
+
+`frontend/approach.test.mjs` nutzt bewusst gegensätzliche Geometrie-/Straßenlängen:
+B muss exakt am Kilometer-/Zeitwechsel erreicht werden, auch mit Energiehalten
+auf beiden Seiten. Eigene und öffentliche Fahrzeuge teilen diese Grenzen;
+Alttransporte behalten ihre Einzelfahrt. Browserfälle prüfen Start A, automatische
+Abholung, getrennte Kilometer, Reload in beiden Phasen und Reduced Motion auf
+Desktop/Mobil. Die bestehenden Auswahl-, Quote-, Pan-/Zoom- und Offline-Tests
+bleiben Teil des vollständigen Regressionslaufs.

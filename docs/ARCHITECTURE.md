@@ -100,8 +100,8 @@ Filterdetails, Coverage-Schleifen, SQL oder Transaktionen. Coverage liefert
 einen immutable Plan und Diagnosen, keine materialisierten Angebote.
 
 Routing findet vor der Dispatch-Schreibtransaktion statt. Danach werden alle
-veränderlichen Voraussetzungen erneut gelesen. Same-City-Reposition,
-Reservierung, Abbuchung, Transportanlage, Offer-Verbrauch und notwendiges
+veränderlichen Voraussetzungen einschließlich Abfahrtscheckpoint erneut
+gelesen. Reservierung, Abbuchung, Transportanlage, Offer-Verbrauch und notwendiges
 Pruning committen gemeinsam. Erst anschließend startet eine separate
 Markttransaktion mit erneut gelesener Flotte und Retention. Refill-Fehler rollen
 nur diese zweite Transaktion zurück und protokollieren `market.refill_failed`.
@@ -208,3 +208,26 @@ Lesestand. UTC-Tage richten sich nach gespeichertem arrives_at; abgeschlossene
 V1-Fahrten zählen, bleiben aber ohne V2-Klassifizierung. Kein Join auf heutige
 Fahrzeugmodelle als angebliche Historie. Private Kennzahlen gelangen weder in
 Traffic noch Leaderboard.
+
+
+## Dispatch-Planung mit Anfahrt
+
+`DispatchPlanningService` erhält den TruckRouter per Injection. Er routet
+A → B optional und B → C vor der Schreibtransaktion und komponiert die reine
+Fahrt- und Preisplanung. `GameService` koordiniert Revalidierung und Persistenz.
+Der vollständige immutable Start-Snapshot muss nach Routing und unmittelbar
+vor Commit mit dem aktuellen Fahrzeugcheckpoint übereinstimmen.
+
+`DispatchRoutePlan` trennt Start, Abholung, Ziel und Providerwerte der Abschnitte.
+`plan_dispatch_journey` skaliert jeden Abschnitt separat, begrenzt seine
+Geschwindigkeit und übergibt den Restfüllstand an den nächsten Abschnitt.
+Zeit- und Kilometerintervalle schließen ohne Lücke aneinander an. Preisbildung
+verwendet Frachtkilometer für Erlös und Gesamtkilometer für Betriebskosten.
+
+Reservierung schreibt nur den Status enroute. Der Standort bleibt A bis zum
+Settlement in C; es gibt weder Standortschreibvorgang noch Dispatch bei B.
+Markt-Pruning bleibt Teil der Dispatch-Transaktion; Refill erfolgt nach Commit.
+Öffentliche RouteLeg-Werte enthalten nur Geometrie, Providerzeit und Grenzen.
+Die Karte hält vorbereitete Geometrien je Abschnitt und interpoliert mit dessen
+Straßenkilometern. Eigene und fremde Fahrzeuge nutzen dieselbe Implementierung.
+Das Funktionsreview steht in [DISPATCH_APPROACH_REVIEW.md](DISPATCH_APPROACH_REVIEW.md).

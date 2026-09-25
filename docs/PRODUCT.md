@@ -153,8 +153,8 @@ Endfüllstand mit Auszahlung und Settlement atomar gespeichert.
 
 Stadtmärkte eigener idle Fahrzeuge ersetzen Nutzlastklassen und Viewport-Scope.
 V2 bewahrt gültige fahrbare Angebote und ergänzt Facility-/Distanz-Coverage.
-Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Same-City-
-Reposition ist kostenlos; Dispatch und anschließender Markt-Refill besitzen
+Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Die tatsächliche
+Anfahrt wird mitgeplant; Dispatch und anschließender Markt-Refill besitzen
 getrennte Transaktionen. Historische Transporte und gespeicherte Konditionen
 bleiben erhalten. Trailer, Versicherungen und weitere Simulationen sind nicht
 Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
@@ -176,3 +176,19 @@ Fortschrittszähler und laufende erwartete Ergebnisse sind separat bezeichnet.
 Map-first, echte Routengeometrie, OSM, World 4.2.0 und Catalogue 2.2.0 bleiben.
 Keine Änderung an Marktregeln, Preisen, Refill-/Dispatch-Transaktionsgrenzen.
 Gestaltung und Bedienung: [UI DESIGN](UI%20DESIGN.md).
+
+
+## Tatsächliche Anfahrt zur Abholung
+
+Das ausgewählte idle Fahrzeug startet am gespeicherten Standort A, fährt zur
+Abholung B und anschließend zum Lieferziel C. Es muss weiterhin zur Abholstadt
+gehören. A → B verursacht Fahrzeit, Energieverbrauch und Betriebskosten;
+Frachterlös entsteht nur für B → C. Grundbeträge werden einmal pro Auftrag
+berechnet. Abholung und Weiterfahrt sind automatisch und ohne Ladezeit.
+
+Angebotsdetails zeigen Fahrzeugstandort, Abholung und Lieferung, getrennte
+Straßenkilometer sowie Gesamtdauer und Gesamtkosten. Tracking unterscheidet
+„Zur Abholung“ und „Fracht unterwegs“; Tank-/Ladepausen bleiben sichtbar.
+Bei identischem Standort oder exakt gleichen Koordinaten entfällt die Anfahrt.
+Routingfehler verhindern eine Annahme ohne Abbuchung. Historische Fahrten werden
+nicht verändert. Die kostenlose Same-City-Reposition entfällt im Dispatch.
