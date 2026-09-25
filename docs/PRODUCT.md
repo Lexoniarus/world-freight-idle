@@ -143,8 +143,9 @@ Startvorrat ist ein Halt am Ursprung möglich; weitere Halte liegen entlang der
 Route. Diese Positionen behaupten keine realen Tankstellen/Ladestationen.
 
 Fahrzeit vor Beschleunigung ist das Maximum aus Providerzeit und
-Strecke/Höchstgeschwindigkeit. Providerdaten, Kilometerkosten und Erlösformel
-bleiben erhalten. Es gibt keine zusätzlichen Kraftstoffgebühren. Offline-Pausen
+Strecke/Höchstgeschwindigkeit. Providerdaten bleiben erhalten. Neue Quotes
+verwenden Wartung und tatsächliche Energieeinkäufe gemäß Economy v2; der
+alte aggregierte Kilometersatz wird nicht zusätzlich berechnet. Offline-Pausen
 und -Ankunft benötigen keine Hintergrundjobs; beim nächsten Zugriff wird der
 Endfüllstand mit Auszahlung und Settlement atomar gespeichert.
 
@@ -192,3 +193,14 @@ Straßenkilometer sowie Gesamtdauer und Gesamtkosten. Tracking unterscheidet
 Bei identischem Standort oder exakt gleichen Koordinaten entfällt die Anfahrt.
 Routingfehler verhindern eine Annahme ohne Abbuchung. Historische Fahrten werden
 nicht verändert. Die kostenlose Same-City-Reposition entfällt im Dispatch.
+
+## Frontend-v2: verbindliche Stabilisierung
+
+Neue Aufträge bevorzugen hohe zulässige Auslastung und speichern einen
+NHM-Mindesttarif. Neue Quotes berechnen 80 € Grundkosten, Wartung für A → B → C
+und tatsächlich geplante Energieeinkäufe. Nur B → C erzeugt Frachtvergütung;
+negative Ergebnisse bleiben möglich. Historie bleibt unverändert.
+Der Stadtmarkt zeigt ausschließlich eigene idle-Städte. Firmenfarben sind
+für Front-, Seiten- und Kartendarstellung persistent auswählbar. Analytics
+zeigt aktuelle verständliche Fahrzeugnamen bei unveränderter ID-Gruppierung.
+Verbindliche Formeln: [ECONOMY_V2.md](ECONOMY_V2.md).

@@ -132,3 +132,16 @@ von gespeichertem Auftrag, Routenplan, Gesamtroute und JourneyPlan.
 Energiepläne, keine Reservierung. Abholung folgt aus der halboffenen Grenze
 zwischen Anfahrt und Lieferung. Der Fahrzeugstatus bleibt durchgehend enroute.
 Historische Transporte ohne DispatchRoutePlan bleiben unveränderte Einzelfahrten.
+
+## Unveränderliche Wirtschafts- und Darstellungswerte
+
+`VehicleCostProfile`, `EnergyPurchase`, `CostBreakdown` und `FreightTariff`
+tragen validierte, immutable Werte. `biased_load_factor` transformiert nur
+Grenzen und Draw; `journey_costs` bilanziert nur tatsächliche Käufe/Wartung;
+`freight_tariff` bestimmt Referenzbedingungen; `calculate_price` kombiniert
+gespeicherten Tarif und explizite Kosten. Keine dieser Funktionen besitzt
+SQL, Routing oder RNG. `MarketVehicle` hält den Generierungskontext, ohne
+ein Fahrzeug im Offer zu reservieren. Historische Zusatzwerte sind optional.
+`AccountPreferences` ist getrennt vom Spielzustand. `vehicle_labels`
+disambiguiert aktuelle Namen, ohne historische Modellbehauptungen.
+Details: [ECONOMY_V2.md](ECONOMY_V2.md).

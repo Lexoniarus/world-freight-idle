@@ -185,3 +185,22 @@ Alttransporte behalten ihre Einzelfahrt. Browserfälle prüfen Start A, automati
 Abholung, getrennte Kilometer, Reload in beiden Phasen und Reduced Motion auf
 Desktop/Mobil. Die bestehenden Auswahl-, Quote-, Pan-/Zoom- und Offline-Tests
 bleiben Teil des vollständigen Regressionslaufs.
+
+## Frontend-v2: Wirtschaft, Start und Assets
+
+Zusätzliche Tests prüfen deterministische statistische Beladungen, konkrete
+Wartungsprojektion, kaufmännische Rundung, null/einen/mehrere Energieeinkäufe,
+Fahrzeugwechsel ohne Tarifänderung, globalen Startup-Rollback, unveränderte
+Historie, isolierte Farben und öffentliche Projektion. Frontendtests prüfen
+aktive Städte, URL-Aufräumen nach Dispatch, verspätete Assetantworten,
+Lease-Übergabe und erhaltene Bildknoten. Browserregressionen prüfen Desktop,
+Tablet, Mobil, Reduced Motion, Firmenfarben und regionale Fahrzeuggruppen.
+`python scripts/audit_economy.py` erstellt die lokale Wirtschaftsmatrix.
+Verbindliche Gates: `python scripts/quality.py`, `npm run test:e2e`; konkrete
+Ergebnisse und Funktionsreview stehen im [Qualitätsbericht](../QUALITY_REPORT.md).
+
+
+Den Frontend-Build vor dem Browserlauf abschließen. Vite ersetzt `static/dist`;
+ein gleichzeitig ausgeführter Build kann Anmeldeseiten/Assets kurzzeitig
+entfernen und erzeugt ungültige Browser-Testbedingungen. Empfohlene Reihenfolge:
+Quality-Gate einschließlich Build abschließen, danach `npm run test:e2e`.

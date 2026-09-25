@@ -90,7 +90,7 @@ Validiert Fahrzeugstatus, Modus, Standort, Kapazität und Liquidität. Bei Erfol
 ### `POST /contracts/refresh`
 
 Erneuert den NHM-basierten Markt ausschließlich für aktive Fahrzeugstädte
-wie `GET /contracts`; dieselben optionalen `bbox`-/`zoom`-Parameter gelten.
+wie `GET /contracts`; BBox/Zoom gehören nicht zum Contract-Vertrag.
 
 ## Flotte
 
@@ -145,7 +145,8 @@ Jeder HTTP-Request erhält `X-Trace-Id` in der Response.
 
 `GET /fleet/catalogue` behält `models` und `delivery_hub`. Modelle enthalten
 `id`, `name`, `mode`, `capacity_tons`, `price_eur`, `manufacturer`, `powertrain`,
-`unlock_reputation` und `operating_cost_eur_per_km`; sortiert nach Preis und ID.
+`unlock_reputation`, `maintenance_eur_per_1000_km` und den historischen
+Aggregatwert `operating_cost_eur_per_km`; sortiert nach Preis und ID.
 `POST /fleet/purchase` prüft Reputation/Guthaben serverseitig und speichert
 Fahrzeugwerte atomar. Unbekanntes/gesperrtes Modell: 400. Katalogfehler: 503.
 
@@ -153,9 +154,11 @@ Fahrzeugwerte atomar. Unbekanntes/gesperrtes Modell: 400. Katalogfehler: 503.
 Fehlender Body sowie fehlende, leere oder null IDs liefern HTTP 422.
 Besitz, idle-Status, Stadt, Modus, Modell, Klasse, Scale und konkrete Kapazität
 werden serverseitig geprüft; ungültige Auswahl ergibt 400. Antworten enthalten
-`vehicle_id` und `operating_cost_eur_per_km`. Kosten: `round(80 + km * Satz)`.
+`vehicle_id`, `maintenance_eur_per_km` und `cost_breakdown`. Kosten sind
+80 € plus gerundete Wartung und tatsächliche Energieeinkäufe.
 Geroutete Straßenkilometer sind von `estimated_distance_km` (Luftlinie) getrennt.
-Auszahlung nutzt Straßenkilometer und gespeicherte Frachtrate, keinen Warenwert.
+Auszahlung nutzt Fracht-Straßenkilometer und den gespeicherten NHM-Tarif
+einschließlich Mindestfracht, keinen Warenwert.
 `accept` verlangt ebenfalls eine Fahrzeug-ID und prüft nach dem Routing erneut.
 Ein Refill-Fehler nach erfolgreichem Dispatch-Commit verändert die erfolgreiche
 Antwort nicht. Der Transport darf deshalb nicht erneut gestartet werden.
@@ -181,10 +184,10 @@ Ist der Startkatalog beim ersten Spielabruf nicht verfügbar, folgt HTTP 503;
 nach Wiederherstellung genügt ein neuer Abruf. Bestehende Fahrzeuge bleiben
 nutzbar. Es gibt keine allgemeine automatische Altflotten-/Guthabenmigration.
 
-Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
-Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
-erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
-bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
+Aufträge werden je geeigneter Origin-Facility und vorhandenem Distanzband
+aktiver eigener idle-Städte ergänzt. Mengen entstehen aus dem kompatiblen
+Generierungsfahrzeug und NHM-/Distanzprofil; `payload_band` bleibt nur
+historisch lesbar. Reale Warenbelege bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
 
 ## Domain- und Persistenzgrenze
 
@@ -323,3 +326,31 @@ Geänderter Startstandort nach Routing: HTTP 400, keine Annahme/Abbuchung.
 Providerfehler bleiben HTTP 502; ein erneuter Benutzerauftrag kann neu planen.
 Die explizite vehicle_id-Pflicht und bestehende Eignungsregeln bleiben bestehen.
 Analytische Gesamtkilometer enthalten bei neuen Fahrten auch die Anfahrt.
+
+
+## Frontend-v2: Tarif, Kosten und Firmenfarbe
+
+`GET /auth/me` liefert zusätzlich die wirksame `company_color`.
+`GET /auth/preferences` liefert `{company_color, palette}` mit zehn Farben.
+`PUT /auth/preferences` erwartet `{company_color: "#e45756"}`; nur die
+Palette ist gültig (sonst 422), Sitzung und Schreibschutz gelten wie oben.
+Der Account wird ausschließlich aus der Sitzung bestimmt. Öffentliche
+Verkehrsprojektionen verwenden dieselbe wirksame Farbe als `player_color`.
+
+Offers enthalten ihren unveränderlichen `tariff` mit Version, NHM-Faktor,
+Referenzfaktor, Referenzkosten/km und Mindestfracht/km. Quote und Accept
+verlangen explizites `vehicle_id` (fehlend/leer/null: 422). Neue Quotes
+liefern `maintenance_eur_per_km` statt des aggregierten alten Kostensatzes.
+`cost_breakdown` enthält `policy_version`, `maintenance_eur_per_km`,
+`energy_kind`, `energy_unit`, `energy_price_eur_per_unit`, `base_cost_eur`,
+`maintenance_cost_eur`, `purchases`, `energy_cost_eur`, `total_cost_eur`.
+Ein Kauf enthält `segment_index`, `quantity`, `cost_eur`; der Index bezieht
+sich auf den fortlaufenden Journey-Plan. Transportprojektionen liefern die
+identische gespeicherte Aufteilung oder null bei fehlender Historie.
+`payout_eur`, `operating_cost_eur`, `profit_eur` bleiben ganze Spiel-Euro.
+Negative Ergebnisse werden unverändert ausgeliefert. Formeln: [Economy](ECONOMY_V2.md).
+
+Analytics gruppiert weiterhin mit `vehicle_id` als Key. Das jeweilige
+`label` bzw. `vehicle_label` ist ein aktueller verständlicher Anzeigename;
+bei gleichen Namen folgt eine unterscheidende ID, bei fehlenden Fahrzeugen
+`Fahrzeug <kurze ID>`. Daraus folgt keine historische Modellklassifizierung.

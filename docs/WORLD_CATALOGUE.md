@@ -104,3 +104,23 @@ Abholung B und Lieferung C. Das angebotene Distanzband beschreibt diese
 Frachtrelation. Die spätere Fahrzeugquote ergänzt die tatsächliche Anfahrt
 A → B und Straßenkilometer beider Abschnitte; sie verändert weder Candidates
 noch Coverage-Bands. Kataloge und deren read-only Zugriff bleiben unverändert.
+
+## Wirtschaftsprofile und direkte Wartungsquelle
+
+World-Load-Factor-Grenzen bleiben unverändert. Die reine Beta(3,1)-Transformation
+begünstigt hohe Werte innerhalb dieser Grenzen für alle vier Scales. Der
+kleinste operative NHM-Frachtfaktor wird aus dem validierten Snapshot gelesen
+und revisionsgebunden indexiert. Vehicle 2.2.0 liefert Wartung direkt aus
+`vehicle_balance.maintenance_eur_per_1000_km_game`; alle 14 lokalen Modelle
+sind befüllt. Fehlende/ungültige Wartung wird abgelehnt, niemals aus dem
+aggregierten alten Betriebskostenfeld hergeleitet. Beide DBs bleiben read-only.
+Audit und Formeln: [ECONOMY_V2.md](ECONOMY_V2.md).
+
+
+Beide Referenzkataloge werden beim Serverstart validiert und für die Laufzeit
+als immutable Revision gecacht. `CachedVehicleCatalogue` lädt seinen
+injizierten validierenden Port unter einem Lock einmal erfolgreich; Fehler
+werden nicht gecacht. Ein neuer Katalogstand erfordert einen Serverneustart
+mit erneuter Validierung und globalem Marktneuaufbau. Offline-Werkzeuge lesen
+weiterhin explizit ihren gewählten Katalog. Historische Transporte bleiben
+von neuen Revisionen unabhängig.

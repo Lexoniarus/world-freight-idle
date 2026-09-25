@@ -226,3 +226,16 @@ Aufträge starten am Fahrzeugstandort und führen über die Abholung zum Lieferz
 Anfahrt zählt zu Zeit, Energie und Kosten; Frachterlös nur zur Frachtstrecke.
 Details: [Routenarchitektur](docs/ARCHITECTURE.md) und
 [Funktionsreview](docs/DISPATCH_APPROACH_REVIEW.md).
+
+## Frontend-v2: aktuelle Wirtschaftsregeln
+
+Mengen bevorzugen hohe Auslastung innerhalb der World-Profile. NHM-Mindestfracht
+und tatsächliche Wartung/Energieeinkäufe sind getrennt gespeichert. Beim
+Start werden offene Märkte aller Profile atomar für eigene idle-Städte neu
+aufgebaut. Firmenfarben sind accountbezogen persistent; Kartenfahrzeuge
+und Analytics besitzen konsistente Darstellung. Details: [Economy v2](docs/ECONOMY_V2.md).
+
+
+Nach diesem Update den Spielserver neu starten: Der Start validiert beide
+Kataloge und ersetzt offene Angebote atomar mit neuen Tarif-Snapshots.
+Bereits laufende und abgeschlossene Transporte behalten ihre Konditionen.

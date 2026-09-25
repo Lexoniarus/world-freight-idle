@@ -1898,3 +1898,12 @@ Die ursprüngliche kostenlose Same-City-Reposition im Dispatch wurde abgelöst:
 Fahrzeuge fahren A → B → C. Abholanfahrt zählt zu Kosten, Energie und Zeit,
 ausschließlich B → C zu Frachterlös. Gespeicherter Standort bleibt bis zur
 Zielankunft A. Marktregeln und historische Transportkonditionen bleiben erhalten.
+
+## Frontend-v2: ergänzender Produktvertrag
+
+Die verbindliche Mengenverteilung bevorzugt hohe Auslastung ohne Änderung
+der Kataloggrenzen. Mindestfracht stabilisiert den Tarif unabhängig von
+Tonnage und späterer Fahrzeugwahl. Tatsächliche Kosten bestehen aus
+Grundkosten, Wartung der Gesamtstrecke und Energieeinkäufen. Historische
+Beträge bleiben unangetastet. Stadtmärkte entstehen nur bei eigenen idle
+Fahrzeugen. Präzise Formeln und Snapshot-Verträge: [ECONOMY_V2.md](ECONOMY_V2.md).

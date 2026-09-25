@@ -885,3 +885,34 @@ und Frachtkilometer sowie Gesamtzeit/-kosten. Statuslabels „Zur Abholung“ un
 „Fracht unterwegs“ folgen den gespeicherten Abschnittsgrenzen; Energiehalte
 überschreiben die Fahrphase mit „Tankt“ beziehungsweise „Lädt“. Mobile Sheets,
 Reduced Motion und Fahrzeugbilder behalten ihr bestehendes Verhalten.
+
+
+## Frontend-v2: Stadtmarkt, Firmenfarben und Kosten
+
+Die Markt-Stadtauswahl enthält ausschließlich Städte eigener idle Fahrzeuge.
+Eine inaktiv gewordene Auswahl setzt auch den URL-Parameter auf alle aktiven
+Städte zurück; ohne solche Städte ist die Auswahl deaktiviert. Ziele und
+fahrende Standort-Checkpoints bleiben in anderen Ansichten verfügbar.
+Pan/Zoom löst keine Marktanfrage aus.
+
+Unter Unternehmen stehen zehn Firmenfarben zur Verfügung. Front, Seite,
+Flotte, Shopvorschau und Karte nutzen dieselbe wirksame Accountfarbe. Idle
+zeigt ein Frontasset, enroute Top-Down. Gruppen zeigen ein vorhandenes
+repräsentatives Fahrzeug plus Count; eigene/fremde Gruppen und fremde
+Eigentümer bleiben getrennt. Facilities unter sichtbaren eigenen idle
+Fahrzeugen werden nur in der Kartenprojektion unterdrückt; nach Abfahrt
+oder deaktivierter Fahrzeugschicht erscheinen sie wieder. Auftragsmarker
+und Detailzugriff bleiben erhalten.
+
+Datenbedingte Assetgrenze: Die gelieferten Front-/Seiten-SVGs enthalten PNGs
+ohne Lackiermaske; Map-SVGs besitzen eine eigene Farbmaske. Front/Seite werden
+zur Laufzeit mit einem expliziten SVG-Farbfilter getönt, der Transparenz und
+Schattierung erhält, aber das ganze Fahrzeug betrifft. Es wird keine
+Karosserie-/Kabinenmaske erfunden und keine Quelldatei verändert.
+Map-Sprites verwenden ihre vorhandene Farbmaske.
+
+Die Kostenaufteilung zeigt Grundkosten, Wartung mit Satz, Kaufmengen und
+Einzelkosten aller Energiehalte sowie exakte Gesamtkosten. Negative Quotes
+sind erkennbar. Historische Aufteilungen fehlen ausdrücklich, statt durch
+heutige Preise ersetzt zu werden. Analyticslabels nutzen verständliche
+aktuelle Fahrzeugnamen; ID-basierte Gruppierung bleibt unverändert.

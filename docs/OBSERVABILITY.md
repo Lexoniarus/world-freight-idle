@@ -48,3 +48,11 @@ Trace-Standardwert `-`; sie behaupten keine Zugehörigkeit zu einem Browserabruf
 ## Ziel
 
 Ein Fehler aus dem Browser soll über API → Service → Provider in Logs korrelierbar sein, ohne personenbezogene Nutzdaten loggen zu müssen.
+
+## Frontend-v2: Marktstart und Preferences
+
+`market.startup` bestätigt den vollständigen Neuaufbau.
+`market.startup_failed` protokolliert den betroffenen Account und Fehler
+strukturiert; die äußere Transaktion rollt zurück. `account.color_updated`
+protokolliert die Farbänderung ohne Zugangsdaten. Bestehende Dispatch-/
+Refill-Events unterscheiden erfolgreichen Start und späteren Refill-Fehler.

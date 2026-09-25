@@ -148,3 +148,14 @@ Historische aktive/settled Snapshots werden nicht nachträglich ergänzt.
 Reservierung, Abbuchung, Transport, Offer-Verbrauch und Pruning committen atomar.
 Der Abfahrtsstandort wird dabei bewahrt; Settlement schreibt erst das Ziel C.
 Refill hat eine zweite Transaktion und kann den Dispatch nicht zurückrollen.
+
+## Frontend-v2: additive Snapshots und Preferences
+
+Game-Schema 1.1.0 und Snapshot-Hüllen bleiben bestehen. Neue Offers speichern
+`market_context.tariff`, neue Transporte optional `cost_breakdown`; alte
+Transporte werden weder umgeschrieben noch aus aktuellen Katalogen ergänzt.
+`account_preferences(user_id, company_color)` ist eine separate Account-Tabelle
+mit Fremdschlüssel auf users. Preference-Änderungen betreffen nur den eigenen
+Account und kein Game-Schema. Startup ersetzt offene Offers aller bestehenden
+Profile in einer gemeinsamen äußeren Transaktion; historische Transporte,
+Guthaben und Standorte bleiben dabei unverändert.

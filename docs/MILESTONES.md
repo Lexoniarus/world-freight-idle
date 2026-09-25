@@ -182,3 +182,10 @@ Energieplanung über zwei Strecken, unveränderter Abfahrtscheckpoint, additive
 API-/Snapshotfelder sowie Abschnittstracking sind umgesetzt. Abnahme umfasst
 Rollback/Konkurrenz, Historie, Desktop/Mobil/Reduced Motion und individuelles
 SRP-Review; die ausgeführten Ergebnisse stehen im aktuellen Qualitätsbericht.
+
+## Frontend-v2: Wirtschaft und Darstellung
+
+Ergänzt: Beta(3,1)-Beladung, gespeicherter NHM-Tarif, getrennte Wartung und
+Energieeinkäufe, global atomarer Marktneuaufbau, persistente Firmenfarben,
+Asset-Gruppen und Analyticsnamen. Lokale Umsetzung auf dem erhaltenen
+Anfahrtsfix. Aktuelle Gates und Review: [Qualitätsbericht](../QUALITY_REPORT.md).

@@ -53,8 +53,9 @@ mehrerer Spieler ist erlaubt. Rangliste und Mehrspielerkarte verwenden eigene
 Leseports. Nur noch aktive fällige Transporte ergänzen die Offline-Rangliste.
 Öffentliche Verkehrsdaten enthalten keine Guthaben, Kosten oder Zugangsdaten.
 TrafficReader liefert unveränderliche SharedTransport-Werte mit Koordinaten.
-Spielerfarben, Eigentumsmarkierung und GeoJSON entstehen erst in der API-
-Projektion; ein zusätzlicher durchreichender Mehrspieler-Service entfällt.
+Gespeicherte Firmenfarben werden im öffentlichen Read-Modell gelesen.
+Eigentumsmarkierung, deterministischer Farb-Fallback und GeoJSON entstehen
+in der API-Projektion; ein zusätzlicher durchreichender Mehrspieler-Service entfällt.
 
 ### Begrenzte Transportabfragen
 
@@ -231,3 +232,42 @@ Markt-Pruning bleibt Teil der Dispatch-Transaktion; Refill erfolgt nach Commit.
 Die Karte hält vorbereitete Geometrien je Abschnitt und interpoliert mit dessen
 Straßenkilometern. Eigene und fremde Fahrzeuge nutzen dieselbe Implementierung.
 Das Funktionsreview steht in [DISPATCH_APPROACH_REVIEW.md](DISPATCH_APPROACH_REVIEW.md).
+
+
+## Frontend-v2: getrennte Wirtschafts- und Startup-Verantwortungen
+
+`DispatchPlanningService` orchestriert Routing/Journey/Kosten; der injizierte
+`VehicleCostResolver` liest Referenzwerte über den Catalogue-Port. Domain-
+Funktionen berechnen getrennt Beladung, Tarif, Einkaufskosten und Auszahlung.
+`ContractFactory` bekommt immutable Kosten-/Energiekontexte im Candidate;
+sie führt keine Katalogabfragen durch. Der minimale NHM-Faktor wird einmal
+je World-Revision bestimmt. `MarketGenerator` bleibt reine Orchestrierung.
+
+`MarketStartupService` besitzt den globalen Rebuild-Use-Case. Sein Store-Port
+liefert bestehende Profil-IDs und eine äußere Unit of Work. Spieler-Lifecycles
+nutzen darin denselben Transaktionskontext. Bootstrap verdrahtet lediglich,
+Lifespan ruft den Use-Case vor Freigabe auf; kein SQL im Web-Bootstrap und
+keine Marktstartlogik in GameService. Startup ruft keine Spielinitialisierung
+oder Settlement auf. Ein Fehler propagiert bis zur Serverfreigabe.
+
+`PreferenceService` besitzt Palette/Fallback und Schreibtransaktion;
+`SqlitePreferenceStore` besitzt ausschließlich Account-SQL. Analytics liest
+aktuelle Namen konsistent neben historischen Skalarwerten. Anzeigenamen
+werden rein berechnet, Gruppierungsschlüssel bleiben Fahrzeug-IDs.
+
+Im Browser besitzt `VehicleColorAssets` Quellen und referenzgezählte Blob-
+Varianten. `VehicleImageController` bindet DOM-Bilder und übergibt Leases vor
+Freigabe ihrer Vorgänger. `VehicleIconRegistry` besitzt den MapLibre-Atlas,
+`PreferencesController` Requests/Listener und Farbveröffentlichung. Views
+rendern nur; verspätete Ergebnisse werden verworfen. Gemeinsame Quellen
+werden für DOM und Karte wiederverwendet, bereits kolorierte Quellen nicht
+nochmals gefiltert. Funktionsreview: [FRONTEND_ECONOMY_REVIEW.md](FRONTEND_ECONOMY_REVIEW.md).
+
+
+Beide Referenzkataloge werden beim Serverstart validiert und für die Laufzeit
+als immutable Revision gecacht. `CachedVehicleCatalogue` lädt seinen
+injizierten validierenden Port unter einem Lock einmal erfolgreich; Fehler
+werden nicht gecacht. Ein neuer Katalogstand erfordert einen Serverneustart
+mit erneuter Validierung und globalem Marktneuaufbau. Offline-Werkzeuge lesen
+weiterhin explizit ihren gewählten Katalog. Historische Transporte bleiben
+von neuen Revisionen unabhängig.

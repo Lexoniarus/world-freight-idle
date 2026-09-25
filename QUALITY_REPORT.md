@@ -1,113 +1,140 @@
-# Qualitätsbericht: tatsächliche Abholanfahrt
+# Qualitätsbericht: Frontend-v2 und Wirtschaft
 
-Abgenommener Quellstand: `548336f`, 25.09.2026. Umsetzung auf dem ausdrücklich gewählten Branch
-`feature/frontend-v2`, ausgehend von `fbeca0b`. Bestehende Frontendänderungen
-wurden erhalten. Repository-Hooks sind aktiv; keine Veröffentlichung, kein Merge.
-Umgebung: Windows, Python 3.11.9, Node 24, Microsoft Edge / Playwright.
+Stand: 25.09.2026, geprüfte Implementierung `05b4f08` auf dem lokalen Branch
+`feature/frontend-v2`. Ausgangsbasis
+`548336f` einschließlich aller drei Anfahrtscommits blieb erhalten. Die
+vorhandene Abholdokumentation wurde separat als `742e14b` gesichert.
+Hooks sind aktiv. Keine Veröffentlichung, kein PR, kein Merge.
 
-## Ergebnis
+## Implementiertes Ergebnis
 
-- Fahrzeuge starten am gespeicherten Standort A, fahren automatisch zur
-  Abholung B und weiter nach C. Der gespeicherte Standort bleibt bis zur
-  Zielankunft der Abfahrtscheckpoint. Status bleibt enroute.
-- Injizierter DispatchPlanningService und immutable DispatchRoutePlan trennen
-  tatsächlichen Start, Abholung, Straßenabschnitte und historische Providerwerte.
-  GameService delegiert Routing, Energieplanung und Wirtschaftskalkulation.
-- Abschnittsweise Geschwindigkeitsbegrenzung, kontinuierliche Energie und
-  automatische Halte; Gesamtkosten für beide Strecken, Erlös nur für B → C.
-  Grundbeträge werden jeweils einmal berechnet.
-- Additive API-/Snapshotfelder, getrennte Kilometer, gemeinsames Abschnitts-
-  Tracking für eigene/öffentliche Fahrzeuge und zwei Fahrphasen in der UI.
-- Routing bleibt außerhalb der Schreibtransaktion. Angebot, Fahrzeug und
-  tatsächlicher Start werden vor Commit erneut validiert. Dispatch/Pruning
-  bleiben atomar; Refill besitzt weiterhin eine separate Transaktion.
-- Historische Transporte ohne neuen Plan bleiben unveränderte Einzelfahrten.
-  World 4.2.0, Vehicle 2.2.0 und Spielschema 1.1.0 bleiben unverändert.
+- Beta(3,1)-Beladung innerhalb unveränderter NHM-/Distanzgrenzen; unabhängige
+  gewichtete Auswahl des Generierungsfahrzeugs und keine exklusive Bindung.
+- Direkter Katalog-Wartungssatz, 80 € Grundkosten und tatsächlich geplante
+  Energieeinkäufe. Decimal/HALF_UP, exakte Addition gerundeter Komponenten.
+- Immutable NHM-Mindesttarife, Kostensnapshots und transparente Quotes.
+  Fahrzeugwechsel verändert weder Tonnage noch Angebotstarif.
+- Global atomarer Startup-Rebuild für bestehende Profile und eigene idle-
+  Städte; beide Referenzkataloge validiert/gecacht. Keine Routingaufrufe und
+  keine historische Rekonstruktion. Fehler verhindert Serverfreigabe.
+- Markt-Stadtauswahl ohne Ziele oder enroute-Checkpoints; ungültige Auswahl
+  inklusive URL wird zurückgesetzt. Kein Marktrefresh bei Pan/Zoom.
+- Persistente Account-Farben mit zehn validierten Werten und unverändertem
+  Fallback; eigene/öffentliche Darstellung, Front/Seite/Map, Gruppenassets,
+  selektive Facility-Unterdrückung und verständliche Analyticsnamen.
+- A → B → C, kontinuierliche Energie, Standortcheckpoint, atomarer Dispatch
+  und gesonderter post-commit Refill bleiben erhalten.
 
-## Ausgeführte Prüfungen
+## Tatsächlich ausgeführte Prüfungen
 
 | Prüfung | Ergebnis |
 | --- | --- |
-| Gezielte Backend-/Lifecycle-/Manifesttests | 20 bestanden |
-| Ergänzte Anfahrts-/Konkurrenz-/Rollbacktests | 9 bestanden; zusätzlicher strikter Mapper-Gegentest separat bestanden |
-| Frontend-Verhalten | 77 bestanden |
-| python scripts/quality.py, finaler Quellstand | 381 Tests bestanden; 4086 Statements, 100 % Coverage; alle Gates bestanden |
-| npm run test:e2e, finaler Quellstand | 20 bestanden; 8,4 Minuten |
-| Einzelreview aller geänderten Core-Funktionen | 24 Python-Funktionen einzeln plus Frontendfunktionen geprüft |
-| git diff --check | bestanden |
+| Erster vollständiger `python scripts/quality.py` | bestanden: 423 Python-Tests, 4384 Statements, 100 %, 87 Frontendtests; Ruff/Format/mypy/Pyright/ESLint/Stylelint/Prettier/checkJs/Build/compileall |
+| Gezielte Cache-/Manifestprüfung nach letztem Planabgleich | 2 bestanden; fehlgeschlagener Read, Retry, parallele immutable Wiederverwendung |
+| Abschließender vollständiger Quality-Gate mit Vehicle-Cache | bestanden: 424 Python-Tests, 4401 Statements, 100 % Coverage; 87 Frontendtests; sämtliche Format-/Typ-/Lint-/Build-Gates bestanden |
+| Browserregression vor ergänzter Kostenvisualisierung | 22 bestanden, 7,2 Minuten |
+| Abschließendes `npm run test:e2e` einschließlich Kostenvisualisierung | 24 bestanden, 8,8 Minuten |
+| `python scripts/audit_economy.py` | 163.296 Zeilen, alle 14 Modelle, Seed 20260925; keine Spielerzugriffe |
+| `git diff --cached --check` und Hooks | bestanden; keine Prüfartefakte oder Spieler-DBs gestagt |
+| Referenz-/Assetintegrität | beide kanonischen DB-Blobs unverändert gegenüber 548336f; SVG-Inventarprüfungen bestanden |
+| Einzelreview | 54 direkt geänderte konkrete Python-Callables plus 2 indirekt betroffene Katalogmapper, 5 abstrakte Portmethoden und 61 Browserfunktionen/-methoden einzeln geprüft |
 
-Verbindliche finale Logs: `artifacts-approach-quality-verified.log` und
-`artifacts-approach-e2e-verified.log`, lokal und nicht versioniert. Zwischenläufe
-waren keine Abnahme: ein Formatierungsfehler im Manifest wurde korrigiert;
-der erste vollständige Quality-Lauf wurde nach dem Review vorzeitig beendet,
-um die strengere Snapshot-Decodierung und zusätzliche Konkurrenztests gemeinsam
-auf dem finalen Stand zu prüfen. Im ersten beendeten Gesamt-Pythonlauf
-wurden außerdem Altimport-Fixtures auf ihr tatsächliches historisches Feldformat
-und die öffentliche Verkehrs-Feldliste auf die neue Projektion korrigiert.
-Der Importer selbst wurde nicht geändert; 18 Import- und drei Verkehrstests
-bestanden danach separat. Die Browserregression hatte alte Warteannahmen für nur eine Strecke. Die Offline-Wartezeit folgt jetzt der Quote,
-die UI-Settlement-Wartefenster berücksichtigen die längere Gesamtfahrt. Kein
-Test, keine Coverage-Schwelle und keine Architekturregel wurde deaktiviert.
+Die finalen lokalen Logs heißen `artifacts-economy-quality-final.log`,
+`artifacts-economy-e2e-final-verified.log`, `artifacts-economy-frontend-final.log`
+und `artifacts-economy-audit.log`. Zwischenläufe waren keine Abnahme:
+veraltete Aggregatkostenerwartungen und historische Importfixtures wurden
+korrigiert. Browserregressionen fanden eine verlorene Dispatch-Navigation
+bei Stadtparameterbereinigung und eine zu früh freigegebene Blob-URL.
+Beide besitzen jetzt gezielte Gegentests. Der Map-Atlas verarbeitet bereits
+kolorierte Quellen genau einmal. Ein weiterer Browser-Zwischenlauf wurde
+nicht als Abnahme gewertet: Ein parallel gestarteter Vite-Neubuild entfernte
+kurzzeitig `static/dist/index.html` und verursachte einen HTTP-500 beim
+Anmeldeseitenaufruf (23/24 bestanden). Der vollständige Browserlauf wurde
+auf dem anschließend fertig gebauten Bundle wiederholt.
 
-## Fachliche Gegenproben
+Die zwei Python-Warnungen betreffen bestehende Starlette/httpx- und
+anyio-Deprecations. Keine Ausnahme vom 100-%-Statement-Gate wurde eingeführt.
+Playwright verwendet Edge, lokalen isolierten Spielzustand, FakeRouter und
+lokale Tile-Fixtures; es ist kein Live-Valhalla-/OSM-Verfügbarkeitstest.
 
-A ≠ B, A = B und unterschiedliche Facilities mit gleichen Koordinaten werden
-separat geprüft. Verschiedene Providerzeiten und Höchstgeschwindigkeiten gelten
-je Abschnitt. Tests kontrollieren die exakte Grenze bei B, Halte davor, direkt
-bei B und danach, kontinuierlichen Verbrauch sowie den neuen Füllstand erst am
-Pausenende. Wirtschaftstests sichern Frachterlös nur auf B → C und einmalige
-Grundbeträge einschließlich negativer Gewinne.
+## Wirtschaftsaudit
 
-Ein zweiter SQLite-Writer kann während Routing geöffnet werden. Standortwechsel
-während Routing oder zwischen Quote und Commit verhindert Dispatch ohne
-Abbuchung. Überlappende Routings führen nur zu einem Transport und einer
-Abbuchung. Fehler nach Transportanlage oder beim Pruning rollen Fahrzeugstatus,
-Geld, Transport und Offers gemeinsam zurück. Bestehende Lifecycle-Tests belegen
-Refill nach sichtbarem Commit, isolierten Refill-Rollback und späteren Refresh
-ohne erneuten Dispatch. Reload/Offline-Fortschritt in beiden Abschnitten und
-Settlement schreiben Ziel, Endenergie und Auszahlung einmalig.
+Die Matrix umfasst 14 Modelle × 484 operative NHM-Profile × 3 Bänder.
+2.457 inkompatible Modell/NHM/Band-Kombinationen sind explizit markiert.
+17.871 kompatible Kombinationen ergeben je neun Szenarien: niedrige,
+typisch neu generierte und hohe Beladung, jeweils mit 0/10/50 km Anfahrt
+und 100/50/10 % Startfüllung. Die typische Beladung nutzt den Median aus
+101 Seed-Draws und exakt dieselbe Domainverteilung wie die Factory.
 
-Neue Snapshots werden roundtripped, unbekannte Felder und leere Anfahrtsobjekte
-abgelehnt. Alte Snapshots benötigen weder aktuellen Katalog noch neue Route.
-Öffentliche route_legs und Journey-Intervalle enthalten keine Kosten, Erlöse,
-Energiefüllstände oder Verbrauchsprofile. Die JS-Gegenprobe verwendet bewusst
-gegensätzliche Geometrie-/Straßenlängen; eigene/fremde Fahrzeuge erreichen B
-exakt am selben Abschnittswechsel, nicht bei einer Gesamtrouten-Fraction.
+- Normierte Lastverteilung: 20.000 Draws je repräsentativem Intervall und
+  Kapazität; Grenzen, Reproduzierbarkeit, Mittelwert 0,74–0,76, Median
+  0,78–0,81, obere Hälfte 86–89 %, unteres Viertel 1–2,2 % getestet.
+- Mindestwert der Referenzmarge in der Matrix: **45,75 %**. Diese Zahl gilt
+  für die untersuchten 75/375/1000 km, nicht als Gewinnversprechen.
+- **16.298** negative tatsächliche Cashflow-Szenarien; **4.878** davon mit
+  typischer Beladung. Sie werden nicht durch Tonnagen-/Tarifnachbesserung
+  versteckt. Tank-/Ladekäufe und Anfahrt unterscheiden sich bewusst von
+  der Referenzbewertung verbrauchter Energie der Frachtstrecke.
 
-## Browser und visuelle Prüfung
+| Modell | Scale | Inkompatible Kombinationen | Kleinste Referenzmarge | Negative typische Cashflows | Median typische Tons |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `vw_crafter_35_130kw` | van | 453 | 49.42 % | 0 | 0.84 |
+| `mercedes_sprinter_317_cdi` | van | 453 | 49.15 % | 0 | 0.80 |
+| `iveco_daily_35s18` | van | 453 | 48.57 % | 0 | 0.87 |
+| `mercedes_atego_818_l` | light_distribution | 366 | 46.50 % | 0 | 1.48 |
+| `mercedes_atego_1224_l` | medium_distribution | 366 | 45.75 % | 362 | 3.79 |
+| `man_tgl_12_250` | medium_distribution | 366 | 45.92 % | 362 | 3.93 |
+| `iveco_sway_500` | heavy | 0 | 51.21 % | 704 | 18.93 |
+| `renault_t_high_520` | heavy | 0 | 51.08 % | 616 | 18.91 |
+| `man_tgx_520` | heavy | 0 | 51.15 % | 625 | 19.01 |
+| `daf_xg_plus_480` | heavy | 0 | 51.38 % | 578 | 18.95 |
+| `mercedes_actros_l_380` | heavy | 0 | 51.08 % | 620 | 18.82 |
+| `volvo_fh_aero_500_isave` | heavy | 0 | 51.25 % | 620 | 18.84 |
+| `scania_r460_gas` | heavy | 0 | 51.76 % | 391 | 18.41 |
+| `mercedes_eactros_600` | heavy | 0 | 51.66 % | 0 | 17.21 |
 
-Neue Playwright-Fälle: Desktop 1440×900 und Mobile 390×844 mit Reduced Motion,
-Fahrzeugwahl, sichtbare Start-/Abholstationen, getrennte Kilometer, „Zur Abholung“,
-automatischer Wechsel zu „Fracht unterwegs“ sowie Reload auf beiden Abschnitten.
-Bestehende Desktop-/Tablet-/Mobilfälle decken Markt, Auswahlwechsel, verspätete
-Quotes, Pan/Zoom ohne Marktreads, Energiehalte, Offline-Ankunft und Analytics ab.
 
-Die gerenderten Screenshots `world-freight-approach-desktop.png` und
-`world-freight-approach-mobile.png` wurden visuell geprüft: Statuslabel,
-Fahrzeugabbildung, Start-/Abholfolge und responsive Panels bleiben lesbar,
-kein horizontaler Überlauf. Delivery-Screenshots dokumentieren den Wechsel.
-Alle Bilder liegen im temporären Verzeichnis und werden nicht versioniert.
-Automatisierte OSM-Kacheln sind lokale Testbilder. Reale Straßenprovider werden
-über die vorhandenen Port-/Provider-Tests geprüft; dieser Regressionslauf ist
-keine neue Live-Valhalla- oder physische Mobilgeräte-/Safari-Abnahme.
+CSV/JSON liegen lokal unter `artifacts/economy/` und werden nicht versioniert.
+Die Tabelle ersetzt keine gesamte Marktverteilung: Profile und Szenarien
+sind systematisch enumeriert, nicht nach realer Spielerhäufigkeit gewichtet.
 
-## Architekturreview und verbleibende Grenzen
+## Architektur- und Dokumentationsabgleich
 
-Das [Einzelreview](docs/DISPATCH_APPROACH_REVIEW.md) benennt für jede neue oder
-wesentlich geänderte öffentliche/private Core-Funktion Zweck, Schicht,
-Abhängigkeiten und Seiteneffekte. Es wurde zusätzlich zum Manifest durchgeführt.
-Keine neue Markt-, SQL- oder HTTP-Verantwortung wurde in GameService verlagert.
-Planung bleibt deterministisch, Services injiziert, Repositories auf Mapping
-und Speicherung begrenzt, Views auf Darstellung. Öffentliches Tracking nutzt
-dieselben Abschnittsgrenzen wie eigenes Tracking. Keine Assets/Kataloge wurden
-verändert, keine Spieler-DBs, Backups oder Prüfartefakte aufgenommen.
+[Einzelreview](docs/FRONTEND_ECONOMY_REVIEW.md) benennt pro Callable Zweck,
+Schicht, Abhängigkeiten und Seiteneffekte. Kostenresolver, Tarif-, Mengen-
+und Kostenfunktionen, Startup-Service, Preference-Service und Read-Modelle
+halten getrennte Grenzen. SQL bleibt in Repositories; keine Views mit
+Requests oder parallele Client-Eignungs-/Preisregeln. Der GameService
+materialisiert gespeicherte Quote-Ergebnisse und delegiert Berechnungen.
 
-100 % Statement-Coverage ist eine Codeprüfung, keine Behauptung vollständiger
-geografischer Daten. Katalogseitig bleiben 559 Facilities, davon 95 mit
-verifizierten und 464 mit ausdrücklich geschätzten Koordinaten. Fehlende
-NHM-/Fahrzeug-kompatible Distanzbänder bleiben datenbedingte unmet Coverage;
-diese Änderung erfindet dafür weder Relationen noch Angebote. Kein neuer
-Vollscan sämtlicher Stadt-/Flottenkombinationen wurde behauptet. Historische
-Transporte erhalten keine nachträgliche Anfahrt oder aus aktuellen Katalogen
-rekonstruierte Konditionen. Provider-Snapping und vereinfachter konstanter
-Energieverbrauch bleiben bestehende Modellgrenzen.
+Aktualisiert: README, Produkt, Ziel, Milestones, Architektur, Domain, API,
+Persistenz, World-/Datenquellen, UI, Tests, Observability und Security.
+[ECONOMY_V2.md](docs/ECONOMY_V2.md) dokumentiert verbindliche Formeln,
+Rundung, Cache-Revisionsverhalten, Historie und Auditmethodik. Frühere
+Anfahrtsabnahme bleibt im Git-Verlauf und in DISPATCH_APPROACH_REVIEW.md.
+
+## Visuelle Prüfung und verbleibende Datenlücken
+
+Desktop (1440×900), Tablet und Mobil (390×844), Reduced Motion, Stadt-/Europa-
+Zoom, Flotte/Shop, Firmenfarben, Analytics sowie Abhol-/Lieferphasen wurden
+an den erzeugten Screenshots geprüft. Kostenansichten kleiner und großer
+Aufträge sowie mehrerer Ladehalte wurden zusätzlich aufgenommen und visuell
+geprüft: Einzelkomponenten/Summen lesbar, keine horizontale Überbreite.
+
+Die Front-/Seiten-SVGs enthalten Rasterbilder ohne Lackiermaske. Der
+implementierte SVG-Tint erhält Transparenz/Schattierung, betrifft jedoch das
+gesamte Fahrzeug. Map-Assets nutzen ihre vorhandene Farbmaske. Quelldateien
+bleiben unverändert; eine selektive Kabinenlackierung ist datenbedingt nicht
+vorhanden. Fehlende Assets erhalten einen Fahrzeugfallback.
+
+Alle 14 Modelle haben direkte Wartungswerte; hierfür besteht keine Datenlücke.
+Der World-Katalog enthält 559 routbare Facilities, davon 95 verifizierte
+und 464 ausdrücklich geschätzte Standorte. Die Berliner Testflotte erreicht
+alle drei Distanzbänder mit mindestens drei Angeboten. Für inaktive Städte
+wurden entsprechend der Architektur keine globalen Origin-Berechnungen
+angestellt; nicht erzeugbare Bands bleiben explizite Coverage-Diagnosen.
+Die 2.457 inkompatiblen Auditkombinationen werden nicht künstlich ergänzt.
+
+Spieler-DBs, Backups, Screenshots und Prüfartefakte sind nicht Bestandteil
+der Commits. Beide kanonischen Referenz-DBs stimmen bytegenau mit dem
+Ausgangsstand überein.

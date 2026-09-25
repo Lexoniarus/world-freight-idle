@@ -241,3 +241,11 @@ Auftragsannahme plant Standort A → Abholung B → Lieferung C. Gesamtdauer,
 Verbrauch und Kosten schließen A → B ein, Frachterlös ausschließlich B → C.
 Kein Teleport beim Dispatch, keine Ladezeit oder zweite Aktion bei B.
 Historische Fahrten, Stadtmarkt-Eignung und relationale Schemaversion bleiben.
+
+## Frontend-v2: Abnahmestand
+
+Umgesetzt sind die getrennte Mengen-/Tarif-/Kostenlogik, atomarer globaler
+Marktstart, aktive Stadtmarktauswahl, Account-Farben, Fahrzeuggruppen und
+lesbare Analyticslabels. Prüfnachweise und verbleibende Datenlücken stehen im
+[Qualitätsbericht](../QUALITY_REPORT.md), fachliche Verträge in
+[ECONOMY_V2.md](ECONOMY_V2.md). Veröffentlichung ist nicht Teil dieser Umsetzung.
