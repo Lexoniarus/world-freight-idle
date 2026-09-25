@@ -83,6 +83,8 @@ def test_reset_failure_restores_deleted_state(game):
         "game",
         "accounts",
         "auth",
+        "preferences",
+        "market",
         "body",
         "close-first",
     ],
@@ -122,6 +124,15 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
                 side_effect=error if failure == "auth" else None,
             )
         )
+        patches.enter_context(
+            patch(
+                "app.main.build_preferences",
+                side_effect=error if failure == "preferences" else None,
+            )
+        )
+        startup = patches.enter_context(patch("app.main.build_market_startup"))
+        if failure == "market":
+            startup.return_value.rebuild.side_effect = error
         if failure == "none":
             async with lifespan(app):
                 assert all(

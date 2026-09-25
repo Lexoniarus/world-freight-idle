@@ -368,7 +368,7 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
         return await original_route(*args)
 
     game.router.route = delayed_route
-    before = 285 if limited_cash else 175000
+    before = 112 if limited_cash else 175000
     player = project_player(game._get_player())
     game.state_repository.save_player(
         PlayerState(**{**player, "cash": before})
@@ -388,5 +388,6 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
         assert game._get_player().cash == before
     else:
         trip = project_transport(await task)
-        assert trip["operating_cost_eur"] == round(80 + 400 * 0.53)
+        assert trip["cost_breakdown"]["maintenance_eur_per_km"] == 0.085
+        assert trip["operating_cost_eur"] == 114
         assert game._get_player().cash == before - trip["operating_cost_eur"]

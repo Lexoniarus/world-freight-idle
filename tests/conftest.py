@@ -13,6 +13,7 @@ from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
+from app.services.cost_profiles import VehicleCostResolver
 from app.services.dispatch_planning import DispatchPlanningService
 from app.services.game import GameService
 from app.services.market_scope import MarketScopeResolver
@@ -72,7 +73,9 @@ def game(database, catalogue, world_catalogue) -> GameService:
         unit_of_work=SqliteGameUnitOfWork(database, "test-owner"),
         world=world_catalogue,
         router=(router := FakeRouter()),
-        dispatch_planning=DispatchPlanningService(router),
+        dispatch_planning=DispatchPlanningService(
+            router, VehicleCostResolver(catalogue)
+        ),
         market=market,
         market_scope=MarketScopeResolver(world_catalogue),
         catalogue=catalogue,
@@ -104,6 +107,9 @@ def catalogue(tmp_path):
 def database(tmp_path):
     database = SqliteGameDatabase(tmp_path / "relational.db")
     database.initialize()
+    from app.repositories.preferences import SqlitePreferenceStore
+
+    SqlitePreferenceStore(database)
     with database.connect() as connection:
         connection.execute(
             "INSERT INTO users VALUES ('test-owner', 'TestOwner', 'test', 0)"

@@ -11,7 +11,11 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import build_v1_router
-from app.bootstrap import build_game_runtime
+from app.bootstrap import (
+    build_game_runtime,
+    build_market_startup,
+    build_preferences,
+)
 from app.config import Settings
 from app.domain.errors import (
     CatalogueError,
@@ -43,6 +47,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.auth = AuthService(
             AccountRepository(app.state.game.database), PasswordHasher()
         )
+        app.state.preferences = build_preferences(app.state.game)
+        build_market_startup(app.state.game).rebuild()
         yield
 
 

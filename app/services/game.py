@@ -387,6 +387,7 @@ class GameService:
             arrives_at=departed_at + quote.journey.duration_seconds,
             journey=quote.journey,
             dispatch_route=quote.dispatch_route,
+            cost_breakdown=quote.economics.cost_breakdown,
             payout_eur=quote.economics.payout_eur,
             operating_cost_eur=quote.economics.operating_cost_eur,
         )

@@ -122,6 +122,14 @@ class SqliteAnalyticsReader:
                     (self.user_id,),
                 )
             )
+            names = tuple(
+                (row[0], row[1])
+                for row in db.execute(
+                    "SELECT vehicle_id, name FROM owned_vehicles "
+                    "WHERE user_id=?",
+                    (self.user_id,),
+                )
+            )
             db.commit()
         status["active_transports"] = len(ongoing)
-        return AnalyticsData(status, history, ongoing)
+        return AnalyticsData(status, history, ongoing, names)

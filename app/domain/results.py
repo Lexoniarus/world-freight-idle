@@ -20,7 +20,7 @@ class ContractQuote:
     route: RouteSnapshot
     economics: PriceQuote
     vehicle_id: str
-    operating_cost_eur_per_km: float
+    maintenance_eur_per_km: float
     journey: JourneyPlan | None = None
     dispatch_route: DispatchRoutePlan | None = None
 

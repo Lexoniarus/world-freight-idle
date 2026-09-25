@@ -17,11 +17,13 @@ class SqliteTrafficReader:
         """Filter owner/status/times in columns and retain route snapshots."""
         with self._database.connect() as connection:
             rows = connection.execute(
-                """SELECT t.*, u.username, v.model_id, v.name AS model_name
+                """SELECT t.*, u.username, v.model_id,
+                    v.name AS model_name, p.company_color
                 FROM transports t
                 JOIN users u ON u.id=t.user_id
                 JOIN owned_vehicles v ON v.user_id=t.user_id
                     AND v.vehicle_id=t.vehicle_id
+                LEFT JOIN account_preferences p ON p.user_id=t.user_id
                 WHERE t.status='active' AND t.arrives_at > ?
                 ORDER BY t.departed_at ASC, t.transport_id ASC""",
                 (active_at,),
@@ -34,6 +36,7 @@ def project_traffic_row(row: dict) -> SharedTransport:
     trip = load_transport_record(row)
     return SharedTransport(
         user_id=row["user_id"],
+        company_color=row.get("company_color"),
         username=row["username"],
         id=trip.id,
         vehicle_id=trip.vehicle_id,

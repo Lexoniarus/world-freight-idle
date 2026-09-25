@@ -40,6 +40,7 @@ class SharedTransport:
     distance_km: float
     segments: tuple[MovementSegment, ...]
     route_legs: tuple[RouteLeg, ...] = ()
+    company_color: str | None = None
 
 
 class LeaderboardReader(Protocol):

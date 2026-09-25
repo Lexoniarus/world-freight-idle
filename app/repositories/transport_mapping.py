@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from app.domain.economics import CostBreakdown, EnergyPurchase
 from app.domain.energy import EnergyProfile
 from app.domain.journeys import JourneyPlan, JourneySegment
 from app.domain.routes import DispatchRoutePlan, RouteSnapshot
@@ -19,6 +20,7 @@ def load_transport(value: dict[str, Any]) -> ActiveTransport:
         **{
             **value,
             "journey": load_journey(value["journey"]),
+            "cost_breakdown": load_cost_breakdown(value.get("cost_breakdown")),
             "dispatch_route": load_dispatch_route(value.get("dispatch_route")),
             "contract": load_historical_contract(value["contract"]),
             "origin": load_location(value["origin"]),
@@ -72,6 +74,20 @@ def load_dispatch_route(
                 load_route(value["approach"])
                 if value["approach"] is not None
                 else None
+            ),
+        }
+    )
+
+
+def load_cost_breakdown(value: dict[str, Any] | None) -> CostBreakdown | None:
+    """Decode optional historical purchase facts without price lookup."""
+    if value is None:
+        return None
+    return CostBreakdown(
+        **{
+            **value,
+            "purchases": tuple(
+                EnergyPurchase(**part) for part in value["purchases"]
             ),
         }
     )

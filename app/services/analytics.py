@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.domain.analytics import AnalyticsReader
+from app.domain.analytics_labels import vehicle_labels
 from app.domain.market_profiles import DISTANCE_BANDS, TRANSPORT_CLASSES
 
 LOGGER = logging.getLogger(__name__)
@@ -48,7 +49,9 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def breakdown(
-    rows: list[dict[str, Any]], dimension: str
+    rows: list[dict[str, Any]],
+    dimension: str,
+    labels: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     """Group historical identifiers without joining today's vehicle models."""
     groups: dict[str, list[dict[str, Any]]] = {}
@@ -58,7 +61,11 @@ def breakdown(
     return [
         {
             "id": key,
-            "label": group[-1]["city_name"] if dimension == "city" else key,
+            "label": (
+                group[-1]["city_name"]
+                if dimension == "city"
+                else (labels or {}).get(key, key)
+            ),
             **summarize(group),
         }
         for key, group in sorted(groups.items())
@@ -81,6 +88,10 @@ class AnalyticsService:
         """Read once and aggregate without invoking a write repository."""
         validate_scope(days, scope, scope_id)
         data = self.reader.read(now)
+        labels = vehicle_labels(
+            data.vehicle_names,
+            tuple(row["vehicle_id"] for row in (*data.history, *data.ongoing)),
+        )
         rows = [
             row
             for row in data.history
@@ -134,9 +145,15 @@ class AnalyticsService:
             "period_totals": summarize(selected),
             "daily": series,
             "breakdowns": {
-                key: breakdown(selected, key) for key in SCOPES[1:]
+                key: breakdown(
+                    selected, key, labels if key == "vehicle" else None
+                )
+                for key in SCOPES[1:]
             },
-            "ongoing": list(data.ongoing),
+            "ongoing": [
+                {**row, "vehicle_label": labels[row["vehicle_id"]]}
+                for row in data.ongoing
+            ],
             "coverage": {
                 "recorded_transports": len(data.history),
                 "progress_completed": data.status["completed"],

@@ -10,6 +10,7 @@ import pytest
 from app.api.v1.game_projection import project_quote, project_transport
 from app.api.v1.traffic_projection import project_traffic
 from app.domain.dispatch_journey import plan_dispatch_journey
+from app.domain.economics import CostBreakdown
 from app.domain.energy import EnergyProfile
 from app.domain.errors import RoutingError
 from app.domain.geography import City, Coordinates, Country
@@ -124,14 +125,17 @@ def test_dispatch_journey_preserves_leg_speeds_energy_and_boundary(route_plan):
 
 
 def test_approach_costs_do_not_pay_freight_or_duplicate_base():
-    quote = calculate_price(10, 100, 2, 0.1, approach_distance_km=50)
-    direct = calculate_price(10, 100, 2, 0.1)
+    costs = CostBreakdown("test", 2, "diesel", "l", 1.5, 80, 300, (), 0, 380)
+    quote = calculate_price(10, 100, costs, 0.1)
+    direct = calculate_price(
+        10,
+        100,
+        replace(costs, maintenance_cost_eur=200, total_cost_eur=280),
+        0.1,
+    )
     assert quote.payout_eur == direct.payout_eur == 320
     assert quote.operating_cost_eur == 380
     assert quote.profit_eur == -60
-    for invalid in (-1, float("nan"), float("inf")):
-        with pytest.raises(ValueError):
-            calculate_price(10, 100, 2, 0.1, approach_distance_km=invalid)
 
 
 async def test_planner_routes_from_checkpoint_and_skips_colocated_pickup(game):
@@ -192,9 +196,9 @@ async def test_approach_dispatch_reload_public_privacy_and_offline_arrival(
     assert quote.economics == calculate_price(
         offer.tons,
         400,
-        quote.operating_cost_eur_per_km,
+        quote.economics.cost_breakdown,
         offer.rate_eur_per_km_ton,
-        approach_distance_km=400,
+        minimum_eur_per_km=offer.market_context.tariff.minimum_eur_per_km,
     )
     restored = game.state_repository.list_active_transports()[0]
     assert restored == trip

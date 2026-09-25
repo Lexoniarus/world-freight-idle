@@ -4,12 +4,14 @@ from dataclasses import dataclass
 
 from app.domain.contracts import ContractOffer
 from app.domain.dispatch_journey import plan_dispatch_journey
+from app.domain.economics import journey_costs
 from app.domain.game import OwnedVehicle
 from app.domain.ports import TruckRouter
 from app.domain.pricing import calculate_price
 from app.domain.results import ContractQuote
 from app.domain.routes import DispatchRoutePlan, RouteSnapshot
 from app.domain.world import FacilityLocationSnapshot
+from app.services.cost_profiles import VehicleCostResolver
 
 
 @dataclass(slots=True)
@@ -17,6 +19,7 @@ class DispatchPlanningService:
     """Orchestrate an injected router and deterministic dispatch planning."""
 
     router: TruckRouter
+    costs: VehicleCostResolver
 
     async def route(
         self, start: FacilityLocationSnapshot, contract: ContractOffer
@@ -63,9 +66,11 @@ class DispatchPlanningService:
             raise ValueError(
                 "Fahrzeugstandort wurde während der Planung geändert."
             )
-        cost = vehicle.operating_cost_eur_per_km
-        if cost is None:
-            raise ValueError("Gespeicherte Fahrzeugkosten fehlen.")
+        profile = self.costs.resolve(vehicle.model_id)
+        cost = profile.maintenance_eur_per_km
+        context = contract.market_context
+        if context is None or context.tariff is None:
+            raise ValueError("Gespeicherter NHM-Tarif fehlt; Markt erneuern.")
         journey = plan_dispatch_journey(
             route,
             vehicle.top_speed_kmh,
@@ -76,11 +81,9 @@ class DispatchPlanningService:
         price = calculate_price(
             contract.tons,
             route.delivery.distance_km,
-            cost,
+            journey_costs(journey, profile),
             contract.rate_eur_per_km_ton,
-            approach_distance_km=(
-                route.approach.distance_km if route.approach else 0.0
-            ),
+            minimum_eur_per_km=context.tariff.minimum_eur_per_km,
         )
         return ContractQuote(
             contract,

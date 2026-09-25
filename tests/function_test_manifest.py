@@ -250,7 +250,7 @@ FUNCTION_TESTS.update(
         "app.api.v1.map.list_map_traffic": "test_multiplayer_map_endpoint_requires_login_and_shares_other_players",
         "app.bootstrap.build_traffic_reader": "test_multiplayer_map_projects_shared_active_traffic_without_private_economy",
         "app.api.v1.traffic_projection.project_traffic": "test_multiplayer_map_projects_shared_active_traffic_without_private_economy",
-        "app.api.v1.traffic_projection.player_color": "test_player_color_is_stable_and_changes_between_users",
+        "app.domain.company_colors.player_color": "test_player_color_is_stable_and_changes_between_users",
     }
 )
 
@@ -577,4 +577,45 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS["app.domain.market_calculations.biased_load_factor"] = (
     "test_load_distribution_rejects_invalid_inputs_and_preserves_endpoints"
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.economics.whole_euros": "test_purchase_costs_charge_only_planned_energy_and_reconcile",
+        "app.domain.economics.VehicleCostProfile.__post_init__": "test_cost_values_reject_invalid_or_inconsistent_components",
+        "app.domain.economics.EnergyPurchase.__post_init__": "test_cost_values_reject_invalid_or_inconsistent_components",
+        "app.domain.economics.CostBreakdown.__post_init__": "test_cost_values_reject_invalid_or_inconsistent_components",
+        "app.domain.economics.journey_costs": "test_cost_values_reject_invalid_or_inconsistent_components",
+        "app.domain.tariffs.FreightTariff.__post_init__": "test_tariff_uses_concrete_nhm_and_explicit_maintenance",
+        "app.domain.tariffs.freight_tariff": "test_tariff_uses_concrete_nhm_and_explicit_maintenance",
+        "app.services.cost_profiles.VehicleCostResolver.resolve": "test_tariff_uses_concrete_nhm_and_explicit_maintenance",
+        "app.repositories.transport_mapping.load_cost_breakdown": "test_cost_values_reject_invalid_or_inconsistent_components",
+        "app.repositories.market_startup.SqliteMarketStartupStore.transaction": "test_startup_rebuild_is_global_atomic_and_does_not_route",
+        "app.repositories.market_startup.SqliteMarketStartupStore.player_ids": "test_startup_rebuild_is_global_atomic_and_does_not_route",
+        "app.services.market_startup.MarketStartupService.rebuild": "test_startup_rebuild_is_global_atomic_and_does_not_route",
+        "app.bootstrap.build_market_startup": "test_startup_rebuild_is_global_atomic_and_does_not_route",
+        "app.bootstrap.build_market_startup.lifecycle": "test_startup_rebuild_is_global_atomic_and_does_not_route",
+        "app.bootstrap.build_preferences": "test_preferences_are_account_scoped_persistent_and_palette_validated",
+        "app.repositories.preferences.SqlitePreferenceStore.__init__": "test_preferences_are_account_scoped_persistent_and_palette_validated",
+        "app.repositories.preferences.SqlitePreferenceStore.transaction": "test_preferences_are_account_scoped_persistent_and_palette_validated",
+        "app.repositories.preferences.SqlitePreferenceStore.color": "test_preferences_are_account_scoped_persistent_and_palette_validated",
+        "app.repositories.preferences.SqlitePreferenceStore.save_color": "test_preferences_are_account_scoped_persistent_and_palette_validated",
+        "app.services.preferences.PreferenceService.read": "test_preferences_are_account_scoped_persistent_and_palette_validated",
+        "app.services.preferences.PreferenceService.update": "test_preferences_are_account_scoped_persistent_and_palette_validated",
+        "app.domain.analytics_labels.vehicle_labels": "test_analytics_labels_keep_identity_and_disambiguate_current_names",
+        "app.api.v1.auth.preferences": "test_color_preference_http_validation_and_session_isolation",
+        "app.api.v1.auth.update_preferences": "test_color_preference_http_validation_and_session_isolation",
+    }
+)
+
+FUNCTION_TESTS["app.domain.economy_audit.audit_economy_case"] = (
+    "test_economy_audit_uses_actual_distribution_and_separates_cashflow"
+)
+
+
+FUNCTION_TESTS.update(
+    {
+        "app.repositories.cached_vehicle_catalogue.CachedVehicleCatalogue.__init__": "test_vehicle_reference_cache_retries_failure_then_reuses_revision",
+        "app.repositories.cached_vehicle_catalogue.CachedVehicleCatalogue.list_models": "test_vehicle_reference_cache_retries_failure_then_reuses_revision",
+    }
 )

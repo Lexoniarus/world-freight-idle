@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from app.domain.contracts import HistoricalContractSnapshot
+from app.domain.economics import CostBreakdown
 from app.domain.errors import CatalogueError
 from app.domain.pricing import calculate_price
 from app.repositories.snapshot_mapping import load_historical_contract
@@ -229,22 +230,23 @@ def test_reposition_rejects_busy_other_city_and_missing_location(game):
 
 def test_freight_rate_changes_payout_but_cargo_value_does_not(game):
     offer = game.list_contracts()[0]
-    base = calculate_price(offer.tons, 400, 0.5, offer.rate_eur_per_km_ton)
+    costs = CostBreakdown("test", 0.5, "diesel", "l", 1.5, 80, 200, (), 0, 280)
+    base = calculate_price(offer.tons, 400, costs, offer.rate_eur_per_km_ton)
     assert (
         calculate_price(
-            offer.tons, 800, 0.5, offer.rate_eur_per_km_ton
+            offer.tons, 800, costs, offer.rate_eur_per_km_ton
         ).payout_eur
         > base.payout_eur
     )
     assert (
         calculate_price(
-            offer.tons * 2, 400, 0.5, offer.rate_eur_per_km_ton
+            offer.tons * 2, 400, costs, offer.rate_eur_per_km_ton
         ).payout_eur
         > base.payout_eur
     )
     assert (
         calculate_price(
-            offer.tons, 400, 0.5, offer.rate_eur_per_km_ton * 2
+            offer.tons, 400, costs, offer.rate_eur_per_km_ton * 2
         ).payout_eur
         > base.payout_eur
     )
@@ -260,12 +262,15 @@ def test_freight_rate_changes_payout_but_cargo_value_does_not(game):
         ),
     )
     assert (
-        calculate_price(changed.tons, 400, 0.5, changed.rate_eur_per_km_ton)
+        calculate_price(changed.tons, 400, costs, changed.rate_eur_per_km_ton)
         == base
     )
     assert (
         calculate_price(
-            offer.tons, 400, 1, offer.rate_eur_per_km_ton
+            offer.tons,
+            400,
+            replace(costs, maintenance_cost_eur=400, total_cost_eur=480),
+            offer.rate_eur_per_km_ton,
         ).operating_cost_eur
         > base.operating_cost_eur
     )
@@ -310,8 +315,10 @@ async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(game):
     vehicle = game.get_vehicle("truck_01")
     quote = await game.quote_contract(offer.id, vehicle.id)
     vehicle._operating_cost_eur_per_km = None
-    with pytest.raises(ValueError, match="Fahrzeugkosten"):
-        game._calculate_quote(offer, quote.dispatch_route, vehicle)
+    assert (
+        game._calculate_quote(offer, quote.dispatch_route, vehicle).economics
+        == quote.economics
+    )
     model = next(
         m for m in game.catalogue.list_models() if m.id == vehicle.model_id
     )

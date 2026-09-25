@@ -40,6 +40,7 @@ class MarketCandidateService:
         self._snapshot: WorldSnapshot | None = None
         self._network: TradeNetwork | None = None
         self._profiles: dict[int, NhmMarketProfile] = {}
+        self._reference_factor = 0.0
 
     def reference(self) -> WorldSnapshot:
         """Refresh derived reference indexes only for a changed revision."""
@@ -49,6 +50,9 @@ class MarketCandidateService:
             self._profiles = {
                 p.nhm_row_id: p for p in snapshot.market_profiles
             }
+            self._reference_factor = min(
+                p.freight_rate_factor_game for p in snapshot.market_profiles
+            )
             self._snapshot = snapshot
         return snapshot
 
@@ -134,7 +138,13 @@ class MarketCandidateService:
         if weight <= 0:
             return None
         return MarketCandidate(
-            trade, profile, load, distance, compatible, weight
+            trade,
+            profile,
+            load,
+            distance,
+            compatible,
+            weight,
+            self._reference_factor,
         )
 
     def eligible_ids(

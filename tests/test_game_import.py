@@ -671,5 +671,6 @@ def legacy_transport_projection(trip):
             "approach_distance_km",
             "delivery_distance_km",
             "route_legs",
+            "cost_breakdown",
         }
     }

@@ -314,3 +314,76 @@ def test_market_reference_errors_have_explicit_http_responses(tmp_path, game):
             assert response.status_code == status
             assert message in response.json()["detail"]
             assert "private" not in response.text
+
+
+def test_color_preference_http_validation_and_session_isolation(tmp_path):
+    make_static_files(tmp_path)
+    app = create_app(make_settings(tmp_path))
+    with TestClient(app) as client:
+        client.headers["X-Freight-Request"] = "1"
+        assert client.get("/api/v1/auth/preferences").status_code == 401
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "ColorOwner",
+                "password": "a-valid-password-123",
+            },
+        )
+        assert response.status_code == 201
+        initial = client.get("/api/v1/auth/preferences").json()
+        assert len(initial["palette"]) == 10
+        color = initial["palette"][0]
+        for value in ["red", "#000000", "", None]:
+            assert (
+                client.put(
+                    "/api/v1/auth/preferences",
+                    json={
+                        "company_color": value,
+                    },
+                ).status_code
+                == 422
+            )
+        assert client.put(
+            "/api/v1/auth/preferences",
+            json={
+                "company_color": color,
+            },
+        ).json() == {"company_color": color}
+        assert client.get("/api/v1/auth/me").json()["company_color"] == color
+        assert (
+            client.get("/api/v1/auth/preferences").json()["company_color"]
+            == color
+        )
+        assert (
+            client.put(
+                "/api/v1/auth/preferences",
+                json={
+                    "company_color": color,
+                },
+                headers={"Origin": "https://foreign.invalid"},
+            ).status_code
+            == 403
+        )
+
+
+def test_request_initialization_catalogue_failure_is_explicit(tmp_path):
+    from unittest.mock import patch
+
+    from app.domain.errors import CatalogueError
+
+    make_static_files(tmp_path)
+    app = create_app(make_settings(tmp_path))
+    with TestClient(app) as client:
+        client.headers["X-Freight-Request"] = "1"
+        client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "OfflineOwner",
+                "password": "a-valid-password-123",
+            },
+        )
+        with patch(
+            "app.api.v1.dependencies.build_player_service",
+            side_effect=CatalogueError("Unavailable catalogue"),
+        ):
+            assert client.get("/api/v1/dashboard").status_code == 503

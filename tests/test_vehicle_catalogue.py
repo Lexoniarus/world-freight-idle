@@ -182,7 +182,7 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
     first = project_quote(
         await game.quote_contract(contract["id"], "truck_01")
     )
-    assert first["operating_cost_eur_per_km"] == 0.5
+    assert first["maintenance_eur_per_km"] == 0.078
     assert first["vehicle_id"] == "truck_01"
     vehicle = project_vehicle(
         FleetService(game.unit_of_work, catalogue, game.world).purchase(
@@ -193,10 +193,10 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
         await game.quote_contract(contract["id"], vehicle["id"])
     )
     assert quote["operating_cost_eur"] == round(
-        80 + 400 * vehicle["operating_cost_eur_per_km"]
+        80 + quote["distance_km"] * quote["maintenance_eur_per_km"]
     )
     assert quote["payout_eur"] == first["payout_eur"]
-    assert quote["operating_cost_eur"] != first["operating_cost_eur"]
+    assert quote["operating_cost_eur"] == first["operating_cost_eur"]
     before = game._get_player().cash
     trip = project_transport(
         await game.dispatch(contract["id"], vehicle["id"])
@@ -384,13 +384,21 @@ def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
     assert failed.list_vehicles() == ()
 
 
-def test_missing_catalogue_keeps_login_available_and_new_state_retryable(
+def test_missing_catalogue_blocks_start_and_repaired_start_is_retryable(
     tmp_path,
 ):
     make_static_files(tmp_path)
     settings = replace(
         make_settings(tmp_path), vehicle_catalogue_path=tmp_path / "missing.db"
     )
+    with pytest.raises(CatalogueError):
+        with TestClient(create_app(settings)):
+            pytest.fail("Server must not become ready with missing catalogue")
+    source = make_settings(tmp_path).vehicle_catalogue_path
+    assert source is not None and settings.vehicle_catalogue_path is not None
+    import shutil
+
+    shutil.copyfile(source, settings.vehicle_catalogue_path)
     with TestClient(create_app(settings)) as client:
         client.headers["X-Freight-Request"] = "1"
         assert client.get("/login").status_code == 200
@@ -401,7 +409,6 @@ def test_missing_catalogue_keeps_login_available_and_new_state_retryable(
                 "password": "test-starter-password",
             },
         ).raise_for_status()
-        assert client.get("/api/v1/fleet").status_code == 503
         import shutil
 
         source = make_settings(tmp_path).vehicle_catalogue_path
@@ -416,3 +423,25 @@ def test_missing_catalogue_keeps_login_available_and_new_state_retryable(
         assert (
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 175000
         )
+
+
+@pytest.mark.parametrize("value", [-1, math.inf, "invalid"])
+def test_catalogue_rejects_invalid_explicit_maintenance(catalogue, value):
+    with sqlite3.connect(catalogue.path) as connection:
+        connection.execute("PRAGMA ignore_check_constraints=ON")
+        connection.execute(
+            "UPDATE vehicle_balance SET maintenance_eur_per_1000_km_game=?",
+            (value,),
+        )
+    with pytest.raises(CatalogueError):
+        catalogue.list_models()
+
+
+def test_catalogue_requires_explicit_maintenance_column(catalogue):
+    with sqlite3.connect(catalogue.path) as connection:
+        connection.execute(
+            "ALTER TABLE vehicle_balance RENAME COLUMN "
+            "maintenance_eur_per_1000_km_game TO unavailable_maintenance"
+        )
+    with pytest.raises(CatalogueError):
+        catalogue.list_models()

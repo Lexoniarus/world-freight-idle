@@ -11,6 +11,7 @@ from app.domain.contracts import ContractOfferSnapshot
 from app.domain.market import MarketCandidate
 from app.domain.market_calculations import biased_load_factor, shipment_tons
 from app.domain.market_terms import OfferMarketContext
+from app.domain.tariffs import freight_tariff
 from app.simulation import STANDARD_RATE
 
 
@@ -51,6 +52,12 @@ class ContractFactory:
             selected.capacity_tons,
             profile.value_eur_per_t,
             round(tons * profile.value_eur_per_t),
+            freight_tariff(
+                selected.cost_profile,
+                selected.energy,
+                profile.freight_rate_factor_game,
+                candidate.reference_nhm_factor,
+            ),
         )
         origin = option.origin
         destination = option.destination

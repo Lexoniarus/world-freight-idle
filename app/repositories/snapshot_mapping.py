@@ -7,6 +7,7 @@ from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.evidence import SourceReference
 from app.domain.geography import City, Coordinates, Country
 from app.domain.market_terms import OfferMarketContext
+from app.domain.tariffs import FreightTariff
 from app.domain.world import (
     CompanyIdentity,
     DocumentedGood,
@@ -154,4 +155,12 @@ def load_market_context(
     value: dict[str, Any] | None,
 ) -> OfferMarketContext | None:
     """Restore optional historical V2 terms without reference lookups."""
-    return OfferMarketContext(**value) if value is not None else None
+    if value is None:
+        return None
+    tariff = value.get("tariff")
+    return OfferMarketContext(
+        **{
+            **value,
+            "tariff": FreightTariff(**tariff) if tariff is not None else None,
+        }
+    )

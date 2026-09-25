@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from app.api.v1.traffic_projection import player_color, project_traffic
 from app.bootstrap import (
     build_player_service,
+    build_preferences,
     build_traffic_reader,
 )
 from app.main import create_app
@@ -57,6 +58,7 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
             arrives_at=now + 100,
             transport_id=identity,
         )
+    build_preferences(runtime).update(bob["id"], "#e45756")
     repository = SqliteTrafficReader(database)
     assert repository.list_active_transports(now + 200) == ()
     rows = repository.list_active_transports(now)
@@ -74,6 +76,7 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
         "distance_km",
         "segments",
         "route_legs",
+        "company_color",
     }
     assert rows[0].route_legs == ()
     assert set(asdict(rows[0].segments[0])) == {
@@ -96,6 +99,7 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
     other = next(item for item in traffic if item["id"] == "bob-trip")
     assert own["is_own"] is True
     assert other["is_own"] is False
+    assert other["player_color"] == "#e45756"
     assert own["username"] == "Alice"
     assert other["username"] == "Bob"
     assert own["model_id"] == "iveco_sway_500"

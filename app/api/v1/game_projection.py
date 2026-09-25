@@ -152,7 +152,7 @@ def project_quote(quote: ContractQuote) -> dict[str, Any]:
         "provider": quote.route.provider,
         **asdict(quote.economics),
         "vehicle_id": quote.vehicle_id,
-        "operating_cost_eur_per_km": quote.operating_cost_eur_per_km,
+        "maintenance_eur_per_km": quote.maintenance_eur_per_km,
         "origin": project_location(quote.contract.origin),
         "destination": project_location(quote.contract.destination),
         "contract": project_contract(quote.contract),
@@ -187,6 +187,9 @@ def project_transport(
         "payout_eur": trip.payout_eur,
         "operating_cost_eur": trip.operating_cost_eur,
         "profit_eur": trip.payout_eur - trip.operating_cost_eur,
+        "cost_breakdown": asdict(trip.cost_breakdown)
+        if trip.cost_breakdown
+        else None,
     }
 
 

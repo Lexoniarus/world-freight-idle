@@ -1,6 +1,7 @@
 """Shared deterministic vehicle and shipment compatibility rules."""
 
 from app.domain.contracts import ContractOffer
+from app.domain.economics import VehicleCostProfile
 from app.domain.game import OwnedVehicle
 from app.domain.market import MarketVehicle
 from app.domain.market_profiles import (
@@ -29,6 +30,8 @@ def market_vehicle(
         vehicle.capacity_tons,
         vehicle_scale_for_segment(model.segment),
         model.transport_capabilities,
+        VehicleCostProfile(model.maintenance_eur_per_1000_km / 1000),
+        vehicle.energy,
     )
 
 

@@ -11,6 +11,7 @@ class AnalyticsData:
     status: dict[str, Any]
     history: tuple[dict[str, Any], ...]
     ongoing: tuple[dict[str, Any], ...]
+    vehicle_names: tuple[tuple[str, str], ...] = ()
 
 
 class AnalyticsReader(Protocol):

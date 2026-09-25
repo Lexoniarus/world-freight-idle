@@ -80,4 +80,4 @@ def biased_load_factor(minimum: float, maximum: float, draw: float) -> float:
         require_finite(value, "Load distribution input")
     if not 0 < minimum <= maximum <= 1 or draw > 1:
         raise ValueError("Invalid load distribution bounds or draw.")
-    return minimum + (maximum - minimum) * draw ** (1 / 3)
+    return min(maximum, minimum + (maximum - minimum) * draw ** (1 / 3))

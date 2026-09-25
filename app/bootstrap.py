@@ -19,12 +19,15 @@ from app.domain.world_scopes import WorldScope
 from app.providers.routing import ValhallaTruckRouter
 from app.repositories.accounts import AccountRepository
 from app.repositories.analytics import SqliteAnalyticsReader
+from app.repositories.cached_vehicle_catalogue import CachedVehicleCatalogue
 from app.repositories.cached_world_catalogue import CachedWorldCatalogue
 from app.repositories.energy_upgrade import VehicleEnergyUpgradeRepository
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.leaderboard import SqliteLeaderboardReader
 from app.repositories.legacy_game_import import LegacyGameImporter
+from app.repositories.market_startup import SqliteMarketStartupStore
+from app.repositories.preferences import SqlitePreferenceStore
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.relational_traffic import SqliteTrafficReader
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
@@ -32,6 +35,7 @@ from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.repositories.world_geography import WorldGeographyRepository
 from app.services.analytics import AnalyticsService
 from app.services.contract_factory import ContractFactory
+from app.services.cost_profiles import VehicleCostResolver
 from app.services.dispatch_planning import DispatchPlanningService
 from app.services.fleet import FleetService
 from app.services.game import GameService
@@ -39,7 +43,10 @@ from app.services.map_locations import MapLocationService
 from app.services.market import MarketGenerator
 from app.services.market_candidates import MarketCandidateService
 from app.services.market_coverage import MarketCoverageService
+from app.services.market_lifecycle import MarketLifecycleService
 from app.services.market_scope import MarketScopeResolver
+from app.services.market_startup import MarketStartupService
+from app.services.preferences import PreferenceService
 from app.services.profile_maintenance import ProfileMaintenanceService
 
 
@@ -79,7 +86,7 @@ def build_game_runtime(
         client_id=settings.valhalla_client_id,
     )
     world = build_world_catalogue(settings)
-    catalogue = build_vehicle_catalogue(settings)
+    catalogue = CachedVehicleCatalogue(build_vehicle_catalogue(settings))
     return GameRuntime(
         database=database,
         world=world,
@@ -99,7 +106,9 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
         unit_of_work=SqliteGameUnitOfWork(runtime.database, user_id),
         world=runtime.world,
         router=runtime.router,
-        dispatch_planning=DispatchPlanningService(runtime.router),
+        dispatch_planning=DispatchPlanningService(
+            runtime.router, VehicleCostResolver(runtime.catalogue)
+        ),
         market=runtime.market,
         catalogue=runtime.catalogue,
         market_scope=runtime.market_scope,
@@ -212,3 +221,28 @@ def build_market_generator(
         MarketCoverageService(rng),
         ContractFactory(rng),
     )
+
+
+def build_market_startup(runtime: GameRuntime) -> MarketStartupService:
+    """Wire existing profiles to a shared outer transaction."""
+
+    def lifecycle(user_id: str) -> MarketLifecycleService:
+        """Bind market-only operations without initializing or settling."""
+        return MarketLifecycleService(
+            SqliteGameUnitOfWork(runtime.database, user_id),
+            runtime.market,
+            runtime.market_scope,
+            runtime.clock,
+        )
+
+    return MarketStartupService(
+        SqliteMarketStartupStore(runtime.database),
+        runtime.world,
+        runtime.catalogue,
+        lifecycle,
+    )
+
+
+def build_preferences(runtime: GameRuntime) -> PreferenceService:
+    """Assemble account cosmetics separately from game snapshots."""
+    return PreferenceService(SqlitePreferenceStore(runtime.database))

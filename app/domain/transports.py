@@ -5,6 +5,7 @@ from math import isclose
 from typing import Literal
 
 from app.domain.contracts import HistoricalContractSnapshot
+from app.domain.economics import CostBreakdown
 from app.domain.journeys import JourneyPlan, JourneyProgress
 from app.domain.routes import DispatchRoutePlan, RouteSnapshot
 from app.domain.validation import (
@@ -33,6 +34,7 @@ class ActiveTransport:
     status: Literal["active", "settled"] = "active"
     settled_at: float | None = None
     dispatch_route: DispatchRoutePlan | None = None
+    cost_breakdown: CostBreakdown | None = None
 
     def __post_init__(self) -> None:
         """Protect identities, immutable economics and timeline ordering."""
@@ -42,6 +44,11 @@ class ActiveTransport:
         require_finite(self.arrives_at, "Arrival")
         require_integer(self.payout_eur, "Payout")
         require_integer(self.operating_cost_eur, "Operating cost")
+        if (
+            self.cost_breakdown is not None
+            and self.cost_breakdown.total_cost_eur != self.operating_cost_eur
+        ):
+            raise ValueError("Transport costs differ from breakdown.")
         if self.arrives_at <= self.departed_at:
             raise ValueError("Arrival must follow departure.")
         if (

@@ -11,6 +11,7 @@ from app.api.v1.game_projection import (
 )
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
+from app.services.cost_profiles import VehicleCostResolver
 from app.services.dispatch_planning import DispatchPlanningService
 from app.services.fleet import FleetService
 from app.services.game import GameService
@@ -28,7 +29,9 @@ def relational_game(game, tmp_path):
         unit_of_work=SqliteGameUnitOfWork(database, "owner"),
         world=game.world,
         router=game.router,
-        dispatch_planning=DispatchPlanningService(game.router),
+        dispatch_planning=DispatchPlanningService(
+            game.router, VehicleCostResolver(game.catalogue)
+        ),
         market=game.market,
         catalogue=game.catalogue,
         market_scope=game.market_scope,

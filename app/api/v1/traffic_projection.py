@@ -1,23 +1,13 @@
 """Public traffic presentation without private transport economics."""
 
-import colorsys
-import hashlib
 import logging
 from dataclasses import asdict
 from typing import Any
 
+from app.domain.company_colors import player_color
 from app.domain.read_ports import SharedTransport
 
 LOGGER = logging.getLogger(__name__)
-
-
-def player_color(user_id: str) -> str:
-    """Derive a stable, saturated map color from a persistent user ID."""
-    digest = hashlib.sha256(user_id.encode("utf-8")).digest()
-    hue = int.from_bytes(digest[:2], "big") / 65535
-    red, green, blue = colorsys.hls_to_rgb(hue, 0.52, 0.70)
-    channels = (round(red * 255), round(green * 255), round(blue * 255))
-    return "#" + "".join(f"{channel:02x}" for channel in channels)
 
 
 def project_traffic(
@@ -36,7 +26,7 @@ def project_traffic(
             "model_id": row.model_id,
             "model_name": row.model_name,
             "username": row.username,
-            "player_color": player_color(row.user_id),
+            "player_color": row.company_color or player_color(row.user_id),
             "is_own": row.user_id == current_user_id,
             "departed_at": row.departed_at,
             "arrives_at": row.arrives_at,
