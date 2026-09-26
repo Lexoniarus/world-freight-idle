@@ -619,3 +619,111 @@ FUNCTION_TESTS.update(
         "app.repositories.cached_vehicle_catalogue.CachedVehicleCatalogue.list_models": "test_vehicle_reference_cache_retries_failure_then_reuses_revision",
     }
 )
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.routing_anchors.RoutingAnchor.__post_init__": (
+            "test_routing_anchor_cached_validated_anchor_is_reused"
+        ),
+        "app.providers.routing_anchor.ValhallaTruckAnchorLocator.__init__": (
+            "test_routing_anchor_direct_facility_coordinate_works"
+        ),
+        "app.providers.routing_anchor.ValhallaTruckAnchorLocator.locate": (
+            "test_routing_anchor_provider_temporarily_offline"
+        ),
+        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._correlated_location": (
+            "test_routing_anchor_valhalla_snap_works"
+        ),
+        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._edge_count": (
+            "test_routing_anchor_no_truck_edge_is_persisted"
+        ),
+        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._snap_distance_m": (
+            "test_routing_anchor_valhalla_snap_works"
+        ),
+        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._revision": (
+            "test_routing_anchor_valhalla_snap_works"
+        ),
+        "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.__init__": (
+            "test_routing_anchor_repository_roundtrip"
+        ),
+        "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.get": (
+            "test_routing_anchor_repository_roundtrip"
+        ),
+        "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.put": (
+            "test_routing_anchor_repository_roundtrip"
+        ),
+        "app.services.routing_anchors.RoutingAnchorResolver.__init__": (
+            "test_routing_anchor_direct_facility_coordinate_works"
+        ),
+        "app.services.routing_anchors.RoutingAnchorResolver.resolve": (
+            "test_routing_anchor_address_fallback_works"
+        ),
+        "app.services.routing_anchors.RoutingAnchorResolver._accepted_anchor": (
+            "test_routing_anchor_too_large_snap_is_rejected"
+        ),
+        "app.services.routing_anchors.RoutingAnchorResolver._failure": (
+            "test_routing_anchor_no_truck_edge_is_persisted"
+        ),
+    }
+)
+
+FUNCTION_TESTS["app.bootstrap.build_routing_anchor_resolver"] = (
+    "test_routing_anchor_direct_facility_coordinate_works"
+)
+
+# routing-anchor-standards-2026-09-26
+FUNCTION_TESTS.update(
+    {
+        "app.domain.routing_anchors.RoutingAnchor.__post_init__": (
+            "test_routing_anchor_rejects_coordinate_status_mismatches"
+        ),
+        "app.providers.routing_anchor.ValhallaTruckAnchorLocator.__init__": (
+            "test_truck_anchor_locator_uses_real_locate_edge_shape"
+        ),
+        "app.providers.routing_anchor.ValhallaTruckAnchorLocator.locate": (
+            "test_truck_anchor_locator_uses_real_locate_edge_shape"
+        ),
+        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._correlated_location": (
+            "test_truck_anchor_locator_rejects_missing_or_malformed_edges"
+        ),
+        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._edge_count": (
+            "test_truck_anchor_locator_helpers_cover_unusable_metadata"
+        ),
+        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._snap_distance_m": (
+            "test_truck_anchor_locator_uses_real_locate_edge_shape"
+        ),
+        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._revision": (
+            "test_truck_anchor_locator_uses_real_locate_edge_shape"
+        ),
+        "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.__init__": (
+            "test_routing_anchor_repository_roundtrip"
+        ),
+        "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.get": (
+            "test_routing_anchor_repository_rejects_unknown_persisted_status"
+        ),
+        "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.put": (
+            "test_routing_anchor_repository_roundtrip"
+        ),
+        "app.services.routing_anchors.RoutingAnchorResolver.__init__": (
+            "test_routing_anchor_resolver_rejects_nonpositive_snap_limit"
+        ),
+        "app.services.routing_anchors.RoutingAnchorResolver.resolve": (
+            "test_routing_anchor_address_fallback_works"
+        ),
+        "app.services.routing_anchors.RoutingAnchorResolver._accepted_anchor": (
+            "test_routing_anchor_too_large_snap_is_rejected"
+        ),
+        "app.services.routing_anchors.RoutingAnchorResolver._failure": (
+            "test_routing_anchor_no_truck_edge_is_persisted"
+        ),
+        "app.bootstrap.build_routing_anchor_resolver": (
+            "test_build_game_service_wires_real_provider_adapters"
+        ),
+        "app.services.dispatch_planning.DispatchPlanningService.route": (
+            "test_dispatch_approach_uses_facility_identity_not_display_coordinate"
+        ),
+        "app.services.dispatch_planning.DispatchPlanningService._route_between": (
+            "test_dispatch_routing_uses_anchors_not_display_coordinates"
+        ),
+    }
+)

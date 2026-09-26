@@ -69,3 +69,22 @@ bleiben unverändert.
 ## Natural Earth / world-atlas
 
 Zweck: Weltumrisse für die flächentreue Hintergrundkarte. Die Spielroute selbst kommt nicht aus dieser Quelle.
+
+## Valhalla Locate für Truck-Routing-Anker
+
+Der Backend-Adapter `ValhallaTruckAnchorLocator` verwendet `POST /locate`
+mit `costing=truck` und `verbose=true`. Laut Valhalla-OpenAPI basiert
+`LocateRequest` auf `BaseRequest`, dessen `costing` den Wert `truck`
+unterstützt. Die korrelierte Position wird aus den zurückgegebenen
+`edges[].correlated_lat` / `edges[].correlated_lon` gelesen. Referenz:
+https://github.com/valhalla/valhalla/blob/master/docs/docs/api/openapi.yaml
+
+Die Anwendung berechnet die Snap-Distanz zwischen Kandidat und korreliertem
+Edge-Punkt und akzeptiert den Anker nur innerhalb
+`ROUTING_ANCHOR_MAX_SNAP_M`. Eine Provider-/Graph-Revision wird nur gespeichert,
+wenn Valhalla sie tatsächlich in bekannten Response-Headern liefert.
+
+Kann die Facility-Koordinate nicht als Truck-Anker verwendet werden, darf der
+bereits vorhandene gecachte und rate-limitierte `NominatimGeocoder` die
+gespeicherte Facility-Adresse backendseitig auflösen. Dieser Kandidat muss
+erneut `/locate` bestehen. Der Browser geocodiert nicht.

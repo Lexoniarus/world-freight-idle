@@ -6,30 +6,31 @@ from app.domain.contracts import ContractOffer
 from app.domain.dispatch_journey import plan_dispatch_journey
 from app.domain.economics import journey_costs
 from app.domain.game import OwnedVehicle
-from app.domain.ports import TruckRouter
+from app.domain.ports import TruckRouter, WorldCatalogue
 from app.domain.pricing import calculate_price
 from app.domain.results import ContractQuote
 from app.domain.routes import DispatchRoutePlan, RouteSnapshot
+from app.domain.routing_anchor_ports import RoutingAnchorResolverPort
 from app.domain.world import FacilityLocationSnapshot
+from app.domain.world_scopes import WorldScope
 from app.services.cost_profiles import VehicleCostResolver
 
 
 @dataclass(slots=True)
 class DispatchPlanningService:
-    """Orchestrate an injected router and deterministic dispatch planning."""
+    """Orchestrate injected routing and deterministic dispatch planning."""
 
     router: TruckRouter
     costs: VehicleCostResolver
+    anchors: RoutingAnchorResolverPort
+    world: WorldCatalogue
 
     async def route(
         self, start: FacilityLocationSnapshot, contract: ContractOffer
     ) -> DispatchRoutePlan:
         """Route pickup approach and freight before any write transaction."""
         approach = None
-        if (
-            start.facility_uid != contract.origin.facility_uid
-            and start.coordinates != contract.origin.coordinates
-        ):
+        if start.facility_uid != contract.origin.facility_uid:
             approach = await self._route_between(start, contract.origin)
         delivery = await self._route_between(
             contract.origin, contract.destination
@@ -43,15 +44,26 @@ class DispatchPlanningService:
         start: FacilityLocationSnapshot,
         destination: FacilityLocationSnapshot,
     ) -> RouteSnapshot:
-        """Require coordinates before asking the road provider for a leg."""
-        origin, target = start.coordinates, destination.coordinates
-        if origin is None or target is None:
-            raise ValueError("Fahrtplan enthält keine routbaren Koordinaten.")
+        """Route facility identities through validated truck anchors."""
+        world = WorldScope(self.world.read())
+        origin = await self.anchors.resolve(world.facility(start.facility_uid))
+        target = await self.anchors.resolve(
+            world.facility(destination.facility_uid)
+        )
+        if (
+            origin.validation_status != "validated"
+            or origin.anchor is None
+            or target.validation_status != "validated"
+            or target.anchor is None
+        ):
+            raise ValueError(
+                "Facility besitzt keinen validierten Truck-Routing-Anchor."
+            )
         return await self.router.route(
-            origin.latitude,
-            origin.longitude,
-            target.latitude,
-            target.longitude,
+            origin.anchor.latitude,
+            origin.anchor.longitude,
+            target.anchor.latitude,
+            target.anchor.longitude,
         )
 
     def quote(

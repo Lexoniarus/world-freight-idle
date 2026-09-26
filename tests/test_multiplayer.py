@@ -26,7 +26,11 @@ from app.main import create_app
 from app.repositories.accounts import AccountRepository
 from app.services.auth import SESSION_COOKIE, AuthService, PasswordHasher
 from app.services.fleet import FleetService
-from tests.conftest import BERLIN_UID, FakeRouter
+from tests.conftest import (
+    BERLIN_UID,
+    FakeRouter,
+    FakeRoutingAnchorResolver,
+)
 from tests.test_api import make_settings, make_static_files
 from tests.test_game import first_berlin_contract
 from tests.transport_fixtures import add_transport
@@ -354,6 +358,7 @@ def test_auth_api_and_private_game_resources(tmp_path):
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 175000
         )
         app.state.game.router = FakeRouter()
+        app.state.game.anchors = FakeRoutingAnchorResolver()
         contract = client.get("/api/v1/contracts").json()["contracts"][0]
         trip = client.post(
             f"/api/v1/contracts/{contract['id']}/accept",

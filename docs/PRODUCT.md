@@ -221,3 +221,12 @@ Ergänzung zum freigegebenen Navigationsmodell: Weltkarte als Überblick ohne
 Stadtmarkt. Dieser zeigt alle Angebote der Fahrzeugstadt mit serverseitiger
 Eignung, statt ungeeignete Angebote auszublenden. Der ausgewählte Kontext wird
 bei Abfahrt geleert; keine automatische andere Stadt beim Polling.
+
+## Truck-Routing-Anker
+
+Facilities behalten ihre dokumentierte oder als Simulation gekennzeichnete
+WorldCatalogue-Koordinate für Karte und historische Anzeige. Lkw-Routing
+verwendet davon getrennte globale Routing-Anker je `facility_uid` und Profil.
+Der Markt bleibt facility-basiert und erzeugt in diesem Schritt keine Anker.
+Erst bei Route/Quote/Dispatch wird die Facility-Identität in einen validierten
+Truck-Anker aufgelöst. Fehlschläge erzeugen keine erfundenen Koordinaten.

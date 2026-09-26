@@ -1907,3 +1907,11 @@ Tonnage und späterer Fahrzeugwahl. Tatsächliche Kosten bestehen aus
 Grundkosten, Wartung der Gesamtstrecke und Energieeinkäufen. Historische
 Beträge bleiben unangetastet. Stadtmärkte entstehen nur bei eigenen idle
 Fahrzeugen. Präzise Formeln und Snapshot-Verträge: [ECONOMY_V2.md](ECONOMY_V2.md).
+
+## Truck-Routing-Anker als abgeleitete Infrastruktur
+
+Das langfristige Ziel bleibt eine reale, nachvollziehbare Frachtwelt.
+Facility-Identität und sichtbare WorldCatalogue-Position bleiben Referenzfakten;
+Straßenrouting erhält eine eigene abgeleitete, provider-validierte Position.
+Damit kann die Welt realistisch sichtbar bleiben, ohne unpassende
+Werks-/Terminalpunkte als befahrbare Straßenkoordinaten auszugeben.

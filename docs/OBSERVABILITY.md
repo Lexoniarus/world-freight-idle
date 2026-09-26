@@ -56,3 +56,13 @@ Ein Fehler aus dem Browser soll über API → Service → Provider in Logs korre
 strukturiert; die äußere Transaktion rollt zurück. `account.color_updated`
 protokolliert die Farbänderung ohne Zugangsdaten. Bestehende Dispatch-/
 Refill-Events unterscheiden erfolgreichen Start und späteren Refill-Fehler.
+
+## Routing-Anchor-Ereignisse
+
+Der Anchor-Pfad protokolliert strukturierte Ereignisse
+`routing_anchor.locate_request`, `routing_anchor.provider_unavailable`,
+`routing_anchor.cache_hit`, `routing_anchor.resolved` und
+`routing_anchor.failure`. Der globale `JsonFormatter` ergänzt die aktuelle
+Trace-ID; Valhalla-Requests erhalten dieselbe Trace-ID als `X-Trace-Id`.
+Facility-UID, Methode, Status, Snap-Distanz und Provider werden nur dort
+protokolliert, wo sie für Diagnose relevant sind.

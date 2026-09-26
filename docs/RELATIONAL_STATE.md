@@ -159,3 +159,11 @@ mit Fremdschlüssel auf users. Preference-Änderungen betreffen nur den eigenen
 Account und kein Game-Schema. Startup ersetzt offene Offers aller bestehenden
 Profile in einer gemeinsamen äußeren Transaktion; historische Transporte,
 Guthaben und Standorte bleiben dabei unverändert.
+
+## Globale Routing-/Provider-Persistenz
+
+`routing_anchors` gehört wie Provider-Caches zur gemeinsamen serverseitigen
+Infrastruktur und nicht zum Spielerzustand. Der Primärschlüssel ist
+`(facility_uid, routing_profile)`. Spieler-Reset und historische
+Fahrzeug-Snapshots verändern diese globalen abgeleiteten Daten nicht.
+SQL bleibt ausschließlich in `SqliteRoutingAnchorRepository`.

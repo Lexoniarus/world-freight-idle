@@ -25,7 +25,11 @@ from app.domain.game import OwnedVehicle, PlayerState
 from app.main import create_app
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.services.fleet import FleetService
-from tests.conftest import BERLIN_UID, FakeRouter
+from tests.conftest import (
+    BERLIN_UID,
+    FakeRouter,
+    FakeRoutingAnchorResolver,
+)
 from tests.test_api import make_settings, make_static_files
 from tests.test_game import first_berlin_contract
 
@@ -249,6 +253,7 @@ def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
             },
         ).raise_for_status()
         app.state.game.router = FakeRouter()
+        app.state.game.anchors = FakeRoutingAnchorResolver()
         contract = next(
             item
             for item in client.get("/api/v1/contracts").json()["contracts"]

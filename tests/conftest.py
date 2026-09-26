@@ -7,7 +7,9 @@ from pathlib import Path
 import pytest
 
 from app.bootstrap import GameRuntime, build_market_generator
+from app.domain.routing_anchors import RoutingAnchor
 from app.domain.transports import RouteSnapshot
+from app.domain.world import Facility
 from app.domain.world_scopes import WorldScope
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
@@ -35,6 +37,36 @@ class FakeRouter:
                 (destination_lon, destination_lat),
             ),
             provider="fake-router",
+        )
+
+
+class FakeRoutingAnchorResolver:
+    async def resolve(self, facility: Facility) -> RoutingAnchor:
+        coordinates = facility.coordinates
+        if coordinates is None:
+            return RoutingAnchor(
+                facility_uid=facility.facility_uid,
+                routing_profile="truck",
+                anchor=None,
+                method="facility_coordinate",
+                facility_coordinates=None,
+                snap_distance_m=None,
+                validation_status="no_truck_edge",
+                provider="fake-anchor",
+                provider_revision=None,
+                validated_at=0.0,
+            )
+        return RoutingAnchor(
+            facility_uid=facility.facility_uid,
+            routing_profile="truck",
+            anchor=coordinates,
+            method="facility_coordinate",
+            facility_coordinates=coordinates,
+            snap_distance_m=0.0,
+            validation_status="validated",
+            provider="fake-anchor",
+            provider_revision="test",
+            validated_at=0.0,
         )
 
 
@@ -69,12 +101,17 @@ def game(database, catalogue, world_catalogue) -> GameService:
     market = build_market_generator(
         world_catalogue, random.Random(7), catalogue
     )
+    router = FakeRouter()
+    anchors = FakeRoutingAnchorResolver()
     service = GameService(
         unit_of_work=SqliteGameUnitOfWork(database, "test-owner"),
         world=world_catalogue,
-        router=(router := FakeRouter()),
+        router=router,
         dispatch_planning=DispatchPlanningService(
-            router, VehicleCostResolver(catalogue)
+            router,
+            VehicleCostResolver(catalogue),
+            anchors,
+            world_catalogue,
         ),
         market=market,
         market_scope=MarketScopeResolver(world_catalogue),
@@ -123,6 +160,7 @@ def runtime(game, database):
         database,
         game.world,
         game.router,
+        game.dispatch_planning.anchors,
         game.market,
         game.catalogue,
         game.market_scope,

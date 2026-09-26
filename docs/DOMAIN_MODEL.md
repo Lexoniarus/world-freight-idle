@@ -145,3 +145,26 @@ ein Fahrzeug im Offer zu reservieren. Historische Zusatzwerte sind optional.
 `AccountPreferences` ist getrennt vom Spielzustand. `vehicle_labels`
 disambiguiert aktuelle Namen, ohne historische Modellbehauptungen.
 Details: [ECONOMY_V2.md](ECONOMY_V2.md).
+
+## RoutingAnchor
+
+`RoutingAnchor` ist ein abgeleiteter globaler Wert und kein Bestandteil der
+immutable `Facility`. Er enthält Facility-UID, Profil, validierte
+Anchor-Koordinate, Methode, ursprüngliche Facility-Koordinate, Snap-Distanz,
+Validierungsstatus, Provider, verfügbare Provider-/Graph-Revision und
+`validated_at`.
+
+Nur Status `validated` darf eine Anchor-Koordinate besitzen. Failure-Status
+wie `no_truck_edge`, `snap_too_far`, `geocoding_failed`,
+`provider_unavailable` und `invalid_response` speichern keine erfundene
+Koordinate. Historische `FacilityLocationSnapshot`-Koordinaten werden dadurch
+nicht verändert.
+
+### Historische Display-Koordinaten sind kein Routing-Gate
+
+`DispatchRoutePlan` verlangt weiterhin stabile Facility-Identitäten und bei
+verschiedenen Start-/Pickup-UIDs einen expliziten Approach-Abschnitt. Eine
+fehlende oder zufällig identische historische Display-Koordinate entscheidet
+jedoch nicht mehr über Routbarkeit. Straßenrouting löst die aktuelle
+Facility-Identität ausschließlich über `facility_uid -> RoutingAnchor` auf.
+Historische Snapshot-Koordinaten werden dabei weder ergänzt noch verändert.

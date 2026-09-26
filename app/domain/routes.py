@@ -56,17 +56,12 @@ class DispatchRoutePlan:
     approach: RouteSnapshot | None = None
 
     def __post_init__(self) -> None:
-        """Require routable endpoints and an explicit nonlocal approach."""
-        if any(
-            p.coordinates is None
-            for p in (self.start, self.pickup, self.destination)
-        ):
-            raise ValueError("Fahrtplan enthält keine routbaren Koordinaten.")
+        """Require explicit approach for a distinct pickup facility."""
         if self.start.city.city_uid != self.pickup.city.city_uid:
             raise ValueError("Fahrzeug steht nicht in der Abholstadt.")
-        if self.approach is None and (
-            self.start.facility_uid != self.pickup.facility_uid
-            and self.start.coordinates != self.pickup.coordinates
+        if (
+            self.approach is None
+            and self.start.facility_uid != self.pickup.facility_uid
         ):
             raise ValueError("Distinct pickup requires an approach route.")
 

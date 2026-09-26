@@ -300,3 +300,24 @@ idle Referenzfahrzeug rein aus Snapshot und URL auf. `CityContextController`
 bleiben getrennt. Ein explizit ungeeignetes Fahrzeug darf der Panelcontroller
 nicht automatisch ersetzen. Listenfilter der Flotte und fachliche Analytics-
 Scopes bleiben eigenständige Ansichten, keine globale Kartenbeschränkung.
+
+## Globale Truck-Routing-Anker
+
+`RoutingAnchorResolver` ist ein zustandsbehafteter Service mit injizierten
+Ports für Store, Valhalla-Locate und Geocoding. `SqliteRoutingAnchorRepository`
+besitzt das einzige SQL für die abgeleiteten Anker. Externe Requests bleiben
+in `NominatimGeocoder` und `ValhallaTruckAnchorLocator`.
+
+```text
+Facility UID -> WorldCatalogue -> RoutingAnchorResolver
+                               -> Valhalla /locate (truck)
+                               -> optional Nominatim -> /locate
+                               -> RoutingAnchorRepository
+                               -> TruckRouter /route
+```
+
+Display-Koordinaten bleiben unveränderliche World-/Snapshot-Fakten und werden
+nicht als Straßenanker gespeichert. `DispatchPlanningService` entscheidet
+Anfahrt anhand der Facility-Identität und übergibt ausschließlich validierte
+Routing-Anker an den TruckRouter. Provider-Awaits liegen außerhalb von
+Schreibtransaktionen; erst danach schreibt das Anchor-Repository sein Ergebnis.

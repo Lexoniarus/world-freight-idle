@@ -204,3 +204,12 @@ Ergänzung zum freigegebenen Navigationsmodell: Weltkarte als Überblick ohne
 Stadtmarkt. Dieser zeigt alle Angebote der Fahrzeugstadt mit serverseitiger
 Eignung, statt ungeeignete Angebote auszublenden. Der ausgewählte Kontext wird
 bei Abfahrt geleert; keine automatische andere Stadt beim Polling.
+
+## Truck Routing Anchors – 26.09.2026
+
+Scope: globale, spielerunabhängige Truck-Routing-Anker zwischen immutable
+WorldCatalogue und Valhalla-Routing. MarketGenerator, Economy v2, Tonnage,
+Firmenfarben, Fahrzeugassets, Gruppierung und Kartenmarker bleiben unverändert.
+
+Abnahme: `python scripts/quality.py`, `npm run test:e2e` und
+`git diff --check` müssen vollständig grün sein.

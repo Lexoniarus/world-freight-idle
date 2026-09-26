@@ -260,3 +260,14 @@ Ergänzung zum freigegebenen Navigationsmodell: Weltkarte als Überblick ohne
 Stadtmarkt. Dieser zeigt alle Angebote der Fahrzeugstadt mit serverseitiger
 Eignung, statt ungeeignete Angebote auszublenden. Der ausgewählte Kontext wird
 bei Abfahrt geleert; keine automatische andere Stadt beim Polling.
+
+## Ziel: getrennte Display- und Truck-Routing-Koordinaten
+
+- Kartenmarker und historische Snapshots behalten Facility-Displaywerte.
+- Truck-Routing löst Endpunkte ausschließlich über stabile Facility-UIDs auf.
+- Ein Routing-Anker muss von Valhalla für `truck` korreliert und innerhalb
+  der konfigurierten maximalen Snap-Distanz liegen.
+- Nominatim ist ausschließlich Backend-Fallback und bleibt gecacht sowie
+  rate-limited.
+- Providerfehler und nicht routbare Facilities werden klassifiziert
+  persistiert; es gibt keine synthetischen Straßenkoordinaten.

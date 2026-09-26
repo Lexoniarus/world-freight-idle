@@ -21,6 +21,7 @@ class Settings:
     request_timeout_seconds: float
     game_time_scale: float
     log_level: str
+    routing_anchor_max_snap_m: float = 250.0
     cookie_secure: bool = False
     vehicle_catalogue_path: Path | None = None
     world_catalogue_path: Path | None = None
@@ -75,6 +76,10 @@ class Settings:
                 float(os.getenv("GAME_TIME_SCALE", "1")),
             ),
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
+            routing_anchor_max_snap_m=max(
+                1.0,
+                float(os.getenv("ROUTING_ANCHOR_MAX_SNAP_M", "250")),
+            ),
             cookie_secure=os.getenv("COOKIE_SECURE", "false").lower()
             == "true",
         )

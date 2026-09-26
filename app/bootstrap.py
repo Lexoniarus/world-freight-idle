@@ -15,8 +15,11 @@ from app.domain.game_import import GameStateImporter
 from app.domain.geography_migration import GeographyMigrationStore
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
 from app.domain.read_ports import LeaderboardReader, TrafficReader
+from app.domain.routing_anchor_ports import RoutingAnchorResolverPort
 from app.domain.world_scopes import WorldScope
+from app.providers.geocoding import NominatimGeocoder
 from app.providers.routing import ValhallaTruckRouter
+from app.providers.routing_anchor import ValhallaTruckAnchorLocator
 from app.repositories.accounts import AccountRepository
 from app.repositories.analytics import SqliteAnalyticsReader
 from app.repositories.cached_vehicle_catalogue import CachedVehicleCatalogue
@@ -30,6 +33,7 @@ from app.repositories.market_startup import SqliteMarketStartupStore
 from app.repositories.preferences import SqlitePreferenceStore
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.relational_traffic import SqliteTrafficReader
+from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.repositories.world_geography import WorldGeographyRepository
@@ -48,6 +52,7 @@ from app.services.market_scope import MarketScopeResolver
 from app.services.market_startup import MarketStartupService
 from app.services.preferences import PreferenceService
 from app.services.profile_maintenance import ProfileMaintenanceService
+from app.services.routing_anchors import RoutingAnchorResolver
 
 
 @dataclass
@@ -57,6 +62,7 @@ class GameRuntime:
     database: SqliteGameDatabase
     world: WorldCatalogue
     router: TruckRouter
+    anchors: RoutingAnchorResolverPort
     market: MarketGenerator
     catalogue: VehicleCatalogue
     market_scope: MarketScopeResolver
@@ -71,6 +77,32 @@ def build_analytics_service(
     return AnalyticsService(SqliteAnalyticsReader(runtime.database, user_id))
 
 
+def build_routing_anchor_resolver(
+    database: SqliteGameDatabase,
+    settings: Settings,
+    provider_client: httpx.AsyncClient,
+    clock: Callable[[], float],
+) -> RoutingAnchorResolver:
+    """Wire global truck anchors outside immutable world references."""
+    cache = SqliteProviderCache(database)
+    return RoutingAnchorResolver(
+        store=SqliteRoutingAnchorRepository(database),
+        locator=ValhallaTruckAnchorLocator(
+            provider_client,
+            settings.valhalla_url,
+            settings.valhalla_client_id,
+        ),
+        geocoder=NominatimGeocoder(
+            cache,
+            provider_client,
+            settings.nominatim_url,
+            settings.http_user_agent,
+        ),
+        max_snap_distance_m=settings.routing_anchor_max_snap_m,
+        clock=clock,
+    )
+
+
 def build_game_runtime(
     settings: Settings,
     routing_client: httpx.AsyncClient,
@@ -79,24 +111,33 @@ def build_game_runtime(
     """Initialize only relational storage and shared application resources."""
     database = SqliteGameDatabase(settings.db_path)
     database.initialize()
+    cache = SqliteProviderCache(database)
     router = ValhallaTruckRouter(
-        cache=SqliteProviderCache(database),
+        cache=cache,
         client=routing_client,
         base_url=settings.valhalla_url,
         client_id=settings.valhalla_client_id,
     )
     world = build_world_catalogue(settings)
     catalogue = CachedVehicleCatalogue(build_vehicle_catalogue(settings))
+    clock = time.time
     return GameRuntime(
         database=database,
         world=world,
         router=router,
+        anchors=build_routing_anchor_resolver(
+            database,
+            settings,
+            routing_client,
+            clock,
+        ),
         market=build_market_generator(
             world, random.Random(rng_seed), catalogue
         ),
         catalogue=catalogue,
         market_scope=MarketScopeResolver(world),
         time_scale=settings.game_time_scale,
+        clock=clock,
     )
 
 
@@ -107,7 +148,10 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
         world=runtime.world,
         router=runtime.router,
         dispatch_planning=DispatchPlanningService(
-            runtime.router, VehicleCostResolver(runtime.catalogue)
+            runtime.router,
+            VehicleCostResolver(runtime.catalogue),
+            runtime.anchors,
+            runtime.world,
         ),
         market=runtime.market,
         catalogue=runtime.catalogue,

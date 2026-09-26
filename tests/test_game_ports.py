@@ -30,7 +30,10 @@ def relational_game(game, tmp_path):
         world=game.world,
         router=game.router,
         dispatch_planning=DispatchPlanningService(
-            game.router, VehicleCostResolver(game.catalogue)
+            game.router,
+            VehicleCostResolver(game.catalogue),
+            game.dispatch_planning.anchors,
+            game.world,
         ),
         market=game.market,
         catalogue=game.catalogue,
@@ -140,15 +143,24 @@ async def test_game_workflows_return_typed_values_and_reject_changed_offer(
     assert game.list_transports() == ()
 
 
-async def test_quote_rejects_missing_snapshot_coordinates_before_routing(game):
+async def test_quote_routes_missing_snapshot_coordinates_by_facility_uid(
+    game,
+):
     from dataclasses import replace
-    from unittest.mock import AsyncMock
+    from unittest.mock import patch
 
     offer = game.state_repository.list_offers()[0]
     game.state_repository.replace_offers(
         (replace(offer, origin=replace(offer.origin, coordinates=None)),)
     )
-    game.router.route = AsyncMock()
-    with pytest.raises(ValueError, match="Koordinaten"):
-        await game.quote_contract(offer.id, "truck_01")
-    game.router.route.assert_not_awaited()
+    with patch.object(
+        game.router,
+        "route",
+        wraps=game.router.route,
+    ) as routed:
+        quote = await game.quote_contract(offer.id, "truck_01")
+
+    assert quote.contract.origin.coordinates is None
+    assert quote.dispatch_route is not None
+    assert quote.dispatch_route.pickup.coordinates is None
+    assert routed.await_count >= 1

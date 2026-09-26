@@ -12,7 +12,10 @@ from app.config import Settings
 from app.domain.energy import EnergyProfile
 from app.main import create_app, lifespan
 from app.services.game import GameService
-from tests.conftest import FakeRouter
+from tests.conftest import (
+    FakeRouter,
+    FakeRoutingAnchorResolver,
+)
 
 temporary = TemporaryDirectory(prefix="world-freight-browser-")
 settings = replace(
@@ -27,6 +30,7 @@ app = create_app(settings)
 async def browser_lifespan(application):
     async with lifespan(application):
         application.state.game.router = FakeRouter()
+        application.state.game.anchors = FakeRoutingAnchorResolver()
         yield
     temporary.cleanup()
 

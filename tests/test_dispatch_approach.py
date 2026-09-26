@@ -79,18 +79,30 @@ def test_dispatch_route_invariants_and_historical_mapping(route_plan):
     assert len(direct.legs) == 1
     assert load_dispatch_route(asdict(direct)) == direct
     colocated = replace(plan.start, coordinates=plan.pickup.coordinates)
-    assert replace(direct, start=colocated).approach is None
+    with pytest.raises(ValueError, match="approach"):
+        replace(direct, start=colocated)
     with pytest.raises(ValueError, match="approach"):
         replace(plan, approach=None)
-    with pytest.raises(ValueError, match="Koordinaten"):
-        replace(plan, start=replace(plan.start, coordinates=None))
+    without_start_display = replace(
+        plan,
+        start=replace(plan.start, coordinates=None),
+    )
+    assert without_start_display.start.coordinates is None
+    without_destination_display = replace(
+        plan,
+        destination=replace(plan.destination, coordinates=None),
+    )
+    assert without_destination_display.destination.coordinates is None
     other_city = replace(
-        plan.start.city, city_uid="00000000-0000-0000-0000-000000000002"
+        plan.start.city,
+        city_uid="00000000-0000-0000-0000-000000000002",
     )
     with pytest.raises(ValueError, match="Abholstadt"):
         replace(plan, start=replace(plan.start, city=other_city))
-    # Providers may snap their separate legs to different road coordinates.
-    snapped = replace(plan.delivery, coordinates=((11.001, 50), (12, 50)))
+    snapped = replace(
+        plan.delivery,
+        coordinates=((11.001, 50), (12, 50)),
+    )
     assert len(replace(plan, delivery=snapped).total_route.coordinates) == 4
 
 
@@ -138,37 +150,50 @@ def test_approach_costs_do_not_pay_freight_or_duplicate_base():
     assert quote.profit_eur == -60
 
 
-async def test_planner_routes_from_checkpoint_and_skips_colocated_pickup(game):
+async def test_planner_routes_from_checkpoint_by_facility_identity(game):
     offer = other_facility_offer(game)
     start = game.get_vehicle("truck_01").location
+    assert start is not None
     router = game.router
+
     with patch.object(router, "route", wraps=router.route) as routed:
         plan = await game.dispatch_planning.route(start, offer)
         assert routed.await_count == 2
-        assert routed.call_args_list[0].args[:2] == (
-            start.coordinates.latitude,
-            start.coordinates.longitude,
-        )
         assert plan.start == start
-    for departure in (
-        offer.origin,
-        replace(start, coordinates=offer.origin.coordinates),
-    ):
-        with patch.object(router, "route", wraps=router.route) as routed:
-            plan = await game.dispatch_planning.route(departure, offer)
-            assert routed.await_count == 1
-            assert plan.approach is None
-    with pytest.raises(ValueError, match="Koordinaten"):
-        await game.dispatch_planning.route(
-            replace(start, coordinates=None), offer
-        )
-    with pytest.raises(ValueError, match="Koordinaten"):
-        await game.dispatch_planning.route(
+        assert plan.approach is not None
+
+    with patch.object(router, "route", wraps=router.route) as routed:
+        direct = await game.dispatch_planning.route(offer.origin, offer)
+        assert routed.await_count == 1
+        assert direct.approach is None
+
+    colocated_display = replace(
+        start,
+        coordinates=offer.origin.coordinates,
+    )
+    with patch.object(router, "route", wraps=router.route) as routed:
+        plan = await game.dispatch_planning.route(colocated_display, offer)
+        assert routed.await_count == 2
+        assert plan.approach is not None
+
+    missing_start_display = replace(start, coordinates=None)
+    with patch.object(router, "route", wraps=router.route) as routed:
+        plan = await game.dispatch_planning.route(missing_start_display, offer)
+        assert routed.await_count == 2
+        assert plan.start.coordinates is None
+        assert plan.approach is not None
+
+    missing_destination_display = replace(
+        offer,
+        destination=replace(offer.destination, coordinates=None),
+    )
+    with patch.object(router, "route", wraps=router.route) as routed:
+        plan = await game.dispatch_planning.route(
             start,
-            replace(
-                offer, destination=replace(offer.destination, coordinates=None)
-            ),
+            missing_destination_display,
         )
+        assert routed.await_count == 2
+        assert plan.destination.coordinates is None
 
 
 async def test_approach_dispatch_reload_public_privacy_and_offline_arrival(

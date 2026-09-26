@@ -196,13 +196,14 @@ def test_offline_import_preserves_profiles_history_and_settles_once(
             legacy_vehicle_projection(repository.list_vehicles()[0])
         ) == without_city_uids(state["vehicles"][0])
     runtime = GameRuntime(
-        database,
-        game.world,
-        game.router,
-        game.market,
-        game.catalogue,
-        game.market_scope,
-        1,
+        database=database,
+        world=game.world,
+        router=game.router,
+        anchors=game.dispatch_planning.anchors,
+        market=game.market,
+        catalogue=game.catalogue,
+        market_scope=game.market_scope,
+        time_scale=1,
     )
     service = build_player_service(runtime, "a")
     assert service.reconcile_arrival()
