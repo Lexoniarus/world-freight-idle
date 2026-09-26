@@ -16,6 +16,8 @@ from app.services.game import GameService
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
+ROUTING_FAILURE_DETAIL = "Straßenroute konnte nicht berechnet werden."
+
 
 @router.get("")
 def list_contracts(
@@ -60,7 +62,7 @@ async def quote_contract(
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from exc
     except RoutingError as exc:
-        raise HTTPException(502, str(exc)) from exc
+        raise HTTPException(502, ROUTING_FAILURE_DETAIL) from exc
 
 
 @router.post("/{contract_id}/accept")
@@ -79,7 +81,7 @@ async def accept_contract(
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except RoutingError as exc:
-        raise HTTPException(502, str(exc)) from exc
+        raise HTTPException(502, ROUTING_FAILURE_DETAIL) from exc
 
 
 @router.post("/refresh")

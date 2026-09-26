@@ -10,12 +10,16 @@ from typing import Any
 import httpx
 
 from app.domain.cache_ports import ProviderCache
-from app.domain.errors import RoutingError
+from app.domain.errors import RoutingError, RoutingFailureCategory
 from app.domain.transports import RouteSnapshot
 from app.providers.validation import validate_route
 from app.tracing import get_trace_id
 
 LOGGER = logging.getLogger(__name__)
+
+_ENDPOINT_UNREACHABLE_CODES = frozenset({171, 441})
+_NO_PATH_CODES = frozenset({170, 442})
+_DISTANCE_LIMIT_CODES = frozenset({154})
 
 
 def decode_polyline6(encoded: str) -> list[list[float]]:
@@ -33,7 +37,10 @@ def decode_polyline6(encoded: str) -> list[list[float]]:
             shift = 0
             while True:
                 if index >= len(encoded):
-                    raise RoutingError("Ungültige Valhalla-Polyline.")
+                    error = RoutingError("Ungültige Routing-Polyline.")
+                    error.category = "invalid_response"
+                    error.retryable = False
+                    raise error
                 byte = ord(encoded[index]) - 63
                 index += 1
                 result |= (byte & 0x1F) << shift
@@ -72,12 +79,44 @@ class ValhallaTruckRouter:
         destination_lon: float,
     ) -> RouteSnapshot:
         """Normalize transport and malformed-response errors at the port."""
+        error: RoutingError
+        cause: Exception | None = None
         try:
             return await self._resolve_route(
                 origin_lat, origin_lon, destination_lat, destination_lon
             )
-        except (httpx.HTTPError, ValueError, KeyError, TypeError) as exc:
-            raise RoutingError("Routing-Anbieter nicht verfügbar.") from exc
+        except RoutingError as exc:
+            error = exc
+        except httpx.HTTPError as exc:
+            error = RoutingError("Routing-Anbieter nicht verfügbar.")
+            error.category = "provider_unavailable"
+            error.provider_message = str(exc)
+            error.retryable = True
+            cause = exc
+        except (ValueError, KeyError, TypeError, UnicodeError) as exc:
+            error = RoutingError(
+                "Routing-Anbieter lieferte eine ungültige Antwort."
+            )
+            error.category = "invalid_response"
+            error.provider_message = str(exc)
+            error.retryable = False
+            cause = exc
+
+        LOGGER.warning(
+            "Routing failed",
+            extra={
+                "event": "route.failure",
+                "data": {
+                    "category": error.category,
+                    "provider_code": error.provider_code,
+                    "provider_message": error.provider_message,
+                    "retryable": error.retryable,
+                },
+            },
+        )
+        if cause is None:
+            raise error
+        raise error from cause
 
     async def _resolve_route(
         self,
@@ -143,11 +182,80 @@ class ValhallaTruckRouter:
             },
         )
         if response.status_code >= 400:
-            raise RoutingError(
-                f"Valhalla HTTP {response.status_code}: {response.text[:200]}"
-            )
+            provider_code: int | None = None
+            provider_message = response.text[:200] or None
+            try:
+                payload = response.json()
+            except (ValueError, UnicodeError):
+                payload = None
+            if isinstance(payload, dict):
+                raw_code = payload.get("error_code")
+                if isinstance(raw_code, int) and not isinstance(
+                    raw_code, bool
+                ):
+                    provider_code = raw_code
+                raw_message = payload.get("error")
+                if isinstance(raw_message, str) and raw_message.strip():
+                    provider_message = raw_message.strip()
 
-        route_result = self._extract_route(response.json())
+            normalized_message = (provider_message or "").casefold()
+            category: RoutingFailureCategory
+            message: str
+            retryable = False
+            if provider_code in _ENDPOINT_UNREACHABLE_CODES or any(
+                marker in normalized_message
+                for marker in (
+                    "no suitable edges near location",
+                    "no data found for location",
+                    "location is unreachable",
+                )
+            ):
+                category = "endpoint_unreachable"
+                message = (
+                    "Routing-Endpunkt ist im Straßennetz nicht erreichbar."
+                )
+            elif provider_code in _NO_PATH_CODES or any(
+                marker in normalized_message
+                for marker in (
+                    "no path could be found for input",
+                    "unconnected regions",
+                )
+            ):
+                category = "no_path"
+                message = "Zwischen den Endpunkten existiert kein Straßenpfad."
+            elif (
+                provider_code in _DISTANCE_LIMIT_CODES
+                or "path distance exceeds the max distance limit"
+                in normalized_message
+            ):
+                category = "distance_limit"
+                message = "Die Straßenroute überschreitet das Distanzlimit."
+            else:
+                category = "provider_unavailable"
+                message = "Routing-Anbieter nicht verfügbar."
+                retryable = response.status_code in {408, 429} or (
+                    response.status_code >= 500
+                )
+
+            error = RoutingError(message)
+            error.category = category
+            error.provider_code = provider_code
+            error.provider_message = provider_message
+            error.retryable = retryable
+            raise error
+
+        try:
+            payload = response.json()
+        except (ValueError, UnicodeError) as exc:
+            error = RoutingError(
+                "Routing-Anbieter lieferte eine ungültige Antwort."
+            )
+            error.category = "invalid_response"
+            error.provider_message = response.text[:200] or None
+            error.retryable = False
+            raise error from exc
+
+        route_result = self._extract_route(payload)
         self.cache.put_route(cache_key, route_cache_document(route_result))
         return route_result
 
@@ -188,9 +296,13 @@ class ValhallaTruckRouter:
                 elif isinstance(shape, str):
                     leg_coordinates = decode_polyline6(shape)
                 else:
-                    raise RoutingError(
-                        "Valhalla lieferte keine verwertbare Routengeometrie."
+                    error = RoutingError(
+                        "Routing-Anbieter lieferte keine verwertbare "
+                        "Routengeometrie."
                     )
+                    error.category = "invalid_response"
+                    error.retryable = False
+                    raise error
                 if (
                     coordinates
                     and leg_coordinates
@@ -200,12 +312,19 @@ class ValhallaTruckRouter:
                 coordinates.extend(leg_coordinates)
         except (KeyError, TypeError, ValueError) as exc:
             preview = json.dumps(data, ensure_ascii=False)[:400]
-            raise RoutingError(
-                f"Unerwartete Valhalla-Antwort: {preview}"
-            ) from exc
+            error = RoutingError(
+                "Routing-Anbieter lieferte eine unerwartete Antwort."
+            )
+            error.category = "invalid_response"
+            error.provider_message = preview
+            error.retryable = False
+            raise error from exc
 
         if len(coordinates) < 2:
-            raise RoutingError("Route enthält zu wenige Punkte.")
+            error = RoutingError("Route enthält zu wenige Punkte.")
+            error.category = "invalid_response"
+            error.retryable = False
+            raise error
 
         if any(isinstance(summary[key], bool) for key in ("length", "time")):
             raise ValueError("Invalid route metric type")

@@ -1,5 +1,15 @@
 """Provider-independent failures crossing the application boundary."""
 
+from typing import Literal, TypeAlias
+
+RoutingFailureCategory: TypeAlias = Literal[
+    "endpoint_unreachable",
+    "no_path",
+    "distance_limit",
+    "provider_unavailable",
+    "invalid_response",
+]
+
 
 class GeocodingError(RuntimeError):
     """An external address could not be resolved."""
@@ -10,7 +20,12 @@ class CatalogueError(RuntimeError):
 
 
 class RoutingError(RuntimeError):
-    """An external road route could not be produced."""
+    """A typed, provider-independent road-routing failure."""
+
+    category: RoutingFailureCategory = "provider_unavailable"
+    provider_code: int | None = None
+    provider_message: str | None = None
+    retryable: bool = True
 
 
 class WorldCatalogueError(CatalogueError):
