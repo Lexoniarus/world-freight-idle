@@ -24,6 +24,12 @@ class RoutingAnchorStore(Protocol):
         """Replace one persisted routing result."""
         ...
 
+    def put_leased(
+        self, anchor: RoutingAnchor, owner: str, now: float
+    ) -> bool:
+        """Persist only while the matching global anchor lease is owned."""
+        ...
+
 
 class TruckAnchorLocator(Protocol):
     """Validate one coordinate against a real truck-routing graph."""
@@ -36,6 +42,8 @@ class TruckAnchorLocator(Protocol):
 class RoutingAnchorResolverPort(Protocol):
     """Resolve one facility identity to derived routing coordinates."""
 
-    async def resolve(self, facility: Facility) -> RoutingAnchor:
+    async def resolve(
+        self, facility: Facility, *, force: bool = False
+    ) -> RoutingAnchor:
         """Resolve or reuse one routing anchor."""
         ...

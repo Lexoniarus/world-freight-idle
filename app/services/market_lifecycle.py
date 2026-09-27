@@ -9,6 +9,7 @@ from app.domain.market import MarketVehicle
 from app.domain.results import AvailableContract
 from app.domain.state_ports import GameUnitOfWork
 from app.services.market import MarketGenerator
+from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
 
 LOGGER = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ class MarketLifecycleService:
     generator: MarketGenerator
     scope: MarketScopeResolver
     clock: Callable[[], float]
+    preparation: MarketPreparationService | None = None
 
     def refresh(self, force: bool = False) -> list[ContractOffer]:
         """Read fleet, retain valid work and fill coverage atomically."""
@@ -33,8 +35,13 @@ class MarketLifecycleService:
             fleet = self.generator.candidates.resolve_fleet(owned)
             now = self.clock()
             retained = () if force else self._retained(cities, fleet, now)
+            prepared = None
+            if self.preparation is not None:
+                prepared = self.preparation.prepare_publication(
+                    self.generator.candidates.build(cities, fleet), fleet
+                )
             offers, diagnostics = self.generator.generate(
-                now, cities, fleet, retained
+                now, cities, fleet, retained, prepared
             )
             self._store(offers)
             LOGGER.info(
@@ -74,6 +81,7 @@ class MarketLifecycleService:
             and offer.origin.city.city_uid in cities
             and candidates.eligible_ids(offer, fleet)
             and candidates.structurally_current(offer)
+            and (self.preparation is None or self.preparation.retained(offer))
         )
 
     def _store(self, offers: tuple[ContractOffer, ...]) -> None:
@@ -81,6 +89,8 @@ class MarketLifecycleService:
         repository = self.unit_of_work.repository
         if offers != repository.list_offers():
             repository.replace_offers(offers)
+        if self.preparation is not None:
+            self.preparation.bind(offers)
 
     def refill_after_commit(self) -> None:
         """Keep a committed trip successful even when separate refill fails."""
@@ -95,13 +105,18 @@ class MarketLifecycleService:
     def present(
         self, offers: Sequence[ContractOffer]
     ) -> tuple[AvailableContract, ...]:
-        """Attach transient eligibility without changing offer snapshots."""
+        """Attach transient eligibility and separate route references."""
         fleet = self.generator.candidates.resolve_fleet(
             self.unit_of_work.repository.list_vehicles()
         )
-        return tuple(
-            AvailableContract(
-                offer, self.generator.candidates.eligible_ids(offer, fleet)
-            )
-            for offer in offers
-        )
+        result = []
+        for offer in offers:
+            eligible = self.generator.candidates.eligible_ids(offer, fleet)
+            reference = None
+            if self.preparation is not None:
+                if not self.preparation.retained(offer):
+                    continue
+                eligible = self.preparation.eligible(offer, fleet, eligible)
+                reference = self.preparation.references.get(offer.id)
+            result.append(AvailableContract(offer, eligible, reference))
+        return tuple(result)

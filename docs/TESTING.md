@@ -230,3 +230,22 @@ Fahrzeug blockiert die Quote bis zur bewussten Neuwahl. Browserregression
 verifiziert auch Back/Forward und die Rückkehr zur Weltkarte ohne Stadtparameter.
 Die Rendererprüfung deckt zusätzlich gedrehte Karten, fremde Gruppen und
 Facility-Wiederherstellung bei unveränderten Auftragsmarkern ab.
+
+
+## Global Routing Readiness
+
+Strukturelle MarketCandidateService-Generierung bleibt ohne Router.
+Market Publication verlangt RoutingReadiness. Partial bedeutet fehlende Coverage,
+niemals ungeprüfte Offers. Gezielte Tests prüfen Relations-Leases, historische
+Snapshot-Kompatibilität, Offer-Referenz-Rollback, Worker und Providerlimits.
+Automatisierte Providerprüfungen verwenden Mocks.
+
+Für die direkte Branch-Integration werden das vollständige Quality-Gate,
+die vollständige Playwright-Suite und git diff --check ausgeführt. Fehler
+werden ohne Abschwächung von Tests oder Coverage-Anforderungen behoben.
+Vite Build muss vor dem Browserlauf vollständig abgeschlossen sein.
+
+Einzelreview der Implementierung: [ROUTING_READINESS_REVIEW.md](ROUTING_READINESS_REVIEW.md).
+Tatsächliche gezielte und vollständige Befehle sowie Ergebnisse stehen im aktuellen Abschnitt des
+[Qualitätsberichts](../QUALITY_REPORT.md); frühere vollständige Gates in dessen
+historischen Abschnitten gelten nicht als Abnahme dieser Implementierung.

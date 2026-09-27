@@ -168,3 +168,11 @@ fehlende oder zufällig identische historische Display-Koordinate entscheidet
 jedoch nicht mehr über Routbarkeit. Straßenrouting löst die aktuelle
 Facility-Identität ausschließlich über `facility_uid -> RoutingAnchor` auf.
 Historische Snapshot-Koordinaten werden dabei weder ergänzt noch verändert.
+
+
+## Global Routing Readiness
+
+RoutePayload speichert road_distance_km und provider_duration_seconds,
+keine finale Spielerfahrzeit. RouteReference identifiziert eine gerichtete Relation
+und Revision. Candidate-Erzeugung bleibt routerfrei; auch partial Markets bestehen
+ausschließlich aus route-ready Offers. Journey ergänzt Fahrzeugzeit und Energie.

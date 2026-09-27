@@ -271,3 +271,11 @@ bei Abfahrt geleert; keine automatische andere Stadt beim Polling.
   rate-limited.
 - Providerfehler und nicht routbare Facilities werden klassifiziert
   persistiert; es gibt keine synthetischen Straßenkoordinaten.
+
+
+## Global Routing Readiness
+
+Routing-Readiness-Implementierung: implementiert / vollständige lokale Quality- und E2E-Gates bestanden.
+495 Python-Tests, 100 % Core-Statement-Coverage, 101 Frontendtests und
+30 Playwright-Fälle bestanden. Branch-Push ausdrücklich freigegeben;
+kein PR oder Merge.

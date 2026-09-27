@@ -29,6 +29,10 @@ CREATE TABLE IF NOT EXISTS routing_anchors (
             AND anchor_lat IS NULL AND anchor_lon IS NULL)
     )
 );
+CREATE TABLE IF NOT EXISTS routing_anchor_sources (
+    facility_uid TEXT NOT NULL, routing_profile TEXT NOT NULL,
+    fingerprint TEXT, PRIMARY KEY (facility_uid, routing_profile)
+);
 """
 
 _STATUS_VALUES: dict[str, RoutingAnchorStatus] = {
@@ -67,6 +71,11 @@ class SqliteRoutingAnchorRepository:
                 """,
                 (facility_uid, routing_profile),
             ).fetchone()
+            source = connection.execute(
+                "SELECT fingerprint FROM routing_anchor_sources "
+                "WHERE facility_uid=? AND routing_profile=?",
+                (facility_uid, routing_profile),
+            ).fetchone()
         if row is None:
             return None
         anchor = (
@@ -96,6 +105,7 @@ class SqliteRoutingAnchorRepository:
             provider=str(row[9]),
             provider_revision=(str(row[10]) if row[10] is not None else None),
             validated_at=float(row[11]),
+            source_fingerprint=source[0] if source else None,
         )
 
     def put(self, anchor: RoutingAnchor) -> None:
@@ -112,7 +122,10 @@ class SqliteRoutingAnchorRepository:
             if anchor.facility_coordinates
             else None
         )
-        with self._database.connect() as connection:
+        with (
+            self._database.transaction(),
+            self._database.connect() as connection,
+        ):
             connection.execute(
                 """
                 INSERT INTO routing_anchors (
@@ -148,3 +161,29 @@ class SqliteRoutingAnchorRepository:
                     anchor.validated_at,
                 ),
             )
+            connection.execute(
+                "INSERT INTO routing_anchor_sources VALUES (?, ?, ?) "
+                "ON CONFLICT(facility_uid, routing_profile) DO UPDATE "
+                "SET fingerprint=excluded.fingerprint",
+                (
+                    anchor.facility_uid,
+                    anchor.routing_profile,
+                    anchor.source_fingerprint,
+                ),
+            )
+
+    def put_leased(
+        self, anchor: RoutingAnchor, owner: str, now: float
+    ) -> bool:
+        """Fence anchor publication with its infrastructure lease."""
+        subject = f"anchor:{anchor.facility_uid}:{anchor.routing_profile}"
+        with self._database.transaction(), self._database.connect() as conn:
+            lease = conn.execute(
+                "SELECT 1 FROM routing_leases "
+                "WHERE subject=? AND owner=? AND expires_at>?",
+                (subject, owner, now),
+            ).fetchone()
+            if lease is None:
+                return False
+            self.put(anchor)
+            return True

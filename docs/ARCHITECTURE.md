@@ -14,7 +14,8 @@ UI First, native ES-Module, FastAPI und `python main.py` bleiben Grundlage.
   und kanonisches Snapshot-Mapping. Read-only Referenzdaten bleiben getrennt
   vom beschreibbaren Spielerzustand.
 - `app/providers`: validierte Valhalla-/Geocoding-Antworten, Providerfehler,
-  Rate-Limit und Cache-Port. Nominatim gehört ausschließlich zum Enrichment.
+  Rate-Limit und Cache-Port. Nominatim dient Offline-Enrichment und begrenztem Backend-Anchor-Repair;
+  keine allgemeinen Spieler-Geocoding-Anfragen.
 - `app/api/v1`: HTTP-Eingaben, Statuscodes und öffentliche JSON-Projektionen.
   Bestehende `hub_id`-Felder werden hier aus Facility-UIDs projiziert.
 - `app/bootstrap.py` und `app/main.py`: konkrete Verdrahtung und Ressourcenbesitz.
@@ -213,7 +214,7 @@ Traffic noch Leaderboard.
 
 ## Dispatch-Planung mit Anfahrt
 
-`DispatchPlanningService` erhält den TruckRouter per Injection. Er routet
+`DispatchPlanningService` lädt vorbereitete globale Straßenrelationen. Er lädt
 A → B optional und B → C vor der Schreibtransaktion und komponiert die reine
 Fahrt- und Preisplanung. `GameService` koordiniert Revalidierung und Persistenz.
 Der vollständige immutable Start-Snapshot muss nach Routing und unmittelbar
@@ -318,6 +319,35 @@ Facility UID -> WorldCatalogue -> RoutingAnchorResolver
 
 Display-Koordinaten bleiben unveränderliche World-/Snapshot-Fakten und werden
 nicht als Straßenanker gespeichert. `DispatchPlanningService` entscheidet
-Anfahrt anhand der Facility-Identität und übergibt ausschließlich validierte
-Routing-Anker an den TruckRouter. Provider-Awaits liegen außerhalb von
-Schreibtransaktionen; erst danach schreibt das Anchor-Repository sein Ergebnis.
+Anfahrt anhand der Facility-Identität und lädt ausschließlich vorbereitete
+Relationen. Die separate Preparation führt Provider-Awaits außerhalb von
+Schreibtransaktionen aus; erst danach wird das Ergebnis gespeichert.
+
+
+## Global Routing Readiness
+
+MarketCandidateService bleibt strukturell routerfrei. Market Preparation liegt
+zwischen Candidate-Erzeugung und Coverage/Materialisierung; MarketGenerator
+orchestriert keine Providerrequests. Auch partial Markets veröffentlichen
+**ausschließlich route-ready Offers**.
+
+Globale gerichtete Relationen, Anchor-Versuche und Leases verwenden zusätzliche
+Tabellen derselben SqliteGameDatabase. Keine zweite Runtime-Datenbank. Das
+Player-State-Schema 1.1.0 bleibt unverändert; Offer-Referenzen liegen separat in
+`offer_route_references` und werden mit Marktänderungen atomar geschrieben.
+Die Offer-Dokumentversion 1 und Transport-Dokumentversion 2 bleiben erhalten.
+RoutePayload benennt Straßenkilometer und Providerzeit explizit; Mapping zu
+historischen RouteSnapshot-Feldern erfolgt ohne Migration an der Dispatchgrenze.
+
+Der Application Lifespan besitzt den Preparation-Worker und registriert Cleanup
+vor dessen Start. Shutdown cancelt und awaited seine Task vor dem HTTP-Client.
+Eine neue Context-Instanz verhindert geerbte HTTP-Traces und Schreibtransaktionen.
+Globale Relations-/Anchor-Leases begrenzen parallele Arbeit; abgelaufene Leases
+sind übernehmbar, verlorene Schreibrechte verhindern Relationsveröffentlichung.
+Provider-Awaits liegen außerhalb von Schreibtransaktionen. Nach Await wird der
+Markt aus aktuellem Flottenzustand neu gelesen und in kurzer UoW veröffentlicht.
+
+Nominatim und Valhalla besitzen getrennte Provider-Limits. Worker steuern Batches
+und Backoff, keine providerspezifischen Sleeps. Nominatim liefert lediglich
+Kandidaten; Akzeptanz benötigt finale Valhalla-Truck-Validierung. Versuche bleiben
+append-only. No-path und Distanzlimit erzwingen keine Anchor-Verschiebung.

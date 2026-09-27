@@ -11,7 +11,7 @@ import { opportunityGroups } from "./map/opportunities.js";
 import { GameState } from "./state.js";
 import { layerPresets } from "./layer-presets.js";
 import { groupVehicles } from "./map/grouping.js";
-import { filterContracts } from "./views/contracts.js";
+import { filterContracts, renderContracts } from "./views/contracts.js";
 import { fleetGroups } from "./views/fleet.js";
 import { renderVehicleImage } from "./ui/vehicle-image.js";
 import { html } from "./ui/dom.js";
@@ -345,4 +345,28 @@ test("navigation before the first fleet snapshot does not freeze an accidental a
   await city.selectRoute(new URL("http://test/contracts"));
   assert.equal(view.cityUid, berlin.city_uid);
   city.destroy();
+});
+
+test("partial and exhausted markets expose progress without adding offers", () => {
+  const base = {
+    url: new URL("http://test/contracts"),
+    cityUid: "a",
+    activeCities: ["a"],
+    cities: [berlin],
+    marketLoaded: true,
+    state: { vehicles: [vehicle], contracts: [], transports: [] },
+  };
+  for (const [status, message] of [
+    ["partial", "Straßenverbindungen werden vorbereitet"],
+    ["exhausted", "keine geprüften Straßenverbindungen"],
+  ]) {
+    const fragment = renderContracts({
+      ...base,
+      state: { ...base.state, market_preparation: { status } },
+    });
+    const container = document.createElement("div");
+    container.append(fragment);
+    assert.ok(container.textContent.includes(message));
+    assert.equal(container.querySelectorAll(".job-card").length, 0);
+  }
 });

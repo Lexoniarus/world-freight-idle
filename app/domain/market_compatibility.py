@@ -32,6 +32,7 @@ def market_vehicle(
         model.transport_capabilities,
         VehicleCostProfile(model.maintenance_eur_per_1000_km / 1000),
         vehicle.energy,
+        location.facility_uid,
     )
 
 

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
 from typing import Literal
 
 from app.domain.geography import Coordinates
 from app.domain.validation import require_finite, require_identity
+from app.domain.world import Facility
 
 RoutingAnchorStatus = Literal[
     "validated",
@@ -32,6 +34,7 @@ class RoutingAnchor:
     provider: str
     provider_revision: str | None
     validated_at: float
+    source_fingerprint: str | None = None
 
     def __post_init__(self) -> None:
         """Validate routing-anchor facts without mutating catalogue values."""
@@ -61,3 +64,16 @@ class LocateResult:
     provider: str
     provider_revision: str | None
     status: RoutingAnchorStatus
+    candidates: tuple[Coordinates, ...] = ()
+    provider_code: int | None = None
+    provider_message: str | None = None
+
+
+def anchor_source_fingerprint(facility: Facility) -> str:
+    """Bind cached access to facility identity, address and coordinates."""
+    value = (
+        facility.facility_uid,
+        facility.address.display_text(),
+        facility.coordinates,
+    )
+    return sha256(repr(value).encode()).hexdigest()

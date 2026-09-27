@@ -7,8 +7,16 @@ const password = "browser-test-password-42";
 const screenshot = (name) => join(tmpdir(), "world-freight-" + name + ".png");
 // A tiny local PNG replaces all public tiles. No automated OSM downloads.
 let counter = 0;
+let peerCounter = 0;
 
 test.beforeEach(async ({ context, page }) => {
+  // Model independent clients behind the trusted local test proxy. Keep the
+  // production IP throttle active within each test instead of sharing its
+  // attempt budget across the entire browser suite.
+  const peer = "192.0.2." + (++peerCounter);
+  await context.route("http://127.0.0.1:8011/api/v1/auth/**", route => route.continue({
+    headers: { ...route.request().headers(), "x-forwarded-for": peer },
+  }));
   await context.route("https://tile.openstreetmap.org/**", (route) => route.fulfill({ contentType: "image/png", body: tile }));
   if (!process.env.REAL_VEHICLE_PHOTO) {
     await context.route("https://upload.wikimedia.org/**", route => {
@@ -36,6 +44,31 @@ async function register(page) {
   return username;
 }
 
+async function readyContracts(page) {
+  let contracts;
+  await expect.poll(async () => {
+    const body = await (await page.request.get("/api/v1/contracts")).json();
+    contracts = body.contracts;
+    return body.preparation?.status === "ready" && contracts.length > 0;
+  }, { timeout: 30000 }).toBe(true);
+  return contracts;
+}
+
+async function openEligibleOffer(page, vehicleIds = ["truck_01"], matches = () => true) {
+  const contracts = await readyContracts(page);
+  const offer = contracts.find(item => matches(item) && vehicleIds.every(id => item.eligible_vehicle_ids.includes(id)));
+  expect(offer).toBeTruthy();
+  await page.goto("/contracts/" + offer.id + "?vehicle=" + encodeURIComponent(vehicleIds[0]));
+  await page.getByLabel("Fahrzeug disponieren").selectOption(vehicleIds[0]);
+  return offer;
+}
+
+async function openVehicleMarket(page, vehicleId = "truck_01") {
+  await readyContracts(page);
+  await page.goto("/fleet/" + vehicleId);
+  await page.getByRole("link", { name: "Stadtmarkt öffnen" }).click();
+}
+
 test("desktop: registration, map, quote, dispatch, purchase, arrival, logout and login", async ({ page }) => {
   test.setTimeout(90000);
   const errors = [];
@@ -44,7 +77,8 @@ test("desktop: registration, map, quote, dispatch, purchase, arrival, logout and
   await expect(page.locator("#map-notice")).toBeHidden();
   await page.screenshot({ animations: "disabled", path: screenshot("desktop") });
   await page.getByRole("link", { name: "Aufträge", exact: true }).click();
-  await page.locator(".job-card").filter({ hasText: "Lkw bereit" }).first().click();
+  const fleetForOffer = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
+  await openEligibleOffer(page, [fleetForOffer[0].id]);
   await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
   await expect(page.getByText("Dein Gewinn", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Transport starten" })).toBeEnabled();
@@ -107,13 +141,13 @@ test("stale quote cannot overwrite a new panel; failures and session expiry are 
     await route.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ detail: "Routing ist offline." }) }).catch(() => {});
   });
   await page.getByRole("link", { name: "Aufträge", exact: true }).click();
-  await page.locator(".job-card").first().click();
+  await openEligibleOffer(page);
   await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
   await page.getByRole("link", { name: "Flotte", exact: true }).click();
   await expect(page.locator("#panel-title")).toHaveText("Deine Flotte");
   await expect(page.getByText("Dein Gewinn", { exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Aufträge", exact: true }).click();
-  await page.locator(".job-card").first().click();
+  await openEligibleOffer(page);
   await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
   await expect(page.locator("#toasts")).toContainText("Routing ist offline");
   await expect(page.getByRole("button", { name: "Transport starten" })).toBeDisabled();
@@ -131,7 +165,7 @@ test("parallel trips persist across navigation and map controls work without reb
   const fleet = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
   for (const vehicle of fleet) {
     await page.request.post("/api/v1/contracts/refresh", { headers });
-    const contracts = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
+    const contracts = await readyContracts(page);
     const contract = contracts.find((item) => item.eligible_vehicle_ids.includes(vehicle.id));
     const dispatch = await page.request.post("/api/v1/contracts/" + contract.id + "/accept", { headers, data: { vehicle_id: vehicle.id } });
     expect(dispatch.ok()).toBeTruthy();
@@ -175,7 +209,7 @@ test("missing fleet coordinates and tile outages preserve the playable lists", a
   await expect(page.locator("#map-notice")).toBeVisible();
   await page.getByRole("link", { name: "Flotte", exact: true }).click();
   await expect(page.getByRole("link", { name: "IVECO S-Way 500 XC13", exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "Aufträge", exact: true }).click();
+  await openVehicleMarket(page);
   await expect(page.locator(".job-card").first()).toBeVisible();
 });
 
@@ -195,7 +229,7 @@ test("DB vehicle selection changes costs, dispatches and settles after relogin",
   const vehicles = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
   const purchased = vehicles.find(vehicle => vehicle.model_id === "renault_t_high_520");
   await page.getByRole("link", { name: "Aufträge", exact: true }).click();
-  await page.locator(".job-card").filter({ hasText: "Lkw bereit" }).first().click();
+  await openEligibleOffer(page, [vehicles.find(v => v.id !== purchased.id).id, purchased.id]);
   await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
   await expect(page.getByRole("button", { name: "Transport starten" })).toBeEnabled();
   await page.getByLabel("Fahrzeug disponieren").selectOption(purchased.id);
@@ -294,7 +328,7 @@ test("starter game assets survive polling and changed transport panel content", 
   await page.waitForResponse(response => response.url().endsWith("/api/v1/fleet"), { timeout: 15000 });
   await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
   const headers = { "X-Freight-Request": "1" };
-  const contracts = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
+  const contracts = await readyContracts(page);
   const contract = contracts.find(item => item.eligible_vehicle_ids.includes(vehicles[0].id));
   const response = await page.request.post("/api/v1/contracts/" + contract.id + "/accept", { headers, data: { vehicle_id: vehicles[0].id } });
   expect(response.ok()).toBeTruthy();
@@ -323,7 +357,7 @@ test("facility identities, lazy market scope and catalogue outages preserve the 
   expect(allResult.unavailable_count).toBe(0);
   expect(allResult.facilities).toHaveLength(559);
 
-  const localJobs = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
+  const localJobs = await readyContracts(page);
   expect(new Set(localJobs.map(job => job.origin.city_uid))).toEqual(new Set([berlin.city_uid]));
   expect(new Set(localJobs.map(job => job.origin_facility_uid)).size).toBeGreaterThan(1);
   expect(localJobs.every(job => job.market_model === "nhm_v2")).toBeTruthy();
@@ -333,7 +367,7 @@ test("facility identities, lazy market scope and catalogue outages preserve the 
   const viewportJobs = (await (await page.request.get("/api/v1/contracts?bbox=8,48,15,54&zoom=7")).json()).contracts;
   expect(viewportJobs).toEqual(localJobs);
 
-  await page.goto("/contracts?hub=berlin_westhafen");
+  await openVehicleMarket(page);
   const originalCanvas = await page.locator(".maplibregl-canvas").elementHandle();
   await expect(page).toHaveURL(new RegExp("city=" + berlin.city_uid));
   await expect(page.locator(".job-card")).toHaveCount(localJobs.length);
@@ -360,9 +394,10 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     expect(prepared.ok()).toBeTruthy();
     await page.reload();
     const fleetBefore = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
-    const offers = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
+    const offers = await readyContracts(page);
     const direct = offers.find(offer => offer.origin_facility_uid === fleetBefore[0].facility_uid);
     await page.goto("/contracts/" + direct.id);
+    await page.getByLabel("Fahrzeug disponieren").selectOption(fleetBefore[0].id);
     await page.getByRole("button", {name:"Route & Ertrag berechnen"}).click();
     await expect(page.getByText(/5 Tank-\/Ladepausen/)).toBeVisible();
     await page.getByRole("button", {name:"Transport starten"}).click();
@@ -397,7 +432,7 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
 test("city offers survive pan and zoom without market requests", async ({ page }) => {
   await page.clock.install();
   await register(page);
-  await page.getByRole("link", { name: "Aufträge", exact: true }).click();
+  await openVehicleMarket(page);
   await expect(page.locator(".job-card").first()).toBeVisible();
   await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
   const requests = [];
@@ -442,7 +477,9 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["tablet
     await expect(page.getByLabel("Stadt", {exact:true})).toHaveValue(city);
     await page.getByRole("link", {name:"Stadtmarkt öffnen"}).first().click();
     await expect(page).toHaveURL(/vehicle=truck_01/);
-    await page.locator(".job-card").first().click();
+    const eligible = (await readyContracts(page)).find(offer => offer.eligible_vehicle_ids.includes("truck_01"));
+    await page.locator(`.job-card[href*="/contracts/${eligible.id}"]`).click();
+    await page.getByLabel("Fahrzeug disponieren").selectOption("truck_01");
     await expect(page.getByRole("radio").first()).toBeVisible();
     await page.getByRole("button", {name:"Route & Ertrag berechnen"}).click();
     await expect(page.getByRole("button", {name:"Transport starten"})).toBeEnabled();
@@ -539,10 +576,11 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     await page.emulateMedia({reducedMotion:"reduce"});
     await register(page);
     const start = (await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
-    const offers = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
+    const offers = await readyContracts(page);
     const offer = offers.find(item => item.origin_facility_uid !== start.facility_uid && item.eligible_vehicle_ids.includes(start.id));
     expect(offer).toBeTruthy();
     await page.goto("/contracts/" + offer.id);
+    await page.getByLabel("Fahrzeug disponieren").selectOption(start.id);
     await expect(page.getByRole("radio").first()).toHaveAttribute("aria-checked", "true");
     await expect(page.locator(".itinerary")).toContainText(start.hub.label);
     await expect(page.locator(".itinerary")).toContainText(offer.origin.label);
@@ -585,10 +623,6 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     await page.setViewportSize(viewport);
     await page.emulateMedia({reducedMotion:"reduce"});
     await register(page);
-    await page.goto("/contracts");
-    const fleet = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
-    const active = [...new Set(fleet.filter(v=>v.status==="idle").map(v=>v.hub.city_uid))].sort();
-    await expect.poll(async()=>page.locator('[data-filter="city"] option').evaluateAll(nodes=>nodes.map(n=>n.value).filter(Boolean).sort())).toEqual(active);
     await page.goto("/company");
     await expect(page.locator("[data-company-color]")).toHaveCount(10);
     const choice = page.locator("[data-company-color]").nth(1);
@@ -602,7 +636,9 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     await front.evaluate(image=>{window.stableLiveryImage=image;});
     await page.getByRole("button",{name:"Aktualisieren",exact:true}).click();
     await expect.poll(()=>front.evaluate(image=>image===window.stableLiveryImage)).toBe(true);
-    await page.getByRole("heading",{name:"Firmenfarbe",exact:true}).scrollIntoViewIfNeeded();
+    await expect(async () => {
+      await page.getByRole("heading",{name:"Firmenfarbe",exact:true}).scrollIntoViewIfNeeded();
+    }).toPass();
     await page.screenshot({path:screenshot(`livery-${device}`),animations:"disabled"});
     await page.reload();
     await expect(page.locator(`[data-company-color="${color}"]`)).toHaveAttribute("aria-pressed","true");
@@ -623,11 +659,12 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     await page.setViewportSize(viewport);
     await page.emulateMedia({reducedMotion:"reduce"});
     await register(page);
-    const offers = (await (await page.request.get("/api/v1/contracts")).json()).contracts.sort((a,b)=>a.tons-b.tons);
+    const offers = (await readyContracts(page)).filter(offer => offer.eligible_vehicle_ids.includes("truck_01")).sort((a,b)=>a.tons-b.tons);
     expect(offers.length).toBeGreaterThan(1);
     for (const [label, offer, stops] of [["low", offers[0], false], ["high", offers.at(-1), false], ["one-stop", offers[0], "single"], ["purchases", offers[0], "multiple"]]) {
       if (stops) expect((await page.request.post("/__tests__/energy-fixture"+(stops === "single" ? "?single_stop=true" : ""), {headers:{"X-Freight-Request":"1"}})).ok()).toBeTruthy();
       await page.goto("/contracts/"+offer.id);
+      await page.getByLabel("Fahrzeug disponieren").selectOption("truck_01");
       const response = page.waitForResponse(value=>value.url().includes("/quote") && value.request().method()==="POST");
       await page.getByRole("button",{name:"Route & Ertrag berechnen"}).click();
       const quote = await (await response).json();
@@ -669,9 +706,10 @@ test("palette retry and navigation surfaces remain usable without reload after s
   await expect(page.locator('img[data-vehicle-role="front"]').first()).toHaveAttribute("src",/^blob:/);
   await page.screenshot({path:screenshot("focused-vehicle-detail"),animations:"disabled"});
   await page.goto("/contracts");
-  const offers=(await (await page.request.get("/api/v1/contracts")).json()).contracts;
+  const offers=await readyContracts(page);
   const offer=offers.find(o=>o.eligible_vehicle_ids.includes(vehicle.id));
   await page.goto("/contracts/"+offer.id);
+      await page.getByLabel("Fahrzeug disponieren").selectOption("truck_01");
   await page.screenshot({path:screenshot("focused-contract-endpoints"),animations:"disabled"});
   await page.getByRole("button",{name:"Route & Ertrag berechnen"}).click();
   await expect(page.getByRole("button",{name:"Transport starten"})).toBeEnabled();
@@ -689,7 +727,7 @@ test("world overview is unscoped and vehicle city shows suitable and unsuitable 
   await expect(page.locator("#current-city-label")).toHaveCount(0);
   await expect(page).not.toHaveURL(/city=/);
   const vehicle = (await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
-  const offers = (await (await page.request.get("/api/v1/contracts")).json()).contracts;
+  const offers = await readyContracts(page);
   const unsuitable = {...offers[0], eligible_vehicle_ids: []};
   await page.route("**/api/v1/contracts", route => route.fulfill({json:{contracts:[unsuitable,...offers.slice(1)]}}));
   await page.route("**/api/v1/contracts/"+unsuitable.id, route => route.fulfill({json:unsuitable}));

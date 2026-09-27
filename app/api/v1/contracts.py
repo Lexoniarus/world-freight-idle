@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.v1.dependencies import get_game_service
@@ -28,7 +30,10 @@ def list_contracts(
         "contracts": [
             project_contract(item)
             for item in game.contract_choices(game.list_contracts())
-        ]
+        ],
+        "preparation": (
+            asdict(status) if (status := game.preparation_status()) else None
+        ),
     }
 
 
@@ -42,7 +47,7 @@ def get_contract(
         return project_contract(
             game.contract_choices((game.get_contract(contract_id),))[0]
         )
-    except KeyError as exc:
+    except (KeyError, IndexError) as exc:
         raise HTTPException(404, str(exc)) from exc
 
 
@@ -52,14 +57,14 @@ async def quote_contract(
     body: QuoteRequest,
     game: GameService = Depends(get_game_service),
 ) -> dict:
-    """Route saved coordinates and return a provider-backed truck quote."""
+    """Quote the selected vehicle against prepared global routes."""
     try:
         return project_quote(
             await game.quote_contract(contract_id, body.vehicle_id)
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    except KeyError as exc:
+    except (KeyError, IndexError) as exc:
         raise HTTPException(404, str(exc)) from exc
     except RoutingError as exc:
         raise HTTPException(502, ROUTING_FAILURE_DETAIL) from exc
@@ -76,7 +81,7 @@ async def accept_contract(
         return project_transport(
             await game.dispatch(contract_id, body.vehicle_id)
         )
-    except KeyError as exc:
+    except (KeyError, IndexError) as exc:
         raise HTTPException(404, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
@@ -93,5 +98,8 @@ def refresh_contracts(
         "contracts": [
             project_contract(item)
             for item in game.contract_choices(game.refresh_contracts())
-        ]
+        ],
+        "preparation": (
+            asdict(status) if (status := game.preparation_status()) else None
+        ),
     }

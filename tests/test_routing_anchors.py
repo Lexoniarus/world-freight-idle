@@ -8,6 +8,7 @@ from app.domain.routing_anchors import (
     LocateResult,
     RoutingAnchor,
     RoutingAnchorStatus,
+    anchor_source_fingerprint,
 )
 from app.domain.world import Facility
 from app.services.routing_anchors import RoutingAnchorResolver
@@ -26,6 +27,12 @@ class MemoryAnchorStore:
 
     def put(self, anchor: RoutingAnchor) -> None:
         self.items[(anchor.facility_uid, anchor.routing_profile)] = anchor
+
+    def put_leased(
+        self, anchor: RoutingAnchor, owner: str, now: float
+    ) -> bool:
+        self.put(anchor)
+        return True
 
 
 class FakeLocator:
@@ -365,6 +372,7 @@ async def test_routing_anchor_cached_validated_anchor_is_reused() -> None:
     item = facility()
     store = MemoryAnchorStore()
     cached = RoutingAnchor(
+        source_fingerprint=anchor_source_fingerprint(item),
         facility_uid=item.facility_uid,
         routing_profile="truck",
         anchor=Coordinates(52.6, 13.5),

@@ -87,6 +87,8 @@ def test_reset_failure_restores_deleted_state(game):
         "market",
         "body",
         "close-first",
+        "worker-start",
+        "worker-close",
     ],
 )
 async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
@@ -130,6 +132,14 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
                 side_effect=error if failure == "preferences" else None,
             )
         )
+        worker = SimpleNamespace(start=AsyncMock(), close=AsyncMock())
+        if failure == "worker-start":
+            worker.start.side_effect = error
+        if failure == "worker-close":
+            worker.close.side_effect = error
+        patches.enter_context(
+            patch("app.main.build_preparation_worker", return_value=worker)
+        )
         startup = patches.enter_context(patch("app.main.build_market_startup"))
         if failure == "market":
             startup.return_value.rebuild.side_effect = error
@@ -143,5 +153,13 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
                 async with lifespan(app):
                     if failure == "body":
                         raise error
+    if failure in {
+        "none",
+        "body",
+        "close-first",
+        "worker-start",
+        "worker-close",
+    }:
+        worker.close.assert_awaited_once()
     expected = [0] if failure == "first-client" else [1]
     assert [client.aclose.await_count for client in clients] == expected

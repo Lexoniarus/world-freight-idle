@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from collections.abc import Callable
 from typing import Any
 
 import httpx
@@ -12,6 +13,8 @@ import httpx
 from app.domain.cache_ports import ProviderCache
 from app.domain.errors import RoutingError, RoutingFailureCategory
 from app.domain.transports import RouteSnapshot
+from app.providers.request_limiter import ProviderRequestLimiter
+from app.providers.valhalla_metadata import graph_revision
 from app.providers.validation import validate_route
 from app.tracing import get_trace_id
 
@@ -65,11 +68,18 @@ class ValhallaTruckRouter:
         client: httpx.AsyncClient,
         base_url: str,
         client_id: str,
+        limiter: ProviderRequestLimiter | None = None,
+        revision_observer: Callable[[str], None] | None = None,
+        cache_enabled: bool = True,
     ) -> None:
+        """Inject HTTP, cache, pacing and observed revision boundaries."""
         self.cache = cache
+        self.cache_enabled = cache_enabled
         self.client = client
         self.base_url = base_url.rstrip("/")
         self.client_id = client_id
+        self.revision_observer = revision_observer
+        self.limiter = limiter or ProviderRequestLimiter(1, 1.0)
 
     async def route(
         self,
@@ -133,7 +143,9 @@ class ValhallaTruckRouter:
             destination_lon,
         )
         try:
-            cached = self.cache.get_route(cache_key)
+            cached = (
+                self.cache.get_route(cache_key) if self.cache_enabled else None
+            )
         except ValueError:
             LOGGER.warning(
                 "Unreadable cached route",
@@ -173,14 +185,19 @@ class ValhallaTruckRouter:
                 },
             },
         )
-        response = await self.client.post(
-            f"{self.base_url}/route",
-            json=body,
-            headers={
-                "X-Client-Id": self.client_id,
-                "X-Trace-Id": get_trace_id(),
-            },
-        )
+        async with self.limiter.request():
+            response = await self.client.post(
+                f"{self.base_url}/route",
+                json=body,
+                headers={
+                    "X-Client-Id": self.client_id,
+                    "X-Trace-Id": get_trace_id(),
+                },
+            )
+        self.limiter.defer(response.headers.get("Retry-After"))
+        revision = graph_revision(response.headers)
+        if revision and self.revision_observer:
+            self.revision_observer(revision)
         if response.status_code >= 400:
             provider_code: int | None = None
             provider_message = response.text[:200] or None
@@ -256,7 +273,8 @@ class ValhallaTruckRouter:
             raise error from exc
 
         route_result = self._extract_route(payload)
-        self.cache.put_route(cache_key, route_cache_document(route_result))
+        if self.cache_enabled:
+            self.cache.put_route(cache_key, route_cache_document(route_result))
         return route_result
 
     def _build_cache_key(
@@ -268,7 +286,7 @@ class ValhallaTruckRouter:
     ) -> str:
         """Create a stable cache key for one directed truck route."""
         raw = (
-            "truck:"
+            f"truck:v2:{self.base_url}:"
             f"{origin_lat:.6f},{origin_lon:.6f}:"
             f"{destination_lat:.6f},{destination_lon:.6f}:v1"
         )

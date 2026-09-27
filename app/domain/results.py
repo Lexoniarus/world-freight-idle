@@ -7,6 +7,7 @@ from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.journeys import JourneyPlan
 from app.domain.pricing import PriceQuote
 from app.domain.routes import DispatchRoutePlan
+from app.domain.routing_readiness import RouteReference
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.domain.vehicles import VehicleModel
 from app.domain.world import FacilityLocationSnapshot
@@ -60,3 +61,4 @@ class AvailableContract:
 
     offer: ContractOffer
     eligible_vehicle_ids: tuple[str, ...]
+    route_reference: RouteReference | None = None

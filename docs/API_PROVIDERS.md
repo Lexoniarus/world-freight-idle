@@ -2,8 +2,8 @@
 
 ## Betriebsgrenzen und Quellen
 
-Der Spielserver erzeugt keinen Geocoder. Beim Offline-Enrichment gelten für Nominatim-
-Anfragen sind maximal einmal pro Sekunde zulässig; der Adapter verwendet
+Der Backend-Geocoder dient Offline-Enrichment und begrenztem Anchor-Repair.
+Nominatim-Anfragen sind maximal einmal pro Sekunde zulässig; der Adapter verwendet
 1,05 Sekunden Mindestabstand und persistentes Caching. Bei mehreren Workern
 ist ein verteilter Limiter oder ein eigener Dienst erforderlich.
 Einen identifizierenden User-Agent mit Kontakt konfigurieren.
@@ -18,7 +18,7 @@ Eurostat, UN Comtrade und reale Fahrzeugpreise sind noch nicht angebunden.
 
 ## Nominatim / OpenStreetMap
 
-Zweck: Offline-Kandidatensuche für Import/Enrichment. Vor Freigabe sind
+Zweck: Kandidatensuche für Offline-Enrichment und begrenzten Backend-Anchor-Repair. Vor Freigabe sind
 Identität, Quelle und Genauigkeitsklasse gesondert zu prüfen. Die normalen
 Facility-Lookups verwenden gespeicherte Koordinaten aus dem WorldCatalogue.
 
@@ -88,3 +88,28 @@ Kann die Facility-Koordinate nicht als Truck-Anker verwendet werden, darf der
 bereits vorhandene gecachte und rate-limitierte `NominatimGeocoder` die
 gespeicherte Facility-Adresse backendseitig auflösen. Dieser Kandidat muss
 erneut `/locate` bestehen. Der Browser geocodiert nicht.
+
+
+## Vorbereitung und Betriebsbudget
+
+Nominatim: seriell, mindestens 1,05 Sekunden; kein Browser-Geocoding.
+Valhalla: eigener injizierter Limiter, `VALHALLA_CONCURRENCY=1` und
+`VALHALLA_MINIMUM_INTERVAL=1` als konservative Defaults. Route und Locate teilen
+sein Budget. Retry-After verschiebt weitere Providerrequests. Für eigene
+Instanzen können die Limits ohne Codeänderung angepasst werden.
+
+`python scripts/audit_routing_readiness.py --report` führt keine Providerrequests
+aus. `--prewarm --request-limit 100` ist explizit und resumierbar über persistierte
+Readiness. Am öffentlichen Default-Endpunkt ist zusätzlich
+`--allow-public-endpoint` erforderlich; eine Warnung benennt dessen Testzweck.
+Der Requestzähler zählt Route, Locate und Geocoding gemeinsam. Vollständiger
+globaler Prewarm ist für eine eigene Valhalla-Instanz vorgesehen.
+
+Die Limiter sind pro Runtime-/CLI-Instanz geteilt. Für mehrere OS-Prozesse gegen
+einen öffentlichen Dienst ist zusätzlich ein gemeinsamer externer Limiter
+beziehungsweise ein eigener Routingdienst erforderlich; SQLite-Leases
+verhindern doppelte Relationsarbeit, aggregieren aber keine Provider-Rate.
+Graphwechsel werden über tatsächlich gelieferte `x-graph-revision`-Header,
+sonst `x-valhalla-version`, beobachtet. Fehlende Header erfinden keine Revision
+und invalidieren keine Route fortlaufend. Ein nicht angekündigter Graphwechsel
+ist ohne Provider-Metadaten nicht automatisch erkennbar.

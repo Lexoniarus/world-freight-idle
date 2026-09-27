@@ -14,6 +14,8 @@ RoutingFailureCategory: TypeAlias = Literal[
 class GeocodingError(RuntimeError):
     """An external address could not be resolved."""
 
+    retryable: bool = False
+
 
 class CatalogueError(RuntimeError):
     """The vehicle reference catalogue cannot be read safely."""

@@ -42,6 +42,7 @@ class MarketVehicle:
     capabilities: tuple[TransportCapability, ...]
     cost_profile: VehicleCostProfile
     energy: EnergyProfile
+    facility_uid: str = ""
 
     def __post_init__(self) -> None:
         """Require explicit identity, scale and usable owned capacity."""

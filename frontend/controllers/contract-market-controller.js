@@ -46,7 +46,7 @@ export class ContractMarketController {
         signal: request.signal,
       });
       if (request.isCurrent()) {
-        this.state.replaceContracts(result.contracts);
+        this.state.replaceContracts(result.contracts, result.preparation);
       }
     } catch (error) {
       if (request.isCurrent() && error.name !== "AbortError") {

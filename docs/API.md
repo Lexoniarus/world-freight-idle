@@ -354,3 +354,21 @@ Analytics gruppiert weiterhin mit `vehicle_id` als Key. Das jeweilige
 `label` bzw. `vehicle_label` ist ein aktueller verständlicher Anzeigename;
 bei gleichen Namen folgt eine unterscheidende ID, bei fehlenden Fahrzeugen
 `Fahrzeug <kurze ID>`. Daraus folgt keine historische Modellklassifizierung.
+
+
+## Routing-readiness market projection
+
+GET /api/v1/contracts and POST /api/v1/contracts/refresh return `contracts`
+plus `preparation` (nullable for an unconfigured test composition). Preparation
+contains `preparation_id`, `generation`, `status` and nullable `next_retry_at`.
+A partial market contains only delivery-ready offers. Each live contract exposes
+its separate `route_reference` (relation_id and revision); eligible_vehicle_ids
+also requires the actual-start approach to be ready. These IDs reserve nothing.
+Quote and dispatch load prepared routes and reject stale references without
+provider fallback. Historical transport payload field names remain unchanged.
+
+Preparationstatus `partial` bezeichnet noch unvollständige Vorbereitung,
+`ready` erfüllte vorbereitbare Coverage und `exhausted` einen ausgeschöpften
+Pool bei verbleibender Coverage-Lücke. Alle drei Zustände veröffentlichen
+nur Delivery-ready Offers; Fahrzeug-Eignung verlangt zusätzlich den
+vorbereiteten Approach. Rohdiagnosen bleiben im Backend/Audit.

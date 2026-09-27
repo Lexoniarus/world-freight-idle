@@ -14,6 +14,7 @@ from app.domain.routing_anchor_ports import RoutingAnchorResolverPort
 from app.domain.world import FacilityLocationSnapshot
 from app.domain.world_scopes import WorldScope
 from app.services.cost_profiles import VehicleCostResolver
+from app.services.market_preparation import MarketPreparationService
 
 
 @dataclass(slots=True)
@@ -24,11 +25,16 @@ class DispatchPlanningService:
     costs: VehicleCostResolver
     anchors: RoutingAnchorResolverPort
     world: WorldCatalogue
+    preparation: MarketPreparationService | None = None
 
     async def route(
         self, start: FacilityLocationSnapshot, contract: ContractOffer
     ) -> DispatchRoutePlan:
-        """Route pickup approach and freight before any write transaction."""
+        """Load prepared approach and delivery before a write transaction."""
+        if self.preparation is not None and not self.preparation.retained(
+            contract
+        ):
+            raise ValueError("Straßenverbindung wird vorbereitet.")
         approach = None
         if start.facility_uid != contract.origin.facility_uid:
             approach = await self._route_between(start, contract.origin)
@@ -44,7 +50,11 @@ class DispatchPlanningService:
         start: FacilityLocationSnapshot,
         destination: FacilityLocationSnapshot,
     ) -> RouteSnapshot:
-        """Route facility identities through validated truck anchors."""
+        """Resolve a prepared relation at the dispatch boundary."""
+        if self.preparation is not None:
+            return self.preparation.readiness.load(
+                start.facility_uid, destination.facility_uid
+            ).to_snapshot()
         world = WorldScope(self.world.read())
         origin = await self.anchors.resolve(world.facility(start.facility_uid))
         target = await self.anchors.resolve(
@@ -74,6 +84,26 @@ class DispatchPlanningService:
         time_scale: float,
     ) -> ContractQuote:
         """Compose journey and economics from revalidated purchased values."""
+        if self.preparation is not None:
+            if not self.preparation.retained(contract):
+                raise ValueError("Straßenverbindung wurde geändert.")
+            current = self.preparation.readiness
+            if (
+                current.load(
+                    contract.origin.facility_uid,
+                    contract.destination.facility_uid,
+                ).to_snapshot()
+                != route.delivery
+            ):
+                raise ValueError("Lieferroute wurde geändert.")
+            if (
+                route.approach is not None
+                and current.load(
+                    route.start.facility_uid, contract.origin.facility_uid
+                ).to_snapshot()
+                != route.approach
+            ):
+                raise ValueError("Anfahrtsroute wurde geändert.")
         if vehicle.location != route.start:
             raise ValueError(
                 "Fahrzeugstandort wurde während der Planung geändert."

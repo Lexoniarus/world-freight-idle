@@ -28,8 +28,10 @@ from app.services.auth import SESSION_COOKIE, AuthService, PasswordHasher
 from app.services.fleet import FleetService
 from tests.conftest import (
     BERLIN_UID,
-    FakeRouter,
-    FakeRoutingAnchorResolver,
+)
+from tests.routing_fixtures import (
+    install_fake_routing,
+    prepare_client_market,
 )
 from tests.test_api import make_settings, make_static_files
 from tests.test_game import first_berlin_contract
@@ -267,6 +269,7 @@ def test_auth_api_and_private_game_resources(tmp_path):
     make_static_files(tmp_path)
     app = create_app(make_settings(tmp_path))
     with TestClient(app) as client:
+        install_fake_routing(app.state.game)
         for path in (
             "dashboard",
             "fleet",
@@ -340,6 +343,7 @@ def test_auth_api_and_private_game_resources(tmp_path):
         assert (
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 26000
         )
+        prepare_client_market(client, app.state.game)
         alice_contract = client.get("/api/v1/contracts").json()["contracts"][
             0
         ]["id"]
@@ -357,8 +361,7 @@ def test_auth_api_and_private_game_resources(tmp_path):
         assert (
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 175000
         )
-        app.state.game.router = FakeRouter()
-        app.state.game.anchors = FakeRoutingAnchorResolver()
+        prepare_client_market(client, app.state.game)
         contract = client.get("/api/v1/contracts").json()["contracts"][0]
         trip = client.post(
             f"/api/v1/contracts/{contract['id']}/accept",

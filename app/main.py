@@ -15,6 +15,7 @@ from app.bootstrap import (
     build_game_runtime,
     build_market_startup,
     build_preferences,
+    build_preparation_worker,
 )
 from app.config import Settings
 from app.domain.errors import (
@@ -49,6 +50,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         )
         app.state.preferences = build_preferences(app.state.game)
         build_market_startup(app.state.game).rebuild()
+        worker = build_preparation_worker(app.state.game)
+        resources.push_async_callback(worker.close)
+        await worker.start()
         yield
 
 

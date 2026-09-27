@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import contextvars
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 from starlette.middleware.base import (
     BaseHTTPMiddleware,
@@ -49,3 +51,13 @@ class TraceIdMiddleware(BaseHTTPMiddleware):
             return response
         finally:
             _TRACE_ID.reset(token)
+
+
+@contextmanager
+def background_trace(preparation_id: str) -> Iterator[None]:
+    """Correlate one execution without retaining an HTTP request context."""
+    token = _TRACE_ID.set(f"{preparation_id}:{new_trace_id()}")
+    try:
+        yield
+    finally:
+        _TRACE_ID.reset(token)

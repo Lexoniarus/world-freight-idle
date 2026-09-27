@@ -27,8 +27,10 @@ from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.services.fleet import FleetService
 from tests.conftest import (
     BERLIN_UID,
-    FakeRouter,
-    FakeRoutingAnchorResolver,
+)
+from tests.routing_fixtures import (
+    install_fake_routing,
+    prepare_client_market,
 )
 from tests.test_api import make_settings, make_static_files
 from tests.test_game import first_berlin_contract
@@ -252,8 +254,8 @@ def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
                 "password": "catalogue-test-password",
             },
         ).raise_for_status()
-        app.state.game.router = FakeRouter()
-        app.state.game.anchors = FakeRoutingAnchorResolver()
+        install_fake_routing(app.state.game)
+        prepare_client_market(client, app.state.game)
         contract = next(
             item
             for item in client.get("/api/v1/contracts").json()["contracts"]

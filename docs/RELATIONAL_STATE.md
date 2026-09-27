@@ -167,3 +167,20 @@ Infrastruktur und nicht zum Spielerzustand. Der Primärschlüssel ist
 `(facility_uid, routing_profile)`. Spieler-Reset und historische
 Fahrzeug-Snapshots verändern diese globalen abgeleiteten Daten nicht.
 SQL bleibt ausschließlich in `SqliteRoutingAnchorRepository`.
+
+
+## Global Routing Readiness
+
+RoutingRelations, RoutingAttempts, RoutingLeases, MarketPreparations und
+OfferRouteReferences sind additive Infrastruktur derselben Runtime-Datenbank.
+Player-State-Tabellen und Game-Schema 1.1.0 werden nicht geändert. Die separate
+Offer-Referenz unterliegt einem FK mit ON DELETE CASCADE. Publikation erfolgt in
+der bestehenden Markt-UoW. Historische Snapshot-Dokumente bleiben unverändert.
+
+`routing_anchor_sources` bindet Anchor-Caches an Facility-Adresse und Koordinaten.
+`routing_provider_revisions` speichert die zuletzt tatsächlich beobachtete
+Providerrevision. Geometrie liegt weiterhin ausschließlich in `route_cache`.
+`current()` liefert bei Fingerprintabweichung oder beschädigtem Payload eine
+stale-Projektion; die gespeicherte vorige Evidenz bleibt bis zur Neubewertung
+erhalten. Der Auditbericht unterscheidet deshalb gespeicherte Statusaggregate
+von `current_relations` (effektiver aktueller Status).

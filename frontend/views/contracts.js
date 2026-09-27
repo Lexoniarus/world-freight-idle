@@ -39,6 +39,8 @@ export function renderContracts(view) {
       </p>
     </div>
     ${active ? null : html`<p class="inline-notice">Wähle ein einsatzbereites Fahrzeug, um den Stadtmarkt seines Standorts zu öffnen.</p>`}
+    ${view.state.market_preparation?.status === "partial" ? html`<p role="status">Straßenverbindungen werden vorbereitet. Bereits geprüfte Aufträge sind verfügbar.</p>` : null}
+    ${view.state.market_preparation?.status === "exhausted" ? html`<p role="status">Für weitere Aufträge sind derzeit keine geprüften Straßenverbindungen verfügbar.</p>` : null}
     <div class="distance-summary">
       ${Object.entries(distanceLabels).map(([code, label]) => html`<span>${label}<strong>${view.marketLoaded === false || view.marketStale ? "–" : contracts.filter((item) => item.distance_band === code).length}</strong></span>`)}
     </div>

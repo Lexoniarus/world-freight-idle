@@ -16,12 +16,12 @@ World Freight Idle ist ein browserbasiertes Echtzeit-Idle-Transportspiel auf rea
 Der MVP muss einen vollständigen Road-Freight-Loop liefern:
 
 1. Spieler meldet sich an und öffnet die Weltkarte.
-2. Spieler wechselt auf den Auftragsmarkt.
-3. Spieler öffnet einen Auftrag mit **realer Von-Adresse und realer Zu-Adresse**.
-4. Das System liest die bei Auftragserzeugung gespeicherten Facility-Koordinaten.
-5. Das System berechnet eine echte Truck-Route über Valhalla/OpenStreetMap.
-6. Distanz, Routing-Zeit, Kosten, Vergütung und Marge werden angezeigt.
-7. Spieler weist ein passendes Fahrzeug am Startort zu.
+2. Spieler öffnet über ein eigenes idle Fahrzeug dessen Stadtmarkt.
+3. Der Markt zeigt alle Stadtangebote mit Eignungsanzeige; veröffentlicht werden ausschließlich Aufträge mit vorbereiteter, validierter Delivery-Route.
+4. Spieler öffnet einen Auftrag mit **realer Von-Adresse und realer Zu-Adresse**.
+5. Spieler wählt vor der Quote ausdrücklich ein geeignetes Fahrzeug in der Abholstadt. Sein tatsächlicher Standort darf von der Abholung abweichen.
+6. Die Quote lädt die vorbereitete Delivery-Route und eine erforderliche vorbereitete Anfahrt; sie berechnet daraus die fahrzeugspezifische Journey.
+7. Gesamtdistanz, Fahrzeit, Kosten, Vergütung und Ergebnis werden angezeigt.
 8. Der Transport startet und wird persistent gespeichert.
 9. Auf der Weltkarte bewegen sich aktive Trucks entlang echter Routengeometrien.
 10. Browser darf geschlossen werden. Beim erneuten Öffnen wird die Position aus Realzeit + Route rekonstruiert.
@@ -227,6 +227,22 @@ bei Abfahrt geleert; keine automatische andere Stadt beim Polling.
 Facilities behalten ihre dokumentierte oder als Simulation gekennzeichnete
 WorldCatalogue-Koordinate für Karte und historische Anzeige. Lkw-Routing
 verwendet davon getrennte globale Routing-Anker je `facility_uid` und Profil.
-Der Markt bleibt facility-basiert und erzeugt in diesem Schritt keine Anker.
-Erst bei Route/Quote/Dispatch wird die Facility-Identität in einen validierten
-Truck-Anker aufgelöst. Fehlschläge erzeugen keine erfundenen Koordinaten.
+Die strukturelle Candidate-Erzeugung bleibt facility-basiert und routerfrei.
+Die anschließende Market Preparation löst Truck-Anker auf und validiert die
+Delivery-Relation vor Veröffentlichung. Fehlschläge veröffentlichen keinen Auftrag.
+Quote und Dispatch laden vorbereitete Routen. Die Fahrzeug-Journey ergänzt
+Geschwindigkeit, Energie und Pausen; Facility-Anzeigekoordinaten bleiben erhalten.
+
+
+## Route-ready Market v2
+
+Structural Candidate → RoutingAnchor / RoutingReadiness → validierte Delivery
+→ Offer mit separater RouteReference → Quote → fahrzeugspezifische Journey.
+Ein partial Market enthält ausschließlich route-ready Offers; nur Coverage fehlt.
+Die Fahrzeug-Eignung verlangt außerdem eine bereite Anfahrt vom tatsächlichen
+Standort, außer bei identischer Facility. Bestehende geprüfte Offers erscheinen
+sofort, während der Backend-Worker fehlende Coverage vorbereitet. Es gibt kein
+Browser-Geocoding und keine Rückkehr zum ungeprüften Quote-Routing.
+
+Status: implementiert und lokal vollständig geprüft (Quality, E2E und
+Diff-Prüfung). Reale Providerprüfungen bleiben eine gesonderte Betriebsabnahme.

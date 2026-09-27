@@ -29,8 +29,10 @@ def project_contract(
 ) -> dict[str, Any]:
     """Expose an offer using the established v1 field names."""
     eligible: tuple[str, ...] | None = None
+    reference = None
     if isinstance(offer, AvailableContract):
         eligible = offer.eligible_vehicle_ids
+        reference = offer.route_reference
         offer = offer.offer
     origin = project_location(offer.origin)
     destination = project_location(offer.destination)
@@ -69,7 +71,10 @@ def project_contract(
         **({"payload_band": offer.payload_band} if offer.payload_band else {}),
         **(asdict(offer.market_context) if offer.market_context else {}),
         **(
-            {"eligible_vehicle_ids": list(eligible)}
+            {
+                "eligible_vehicle_ids": list(eligible),
+                "route_reference": asdict(reference) if reference else None,
+            }
             if eligible is not None
             else {}
         ),

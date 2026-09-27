@@ -8,6 +8,7 @@ from collections.abc import Callable, Sequence
 
 from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.game import OwnedVehicle, PlayerState
+from app.domain.market_preparation import PreparationStatus
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
 from app.domain.results import AvailableContract, ContractQuote, GameSnapshot
 from app.domain.routes import DispatchRoutePlan
@@ -21,6 +22,7 @@ from app.services.fleet import (
 )
 from app.services.market import MarketGenerator
 from app.services.market_lifecycle import MarketLifecycleService
+from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
 
 LOGGER = logging.getLogger(__name__)
@@ -40,6 +42,7 @@ class GameService:
         clock: Callable[[], float],
         dispatch_planning: DispatchPlanningService,
         time_scale: float = 1.0,
+        preparation: MarketPreparationService | None = None,
     ) -> None:
         """Wire player-scoped orchestration to injected service ports."""
         self.unit_of_work = unit_of_work
@@ -53,7 +56,7 @@ class GameService:
         self.market_scope = market_scope
         self.now = clock
         self.market_lifecycle = MarketLifecycleService(
-            unit_of_work, market, market_scope, lambda: self.now()
+            unit_of_work, market, market_scope, lambda: self.now(), preparation
         )
 
     def ensure_initial_state(self) -> None:
@@ -72,6 +75,15 @@ class GameService:
                 )
             )
 
+    def preparation_status(self) -> PreparationStatus | None:
+        """Expose typed progress for the authenticated player's market."""
+        preparation = self.market_lifecycle.preparation
+        return (
+            preparation.jobs.status(preparation.user_id)
+            if preparation is not None
+            else None
+        )
+
     def refresh_market(self, force: bool = False) -> list[ContractOffer]:
         """Delegate city market lifecycle to its transactional service."""
         return self.market_lifecycle.refresh(force)
@@ -79,7 +91,7 @@ class GameService:
     async def quote_contract(
         self, contract_id: str, vehicle_id: str
     ) -> ContractQuote:
-        """Route snapshot coordinates and calculate simulated economics."""
+        """Load prepared routes and calculate selected-vehicle economics."""
         self.reconcile_arrival()
         contract = self._find_contract(contract_id)
         vehicle = self._find_vehicle(

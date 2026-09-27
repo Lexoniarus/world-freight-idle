@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Callable
 from typing import Any
 
 import httpx
 
 from app.domain.geography import Coordinates
-from app.domain.routing_anchors import LocateResult
+from app.domain.routing_anchors import LocateResult, RoutingAnchorStatus
+from app.providers.request_limiter import ProviderRequestLimiter
+from app.providers.valhalla_metadata import graph_revision
 from app.tracing import get_trace_id
 
 LOGGER = logging.getLogger(__name__)
@@ -24,10 +27,15 @@ class ValhallaTruckAnchorLocator:
         client: httpx.AsyncClient,
         base_url: str,
         client_id: str,
+        limiter: ProviderRequestLimiter | None = None,
+        revision_observer: Callable[[str], None] | None = None,
     ) -> None:
+        """Inject truck-locate HTTP and shared provider request limits."""
         self.client = client
         self.base_url = base_url.rstrip("/")
         self.client_id = client_id
+        self.revision_observer = revision_observer
+        self.limiter = limiter or ProviderRequestLimiter(1, 1.0)
 
     async def locate(self, coordinates: Coordinates) -> LocateResult:
         """Validate a candidate without inventing coordinates."""
@@ -42,23 +50,25 @@ class ValhallaTruckAnchorLocator:
             },
         )
         try:
-            response = await self.client.post(
-                f"{self.base_url}/locate",
-                json={
-                    "locations": [
-                        {
-                            "lat": coordinates.latitude,
-                            "lon": coordinates.longitude,
-                        }
-                    ],
-                    "costing": "truck",
-                    "verbose": True,
-                },
-                headers={
-                    "X-Client-Id": self.client_id,
-                    "X-Trace-Id": get_trace_id(),
-                },
-            )
+            async with self.limiter.request():
+                response = await self.client.post(
+                    f"{self.base_url}/locate",
+                    json={
+                        "locations": [
+                            {
+                                "lat": coordinates.latitude,
+                                "lon": coordinates.longitude,
+                            }
+                        ],
+                        "costing": "truck",
+                        "verbose": True,
+                    },
+                    headers={
+                        "X-Client-Id": self.client_id,
+                        "X-Trace-Id": get_trace_id(),
+                    },
+                )
+            self.limiter.defer(response.headers.get("Retry-After"))
         except httpx.HTTPError as exc:
             LOGGER.warning(
                 "Truck anchor provider unavailable",
@@ -74,17 +84,15 @@ class ValhallaTruckAnchorLocator:
                 provider=PROVIDER,
                 provider_revision=None,
                 status="provider_unavailable",
+                provider_message=str(exc),
             )
 
         revision = self._revision(response.headers)
+        if revision and self.revision_observer:
+            self.revision_observer(revision)
         if response.status_code >= 500 or response.status_code in {408, 429}:
-            return LocateResult(
-                accepted=False,
-                coordinates=None,
-                snap_distance_m=None,
-                provider=PROVIDER,
-                provider_revision=revision,
-                status="provider_unavailable",
+            return self._response_failure(
+                response, "provider_unavailable", revision
             )
         if response.status_code >= 400:
             normalized = response.text.casefold()
@@ -96,13 +104,10 @@ class ValhallaTruckAnchorLocator:
                     "location is unreachable",
                 )
             )
-            return LocateResult(
-                accepted=False,
-                coordinates=None,
-                snap_distance_m=None,
-                provider=PROVIDER,
-                provider_revision=revision,
-                status="no_truck_edge" if no_edge else "invalid_response",
+            return self._response_failure(
+                response,
+                "no_truck_edge" if no_edge else "invalid_response",
+                revision,
             )
 
         try:
@@ -122,6 +127,7 @@ class ValhallaTruckAnchorLocator:
                 float(correlated["lon"]),
             )
             distance = self._snap_distance_m(coordinates, anchor)
+            candidates = self._access_candidates(correlated["edges"])
         except (ValueError, KeyError, TypeError, IndexError):
             return LocateResult(
                 accepted=False,
@@ -139,7 +145,51 @@ class ValhallaTruckAnchorLocator:
             provider=PROVIDER,
             provider_revision=revision,
             status="validated",
+            candidates=candidates,
         )
+
+    @staticmethod
+    def _response_failure(
+        response: httpx.Response,
+        status: RoutingAnchorStatus,
+        revision: str | None,
+    ) -> LocateResult:
+        """Retain bounded provider evidence for append-only diagnostics."""
+        code = None
+        try:
+            data = response.json()
+            if isinstance(data, dict) and type(data.get("error_code")) is int:
+                code = data["error_code"]
+        except ValueError:
+            pass
+        return LocateResult(
+            False,
+            None,
+            None,
+            PROVIDER,
+            revision,
+            status,
+            provider_code=code,
+            provider_message=response.text[:400] or None,
+        )
+
+    @staticmethod
+    def _access_candidates(
+        edges: list[dict[str, Any]],
+    ) -> tuple[Coordinates, ...]:
+        """Retain at most five distinct truck-compatible OSM correlations."""
+        candidates: list[Coordinates] = []
+        for edge in edges:
+            if edge.get("access", {}).get("truck") is False:
+                continue
+            candidate = Coordinates(
+                float(edge["correlated_lat"]), float(edge["correlated_lon"])
+            )
+            if candidate not in candidates:
+                candidates.append(candidate)
+            if len(candidates) == 5:
+                break
+        return tuple(candidates)
 
     @staticmethod
     def _correlated_location(payload: Any) -> dict[str, Any]:
@@ -193,8 +243,4 @@ class ValhallaTruckAnchorLocator:
     @staticmethod
     def _revision(headers: httpx.Headers) -> str | None:
         """Read a provider or graph revision only when supplied."""
-        for key in ("x-valhalla-version", "x-graph-revision"):
-            value = headers.get(key)
-            if value:
-                return value
-        return None
+        return graph_revision(headers)

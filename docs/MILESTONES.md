@@ -213,3 +213,10 @@ Firmenfarben, Fahrzeugassets, Gruppierung und Kartenmarker bleiben unverändert.
 
 Abnahme: `python scripts/quality.py`, `npm run test:e2e` und
 `git diff --check` müssen vollständig grün sein.
+
+
+## Global Routing Readiness
+
+Global Routing Readiness: implementiert / vollständige lokale Quality- und E2E-Gates bestanden.
+Abnahme am 27.09.2026: vollständiges Quality-Gate, 30 Playwright-Fälle und
+git diff --check bestanden. Reale Providerprüfungen bleiben separat.

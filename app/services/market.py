@@ -4,7 +4,11 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from app.domain.contracts import ContractOffer
-from app.domain.market import CoverageDiagnostic, MarketVehicle
+from app.domain.market import (
+    CoverageDiagnostic,
+    MarketCandidate,
+    MarketVehicle,
+)
 from app.services.contract_factory import ContractFactory
 from app.services.market_candidates import MarketCandidateService
 from app.services.market_coverage import MarketCoverageService
@@ -26,9 +30,14 @@ class MarketGenerator:
         cities: tuple[str, ...],
         vehicles: tuple[MarketVehicle, ...],
         retained: tuple[ContractOffer, ...] = (),
+        prepared: tuple[MarketCandidate, ...] | None = None,
     ) -> tuple[tuple[ContractOffer, ...], tuple[CoverageDiagnostic, ...]]:
         """Return retained and newly materialized offers with diagnostics."""
-        candidates = self.candidates.build(cities, vehicles)
+        candidates = (
+            self.candidates.build(cities, vehicles)
+            if prepared is None
+            else prepared
+        )
         plan = self.coverage.plan(cities, candidates, retained)
         created = tuple(
             ContractOffer.from_snapshot(self.factory.build(candidate, now))

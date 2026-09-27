@@ -41,7 +41,9 @@ class FakeRouter:
 
 
 class FakeRoutingAnchorResolver:
-    async def resolve(self, facility: Facility) -> RoutingAnchor:
+    async def resolve(
+        self, facility: Facility, *, force: bool = False
+    ) -> RoutingAnchor:
         coordinates = facility.coordinates
         if coordinates is None:
             return RoutingAnchor(

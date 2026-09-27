@@ -31,6 +31,10 @@ async def browser_lifespan(application):
     async with lifespan(application):
         application.state.game.router = FakeRouter()
         application.state.game.anchors = FakeRoutingAnchorResolver()
+        application.state.game.readiness.router = application.state.game.router
+        application.state.game.readiness.anchors = (
+            application.state.game.anchors
+        )
         yield
     temporary.cleanup()
 

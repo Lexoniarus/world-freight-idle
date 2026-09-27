@@ -44,7 +44,9 @@ class OffsetAnchorResolver:
     def __init__(self, failed_uid: str | None = None) -> None:
         self.failed_uid = failed_uid
 
-    async def resolve(self, facility: Facility) -> RoutingAnchor:
+    async def resolve(
+        self, facility: Facility, *, force: bool = False
+    ) -> RoutingAnchor:
         if facility.facility_uid == self.failed_uid:
             return RoutingAnchor(
                 facility_uid=facility.facility_uid,

@@ -66,3 +66,12 @@ Der Anchor-Pfad protokolliert strukturierte Ereignisse
 Trace-ID; Valhalla-Requests erhalten dieselbe Trace-ID als `X-Trace-Id`.
 Facility-UID, Methode, Status, Snap-Distanz und Provider werden nur dort
 protokolliert, wo sie für Diagnose relevant sind.
+
+
+## Global Routing Readiness
+
+Preparation-Aufträge besitzen eine stabile preparation_id; jede Ausführung
+hat einen neuen Trace-Kontext mit dieser ID und einer Ausführungs-ID. HTTP-Traces
+werden nicht über den Worker fortgeführt. Providerrequests übernehmen den jeweiligen
+Ausführungstrace. CLI-Prewarm nutzt einen eigenen CLI-Kontext. RoutingAttempts
+bewahren Methoden, Ergebnisse und Providerdiagnostik append-only.
