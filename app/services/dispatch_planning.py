@@ -1,6 +1,7 @@
 """Plan road sections and quote the selected vehicle without persistence."""
 
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 
 from app.domain.contracts import ContractOffer
 from app.domain.dispatch_journey import plan_dispatch_journey
@@ -11,10 +12,12 @@ from app.domain.pricing import calculate_price
 from app.domain.results import ContractQuote
 from app.domain.routes import DispatchRoutePlan, RouteSnapshot
 from app.domain.routing_anchor_ports import RoutingAnchorResolverPort
+from app.domain.routing_anchors import RoutingCandidate
 from app.domain.world import FacilityLocationSnapshot
 from app.domain.world_scopes import WorldScope
 from app.services.cost_profiles import VehicleCostResolver
 from app.services.market_preparation import MarketPreparationService
+from app.services.routing_connections import RoutingConnectionValidator
 
 
 @dataclass(slots=True)
@@ -26,6 +29,9 @@ class DispatchPlanningService:
     anchors: RoutingAnchorResolverPort
     world: WorldCatalogue
     preparation: MarketPreparationService | None = None
+    connections: RoutingConnectionValidator = field(
+        default_factory=RoutingConnectionValidator
+    )
 
     async def route(
         self, start: FacilityLocationSnapshot, contract: ContractOffer
@@ -36,10 +42,13 @@ class DispatchPlanningService:
         ):
             raise ValueError("Straßenverbindung wird vorbereitet.")
         approach = None
+        selected: dict[str, RoutingCandidate] = {}
         if start.facility_uid != contract.origin.facility_uid:
-            approach = await self._route_between(start, contract.origin)
+            approach = await self._route_between(
+                start, contract.origin, selected
+            )
         delivery = await self._route_between(
-            contract.origin, contract.destination
+            contract.origin, contract.destination, selected
         )
         return DispatchRoutePlan(
             start, contract.origin, contract.destination, delivery, approach
@@ -49,6 +58,7 @@ class DispatchPlanningService:
         self,
         start: FacilityLocationSnapshot,
         destination: FacilityLocationSnapshot,
+        selected: dict[str, RoutingCandidate] | None = None,
     ) -> RouteSnapshot:
         """Resolve a prepared relation at the dispatch boundary."""
         if self.preparation is not None:
@@ -56,25 +66,25 @@ class DispatchPlanningService:
                 start.facility_uid, destination.facility_uid
             ).to_snapshot()
         world = WorldScope(self.world.read())
-        origin = await self.anchors.resolve(world.facility(start.facility_uid))
-        target = await self.anchors.resolve(
-            world.facility(destination.facility_uid)
+        connection = await self.connections.validate(
+            world.facility(start.facility_uid),
+            world.facility(destination.facility_uid),
+            self.router,
+            self.anchors,
+            time.time,
+            fixed=selected,
         )
-        if (
-            origin.validation_status != "validated"
-            or origin.anchor is None
-            or target.validation_status != "validated"
-            or target.anchor is None
-        ):
-            raise ValueError(
-                "Facility besitzt keinen validierten Truck-Routing-Anchor."
-            )
-        return await self.router.route(
-            origin.anchor.latitude,
-            origin.anchor.longitude,
-            target.anchor.latitude,
-            target.anchor.longitude,
-        )
+        if selected is not None:
+            for anchor in (connection.origin, connection.destination):
+                assert anchor.anchor is not None
+                selected[anchor.facility_uid] = RoutingCandidate(
+                    anchor.anchor,
+                    anchor.snap_distance_m or 0.0,
+                    anchor.provider,
+                    anchor.provider_revision,
+                    anchor.method,
+                )
+        return connection.forward
 
     def quote(
         self,

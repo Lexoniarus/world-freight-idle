@@ -277,3 +277,23 @@ git diff --check
 ```
 
 Kein Build während Playwright. Keine echten Provider-Bulk-Aufrufe.
+
+
+## Gezielte Abnahme: befahrbare Standortverbindungen
+
+Für den Fix auf `5d7ff77` wird auf Nutzerwunsch keine vollständige Suite
+aufgerufen. Der gezielte Lauf umfasst `test_connected_routing`,
+`test_routing_anchors`, `test_anchor_repair_history`,
+`test_routing_anchor_provider`, `test_routing_readiness_store`,
+`test_dispatch_routing_anchors`, `test_dispatch_approach`,
+`test_market_preparation`, `test_review_regressions`, `test_vehicle_market`,
+`test_routing_audit`, `test_function_contract` und `test_architecture`.
+Coverage wird für die acht betroffenen Routing-/Dispatchmodule ausgewiesen,
+nicht als Gesamt-Core-Abnahme. Ruff/Format, mypy und Pyright prüfen die
+geänderten Pythondateien. Konfiguration wird separat gezielt geprüft.
+
+Die Wolfsburg-Fixture enthält reale Providerantworten für den unverbundenen
+und den rund 504 Meter entfernten funktionierenden Anker. Eine begrenzte
+Live-Gegenprobe erfolgt ausschließlich auf einer SQLite-Backupkopie mit
+normalem Markt, Dispatch, Ankunft und nächster Quote. Vorgehen, Resultate und
+Restabnahme: [Verbindungsprüfung](CONNECTED_ROUTING_REVIEW.md).

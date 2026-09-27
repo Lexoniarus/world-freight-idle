@@ -1,3 +1,72 @@
+# Qualitätsbericht: befahrbare Standortverbindungen
+
+Stand: 27.09.2026. **Implementiert; gezielte Prüfungen bestanden; vollständige
+Suite und Gesamtintegration verbleiben beim Nutzer.** Basis `5d7ff77`,
+bestehender Branch `feature/frontend-v2` entsprechend Nutzeranweisung.
+Kein Commit, Push, Merge oder Serverneustart für diesen Fix.
+
+## Ergebnis
+
+Jede Anfahrt und Lieferung benötigt bestätigte Truck-Routen in beiden
+Richtungen. Alle vier Endpunkte müssen innerhalb 10 Metern der vorgesehenen
+Anker liegen. Maximal fünf Kandidaten je Standort innerhalb 1.000 Metern,
+25 Paare und 120 Sekunden. Anker und beide Routen werden atomar gespeichert;
+Lease-Verlust oder überholte Eingaben verhindern Veröffentlichung.
+`truck-connected-v2` ersetzt alte positive und negative Nachweise. Erfolge
+gelten höchstens 24 Stunden, definitive Fehler eine Stunde, temporäre Fehler
+60 Sekunden. Aktuelle zertifizierte Anker bleiben für unerreichbare Ziele stabil.
+
+## Tatsächlich ausgeführte gezielte Prüfungen
+
+- 99 Tests in 13 gezielt ausgewählten Routing-, Repository-, Markt-,
+  Fahrzeugmarkt-, Anfahrt-, Dispatch-, Architektur- und Manifest-Testdateien:
+  bestanden. Zusätzlich zwei Konfigurationstests bestanden.
+- 100 % Statement-Coverage (597/597) für die acht ausgewiesenen Module:
+  Domain-Routing-Anker und -Verbindungen, Locate-Provider, Readiness-Repository,
+  Routing-Anker-, Verbindungs-, Readiness- und Dispatch-Planungsservice.
+- Ruff und Formatcheck: 22 geänderte Pythondateien bestanden.
+- mypy: 13 geänderte Core-Dateien bestanden. Pyright: geänderte Pythondateien,
+  0 Fehler und 0 Warnungen. `git diff --check`: bestanden.
+- Manuelles Zuständigkeitsreview gegen `AGENTS.md` und `CODING_STANDARDS.md`:
+  Provider, Kandidatensuche, Verbindungsprüfung, Readiness und SQL-Publikation
+  getrennt; keine Provider-Awaits in Schreibtransaktionen.
+
+Lokale Prüfprotokolle: `artifacts/routing-coverage-tests.txt`,
+`artifacts/routing-coverage.txt`, `artifacts/routing-pyright.txt`,
+`artifacts/routing-config-tests.txt`. Diese generierten Dateien gehören nicht
+ins Git. Tests wurden nicht abgeschwächt; gerichtete Router-Aufrufzahlen wurden
+an die verpflichtende Rückwegprüfung angepasst.
+
+## Isolierte Wolfsburger Abnahme
+
+SQLite-Backup vor der Prüfung: `data/backups/game-before-routing-fix-20260927-170052.db`.
+Kopie: `artifacts/wolfsburg-acceptance.db`. Der vorhandene LKW von AlexIPad wird
+über den realen rund 504 Meter entfernten Anker wieder disponierbar.
+Regulärer Marktauftrag nach Schnellecke Wolfsburg: Dispatch, Ankunft und
+anschließender regulärer Rückauftrag zum Volkswagenwerk erfolgreich.
+Voriger Endpunkt und neuer Start: 0 Meter Abstand. Acht initiale und zwei
+abschließende Provideranfragen; Dispatch selbst benötigt keine weiteren HTTPs.
+Bei reiner Routingvorbereitung blieben Hashes von Benutzer-, Spieler-,
+Fahrzeug- und Transporttabellen der Kopie unverändert. Der Fix hat den echten
+Spielstand nicht mutiert; Simulation und Auftragsstarts liefen auf der Kopie.
+
+Ein separater Altbestandfehler ist dokumentiert: Einer von 58 AlexIPad-
+Transport-Snapshots im ursprünglichen Backup verletzt bereits die bestehende
+Anfahrtsvalidierung. Die Historie wurde nicht umgeschrieben.
+
+## Abnahmegrenze
+
+Keine vollständige Suite, kein vollständiges Quality-Gate und keine neue
+Browser-Gesamtabnahme für diesen Fix ausgeführt. Frühere Gesamtprüfungen sind
+keine Abnahme dieses Stands. Die vollständige Prüfung und Integration bleiben
+wie beauftragt beim Nutzer. Vor späterer Aktivierung nach weiterem Spielbetrieb
+ist ein frisches SQLite-Backup zu erstellen.
+
+Details, Wiederprüfungen und Zuständigkeitsreview:
+[Änderungs- und Abnahmebericht](docs/CONNECTED_ROUTING_REVIEW.md).
+
+---
+
 # Qualitätsbericht: Reviewkorrekturen und Vehicle-Ready-Markt
 
 Stand: 27.09.2026. **Implemented / targeted tests passed / full acceptance pending.**

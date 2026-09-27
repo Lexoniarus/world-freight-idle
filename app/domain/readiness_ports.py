@@ -2,6 +2,8 @@
 
 from typing import Protocol
 
+from app.domain.routing_anchors import RoutingAnchor
+from app.domain.routing_connections import ValidatedConnection
 from app.domain.routing_readiness import (
     RoutePayload,
     RouteReference,
@@ -33,6 +35,24 @@ class RoutingReadinessStore(Protocol):
         payload: RoutePayload | None,
         owner: str,
         now: float,
+    ) -> bool: ...
+
+    def connected(
+        self,
+        forward: RouteReference,
+        reverse: RouteReference,
+    ) -> bool: ...
+
+    def publish_connection(
+        self,
+        connection: ValidatedConnection,
+        forward: RoutingRelation,
+        reverse: RoutingRelation,
+        expected: tuple[RoutingAnchor | None, RoutingAnchor | None],
+        owner: str,
+        now: float,
+        provider: str,
+        provider_revision: str | None,
     ) -> bool: ...
 
     def append_attempt(self, attempt: RoutingAttempt) -> None: ...

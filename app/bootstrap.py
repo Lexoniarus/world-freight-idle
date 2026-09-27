@@ -123,6 +123,11 @@ def build_routing_anchor_resolver(
         max_snap_distance_m=settings.routing_anchor_max_snap_m,
         clock=clock,
         evidence=evidence,
+        provider_revision=partial(
+            evidence.provider_revision, settings.valhalla_url
+        )
+        if evidence
+        else None,
     )
 
 

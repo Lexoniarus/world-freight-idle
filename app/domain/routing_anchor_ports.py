@@ -5,7 +5,11 @@ from __future__ import annotations
 from typing import Protocol
 
 from app.domain.geography import Coordinates
-from app.domain.routing_anchors import LocateResult, RoutingAnchor
+from app.domain.routing_anchors import (
+    LocateResult,
+    RoutingAnchor,
+    RoutingCandidate,
+)
 from app.domain.world import Facility
 
 
@@ -32,18 +36,20 @@ class RoutingAnchorStore(Protocol):
 
 
 class TruckAnchorLocator(Protocol):
-    """Validate one coordinate against a real truck-routing graph."""
+    """Find candidate correlations on a real truck-routing graph."""
 
     async def locate(self, coordinates: Coordinates) -> LocateResult:
-        """Return the correlated truck-routing position."""
+        """Return real road candidates without certifying connectivity."""
         ...
 
 
 class RoutingAnchorResolverPort(Protocol):
     """Resolve one facility identity to derived routing coordinates."""
 
+    max_snap_distance_m: float
+
     async def resolve(
         self, facility: Facility, *, force: bool = False
-    ) -> RoutingAnchor:
-        """Resolve or reuse one routing anchor."""
+    ) -> tuple[RoutingCandidate, ...]:
+        """Find bounded candidates; force also explores the postal address."""
         ...

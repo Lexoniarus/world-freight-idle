@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 from app.bootstrap import GameRuntime, build_market_generator
-from app.domain.routing_anchors import RoutingAnchor
 from app.domain.transports import RouteSnapshot
 from app.domain.world import Facility
 from app.domain.world_scopes import WorldScope
@@ -41,34 +40,20 @@ class FakeRouter:
 
 
 class FakeRoutingAnchorResolver:
-    async def resolve(
-        self, facility: Facility, *, force: bool = False
-    ) -> RoutingAnchor:
-        coordinates = facility.coordinates
-        if coordinates is None:
-            return RoutingAnchor(
-                facility_uid=facility.facility_uid,
-                routing_profile="truck",
-                anchor=None,
-                method="facility_coordinate",
-                facility_coordinates=None,
-                snap_distance_m=None,
-                validation_status="no_truck_edge",
-                provider="fake-anchor",
-                provider_revision=None,
-                validated_at=0.0,
-            )
-        return RoutingAnchor(
-            facility_uid=facility.facility_uid,
-            routing_profile="truck",
-            anchor=coordinates,
-            method="facility_coordinate",
-            facility_coordinates=coordinates,
-            snap_distance_m=0.0,
-            validation_status="validated",
-            provider="fake-anchor",
-            provider_revision="test",
-            validated_at=0.0,
+    max_snap_distance_m = 1000.0
+
+    async def resolve(self, facility: Facility, *, force: bool = False):
+        from app.domain.routing_anchors import RoutingCandidate
+
+        if facility.coordinates is None:
+            return ()
+        return (
+            RoutingCandidate(
+                facility.coordinates,
+                0.0,
+                "fake-anchor",
+                None,
+            ),
         )
 
 

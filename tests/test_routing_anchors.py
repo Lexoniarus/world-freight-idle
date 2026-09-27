@@ -8,6 +8,7 @@ from app.domain.routing_anchors import (
     LocateResult,
     RoutingAnchor,
     RoutingAnchorStatus,
+    RoutingCandidate,
     anchor_source_fingerprint,
 )
 from app.domain.world import Facility
@@ -100,6 +101,13 @@ def located(
         provider="Valhalla",
         provider_revision="graph-1",
         status=status,
+        candidates=(
+            RoutingCandidate(
+                coordinates, distance or 0, "Valhalla", "graph-1"
+            ),
+        )
+        if accepted and coordinates
+        else (),
     )
 
 
@@ -132,288 +140,151 @@ def test_routing_anchor_rejects_coordinate_status_mismatches() -> None:
         )
 
 
-def test_routing_anchor_resolver_rejects_nonpositive_snap_limit() -> None:
+@pytest.mark.parametrize("limit", [0, -1, 1000.01, float("nan")])
+def test_routing_anchor_resolver_rejects_nonpositive_snap_limit(limit) -> None:
     with pytest.raises(ValueError, match="positive"):
         RoutingAnchorResolver(
             MemoryAnchorStore(),
             FakeLocator([]),
             FakeGeocoder(),
-            0,
+            limit,
             lambda: 0.0,
         )
 
 
 @pytest.mark.asyncio
-async def test_routing_anchor_direct_facility_coordinate_works(caplog) -> None:
-    caplog.set_level("INFO")
+async def test_candidates_never_publish_before_connection_proof():
     item = facility()
-    assert item.coordinates is not None
     store = MemoryAnchorStore()
-    locator = FakeLocator(
-        [located(distance=0.0, coordinates=item.coordinates)]
-    )
+    locator = FakeLocator([located(coordinates=item.coordinates)])
     geocoder = FakeGeocoder()
-    resolver = RoutingAnchorResolver(
-        store,
-        locator,
-        geocoder,
-        250.0,
-        lambda: 1.0,
-    )
-
+    resolver = RoutingAnchorResolver(store, locator, geocoder, 1000, lambda: 1)
     result = await resolver.resolve(item)
-
-    assert result.validation_status == "validated"
-    assert result.method == "facility_coordinate"
-    assert result.anchor == item.coordinates
+    assert result[0].coordinates == item.coordinates
+    assert store.items == {}
     assert geocoder.calls == []
-    assert any(
-        getattr(record, "event", None) == "routing_anchor.resolved"
-        for record in caplog.records
-    )
+    assert item.coordinates == Coordinates(52.52, 13.405)
 
 
 @pytest.mark.asyncio
-async def test_routing_anchor_valhalla_snap_works() -> None:
+async def test_candidate_bound_uses_original_location_even_after_address_snap():
     item = facility()
-    store = MemoryAnchorStore()
-    locator = FakeLocator([located(distance=42.0)])
-    resolver = RoutingAnchorResolver(
-        store,
-        locator,
-        FakeGeocoder(),
-        250.0,
-        lambda: 2.0,
-    )
-
-    result = await resolver.resolve(item)
-
-    assert result.anchor == Coordinates(52.5201, 13.4051)
-    assert result.snap_distance_m == 42.0
-    assert result.facility_coordinates == item.coordinates
-
-
-@pytest.mark.asyncio
-async def test_routing_anchor_address_fallback_works() -> None:
-    item = facility()
-    store = MemoryAnchorStore()
+    distant = Coordinates(52.54, 13.405)
     locator = FakeLocator(
-        [
-            located(
-                accepted=False,
-                status="no_truck_edge",
-                coordinates=None,
-            ),
-            located(
-                distance=30.0,
-                coordinates=Coordinates(52.51, 13.41),
-            ),
-        ]
+        [located(coordinates=distant), located(coordinates=distant)]
     )
-    geocoder = FakeGeocoder((52.509, 13.409, "resolved"))
-    resolver = RoutingAnchorResolver(
-        store,
-        locator,
-        geocoder,
-        250.0,
-        lambda: 3.0,
-    )
-
-    result = await resolver.resolve(item)
-
-    assert result.validation_status == "validated"
-    assert result.method == "address_fallback"
-    assert geocoder.calls == [item.address.display_text()]
-    assert len(locator.calls) == 2
-
-
-@pytest.mark.asyncio
-async def test_routing_anchor_without_display_coordinate_uses_address() -> (
-    None
-):
-    item = facility(None)
-    locator = FakeLocator([located(coordinates=Coordinates(52.51, 13.41))])
     resolver = RoutingAnchorResolver(
         MemoryAnchorStore(),
         locator,
-        FakeGeocoder((52.509, 13.409, "resolved")),
-        250.0,
-        lambda: 3.5,
+        FakeGeocoder((52.54, 13.405, "resolved")),
+        1000,
+        lambda: 1,
     )
-
-    result = await resolver.resolve(item)
-
-    assert result.method == "address_fallback"
-    assert result.facility_coordinates is None
+    assert await resolver.resolve(item) == ()
 
 
 @pytest.mark.asyncio
-async def test_routing_anchor_geocoding_failure_is_persisted() -> None:
-    item = facility()
-    store = MemoryAnchorStore()
+async def test_address_and_missing_coordinate_fallbacks_are_bounded():
+    point = Coordinates(52.5202, 13.405)
     locator = FakeLocator(
-        [
-            located(
-                accepted=False,
-                status="no_truck_edge",
-                coordinates=None,
-            )
-        ]
+        [located(accepted=False), located(coordinates=point)]
     )
     resolver = RoutingAnchorResolver(
-        store,
+        MemoryAnchorStore(),
         locator,
-        FakeGeocoder(error=GeocodingError("offline")),
-        250.0,
-        lambda: 3.75,
+        FakeGeocoder((52.52, 13.405, "resolved")),
+        1000,
+        lambda: 1,
     )
-
-    result = await resolver.resolve(item)
-
-    assert result.validation_status == "geocoding_failed"
-    assert result.anchor is None
-    assert store.get(item.facility_uid, "truck") == result
+    result = await resolver.resolve(facility())
+    assert result[0].method == "address_fallback"
+    assert 20 < result[0].distance_m < 25
+    locator.results = [located(coordinates=point)]
+    assert (await resolver.resolve(facility(None)))[
+        0
+    ].method == "address_fallback"
 
 
 @pytest.mark.asyncio
-async def test_routing_anchor_too_large_snap_is_rejected() -> None:
-    item = facility()
-    store = MemoryAnchorStore()
-    locator = FakeLocator(
-        [
-            located(distance=500.0),
-            located(distance=600.0),
-        ]
-    )
+async def test_candidate_provider_failures_and_geocoding_absence():
+    from app.domain.errors import RoutingError
+
+    for status in ("provider_unavailable", "invalid_response"):
+        resolver = RoutingAnchorResolver(
+            MemoryAnchorStore(),
+            FakeLocator([located(accepted=False, status=status)]),
+            FakeGeocoder(),
+            1000,
+            lambda: 1,
+        )
+        with pytest.raises(RoutingError):
+            await resolver.resolve(facility())
+    error = GeocodingError("no address")
     resolver = RoutingAnchorResolver(
-        store,
-        locator,
-        FakeGeocoder(),
-        100.0,
-        lambda: 4.0,
+        MemoryAnchorStore(),
+        FakeLocator([located(accepted=False)]),
+        FakeGeocoder(error=error),
+        1000,
+        lambda: 1,
     )
-
-    result = await resolver.resolve(item)
-
-    assert result.anchor is None
-    assert result.validation_status == "snap_too_far"
+    assert await resolver.resolve(facility()) == ()
+    error.retryable = True
+    with pytest.raises(RoutingError):
+        await resolver.resolve(facility(None))
 
 
 @pytest.mark.asyncio
-async def test_routing_anchor_no_truck_edge_is_persisted(caplog) -> None:
-    caplog.set_level("WARNING")
-    item = facility()
-    store = MemoryAnchorStore()
-    locator = FakeLocator(
-        [
-            located(
-                accepted=False,
-                status="no_truck_edge",
-                coordinates=None,
-            ),
-            located(
-                accepted=False,
-                status="no_truck_edge",
-                coordinates=None,
-            ),
-        ]
-    )
-    resolver = RoutingAnchorResolver(
-        store,
-        locator,
-        FakeGeocoder(),
-        250.0,
-        lambda: 5.0,
-    )
+async def test_certified_access_is_stable_and_legacy_access_is_only_candidate():
+    from dataclasses import replace
 
-    result = await resolver.resolve(item)
-
-    assert result.anchor is None
-    assert result.validation_status == "no_truck_edge"
-    assert store.get(item.facility_uid, "truck") == result
-    assert any(
-        getattr(record, "event", None) == "routing_anchor.failure"
-        for record in caplog.records
-    )
-
-
-@pytest.mark.asyncio
-async def test_routing_anchor_provider_temporarily_offline() -> None:
-    item = facility()
-    store = MemoryAnchorStore()
-    locator = FakeLocator(
-        [
-            located(
-                accepted=False,
-                status="provider_unavailable",
-                coordinates=None,
-                distance=None,
-            )
-        ]
-    )
-    geocoder = FakeGeocoder()
-    resolver = RoutingAnchorResolver(
-        store,
-        locator,
-        geocoder,
-        250.0,
-        lambda: 6.0,
-    )
-
-    result = await resolver.resolve(item)
-
-    assert result.validation_status == "provider_unavailable"
-    assert result.anchor is None
-    assert geocoder.calls == []
-
-
-@pytest.mark.asyncio
-async def test_routing_anchor_cached_validated_anchor_is_reused() -> None:
     item = facility()
     store = MemoryAnchorStore()
     cached = RoutingAnchor(
-        source_fingerprint=anchor_source_fingerprint(item),
-        facility_uid=item.facility_uid,
-        routing_profile="truck",
-        anchor=Coordinates(52.6, 13.5),
-        method="facility_coordinate",
-        facility_coordinates=item.coordinates,
-        snap_distance_m=20.0,
-        validation_status="validated",
-        provider="Valhalla",
-        provider_revision="graph-1",
-        validated_at=7.0,
+        item.facility_uid,
+        "truck",
+        item.coordinates,
+        "facility_coordinate",
+        item.coordinates,
+        0,
+        "validated",
+        "test",
+        None,
+        1,
+        anchor_source_fingerprint(item),
     )
     store.put(cached)
     locator = FakeLocator([])
     resolver = RoutingAnchorResolver(
-        store,
-        locator,
-        FakeGeocoder(),
-        250.0,
-        lambda: 8.0,
+        store, locator, FakeGeocoder(), 1000, lambda: 2
     )
-
+    assert (await resolver.resolve(item, force=True))[
+        0
+    ].coordinates == item.coordinates
+    assert not locator.calls
+    store.put(replace(cached, source_fingerprint="old-locate-only"))
+    locator.results = [located()]
     result = await resolver.resolve(item)
+    assert result[0].coordinates == cached.anchor
+    assert len(result) == 2
+    store.put(replace(cached, anchor=Coordinates(53, 14)))
+    locator.results = [located()]
+    assert (await resolver.resolve(item))[0].coordinates != Coordinates(53, 14)
+    store.put(cached)
+    resolver._provider_revision = lambda: "new-graph"
+    locator.results = [located()]
+    assert len(await resolver.resolve(item)) == 2
 
-    assert result == cached
-    assert locator.calls == []
 
+def test_anchor_policy_changes_invalidate_coordinate_and_address_evidence():
+    from dataclasses import replace
 
-@pytest.mark.asyncio
-async def test_routing_anchor_does_not_mutate_display_coordinate() -> None:
     item = facility()
-    before = item.coordinates
-    locator = FakeLocator([located(distance=25.0)])
-    resolver = RoutingAnchorResolver(
-        MemoryAnchorStore(),
-        locator,
-        FakeGeocoder(),
-        250.0,
-        lambda: 9.0,
+    baseline = anchor_source_fingerprint(item)
+    assert baseline == anchor_source_fingerprint(item, 1000)
+    assert baseline != anchor_source_fingerprint(item, 250)
+    assert baseline != anchor_source_fingerprint(
+        replace(item, address=replace(item.address, street="changed"))
     )
-
-    result = await resolver.resolve(item)
-
-    assert result.anchor != before
-    assert item.coordinates == before
+    assert baseline != anchor_source_fingerprint(
+        replace(item, coordinates=Coordinates(52.6, 13.4))
+    )

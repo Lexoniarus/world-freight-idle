@@ -158,13 +158,13 @@ async def test_planner_routes_from_checkpoint_by_facility_identity(game):
 
     with patch.object(router, "route", wraps=router.route) as routed:
         plan = await game.dispatch_planning.route(start, offer)
-        assert routed.await_count == 2
+        assert routed.await_count == 4
         assert plan.start == start
         assert plan.approach is not None
 
     with patch.object(router, "route", wraps=router.route) as routed:
         direct = await game.dispatch_planning.route(offer.origin, offer)
-        assert routed.await_count == 1
+        assert routed.await_count == 2
         assert direct.approach is None
 
     colocated_display = replace(
@@ -173,13 +173,13 @@ async def test_planner_routes_from_checkpoint_by_facility_identity(game):
     )
     with patch.object(router, "route", wraps=router.route) as routed:
         plan = await game.dispatch_planning.route(colocated_display, offer)
-        assert routed.await_count == 2
+        assert routed.await_count == 4
         assert plan.approach is not None
 
     missing_start_display = replace(start, coordinates=None)
     with patch.object(router, "route", wraps=router.route) as routed:
         plan = await game.dispatch_planning.route(missing_start_display, offer)
-        assert routed.await_count == 2
+        assert routed.await_count == 4
         assert plan.start.coordinates is None
         assert plan.approach is not None
 
@@ -192,7 +192,7 @@ async def test_planner_routes_from_checkpoint_by_facility_identity(game):
             start,
             missing_destination_display,
         )
-        assert routed.await_count == 2
+        assert routed.await_count == 4
         assert plan.destination.coordinates is None
 
 

@@ -3,6 +3,12 @@
 import json
 from dataclasses import asdict
 
+from app.domain.routing_anchors import VALIDATION_VERSION, RoutingAnchor
+from app.domain.routing_connections import (
+    ValidatedConnection,
+    connection_identity,
+    connection_leases,
+)
 from app.domain.routing_readiness import (
     RoutePayload,
     RouteReference,
@@ -10,8 +16,16 @@ from app.domain.routing_readiness import (
     RoutingRelation,
 )
 from app.repositories.game_database import SqliteGameDatabase
+from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS routing_connection_proofs (
+    pair_id TEXT PRIMARY KEY,
+    forward_id TEXT NOT NULL, forward_revision TEXT NOT NULL,
+    reverse_id TEXT NOT NULL, reverse_revision TEXT NOT NULL,
+    validation_version TEXT NOT NULL, anchors TEXT NOT NULL,
+    checked_at REAL NOT NULL
+);
 CREATE TABLE IF NOT EXISTS routing_provider_revisions (
     provider TEXT PRIMARY KEY, revision TEXT NOT NULL
 );
@@ -48,6 +62,7 @@ class SqliteRoutingReadinessStore:
     def __init__(self, database: SqliteGameDatabase) -> None:
         """Create additive infrastructure without changing game columns."""
         self.database = database
+        self.anchors = SqliteRoutingAnchorRepository(database)
         with database.connect() as connection:
             connection.executescript(SCHEMA)
 
@@ -175,6 +190,108 @@ class SqliteRoutingReadinessStore:
                     relation.failure_category,
                     relation.retry_at,
                     relation.checked_at,
+                ),
+            )
+            return True
+
+    def connected(
+        self,
+        forward: RouteReference,
+        reverse: RouteReference,
+    ) -> bool:
+        """Require both current directional revisions in one shared proof."""
+        with self.database.connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM routing_connection_proofs WHERE "
+                "validation_version=? AND ((forward_id=? AND "
+                "forward_revision=? AND reverse_id=? AND reverse_revision=?)"
+                " OR (reverse_id=? AND reverse_revision=? AND forward_id=? "
+                "AND forward_revision=?))",
+                (
+                    VALIDATION_VERSION,
+                    forward.relation_id,
+                    forward.revision,
+                    reverse.relation_id,
+                    reverse.revision,
+                    forward.relation_id,
+                    forward.revision,
+                    reverse.relation_id,
+                    reverse.revision,
+                ),
+            ).fetchone()
+        return row is not None
+
+    def publish_connection(
+        self,
+        connection: ValidatedConnection,
+        forward: RoutingRelation,
+        reverse: RoutingRelation,
+        expected: tuple[RoutingAnchor | None, RoutingAnchor | None],
+        owner: str,
+        now: float,
+        provider: str,
+        provider_revision: str | None,
+    ) -> bool:
+        """Atomically fence anchors, both geometries and their shared proof."""
+        anchors = self.anchors
+        start, end = forward.origin_uid, forward.destination_uid
+        with self.database.transaction(), self.database.connect() as conn:
+            for subject in connection_leases(start, end):
+                if (
+                    conn.execute(
+                        "SELECT 1 FROM routing_leases WHERE subject=? "
+                        "AND owner=? AND expires_at>?",
+                        (subject, owner, now),
+                    ).fetchone()
+                    is None
+                ):
+                    return False
+            if (
+                anchors.get(start, "truck"),
+                anchors.get(end, "truck"),
+            ) != expected or self.provider_revision(
+                provider
+            ) != provider_revision:
+                return False
+            anchors.put(connection.origin)
+            anchors.put(connection.destination)
+            for relation, route in (
+                (forward, connection.forward),
+                (reverse, connection.reverse),
+            ):
+                payload = RoutePayload(
+                    route.coordinates,
+                    route.distance_km,
+                    route.duration_seconds,
+                    route.provider,
+                )
+                if not self.publish(relation, payload, owner, now):
+                    raise RuntimeError(
+                        "Connection publication lost its lease."
+                    )
+            conn.execute(
+                "INSERT INTO routing_connection_proofs VALUES "
+                "(?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(pair_id) DO UPDATE SET "
+                "forward_id=excluded.forward_id, "
+                "forward_revision=excluded.forward_revision, "
+                "reverse_id=excluded.reverse_id, "
+                "reverse_revision=excluded.reverse_revision, "
+                "validation_version=excluded.validation_version, "
+                "anchors=excluded.anchors, checked_at=excluded.checked_at",
+                (
+                    connection_identity(start, end),
+                    forward.reference.relation_id,
+                    forward.reference.revision,
+                    reverse.reference.relation_id,
+                    reverse.reference.revision,
+                    VALIDATION_VERSION,
+                    json.dumps(
+                        [
+                            asdict(connection.origin),
+                            asdict(connection.destination),
+                        ]
+                    ),
+                    now,
                 ),
             )
             return True

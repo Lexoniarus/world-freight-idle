@@ -1,0 +1,2954 @@
+{
+  "locate": {
+    "request": {
+      "locations": [
+        {
+          "lat": 52.433806,
+          "lon": 10.779611
+        }
+      ],
+      "costing": "truck",
+      "verbose": true
+    },
+    "status": 200,
+    "response": [
+      {
+        "input_lat": 52.433806,
+        "input_lon": 10.779611,
+        "edges": [
+          {
+            "access_restrictions": [],
+            "live_speed": {},
+            "correlated_lat": 52.433471,
+            "correlated_lon": 10.776845,
+            "side_of_street": "right",
+            "bounding_circle": {
+              "lat": 52.43348,
+              "lon": 10.776763,
+              "radius": 10
+            },
+            "linear_reference": "Kwep2yVJNmu+AP/4AA4rTWE=",
+            "percent_along": 0.38183,
+            "distance": 191.3,
+            "shoulder": false,
+            "heading": 3.6,
+            "outbound_reach": 69,
+            "inbound_reach": 69,
+            "edge_info": {
+              "way_id": 28911198,
+              "bike_network": {
+                "national": false,
+                "regional": false,
+                "local": false,
+                "mountain": false
+              },
+              "names": [],
+              "shape": "}~g_cBmlwpS]s@q@k@q@Kw@Vu@`AU~@IvB",
+              "mean_elevation": 62,
+              "speed_limit": 30,
+              "osm_node_ids": [
+                1655281993,
+                1655281995,
+                2197851812,
+                1655281998,
+                1655281999,
+                1655282002,
+                1655282004,
+                260622690
+              ]
+            },
+            "edge": {
+              "end_node": {
+                "level": 2,
+                "tile_id": 820123,
+                "id": 21071,
+                "value": 707031997658
+              },
+              "speeds": {
+                "default": 23,
+                "type": "classified",
+                "free_flow": 0,
+                "constrained_flow": 0,
+                "predicted": false
+              },
+              "access_restriction": false,
+              "start_restriction": {
+                "bicycle": false,
+                "bus": false,
+                "car": false,
+                "emergency": false,
+                "HOV": false,
+                "pedestrian": false,
+                "taxi": false,
+                "truck": false,
+                "wheelchair": false,
+                "moped": false,
+                "motorcycle": false
+              },
+              "end_restriction": {
+                "bicycle": false,
+                "bus": false,
+                "car": false,
+                "emergency": false,
+                "HOV": false,
+                "pedestrian": false,
+                "taxi": false,
+                "truck": false,
+                "wheelchair": false,
+                "moped": false,
+                "motorcycle": false
+              },
+              "part_of_complex_restriction": false,
+              "has_sign": false,
+              "toll": false,
+              "destination_only": true,
+              "destination_only_hgv": true,
+              "tunnel": false,
+              "bridge": false,
+              "round_about": false,
+              "traffic_signal": false,
+              "forward": true,
+              "not_thru": false,
+              "stop_sign": false,
+              "yield_sign": false,
+              "cycle_lane": "none",
+              "bike_network": false,
+              "truck_route": false,
+              "lane_count": 1,
+              "country_crossing": false,
+              "sidewalk_left": false,
+              "sidewalk_right": false,
+              "sac_scale": "none",
+              "deadend": false,
+              "geo_attributes": {
+                "length": 22,
+                "weighted_grade": -1.66,
+                "max_up_slope": 0.0,
+                "max_down_slope": -2.0,
+                "curvature": 15
+              },
+              "access": {
+                "bicycle": true,
+                "bus": true,
+                "car": true,
+                "emergency": false,
+                "HOV": true,
+                "pedestrian": true,
+                "taxi": true,
+                "truck": true,
+                "wheelchair": true,
+                "moped": true,
+                "motorcycle": true
+              },
+              "classification": {
+                "classification": "unclassified",
+                "use": "road",
+                "surface": "paved_smooth",
+                "link": false,
+                "internal": true
+              }
+            },
+            "edge_id": {
+              "level": 2,
+              "tile_id": 820123,
+              "id": 51280,
+              "value": 1720677833946
+            },
+            "predicted_speeds": []
+          },
+          {
+            "access_restrictions": [],
+            "live_speed": {},
+            "correlated_lat": 52.429326,
+            "correlated_lon": 10.780732,
+            "side_of_street": "left",
+            "bounding_circle": {
+              "lat": 52.428644,
+              "lon": 10.773884,
+              "radius": 550
+            },
+            "linear_reference": "Kwen8SVIN3rnEQXuAI06WPM=",
+            "percent_along": 0.95284,
+            "distance": 504.3,
+            "shoulder": false,
+            "heading": 81.3,
+            "outbound_reach": 100,
+            "inbound_reach": 100,
+            "edge_info": {
+              "way_id": 44671144,
+              "bike_network": {
+                "national": false,
+                "regional": true,
+                "local": false,
+                "mountain": false
+              },
+              "names": [],
+              "shape": "k``_cBwo`qSe@bSDjHvUlsFpO`|DfAnOt@tLt@tTVhS~EreAtFbfAfIfaBrOd}C`@zM",
+              "mean_elevation": 56,
+              "speed_limit": 0,
+              "osm_node_ids": [
+                1645483889,
+                4148541994,
+                373467184,
+                4148541998,
+                373467178,
+                4148535673,
+                4148535676,
+                373467174,
+                4148535681,
+                373467170,
+                4148535682,
+                373467164,
+                13112285269,
+                373467159
+              ]
+            },
+            "edge": {
+              "end_node": {
+                "level": 2,
+                "tile_id": 820123,
+                "id": 17809,
+                "value": 597577440474
+              },
+              "speeds": {
+                "default": 7,
+                "type": "classified",
+                "free_flow": 0,
+                "constrained_flow": 0,
+                "predicted": false
+              },
+              "access_restriction": false,
+              "start_restriction": {
+                "bicycle": false,
+                "bus": false,
+                "car": false,
+                "emergency": false,
+                "HOV": false,
+                "pedestrian": false,
+                "taxi": false,
+                "truck": false,
+                "wheelchair": false,
+                "moped": false,
+                "motorcycle": false
+              },
+              "end_restriction": {
+                "bicycle": false,
+                "bus": false,
+                "car": false,
+                "emergency": false,
+                "HOV": false,
+                "pedestrian": false,
+                "taxi": false,
+                "truck": false,
+                "wheelchair": false,
+                "moped": false,
+                "motorcycle": false
+              },
+              "part_of_complex_restriction": false,
+              "has_sign": false,
+              "toll": false,
+              "destination_only": false,
+              "destination_only_hgv": false,
+              "tunnel": false,
+              "bridge": false,
+              "round_about": false,
+              "traffic_signal": false,
+              "forward": false,
+              "not_thru": false,
+              "stop_sign": false,
+              "yield_sign": false,
+              "cycle_lane": "none",
+              "bike_network": true,
+              "truck_route": false,
+              "lane_count": 1,
+              "country_crossing": false,
+              "sidewalk_left": false,
+              "sidewalk_right": false,
+              "sac_scale": "none",
+              "deadend": false,
+              "geo_attributes": {
+                "length": 1042,
+                "weighted_grade": 0.0,
+                "max_up_slope": 4.0,
+                "max_down_slope": -4.0,
+                "curvature": 2
+              },
+              "access": {
+                "bicycle": true,
+                "bus": true,
+                "car": true,
+                "emergency": false,
+                "HOV": true,
+                "pedestrian": true,
+                "taxi": true,
+                "truck": true,
+                "wheelchair": true,
+                "moped": true,
+                "motorcycle": true
+              },
+              "classification": {
+                "classification": "service_other",
+                "use": "service_road",
+                "surface": "gravel",
+                "link": false,
+                "internal": false
+              }
+            },
+            "edge_id": {
+              "level": 2,
+              "tile_id": 820123,
+              "id": 40727,
+              "value": 1366577913050
+            },
+            "predicted_speeds": []
+          },
+          {
+            "access_restrictions": [],
+            "live_speed": {},
+            "correlated_lat": 52.429326,
+            "correlated_lon": 10.780732,
+            "side_of_street": "right",
+            "bounding_circle": {
+              "lat": 0.0,
+              "lon": 0.0,
+              "radius": 0
+            },
+            "linear_reference": "KweqtCVIeHr4EfoU/3U6Rww=",
+            "percent_along": 0.04715,
+            "distance": 504.3,
+            "shoulder": false,
+            "heading": 261.3,
+            "outbound_reach": 100,
+            "inbound_reach": 100,
+            "edge_info": {
+              "way_id": 44671144,
+              "bike_network": {
+                "national": false,
+                "regional": true,
+                "local": false,
+                "mountain": false
+              },
+              "names": [],
+              "shape": "k``_cBwo`qSe@bSDjHvUlsFpO`|DfAnOt@tLt@tTVhS~EreAtFbfAfIfaBrOd}C`@zM",
+              "mean_elevation": 56,
+              "speed_limit": 0,
+              "osm_node_ids": [
+                1645483889,
+                4148541994,
+                373467184,
+                4148541998,
+                373467178,
+                4148535673,
+                4148535676,
+                373467174,
+                4148535681,
+                373467170,
+                4148535682,
+                373467164,
+                13112285269,
+                373467159
+              ]
+            },
+            "edge": {
+              "end_node": {
+                "level": 2,
+                "tile_id": 820123,
+                "id": 16810,
+                "value": 564056562906
+              },
+              "speeds": {
+                "default": 7,
+                "type": "classified",
+                "free_flow": 0,
+                "constrained_flow": 0,
+                "predicted": false
+              },
+              "access_restriction": false,
+              "start_restriction": {
+                "bicycle": false,
+                "bus": false,
+                "car": false,
+                "emergency": false,
+                "HOV": false,
+                "pedestrian": false,
+                "taxi": false,
+                "truck": false,
+                "wheelchair": false,
+                "moped": false,
+                "motorcycle": false
+              },
+              "end_restriction": {
+                "bicycle": false,
+                "bus": false,
+                "car": false,
+                "emergency": false,
+                "HOV": false,
+                "pedestrian": false,
+                "taxi": false,
+                "truck": false,
+                "wheelchair": false,
+                "moped": false,
+                "motorcycle": false
+              },
+              "part_of_complex_restriction": false,
+              "has_sign": false,
+              "toll": false,
+              "destination_only": false,
+              "destination_only_hgv": false,
+              "tunnel": false,
+              "bridge": false,
+              "round_about": false,
+              "traffic_signal": false,
+              "forward": true,
+              "not_thru": false,
+              "stop_sign": false,
+              "yield_sign": false,
+              "cycle_lane": "none",
+              "bike_network": true,
+              "truck_route": false,
+              "lane_count": 1,
+              "country_crossing": false,
+              "sidewalk_left": false,
+              "sidewalk_right": false,
+              "sac_scale": "none",
+              "deadend": false,
+              "geo_attributes": {
+                "length": 1042,
+                "weighted_grade": 0.0,
+                "max_up_slope": 4.0,
+                "max_down_slope": -4.0,
+                "curvature": 2
+              },
+              "access": {
+                "bicycle": true,
+                "bus": true,
+                "car": true,
+                "emergency": false,
+                "HOV": true,
+                "pedestrian": true,
+                "taxi": true,
+                "truck": true,
+                "wheelchair": true,
+                "moped": true,
+                "motorcycle": true
+              },
+              "classification": {
+                "classification": "service_other",
+                "use": "service_road",
+                "surface": "gravel",
+                "link": false,
+                "internal": false
+              }
+            },
+            "edge_id": {
+              "level": 2,
+              "tile_id": 820123,
+              "id": 43301,
+              "value": 1452947021018
+            },
+            "predicted_speeds": []
+          }
+        ],
+        "nodes": []
+      }
+    ]
+  },
+  "anchor_to_stendal": {
+    "request": {
+      "locations": [
+        {
+          "lat": 52.433471,
+          "lon": 10.776845
+        },
+        {
+          "lat": 52.605959,
+          "lon": 11.85784
+        }
+      ],
+      "costing": "truck",
+      "units": "kilometers",
+      "shape_format": "geojson",
+      "directions_options": {
+        "units": "kilometers"
+      }
+    },
+    "status": 400,
+    "response": {
+      "error_code": 442,
+      "error": "No path could be found for input",
+      "status_code": 400,
+      "status": "Bad Request"
+    }
+  },
+  "historic_endpoint_to_stendal": {
+    "request": {
+      "locations": [
+        {
+          "lat": 52.429327,
+          "lon": 10.780732
+        },
+        {
+          "lat": 52.605959,
+          "lon": 11.85784
+        }
+      ],
+      "costing": "truck",
+      "units": "kilometers",
+      "shape_format": "geojson",
+      "directions_options": {
+        "units": "kilometers"
+      }
+    },
+    "status": 200,
+    "response": {
+      "trip": {
+        "locations": [
+          {
+            "type": "break",
+            "lat": 52.429327,
+            "lon": 10.780732,
+            "original_index": 0
+          },
+          {
+            "type": "break",
+            "lat": 52.605959,
+            "lon": 11.85784,
+            "original_index": 1
+          }
+        ],
+        "legs": [
+          {
+            "maneuvers": [
+              {
+                "type": 1,
+                "instruction": "Drive west.",
+                "verbal_succinct_transition_instruction": "Drive west.",
+                "verbal_pre_transition_instruction": "Drive west.",
+                "verbal_post_transition_instruction": "Continue for 2.5 kilometers.",
+                "bearing_after": 261,
+                "time": 1265.568,
+                "length": 2.46,
+                "cost": 2621.683,
+                "begin_shape_index": 0,
+                "end_shape_index": 21,
+                "rough": true,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 16,
+                "instruction": "Bear left.",
+                "verbal_transition_alert_instruction": "Bear left.",
+                "verbal_succinct_transition_instruction": "Bear left.",
+                "verbal_pre_transition_instruction": "Bear left.",
+                "verbal_post_transition_instruction": "Continue for 900 meters.",
+                "bearing_before": 266,
+                "bearing_after": 243,
+                "time": 473.818,
+                "length": 0.921,
+                "cost": 980.897,
+                "begin_shape_index": 21,
+                "end_shape_index": 53,
+                "rough": true,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 15,
+                "instruction": "Turn left.",
+                "verbal_transition_alert_instruction": "Turn left.",
+                "verbal_succinct_transition_instruction": "Turn left.",
+                "verbal_pre_transition_instruction": "Turn left.",
+                "verbal_post_transition_instruction": "Continue for 70 meters.",
+                "bearing_before": 264,
+                "bearing_after": 183,
+                "time": 40.202,
+                "length": 0.07,
+                "cost": 55.8,
+                "begin_shape_index": 53,
+                "end_shape_index": 58,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 15,
+                "instruction": "Turn left.",
+                "verbal_transition_alert_instruction": "Turn left.",
+                "verbal_succinct_transition_instruction": "Turn left. Then Turn right onto Tappenbecker Landstra\u00dfe.",
+                "verbal_pre_transition_instruction": "Turn left. Then Turn right onto Tappenbecker Landstra\u00dfe.",
+                "verbal_post_transition_instruction": "Continue for 20 meters.",
+                "bearing_before": 189,
+                "bearing_after": 118,
+                "time": 13.482,
+                "length": 0.021,
+                "cost": 16.739,
+                "begin_shape_index": 58,
+                "end_shape_index": 61,
+                "verbal_multi_cue": true,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right onto Tappenbecker Landstra\u00dfe/K 115.",
+                "verbal_transition_alert_instruction": "Turn right onto Tappenbecker Landstra\u00dfe.",
+                "verbal_succinct_transition_instruction": "Turn right.",
+                "verbal_pre_transition_instruction": "Turn right onto Tappenbecker Landstra\u00dfe, K 115.",
+                "verbal_post_transition_instruction": "Continue for 300 meters.",
+                "street_names": [
+                  "Tappenbecker Landstra\u00dfe",
+                  "K 115"
+                ],
+                "bearing_before": 105,
+                "bearing_after": 196,
+                "time": 42.402,
+                "length": 0.321,
+                "cost": 55.344,
+                "begin_shape_index": 61,
+                "end_shape_index": 86,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right onto Hafenstra\u00dfe.",
+                "verbal_transition_alert_instruction": "Turn right onto Hafenstra\u00dfe.",
+                "verbal_succinct_transition_instruction": "Turn right.",
+                "verbal_pre_transition_instruction": "Turn right onto Hafenstra\u00dfe.",
+                "verbal_post_transition_instruction": "Continue for 700 meters.",
+                "street_names": [
+                  "Hafenstra\u00dfe"
+                ],
+                "bearing_before": 341,
+                "bearing_after": 85,
+                "time": 86.058,
+                "length": 0.689,
+                "cost": 122.062,
+                "begin_shape_index": 86,
+                "end_shape_index": 127,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 18,
+                "instruction": "Turn right to take the A 39 ramp.",
+                "verbal_transition_alert_instruction": "Turn right to take the A 39 ramp.",
+                "verbal_pre_transition_instruction": "Turn right to take the A 39 ramp.",
+                "verbal_post_transition_instruction": "Continue for 13 kilometers.",
+                "street_names": [
+                  "A 39"
+                ],
+                "bearing_before": 86,
+                "bearing_after": 117,
+                "time": 502.743,
+                "length": 12.715,
+                "cost": 509.093,
+                "begin_shape_index": 127,
+                "end_shape_index": 300,
+                "highway": true,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "A 39",
+                      "consecutive_count": 1
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 23,
+                "instruction": "Keep right to take exit 28 onto A 2 toward Berlin/K\u00f6nigslutter.",
+                "verbal_transition_alert_instruction": "Keep right to take exit 28.",
+                "verbal_pre_transition_instruction": "Keep right to take exit 28 onto A 2 toward Berlin, K\u00f6nigslutter.",
+                "bearing_before": 195,
+                "bearing_after": 203,
+                "time": 15.897,
+                "length": 0.207,
+                "cost": 14.297,
+                "begin_shape_index": 300,
+                "end_shape_index": 304,
+                "sign": {
+                  "exit_number_elements": [
+                    {
+                      "text": "28"
+                    }
+                  ],
+                  "exit_branch_elements": [
+                    {
+                      "text": "A 2",
+                      "consecutive_count": 4
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Berlin",
+                      "consecutive_count": 3
+                    },
+                    {
+                      "text": "K\u00f6nigslutter",
+                      "consecutive_count": 3
+                    },
+                    {
+                      "text": "Hannover"
+                    },
+                    {
+                      "text": "Braunschweig"
+                    }
+                  ],
+                  "exit_name_elements": [
+                    {
+                      "text": "Kreuz Wolfsburg/K\u00f6nigslutter"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 24,
+                "instruction": "Keep left to take A 2 toward Berlin/K\u00f6nigslutter.",
+                "verbal_transition_alert_instruction": "Keep left to take A 2.",
+                "verbal_pre_transition_instruction": "Keep left to take A 2 toward Berlin, K\u00f6nigslutter.",
+                "bearing_before": 195,
+                "bearing_after": 196,
+                "time": 39.794,
+                "length": 0.509,
+                "cost": 36.302,
+                "begin_shape_index": 304,
+                "end_shape_index": 308,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "A 2",
+                      "consecutive_count": 4
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Berlin",
+                      "consecutive_count": 3
+                    },
+                    {
+                      "text": "K\u00f6nigslutter",
+                      "consecutive_count": 3
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 23,
+                "instruction": "Keep right to take A 2 toward Berlin/K\u00f6nigslutter.",
+                "verbal_transition_alert_instruction": "Keep right to take A 2.",
+                "verbal_pre_transition_instruction": "Keep right to take A 2 toward Berlin, K\u00f6nigslutter.",
+                "bearing_before": 195,
+                "bearing_after": 209,
+                "time": 36.506,
+                "length": 0.468,
+                "cost": 33.576,
+                "begin_shape_index": 308,
+                "end_shape_index": 329,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "A 2",
+                      "consecutive_count": 3
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Berlin",
+                      "consecutive_count": 2
+                    },
+                    {
+                      "text": "K\u00f6nigslutter",
+                      "consecutive_count": 2
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 24,
+                "instruction": "Keep left to take A 2 toward Berlin/K\u00f6nigslutter.",
+                "verbal_transition_alert_instruction": "Keep left to take A 2.",
+                "verbal_pre_transition_instruction": "Keep left to take A 2 toward Berlin, K\u00f6nigslutter.",
+                "verbal_post_transition_instruction": "Continue for 65 kilometers.",
+                "street_names": [
+                  "A 2",
+                  "E 30"
+                ],
+                "bearing_before": 82,
+                "bearing_after": 83,
+                "time": 2165.767,
+                "length": 65.104,
+                "cost": 1974.72,
+                "begin_shape_index": 329,
+                "end_shape_index": 1108,
+                "highway": true,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "A 2",
+                      "consecutive_count": 2
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Berlin",
+                      "consecutive_count": 1
+                    },
+                    {
+                      "text": "K\u00f6nigslutter",
+                      "consecutive_count": 1
+                    },
+                    {
+                      "text": "Magdeburg"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 20,
+                "instruction": "Take exit 70 onto B 189 toward Stendal/Barleben.",
+                "verbal_transition_alert_instruction": "Take exit 70.",
+                "verbal_pre_transition_instruction": "Take exit 70 onto B 189 toward Stendal, Barleben.",
+                "bearing_before": 67,
+                "bearing_after": 79,
+                "time": 20.236,
+                "length": 0.352,
+                "cost": 20.323,
+                "begin_shape_index": 1108,
+                "end_shape_index": 1114,
+                "sign": {
+                  "exit_number_elements": [
+                    {
+                      "text": "70"
+                    }
+                  ],
+                  "exit_branch_elements": [
+                    {
+                      "text": "B 189",
+                      "consecutive_count": 3
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Stendal",
+                      "consecutive_count": 2
+                    },
+                    {
+                      "text": "Barleben",
+                      "consecutive_count": 2
+                    },
+                    {
+                      "text": "Magdeburg-Zentrum"
+                    }
+                  ],
+                  "exit_name_elements": [
+                    {
+                      "text": "Magdeburg-Zentrum"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 24,
+                "instruction": "Keep left to take B 189 toward Stendal/Barleben.",
+                "verbal_transition_alert_instruction": "Keep left to take B 189.",
+                "verbal_pre_transition_instruction": "Keep left to take B 189 toward Stendal, Barleben.",
+                "bearing_before": 67,
+                "bearing_after": 67,
+                "time": 27.508,
+                "length": 0.425,
+                "cost": 28.83,
+                "begin_shape_index": 1114,
+                "end_shape_index": 1116,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "B 189",
+                      "consecutive_count": 3
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Stendal",
+                      "consecutive_count": 2
+                    },
+                    {
+                      "text": "Barleben",
+                      "consecutive_count": 2
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 23,
+                "instruction": "Keep right to take B 189 toward Stendal/Barleben.",
+                "verbal_transition_alert_instruction": "Keep right to take B 189.",
+                "verbal_pre_transition_instruction": "Keep right to take B 189 toward Stendal, Barleben.",
+                "verbal_post_transition_instruction": "Continue for 13 kilometers.",
+                "street_names": [
+                  "B 189"
+                ],
+                "bearing_before": 67,
+                "bearing_after": 73,
+                "time": 626.952,
+                "length": 12.795,
+                "cost": 612.863,
+                "begin_shape_index": 1116,
+                "end_shape_index": 1393,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "B 189",
+                      "consecutive_count": 2
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Stendal",
+                      "consecutive_count": 1
+                    },
+                    {
+                      "text": "Barleben",
+                      "consecutive_count": 1
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 18,
+                "instruction": "Take the A 14 ramp toward Stendal/Schwerin.",
+                "verbal_transition_alert_instruction": "Take the A 14 ramp.",
+                "verbal_pre_transition_instruction": "Take the A 14 ramp toward Stendal, Schwerin.",
+                "verbal_post_transition_instruction": "Continue for 35 kilometers.",
+                "street_names": [
+                  "A 14"
+                ],
+                "bearing_before": 346,
+                "bearing_after": 8,
+                "time": 1145.851,
+                "length": 35.342,
+                "cost": 1019.975,
+                "begin_shape_index": 1393,
+                "end_shape_index": 1723,
+                "highway": true,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "A 14",
+                      "consecutive_count": 1
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Stendal"
+                    },
+                    {
+                      "text": "Schwerin"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 20,
+                "instruction": "Take exit 17 toward Stendal-S\u00fcd/Gardelegen.",
+                "verbal_transition_alert_instruction": "Take exit 17.",
+                "verbal_pre_transition_instruction": "Take exit 17 toward Stendal-S\u00fcd, Gardelegen.",
+                "bearing_before": 358,
+                "bearing_after": 9,
+                "time": 35.006,
+                "length": 0.282,
+                "cost": 30.63,
+                "begin_shape_index": 1723,
+                "end_shape_index": 1734,
+                "sign": {
+                  "exit_number_elements": [
+                    {
+                      "text": "17"
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Stendal-S\u00fcd"
+                    },
+                    {
+                      "text": "Gardelegen"
+                    }
+                  ],
+                  "exit_name_elements": [
+                    {
+                      "text": "Stendal-S\u00fcd"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 26,
+                "instruction": "Enter the roundabout and take the 2nd exit toward Stendal.",
+                "verbal_transition_alert_instruction": "Enter the roundabout and take the 2nd exit toward Stendal.",
+                "verbal_succinct_transition_instruction": "Enter the roundabout and take the 2nd exit toward Stendal.",
+                "verbal_pre_transition_instruction": "Enter the roundabout and take the 2nd exit toward Stendal.",
+                "bearing_before": 165,
+                "bearing_after": 218,
+                "time": 16.998,
+                "length": 0.079,
+                "cost": 26.0,
+                "begin_shape_index": 1734,
+                "end_shape_index": 1759,
+                "sign": {},
+                "roundabout_exit_count": 2,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 27,
+                "instruction": "Exit the roundabout toward Stendal.",
+                "verbal_succinct_transition_instruction": "Exit the roundabout toward Stendal.",
+                "verbal_pre_transition_instruction": "Exit the roundabout toward Stendal.",
+                "verbal_post_transition_instruction": "Continue for 4 kilometers.",
+                "street_names": [
+                  "B 188"
+                ],
+                "bearing_before": 13,
+                "bearing_after": 69,
+                "time": 260.156,
+                "length": 3.823,
+                "cost": 229.321,
+                "begin_shape_index": 1759,
+                "end_shape_index": 1936,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 8,
+                "instruction": "Continue toward Wittenberge/Magdeburg/Rathenow/Tangerm\u00fcnde.",
+                "verbal_transition_alert_instruction": "Continue toward Wittenberge.",
+                "verbal_pre_transition_instruction": "Continue toward Wittenberge, Magdeburg.",
+                "verbal_post_transition_instruction": "Continue for 3 kilometers.",
+                "street_names": [
+                  "B 189"
+                ],
+                "bearing_before": 112,
+                "bearing_after": 112,
+                "time": 197.757,
+                "length": 2.91,
+                "cost": 190.955,
+                "begin_shape_index": 1936,
+                "end_shape_index": 1989,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 19,
+                "instruction": "Turn left to take the ramp.",
+                "verbal_transition_alert_instruction": "Turn left to take the ramp.",
+                "verbal_pre_transition_instruction": "Turn left to take the ramp.",
+                "street_names": [
+                  "B 188",
+                  "B 189"
+                ],
+                "bearing_before": 79,
+                "bearing_after": 349,
+                "time": 35.766,
+                "length": 0.237,
+                "cost": 40.308,
+                "begin_shape_index": 1989,
+                "end_shape_index": 2020,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 15,
+                "instruction": "Turn left toward Stendal/Heerener Stra\u00dfe.",
+                "verbal_transition_alert_instruction": "Turn left toward Stendal.",
+                "verbal_succinct_transition_instruction": "Turn left toward Stendal, Heerener Stra\u00dfe.",
+                "verbal_pre_transition_instruction": "Turn left toward Stendal, Heerener Stra\u00dfe.",
+                "verbal_post_transition_instruction": "Continue for 800 meters.",
+                "street_names": [
+                  "Heerener Stra\u00dfe",
+                  "L 32"
+                ],
+                "bearing_before": 73,
+                "bearing_after": 344,
+                "time": 68.598,
+                "length": 0.824,
+                "cost": 90.35,
+                "begin_shape_index": 2020,
+                "end_shape_index": 2063,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 26,
+                "instruction": "Enter the roundabout and take the 2nd exit onto Heerener Stra\u00dfe/L 32.",
+                "verbal_transition_alert_instruction": "Enter the roundabout and take the 2nd exit onto Heerener Stra\u00dfe.",
+                "verbal_succinct_transition_instruction": "Enter the roundabout and take the 2nd exit.",
+                "verbal_pre_transition_instruction": "Enter the roundabout and take the 2nd exit onto Heerener Stra\u00dfe, L 32.",
+                "bearing_before": 356,
+                "bearing_after": 39,
+                "time": 11.667,
+                "length": 0.04,
+                "cost": 12.409,
+                "begin_shape_index": 2063,
+                "end_shape_index": 2073,
+                "roundabout_exit_count": 2,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 27,
+                "instruction": "Exit the roundabout onto Heerener Stra\u00dfe/L 32.",
+                "verbal_succinct_transition_instruction": "Exit the roundabout.",
+                "verbal_pre_transition_instruction": "Exit the roundabout onto Heerener Stra\u00dfe, L 32.",
+                "verbal_post_transition_instruction": "Continue for 1 kilometer.",
+                "street_names": [
+                  "Heerener Stra\u00dfe",
+                  "L 32"
+                ],
+                "bearing_before": 275,
+                "bearing_after": 357,
+                "time": 78.657,
+                "length": 1.003,
+                "cost": 89.77,
+                "begin_shape_index": 2073,
+                "end_shape_index": 2119,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 26,
+                "instruction": "Enter the roundabout and take the 2nd exit toward Werben/Bismark/Zentrum.",
+                "verbal_transition_alert_instruction": "Enter the roundabout and take the 2nd exit toward Werben.",
+                "verbal_succinct_transition_instruction": "Enter the roundabout and take the 2nd exit toward Werben, Bismark.",
+                "verbal_pre_transition_instruction": "Enter the roundabout and take the 2nd exit toward Werben, Bismark.",
+                "bearing_before": 347,
+                "bearing_after": 36,
+                "time": 13.846,
+                "length": 0.048,
+                "cost": 14.208,
+                "begin_shape_index": 2119,
+                "end_shape_index": 2132,
+                "roundabout_exit_count": 2,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 27,
+                "instruction": "Exit the roundabout toward Werben/Bismark/Zentrum.",
+                "verbal_succinct_transition_instruction": "Exit the roundabout toward Werben, Bismark.",
+                "verbal_pre_transition_instruction": "Exit the roundabout toward Werben, Bismark.",
+                "verbal_post_transition_instruction": "Continue on L 32 for 1.5 kilometers.",
+                "street_names": [
+                  "L 32"
+                ],
+                "begin_street_names": [
+                  "Heerener Stra\u00dfe",
+                  "L 32"
+                ],
+                "bearing_before": 244,
+                "bearing_after": 314,
+                "time": 137.512,
+                "length": 1.723,
+                "cost": 159.034,
+                "begin_shape_index": 2132,
+                "end_shape_index": 2243,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 15,
+                "instruction": "Turn left onto Bruchstra\u00dfe.",
+                "verbal_transition_alert_instruction": "Turn left onto Bruchstra\u00dfe.",
+                "verbal_succinct_transition_instruction": "Turn left.",
+                "verbal_pre_transition_instruction": "Turn left onto Bruchstra\u00dfe.",
+                "verbal_post_transition_instruction": "Continue for 300 meters.",
+                "street_names": [
+                  "Bruchstra\u00dfe"
+                ],
+                "bearing_before": 350,
+                "bearing_after": 232,
+                "time": 77.61,
+                "length": 0.3,
+                "cost": 141.206,
+                "begin_shape_index": 2243,
+                "end_shape_index": 2259,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right onto Breite Stra\u00dfe.",
+                "verbal_transition_alert_instruction": "Turn right onto Breite Stra\u00dfe.",
+                "verbal_succinct_transition_instruction": "Turn right.",
+                "verbal_pre_transition_instruction": "Turn right onto Breite Stra\u00dfe.",
+                "verbal_post_transition_instruction": "Continue for 90 meters.",
+                "street_names": [
+                  "Breite Stra\u00dfe"
+                ],
+                "bearing_before": 230,
+                "bearing_after": 313,
+                "time": 21.417,
+                "length": 0.089,
+                "cost": 38.637,
+                "begin_shape_index": 2259,
+                "end_shape_index": 2263,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 15,
+                "instruction": "Turn left onto Hoock.",
+                "verbal_transition_alert_instruction": "Turn left onto Hoock.",
+                "verbal_succinct_transition_instruction": "Turn left.",
+                "verbal_pre_transition_instruction": "Turn left onto Hoock.",
+                "verbal_post_transition_instruction": "Continue for 100 meters.",
+                "street_names": [
+                  "Hoock"
+                ],
+                "bearing_before": 320,
+                "bearing_after": 236,
+                "time": 33.377,
+                "length": 0.129,
+                "cost": 59.337,
+                "begin_shape_index": 2263,
+                "end_shape_index": 2270,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 15,
+                "instruction": "Turn left onto Hohe Bude.",
+                "verbal_transition_alert_instruction": "Turn left onto Hohe Bude.",
+                "verbal_succinct_transition_instruction": "Turn left. Then You will arrive at your destination.",
+                "verbal_pre_transition_instruction": "Turn left onto Hohe Bude. Then You will arrive at your destination.",
+                "verbal_post_transition_instruction": "Continue for 20 meters.",
+                "street_names": [
+                  "Hohe Bude"
+                ],
+                "bearing_before": 248,
+                "bearing_after": 157,
+                "time": 10.324,
+                "length": 0.021,
+                "cost": 21.394,
+                "begin_shape_index": 2270,
+                "end_shape_index": 2271,
+                "verbal_multi_cue": true,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 4,
+                "instruction": "You have arrived at your destination.",
+                "verbal_transition_alert_instruction": "You will arrive at your destination.",
+                "verbal_pre_transition_instruction": "You have arrived at your destination.",
+                "bearing_before": 157,
+                "time": 0.0,
+                "length": 0.0,
+                "cost": 0.0,
+                "begin_shape_index": 2271,
+                "end_shape_index": 2271,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              }
+            ],
+            "summary": {
+              "has_time_restrictions": false,
+              "has_toll": false,
+              "has_highway": true,
+              "has_ferry": false,
+              "min_lat": 52.164688,
+              "min_lon": 10.72301,
+              "max_lat": 52.607641,
+              "max_lon": 11.874652,
+              "time": 7501.489,
+              "length": 143.915,
+              "cost": 9246.076
+            },
+            "shape": "}_`_cBwb_qShT|cFpO`|DfAnOt@tLt@tTVhS~EreAtFbfAfIfaBrOd}C`@zMl@pNbBtPnJ`pBzKxwBxVn{EhNnnCtc@|uIfOryCrI`aCnBrhAhEtStD~t@t@z_@~AfOx@|Hl@tKb@tLhFj}@nA`XQpJu@fIiBdLoArHu@pL{@hOq@rIgA`GsAnDqDrFiArCg@pC[jGEpHdA|gDj@~dCI~HoAfNExQVdl@Fla@XjG\\`MvGVbK~CvI|ExAp@pBQlAoCh@{E`@oE|I`DfE`DlBxCpBzErA~EbAvFt@jITtDDpGcAn|@AxMFxIVrF^vGl@vGZnEbAlIj@lINdHW|Gq@fF{CxHmCZmE\\eDhDc@yTuAig@gA{]i@wPWkQB{K\\iJx@qI`AcGtA_HzCqHjDgGlC_DrE_DjCaA|Bi@|C_@pCUnIIrOCrLDfDC~AIxCy@hE{AfGsFxBqCnAqCjA}Bb@uAr@uBvAgF~A{Kv@aMPgH@mFB{LGyR]kYcC}rAm@wb@fAkHbBsFfA{AxA{A`I{A|JfAzmAlNjCJnCEzEi@jEaCrCgCvCwElB}EnBeGhAoFhBcHxB{GnBaE|BoDhCmDrB}AvCaBjDcAdD{@lDi@tDM~\\[xxBfV`yBbVfqAdN|XhDf\\dEfMjBvYjFhc@bKfM|DpQpHzc@lQ|JbFtCdA~Dv@tgBnbAv`Br_Aha@nUha@hRpYxJ~Y`GjZnC~ZTjU_ArUcCxV}F`WqIn]cPj]qS~pD_{BjKuG~jA_u@|d@mY`e@_Yp[yQt[aPz_@}P``@mMhRsFfRuDhToDlTuB|V_AbTWhT`@v^jC`JjAxU~Dp\\lIxRzGxPrGtUlKb`@lVfc@d^xGhGfHtHtGtGvMvO~GjIfSpXnRnXr\\fi@xVxc@`JpNbRjZ~Ux\\pn@f}@b@h@xJrMdOzPta@pb@|Y`Xbh@pc@j^nYt^fXrZrTzZlShe@~Yhe@jXnk@vZn]pPrNxG~RxIx{@|]pV|IfIvCba@nMta@fLza@rKpcAdTra@zHra@xGvDb@`w@xJre@bFz{@bF|h@dBd|@dAtkA{@hf@uAbPaAd_@eBb`@cC|ZeCly@cJxt@wJtz@gN`eAwS`R}Dn{@sStiAyYvXwH~zAyd@l}Ash@zb@yNniB{m@diAqa@jmBeq@vvAcf@b~@}ZhoAca@bNqExqAy^|wCyw@j`AuTdjBi]hbBkWzwAcO|qBsM|cA}Ch_AiAvlAAriAvBbiB|Hd}@fGjkAxKbw@vIvw@|KdlA|QrkAhTz~Al\\f{@fSz_Dtz@pv@zTfyAbe@rRhGda@`WbQjH|M`G`j@bR`kDjpAjJfD|m@nVnk@bS`FzD~A~AvFtG|D~HnCxLp@bPq@jMiBbLkEzJsKhPeF|FuG`EiF|@mDi@kDmBgDkE_CyGkB{HgByK{HylAiFgxAuBun@cA{XgBeZwAyT_C}\\eFsd@qAaWaOssCiLiyBqh@cbKmNymCu`@mzHwNggCiQ{gDwHyxAqSa~D{Va}Ei[agFsc@{tI{K}uB{EqaAmCeu@iBej@}@{\\eAua@aA{c@eA}y@e@}r@_@yz@Ako@@ck@\\wj@f@cr@nAu_AlB}_AnBcr@xB{s@~Bqt@`HgkBh[myItKyyCxC}x@lG{~A~f@siNjE}fArAqa@p@}QlAe_@dJ_gCdQuwEpBsj@dRciFpIqsB|Bck@hF_cAx@uOpHohA|Fix@xGyv@hGao@|Hiv@lIqs@dIqp@zG{e@bHaf@lHgf@hNq{@rUkqAzToiAjc@yrBvM{m@lJ{c@fd@yuBv~@skEte@_{Bnh@wbC|n@axCbqDiyPrb@qlBrQ_v@dMig@lO_k@tSor@~f@g`Bv|As~E~Pyi@rGkSt`BsfFd`@}oAfdA}bD|eBgtFj{@apCxNod@vfAsjDzUwu@l}@{sCvg@i`B|ZcgAnKk_@fNyg@~Q_w@jNim@`L}i@fLqj@pLmm@rLyo@~Kuq@hLou@rH_h@lOkkAvGoj@hMmlApHkx@jG_u@dCi]jDmf@nEut@pEey@hL_}BlPaiD~e@k{JpFeeAlGieAtCmd@hHq_AlHey@pH{s@fHan@fOwkAfGs`@zEo\\nY}cBxQo~@nPev@|Pws@vO{n@fO}g@jLkb@`Sip@h[y`A~rBieGx_DyjJdBiFnNeb@|Lk^hU}r@rXaaAvMag@hM_h@dL{f@vKkg@zR{aAdM_t@fJsk@`Iei@~H{n@|Jgw@bMqoAnEmi@xAiTzFky@zGgiAfEy_ApKmyBpCee@~Ees@|BcYlOmaBjOaqAfIgl@xIml@~Hwj@fKqh@fTggAlL{j@xbC_kK~YkiAnXc_ApNmb@fSal@|^y_AlPi_@xQg`@f[so@d\\mm@dPcY`h@qw@nw@eeAnYq^xj@qq@pPqS|_CssCrc@kf@rt@eu@pdBiaBhPaOhkCweC|CmCn|CkwCdTqS~b@sd@r[__@~_@ig@h]ye@jWu`@rm@mcAzJgStRm`@tPe_@va@u`Ab]}~@dPec@vMw^~[_}@t]y~@dK_YrV{i@vPe_@zNmZzRu^dYmg@vYif@hX{a@v\\sd@z[w`@f}@wfAnKeM`DeEhi@yq@zYcb@jU}\\`Rg[fWuc@t`@_u@nPu]f[wq@nL}YhYot@p^edAdl@ocBpl@}cBxq@mpBla@_kAby@waCbHsSt_@kjAvi@aeB~h@igBvb@}yAlp@g_CnqAwuE|XcaAjRgq@tFyS\\eBrq@{bCfl@atBhTuw@`Xc`A`Lwb@`Kgb@~Oar@xJoe@jKui@bKuk@zIoj@bJap@~F}c@nGyi@tIy|@hDo_@xCc`@`D}c@jD_k@jD}q@rBul@lCk|@`Hg~CnBy{@tEmrBrNevGhBcx@tDqwAzA}g@zAyc@bCsq@zByh@|Ceo@pEov@zF{x@xFgr@vHex@bDsY`Hyj@~DkZfGec@lFs]nDqT~EaYbGe\\~Gk^jGa[hNan@fEgRbZujAlb@y`BnJa`@dJo_@fQkx@rFqWzEsUjK}j@bMer@b`@i{B`_@wvBd^euB~O{`A~Kys@`Ioh@vKww@hMeaAnGsh@vEuc@rHev@lCm[|BiYpCs^bCy^zBo_@pBy_@`E{_A`D{_A~Bow@T}G`JedDnMotEzAki@XmJrS}sHt@kZl@g[tA{~@VyZPk[Dif@O{e@c@}k@]_Yc@iW_A_`@s@qViAs_@y@_Ts@uRcFkpAcD}v@aBaa@uUmyFcBea@}Cyu@kCqo@cCqn@eCev@y@sZm@sTi@gXi@{Xa@mW]cV]e[Yu\\Ych@Iaa@Cq_@Bq`@Laa@b@cp@h@{i@HaHz@ah@`A{e@j@sWv@eX~CeaAjCkp@~Cmp@nDso@jBc[|Ba]lCa_@fBwUfH_{@rEcg@bFug@bAgJtEib@tFse@`Lk}@~Lo}@~PulAd\\}zBdc@kyCr\\i|BbCqPl[kxBvHoi@xDcX|DyXxEq\\fImm@zE{_@`Gye@nFmf@tDi^bDg\\rDia@dD}_@zCa`@rC{_@dD_h@tCef@zB_b@nBcb@rBaf@hBqf@~Co_Aj@mQhAca@fCgeA`Bmu@xAmu@pHmgEnD}mBd@eXjm@ga]`IooENwGvDswBbImqE~CujBtDmkBh@m^hDmiBpC}wAjDqvAdBqn@pByo@rDkaAxByh@vBag@`@cIrAkWvAuYv@qNrIm}AlEgr@rDgj@bFcw@xEir@~QymCpI{oAlIklArKg}AHaApPmcCxF{z@bAwMtGi`AhGi}@|HejArIcnAtI_nAbI_lAfAaPnHgfA|Dgk@x@kMjFev@vH_hAj@kInEoo@rKs}AdFut@bGm{@fAmQ|Dik@zJaxAvHugAnI_lA|HuiA|IaqA|GacA~GcbAdHwbAhLycBzOq}Bn^{iFt\\m~EpImnA`XqzDz@iKxGibAhLsbBbEwp@zFi_AlDum@~Ey~@r@aNxGkwA|EajAdEgfAdEgeAzDmbAlEugAdImpBbDiy@nFqsApHakBzFywAxIayB~FywAjEggArDk~@`FgpAxDm~@dMu`D|Dm`AxF{xAPoEjCko@dFypA`Dgw@hEifAhFoqA`FqoAhFkpAxDi`AtDs`AvD__AxB}i@pB{g@zDk`AxDs`AlDu}@bEobAxDmaAdI_qBrDw`A~Bgp@LoD~Acd@n@sVjBep@bB{p@d@yXb@kWx@go@h@qf@^}h@V_s@P}pAGmqAI}iAK}cAI}|@MasAIwm@Eqa@Uq`CCgh@Ku_@M_xAEko@Gqk@U}bCKeaAYakCE{y@WobCSatCOaaAKarAIu`AKcfAAaJOgrAMkg@Q{^CqMMaXSqd@gAeoAmAyqAoAupAsA_rAcB_bBcD{bDsAwqAm@up@qA_qA}@uaA_Ac_AyAesAcAabA_B}}Au@o}@a@oa@wAgrA}A{_BeAicAuAyrAkAuoAeBybB{@s`AIuJY_Ts@mp@oAqpAg@kh@GuFo@ip@mAonAc@sb@_@}a@[sXc@mc@m@}l@Y_a@Q}^Ii`@Bc`@Rik@v@ku@l@{^v@k^fBql@`Cem@fB{_@rBo^vCqe@vC}a@fJieAxGsp@zE_b@fGae@|Ey]pDcVfJkl@|Jyk@f^omBpO_y@lBoK`\\ceB~SshAl\\wfBdTqiAzSehAtX{xAri@uuCvEmV~_@erBz@qEpP}|@`Y}zAzfAk{Ft`@cuBfOwx@zSohAbTyhA~Omz@|Oqz@lXixAvO{y@~Ooz@dTeiAbLcm@nMir@xN{t@rIua@hJia@lIw]jGsUhLab@|K}_@zM_c@zJ_\\zNge@xJo[`JwYhJoZv[edAxMkc@lT}r@xTes@hPsh@b`@aoArOog@d[kcAva@yrA`Zi`A~Ouh@r\\qfAh\\weAj\\ifAd\\egAvO{i@xOqj@tKqa@bVaaAhH_[|Mkm@bPwx@tI}f@lIah@hHkf@xGuf@xFoe@pFeg@nDq^`Dy\\dDea@bEim@~Bq_@fCqg@lD_y@jAy`@dAwc@r@s[j@qe@TyUNka@D_UCc]Oyh@QoVa@u[aAam@m@cXaA_\\eAi[sAq\\qDqu@yDon@iB_WoGky@cGuv@gLk_BiMq~A_]ceE{BsXoO{lBkQq{BmV_}CuDif@_JoiAgMe_B}\\_iEqFer@{Qw~BgMm_BeMk_BaM}}AgKaoAaHgu@uD}^gI{s@mDsXqH_i@gJwn@qJil@sl@}kDikCmpO_kCiqOcl@ajDy}@wlFon@srDucGux]mx@kyE{XyaBaBeYwCaXcJer@oEeXqYofBkQcdAgv@knEuf@ytCmC}Va@sFScEEmEFkEHyBPoCb@mDl@eD\\uAf@kBZ_Ab@sAhAkC`AiBpAiBnBkB|B}A|Ai@|Ac@~A[hAIjAErAHtATnBh@nAf@nAv@hB~ApAxAfAxAx@|Av@hBfA|C|@|C`AtEr@xFR`EL~DCnEQxDa@bEk@fE_AbE}A`EkB`EiCnE_LrROnE}LlSk^~k@qXpb@{nAnqByo@vcAod@rq@cg@xw@wC|EsFxIqW|a@cN|SmU`]wOjTsPtSaPlQcPjPmNrMkT|QmO|KeQpL}JbG}NjIiR|JoOtGgKlEsRbHsRrF_QzEiQtDyMlCc`@rE}ZhBsUjAmc@ZygAT}dBZspBZstAZeXAyVH{_ARi{A\\sF@qZBen@Pc_B\\s}AZgcCb@_mARyfEx@crAPs|A`@uMNyMFaNd@kQfAiKbAiIbAgPjC}OzCgWrF}d@zJqv@nPy`@rIsn@|Mw]tHy`@nIkb@fJe}@vR_w@fPuMxCkVhFcWnFkiBh`@cYfGceAdUkmDvu@kzAn[idAxTq{@dRoS~CoUfC{Ov@uOVmLCuQ_@sTcBkR_CsQ_Dqy@sOkoB{^_VoEopCih@q`AsQcSqEiUiGkPkF}PwG{HgDoK_FuQ}JcO_JwHgFmHoFuO_M_LmJcJoI}OaPuPkR_O_R{O}Sao@a|@yRiXoTiZg~@ooAavAknBih@ss@qh@}s@mPsUsP}VsBgD_I}MgHcMoHgNoHaOwIgRyIiSmKeXaE{KqFwOeIgWcKm]mIg\\_HoZuG{[gFwXmCaPiF{]}Ee_@{BwS}Dq_@qD{a@aGys@cBgR{BuUaCaToAoKoAyI_Pa_AgDmPeD{NoIk\\iIyY}EoNsEyM_HsQcDaIyCkHaI_QkLoU}EiIgD_GoFqIiFyHoHgKmVyYqGwHaEyDyG{FcFuE{G{EoEuA}ScOmOyIgKeF}JoEyNsFyMiEmOwDkO{CeL}AgNsA}Lq@wM_@}VNoJb@yIj@_KbAwJlAaIzAsJfBkPnDiNrDaRnFeW`IopApa@ew@zV}d@`OmU`JiHzBqTxG}KpDy@X_EtAoEzAmIhCae@rNeEpAy]hKcq@dTu`A|ZaDbAeZpJeZtJuMfEkH~Bqr@nTyc@rN_f@nOqQdF}VnH_SnGqS|H{_A~Zw^hLgH|B{b@hNi]xKyEi@sB_@{A_@o@]wBcB{B}DqD_Nu@qDo@uCcAaEqAuDyAmDcB}C_BuCkBuBeBuB{AuAeCmBiCuAoC}@oCk@qDc@eDCqEd@yCp@_CbAcDlBcCrBgFrFuEfEiFzH{C`EkCnCcDxCmBfA{BdAoC~@gB\\oBb@cBJyAAeCIsCMkDy@qD}@yPeG{n@uf@u^gWuWoPwi@m[k]sQg[cO{n@}WyViJgUwHo]sK{N{DoFwAka@wJ}i@sK_`@kGsd@eGutBqTwgAkKkfAmKajCkWazBoT_xB{Smx@uGgu@mEgt@eBib@U}\\Ds\\f@_Tf@}]tAor@rEwQbBuPxA}u@bK{_@jGu_@|Hye@nKue@|L_y@tWi[lLyZrLw_@lP{a@zRse@rVsc@fWeZzQ{ZjSm[zT{YvToZ|UcY`V{a@b_@yb@ra@_Y~Y}WjYg`@~c@eXf\\og@hp@ed@`n@{b@nm@cjAh`B{RdXk_ApmA_OtQyMnPgPtQgb@|c@ce@jd@eOjOkcApx@oOxLmh@ba@qk@d_@ie@lXcf@|Vyc@hTif@bSaiA~_@mf@~Nsh@`Mk`@~Hea@zGoc@pGyb@zEaj@xDqi@`Cib@lA}d@d@oa@Oab@u@ay@gEmf@qCu_@uDu}AmRieBcXigGueAcqEov@aoAgUocAwS}}@oV_NmEy]}KmKoDs|@c^gy@i`@gz@ke@k[iSkkByoAwnBosAwj@e]s`Auj@k{Aer@oj@sS_xAec@crAcZwrAcVi{@yNkz@_Q{kBsc@g_@{KwM{Dqs@_Ti~Ayk@i`Bwp@my@c_@irBkfAwcAom@ww@gh@q}AkhAcx@on@cNcLeRyOqY_Vey@iu@evBwuBsy@}w@g`@{]{c@ea@oo@mh@oz@}q@qjB_rA}fB{gAi}Aqy@acAyg@g`Akb@_vB_y@ohBsj@eeB_d@ezAw[m]oFcw@_NwqB{S}F_@meAgIwiC}L{rBmAquB`Em|@`DozAvJohB`Pqz@hEyl@tEgb@Ayo@h@mj@wA_eAgGg{@mKoy@qNgt@gQ{XgJqd@uMow@{Zam@iYcr@y^_w@ye@yZmT{gCkjBkhAux@m~DiuCa~BkcBslAq|@gw@kk@_rB}wAaLiIehCikBwsBezAmxBw~Aw~BgdBo_CydB}gB_tAe_@}Y_dAc|@qjAqdA_m@mm@sbAocAsa@yd@qe@qh@ya@ug@_{AakB}lBslCe`@wk@s^}l@__@wk@ieAigBybAiiBsdA_tBuu@q_BcaAsyB_z@ssBm|@k`Csn@_gBgs@}wBgk@alBu`@_vAmo@e~ByHwXqDqMw|@yxCifAk`D{cA{qCyDcKajActCkeAw_CsIyQ{w@eaBkj@{eA{j@_fA}j@obAgmAoqBepAwoBwMgSsFmHmlAs`BqHuJes@q~@ekBqyBe}A{`BqmBorB_lAkuAuIqJqLyMajC_aDmnAabBov@kgA}NwSseAw|Aw~@swA}EqHmyAqbCmgAsmBeaDo~F_kBg|Cw}B_kDqkBmfCyqBsdCe}AaiB{sBqqBysAmoA}h@}i@gkC}pBcnAa}@y}@{m@mkA{t@ilA}q@sjAmo@ynAim@{yBkaAkpC}cAwpAya@_cBuc@}bBi_@_aAkR_~AmXwmAiQ_nAiNspA_LcjB{KqjBcGyqBoBmmBr@kEJuHNwIPcn@tA}R_DwNoHqG{KiDmOaAsQz@iWjFsPvIiKnJsEfWeJ`GkBTxA\\nA^z@d@p@n@h@p@Xr@J|@Ex@Yv@o@p@aAf@sAZaBLmBAoBM_BYwAc@oAc@u@i@k@m@a@o@Qw@Ew@Js@\\eByLwCoQuD}Q}E{QoC{IyIqUoHeOaGeJq]yd@kKeQ{IwQ{C{HaH{S_EyOcGoZcb@goCy\\kyBgAeHqBwMsHuf@yG}b@mA}HoBqLeA}FcAiFkAsF_AsDaAmDwBgHgBkFgBcFeCaH}CuIuJcWqAoD{Soj@mGkPgDwIqIiU_KmYyDqL}A_F}AkFaCmIsBsHyBuIyBiJyB}JqByJkB_KiB}KwA_JmAiImA_JkAwJeAoJcA_Ky@sJy@aK}@aNy@cOs@_Oq@{Ok@aPe@wNcAu`@uBaw@_AyZi@uMi@mL[wG]}Fi@aJg@kHe@yGi@sGyA}Og@sEm@wFs@aGm@aFm@oEq@uEm@aEi@uDs@iEs@aEw@qEy@mEaAcFcA}EaCcLiA{EeAqEkAsEiAsEkBiHwB_IyCwKiFcRoUqu@m]siAc\\sfA}DyM_E_NsDyMwDuNkBkHoB_IiBaImBuI_BwH}AeIwAeIwAeIkAoHkA_IcAkHcA_Io@kFm@yFk@_Fi@sFg@eFg@sFc@gFc@qFa@iF]sFu@_Mu@sNk@oMk@eNeAuYy@{U_AmYs@cVm@qW]ySQcOIaJGeJCaJC_J@mJ?mJBcJFkJHiJLqJLmGb@kWZyLZwJDiAhAw\\f@_Md@eKrBm\\bBcV~@_Lr@kIv@_J`A_Kz@uIhAqKtA_MvAqL`BoMxAiL~Ec]nF__@`[atBfj@{sDdFq\\lKss@~NsaAhKgr@nS{tAdGaa@`TevApJyo@pMg|@lB_NnB_NvEc^dBgNfBuNjEy^rB_RnB_RrAyM`BgQbCsXx@cKp@_JlByVdBmV`BuX~AuYx@iPjBec@v@_Un@}Sx@eZp@yY\\wTZsTb@ij@Jk_@As_@CuTMqTOgSYgVg@u_@sAyi@w@yWaAsWcAcY_AkTuCmm@kEew@ef@skI_]e|FwZoiFoFu~@a_@unGwBe_@oEqu@iCl@wF`AsBb@_HfB}Cp@uCX_CB}BOkB[kBi@iBw@gBkAwAkAwAwAqA}AmAkBeAiBcAuB_A_Cy@eCc@aBc@oBa@oB]sBaEaZ{ByNCU[uC}@uHGg@a@wDoFvB}FlBoHdByCf@yH~@}MjAgQ|AaYbC{NnAyJdAuEp@eEz@gCr@}@XuCjA}Al@_H~CqHfE_HjEiDxBo^xUsMjIqBlA_GpD{F|CgEbB}DnAoFfAqFj@uDRiR`AuFVgBLmDVkVtA_W~BiNdA}Kn@ao@rDWBgCLY@cAFMmBe@eBu@mAaAm@uAIw@X}@z@m@xA[jBEtBkAD_AFc@BaADO@yFX{wAdI_p@xEwGf@kOjAwBNiKv@aM`A}VpBgHn@q@DeFp@kFr@uFbAgFnAmFxAyE`BwEhBiH~CkE`C}GbEgHbF_IrG}HbHuGbGg_@h]qa@l_@a[fYal@th@iCxBuDbDoA|@oAv@mAj@kAXiDx@KBE@gAZ}Ab@y@TUcBi@yAu@aAaAe@cAG_AXw@r@o@jA_@~AMhBBjBTdB^pAe@~@eArBWh@a@v@KP}E`JuBlD{@bAsAjA_YdTcSbPkC~B_ClCiBrCmArCu@nBa@zAa@jCe@dE}AvMIt@mBjPEZUpBo@`FwC_AwBYoDGiBHuSjBwMhAiHp@cVzB}Fn@oFp@}FbAkFlAiFtAwBn@kDbAuHfCqj@nQsHhCoa@hM{Ad@aCj@cATsGgBeBI{@DgADaAVkAXaB~@mAlAcA|@y@dAuKhPqAfBqAv@gA^_AD}@KaAW{@wAuAyBoCoE{BiD}CyD}CmDaDqC_D}BkEgCqF_CcZ{KsvAwi@aI_DaNoGkLiG_CmAaBo@iCy@iCo@_C]kBOoC?}BPgCTwB\\uK~C_Cv@cGtBgBn@}BhAeDtB{LpIkDlC}GlFmGxEy@l@q|@pn@ww@jj@kDbCgDvBoCxAkD~A_DnAiDbAsEpAeGvAsFz@xC~HjA`DtBvFbHnRxChIzDpK|HpRv\\px@hBjEvBfGjAxFrB`LzGf_@z@fDbA`ClA~B{CvGyC~EmNxTkKfPt@jBp@tBxHd\\tCtM~A`HjCtNlFr\\hJyF"
+          }
+        ],
+        "summary": {
+          "has_time_restrictions": false,
+          "has_toll": false,
+          "has_highway": true,
+          "has_ferry": false,
+          "min_lat": 52.164688,
+          "min_lon": 10.72301,
+          "max_lat": 52.607641,
+          "max_lon": 11.874652,
+          "time": 7501.489,
+          "length": 143.915,
+          "cost": 9246.076
+        },
+        "status_message": "Found route between points",
+        "status": 0,
+        "units": "kilometers",
+        "language": "en-US"
+      }
+    }
+  },
+  "stendal_to_historic_endpoint": {
+    "request": {
+      "locations": [
+        {
+          "lat": 52.605959,
+          "lon": 11.85784
+        },
+        {
+          "lat": 52.429327,
+          "lon": 10.780732
+        }
+      ],
+      "costing": "truck",
+      "units": "kilometers",
+      "shape_format": "geojson",
+      "directions_options": {
+        "units": "kilometers"
+      }
+    },
+    "status": 200,
+    "response": {
+      "trip": {
+        "locations": [
+          {
+            "type": "break",
+            "lat": 52.605959,
+            "lon": 11.85784,
+            "original_index": 0
+          },
+          {
+            "type": "break",
+            "lat": 52.429327,
+            "lon": 10.780732,
+            "original_index": 1
+          }
+        ],
+        "legs": [
+          {
+            "maneuvers": [
+              {
+                "type": 1,
+                "instruction": "Drive north on Hohe Bude.",
+                "verbal_succinct_transition_instruction": "Drive north. Then Turn right onto Hoock.",
+                "verbal_pre_transition_instruction": "Drive north on Hohe Bude. Then Turn right onto Hoock.",
+                "verbal_post_transition_instruction": "Continue for 20 meters.",
+                "street_names": [
+                  "Hohe Bude"
+                ],
+                "bearing_after": 337,
+                "time": 4.929,
+                "length": 0.021,
+                "cost": 7.394,
+                "begin_shape_index": 0,
+                "end_shape_index": 1,
+                "verbal_multi_cue": true,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right onto Hoock.",
+                "verbal_transition_alert_instruction": "Turn right onto Hoock.",
+                "verbal_succinct_transition_instruction": "Turn right.",
+                "verbal_pre_transition_instruction": "Turn right onto Hoock.",
+                "verbal_post_transition_instruction": "Continue for 100 meters.",
+                "street_names": [
+                  "Hoock"
+                ],
+                "bearing_before": 337,
+                "bearing_after": 68,
+                "time": 31.152,
+                "length": 0.129,
+                "cost": 53.937,
+                "begin_shape_index": 1,
+                "end_shape_index": 8,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right onto Breite Stra\u00dfe.",
+                "verbal_transition_alert_instruction": "Turn right onto Breite Stra\u00dfe.",
+                "verbal_succinct_transition_instruction": "Turn right.",
+                "verbal_pre_transition_instruction": "Turn right onto Breite Stra\u00dfe.",
+                "verbal_post_transition_instruction": "Continue for 90 meters.",
+                "street_names": [
+                  "Breite Stra\u00dfe"
+                ],
+                "bearing_before": 56,
+                "bearing_after": 140,
+                "time": 21.417,
+                "length": 0.089,
+                "cost": 38.637,
+                "begin_shape_index": 8,
+                "end_shape_index": 12,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 15,
+                "instruction": "Turn left onto Bruchstra\u00dfe.",
+                "verbal_transition_alert_instruction": "Turn left onto Bruchstra\u00dfe.",
+                "verbal_succinct_transition_instruction": "Turn left.",
+                "verbal_pre_transition_instruction": "Turn left onto Bruchstra\u00dfe.",
+                "verbal_post_transition_instruction": "Continue for 300 meters.",
+                "street_names": [
+                  "Bruchstra\u00dfe"
+                ],
+                "bearing_before": 133,
+                "bearing_after": 50,
+                "time": 72.245,
+                "length": 0.3,
+                "cost": 120.638,
+                "begin_shape_index": 12,
+                "end_shape_index": 28,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right onto Ostwall/L 32.",
+                "verbal_transition_alert_instruction": "Turn right onto Ostwall.",
+                "verbal_succinct_transition_instruction": "Turn right.",
+                "verbal_pre_transition_instruction": "Turn right onto Ostwall, L 32.",
+                "verbal_post_transition_instruction": "Continue for 900 meters.",
+                "street_names": [
+                  "L 32"
+                ],
+                "begin_street_names": [
+                  "Ostwall",
+                  "L 32"
+                ],
+                "bearing_before": 52,
+                "bearing_after": 170,
+                "time": 82.297,
+                "length": 0.948,
+                "cost": 96.547,
+                "begin_shape_index": 28,
+                "end_shape_index": 80,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 15,
+                "instruction": "Turn left onto Im Tangerm\u00fcnder Tor.",
+                "verbal_transition_alert_instruction": "Turn left onto Im Tangerm\u00fcnder Tor.",
+                "verbal_succinct_transition_instruction": "Turn left.",
+                "verbal_pre_transition_instruction": "Turn left onto Im Tangerm\u00fcnder Tor.",
+                "verbal_post_transition_instruction": "Continue for 800 meters.",
+                "street_names": [
+                  "Im Tangerm\u00fcnder Tor"
+                ],
+                "bearing_before": 206,
+                "bearing_after": 142,
+                "time": 64.052,
+                "length": 0.776,
+                "cost": 83.986,
+                "begin_shape_index": 80,
+                "end_shape_index": 140,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 26,
+                "instruction": "Enter the roundabout and take the 1st exit toward Heeren/S\u00fcd-Ost Altmarkpark.",
+                "verbal_transition_alert_instruction": "Enter the roundabout and take the 1st exit toward Heeren.",
+                "verbal_succinct_transition_instruction": "Enter the roundabout and take the 1st exit toward Heeren, S\u00fcd-Ost Altmarkpark.",
+                "verbal_pre_transition_instruction": "Enter the roundabout and take the 1st exit toward Heeren, S\u00fcd-Ost Altmarkpark.",
+                "bearing_before": 134,
+                "bearing_after": 182,
+                "time": 6.47,
+                "length": 0.035,
+                "cost": 11.985,
+                "begin_shape_index": 140,
+                "end_shape_index": 149,
+                "roundabout_exit_count": 1,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 27,
+                "instruction": "Exit the roundabout toward Heeren/S\u00fcd-Ost Altmarkpark.",
+                "verbal_succinct_transition_instruction": "Exit the roundabout toward Heeren, S\u00fcd-Ost Altmarkpark.",
+                "verbal_pre_transition_instruction": "Exit the roundabout toward Heeren, S\u00fcd-Ost Altmarkpark.",
+                "verbal_post_transition_instruction": "Continue for 1 kilometer.",
+                "street_names": [
+                  "Heerener Stra\u00dfe",
+                  "L 32"
+                ],
+                "bearing_before": 123,
+                "bearing_after": 167,
+                "time": 77.196,
+                "length": 1.002,
+                "cost": 89.768,
+                "begin_shape_index": 149,
+                "end_shape_index": 195,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 26,
+                "instruction": "Enter the roundabout and take the 2nd exit onto Heerener Stra\u00dfe/L 32.",
+                "verbal_transition_alert_instruction": "Enter the roundabout and take the 2nd exit onto Heerener Stra\u00dfe.",
+                "verbal_succinct_transition_instruction": "Enter the roundabout and take the 2nd exit.",
+                "verbal_pre_transition_instruction": "Enter the roundabout and take the 2nd exit onto Heerener Stra\u00dfe, L 32.",
+                "bearing_before": 177,
+                "bearing_after": 224,
+                "time": 11.693,
+                "length": 0.04,
+                "cost": 12.66,
+                "begin_shape_index": 195,
+                "end_shape_index": 205,
+                "roundabout_exit_count": 2,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 27,
+                "instruction": "Exit the roundabout onto Heerener Stra\u00dfe/L 32.",
+                "verbal_succinct_transition_instruction": "Exit the roundabout.",
+                "verbal_pre_transition_instruction": "Exit the roundabout onto Heerener Stra\u00dfe, L 32.",
+                "verbal_post_transition_instruction": "Continue for 800 meters.",
+                "street_names": [
+                  "Heerener Stra\u00dfe",
+                  "L 32"
+                ],
+                "bearing_before": 93,
+                "bearing_after": 176,
+                "time": 62.537,
+                "length": 0.796,
+                "cost": 68.851,
+                "begin_shape_index": 205,
+                "end_shape_index": 246,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 18,
+                "instruction": "Turn right to take the B 188/B 188 ramp toward Wittenberge/Magdeburg/Gardelegen/Rathenow.",
+                "verbal_transition_alert_instruction": "Turn right to take the B 188 ramp.",
+                "verbal_pre_transition_instruction": "Turn right to take the B 188, B 188 ramp toward Wittenberge, Magdeburg.",
+                "street_names": [
+                  "B 188",
+                  "B 189"
+                ],
+                "bearing_before": 169,
+                "bearing_after": 200,
+                "time": 32.244,
+                "length": 0.252,
+                "cost": 37.384,
+                "begin_shape_index": 246,
+                "end_shape_index": 277,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "B 188",
+                      "consecutive_count": 1
+                    },
+                    {
+                      "text": "B 188",
+                      "consecutive_count": 1
+                    },
+                    {
+                      "text": "B 189"
+                    },
+                    {
+                      "text": "B 189"
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Wittenberge"
+                    },
+                    {
+                      "text": "Magdeburg"
+                    },
+                    {
+                      "text": "Gardelegen"
+                    },
+                    {
+                      "text": "Rathenow"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right toward Wolfsburg/Gardelegen.",
+                "verbal_transition_alert_instruction": "Turn right toward Wolfsburg.",
+                "verbal_succinct_transition_instruction": "Turn right toward Wolfsburg, Gardelegen.",
+                "verbal_pre_transition_instruction": "Turn right toward Wolfsburg, Gardelegen.",
+                "verbal_post_transition_instruction": "Continue on B 188 for 3 kilometers.",
+                "street_names": [
+                  "B 188"
+                ],
+                "begin_street_names": [
+                  "B 188",
+                  "B 189"
+                ],
+                "bearing_before": 169,
+                "bearing_after": 259,
+                "time": 195.771,
+                "length": 2.851,
+                "cost": 188.287,
+                "begin_shape_index": 277,
+                "end_shape_index": 329,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 8,
+                "instruction": "Continue toward Wolfsburg/Gardelegen.",
+                "verbal_transition_alert_instruction": "Continue toward Wolfsburg.",
+                "verbal_pre_transition_instruction": "Continue toward Wolfsburg, Gardelegen.",
+                "verbal_post_transition_instruction": "Continue for 4 kilometers.",
+                "street_names": [
+                  "B 189"
+                ],
+                "bearing_before": 291,
+                "bearing_after": 292,
+                "time": 263.922,
+                "length": 3.884,
+                "cost": 244.488,
+                "begin_shape_index": 329,
+                "end_shape_index": 507,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 26,
+                "instruction": "Enter the roundabout and take the 2nd exit toward Wolfsburg/Gardelegen/Vinzelberg.",
+                "verbal_transition_alert_instruction": "Enter the roundabout and take the 2nd exit toward Wolfsburg.",
+                "verbal_succinct_transition_instruction": "Enter the roundabout and take the 2nd exit toward Wolfsburg, Gardelegen.",
+                "verbal_pre_transition_instruction": "Enter the roundabout and take the 2nd exit toward Wolfsburg, Gardelegen.",
+                "bearing_before": 249,
+                "bearing_after": 299,
+                "time": 12.257,
+                "length": 0.051,
+                "cost": 8.649,
+                "begin_shape_index": 507,
+                "end_shape_index": 525,
+                "sign": {},
+                "roundabout_exit_count": 2,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 27,
+                "instruction": "Exit the roundabout toward Wolfsburg/Gardelegen/Vinzelberg.",
+                "verbal_succinct_transition_instruction": "Exit the roundabout toward Wolfsburg, Gardelegen.",
+                "verbal_pre_transition_instruction": "Exit the roundabout toward Wolfsburg, Gardelegen.",
+                "verbal_post_transition_instruction": "Continue for 300 meters.",
+                "street_names": [
+                  "B 188"
+                ],
+                "bearing_before": 196,
+                "bearing_after": 248,
+                "time": 17.359,
+                "length": 0.252,
+                "cost": 14.977,
+                "begin_shape_index": 525,
+                "end_shape_index": 527,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 26,
+                "instruction": "Enter the roundabout and take the 1st exit.",
+                "verbal_transition_alert_instruction": "Enter the roundabout and take the 1st exit.",
+                "verbal_succinct_transition_instruction": "Enter the roundabout and take the 1st exit.",
+                "verbal_pre_transition_instruction": "Enter the roundabout and take the 1st exit.",
+                "bearing_before": 248,
+                "bearing_after": 302,
+                "time": 4.725,
+                "length": 0.026,
+                "cost": 4.9,
+                "begin_shape_index": 527,
+                "end_shape_index": 537,
+                "sign": {},
+                "roundabout_exit_count": 1,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 27,
+                "instruction": "Exit the roundabout onto A 14.",
+                "verbal_succinct_transition_instruction": "Exit the roundabout.",
+                "verbal_pre_transition_instruction": "Exit the roundabout onto A 14.",
+                "verbal_post_transition_instruction": "Continue for 35 kilometers.",
+                "street_names": [
+                  "A 14"
+                ],
+                "bearing_before": 286,
+                "bearing_after": 337,
+                "time": 1133.826,
+                "length": 35.322,
+                "cost": 1000.859,
+                "begin_shape_index": 537,
+                "end_shape_index": 844,
+                "highway": true,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "A 14"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 20,
+                "instruction": "Take exit Wolmirstedt onto B 189.",
+                "verbal_transition_alert_instruction": "Take exit Wolmirstedt.",
+                "verbal_pre_transition_instruction": "Take exit Wolmirstedt onto B 189.",
+                "bearing_before": 210,
+                "bearing_after": 221,
+                "time": 48.559,
+                "length": 0.391,
+                "cost": 43.684,
+                "begin_shape_index": 844,
+                "end_shape_index": 889,
+                "sign": {
+                  "exit_number_elements": [
+                    {
+                      "text": "Wolmirstedt"
+                    }
+                  ],
+                  "exit_branch_elements": [
+                    {
+                      "text": "B 189",
+                      "consecutive_count": 1
+                    }
+                  ],
+                  "exit_name_elements": [
+                    {
+                      "text": "Wolmirstedt"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right toward Wolmirstedt/Zielitz/Rog\u00e4tz/Magdeburg.",
+                "verbal_transition_alert_instruction": "Turn right toward Wolmirstedt.",
+                "verbal_succinct_transition_instruction": "Turn right toward Wolmirstedt, Zielitz.",
+                "verbal_pre_transition_instruction": "Turn right toward Wolmirstedt, Zielitz.",
+                "verbal_post_transition_instruction": "Continue for 12 kilometers.",
+                "street_names": [
+                  "B 189"
+                ],
+                "bearing_before": 82,
+                "bearing_after": 165,
+                "time": 603.386,
+                "length": 12.383,
+                "cost": 584.892,
+                "begin_shape_index": 889,
+                "end_shape_index": 1104,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 18,
+                "instruction": "Take the A 2 ramp toward A 14/Hannover/Halle.",
+                "verbal_transition_alert_instruction": "Take the A 2 ramp.",
+                "verbal_pre_transition_instruction": "Take the A 2 ramp toward A 14, Hannover.",
+                "verbal_post_transition_instruction": "Continue for 65 kilometers.",
+                "street_names": [
+                  "A 2",
+                  "E 30"
+                ],
+                "bearing_before": 139,
+                "bearing_after": 147,
+                "time": 2210.763,
+                "length": 65.367,
+                "cost": 2023.722,
+                "begin_shape_index": 1104,
+                "end_shape_index": 1921,
+                "highway": true,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "A 2",
+                      "consecutive_count": 1
+                    },
+                    {
+                      "text": "A 14"
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "A 14"
+                    },
+                    {
+                      "text": "Hannover"
+                    },
+                    {
+                      "text": "Halle"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 20,
+                "instruction": "Take exit 58 onto A 39 toward Flechtorf.",
+                "verbal_transition_alert_instruction": "Take exit 58.",
+                "verbal_pre_transition_instruction": "Take exit 58 onto A 39 toward Flechtorf.",
+                "bearing_before": 260,
+                "bearing_after": 273,
+                "time": 16.138,
+                "length": 0.216,
+                "cost": 14.509,
+                "begin_shape_index": 1921,
+                "end_shape_index": 1927,
+                "sign": {
+                  "exit_number_elements": [
+                    {
+                      "text": "58"
+                    }
+                  ],
+                  "exit_branch_elements": [
+                    {
+                      "text": "A 39",
+                      "consecutive_count": 2
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Flechtorf",
+                      "consecutive_count": 1
+                    },
+                    {
+                      "text": "Kassel Salzgitter"
+                    },
+                    {
+                      "text": "Braunschweig-S\u00fcd"
+                    },
+                    {
+                      "text": "Wolfsburg Autostadt"
+                    }
+                  ],
+                  "exit_name_elements": [
+                    {
+                      "text": "Kreuz Wolfsburg/K\u00f6nigslutter"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 23,
+                "instruction": "Keep right to take A 39 toward Flechtorf.",
+                "verbal_transition_alert_instruction": "Keep right to take A 39.",
+                "verbal_pre_transition_instruction": "Keep right to take A 39 toward Flechtorf.",
+                "verbal_post_transition_instruction": "Continue for 10 kilometers.",
+                "street_names": [
+                  "A 39"
+                ],
+                "bearing_before": 264,
+                "bearing_after": 272,
+                "time": 376.291,
+                "length": 9.559,
+                "cost": 361.439,
+                "begin_shape_index": 1927,
+                "end_shape_index": 2050,
+                "highway": true,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "A 39",
+                      "consecutive_count": 2
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Flechtorf",
+                      "consecutive_count": 1
+                    },
+                    {
+                      "text": "Wolfsburg"
+                    },
+                    {
+                      "text": "Autostadt"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 24,
+                "instruction": "Keep left to stay on A 39.",
+                "verbal_transition_alert_instruction": "Keep left to stay on A 39.",
+                "verbal_pre_transition_instruction": "Keep left to stay on A 39.",
+                "verbal_post_transition_instruction": "Continue for 4 kilometers.",
+                "street_names": [
+                  "A 39"
+                ],
+                "bearing_before": 13,
+                "bearing_after": 10,
+                "time": 146.384,
+                "length": 3.76,
+                "cost": 154.032,
+                "begin_shape_index": 2050,
+                "end_shape_index": 2108,
+                "highway": true,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 20,
+                "instruction": "Take exit 23 toward Fallersleben.",
+                "verbal_transition_alert_instruction": "Take exit 23.",
+                "verbal_pre_transition_instruction": "Take exit 23 toward Fallersleben.",
+                "bearing_before": 7,
+                "bearing_after": 28,
+                "time": 34.543,
+                "length": 0.294,
+                "cost": 38.778,
+                "begin_shape_index": 2108,
+                "end_shape_index": 2130,
+                "sign": {
+                  "exit_number_elements": [
+                    {
+                      "text": "23"
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Fallersleben"
+                    }
+                  ],
+                  "exit_name_elements": [
+                    {
+                      "text": "Wolfsburg-West"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 9,
+                "instruction": "Bear right onto L 321.",
+                "verbal_transition_alert_instruction": "Bear right onto L 321.",
+                "verbal_succinct_transition_instruction": "Bear right.",
+                "verbal_pre_transition_instruction": "Bear right onto L 321.",
+                "verbal_post_transition_instruction": "Continue for 500 meters.",
+                "street_names": [
+                  "L 321"
+                ],
+                "bearing_before": 254,
+                "bearing_after": 266,
+                "time": 62.535,
+                "length": 0.521,
+                "cost": 81.128,
+                "begin_shape_index": 2130,
+                "end_shape_index": 2142,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 9,
+                "instruction": "Bear right toward Gifhorn/Meine/Wolfsburg-S\u00fclfeld/Westrampe.",
+                "verbal_transition_alert_instruction": "Bear right toward Gifhorn.",
+                "verbal_succinct_transition_instruction": "Bear right toward Gifhorn, Meine.",
+                "verbal_pre_transition_instruction": "Bear right toward Gifhorn, Meine.",
+                "verbal_post_transition_instruction": "Continue for 400 meters.",
+                "street_names": [
+                  "Hafenstra\u00dfe"
+                ],
+                "bearing_before": 298,
+                "bearing_after": 309,
+                "time": 49.881,
+                "length": 0.429,
+                "cost": 64.409,
+                "begin_shape_index": 2142,
+                "end_shape_index": 2170,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 15,
+                "instruction": "Turn left toward Sandkamp.",
+                "verbal_transition_alert_instruction": "Turn left toward Sandkamp.",
+                "verbal_succinct_transition_instruction": "Turn left toward Sandkamp.",
+                "verbal_pre_transition_instruction": "Turn left toward Sandkamp.",
+                "verbal_post_transition_instruction": "Continue for 300 meters.",
+                "street_names": [
+                  "Tappenbecker Landstra\u00dfe",
+                  "K 115"
+                ],
+                "bearing_before": 265,
+                "bearing_after": 192,
+                "time": 46.918,
+                "length": 0.326,
+                "cost": 74.431,
+                "begin_shape_index": 2170,
+                "end_shape_index": 2196,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 15,
+                "instruction": "Turn left.",
+                "verbal_transition_alert_instruction": "Turn left.",
+                "verbal_succinct_transition_instruction": "Turn left. Then Turn right.",
+                "verbal_pre_transition_instruction": "Turn left. Then Turn right.",
+                "verbal_post_transition_instruction": "Continue for 20 meters.",
+                "bearing_before": 16,
+                "bearing_after": 285,
+                "time": 16.437,
+                "length": 0.021,
+                "cost": 50.74,
+                "begin_shape_index": 2196,
+                "end_shape_index": 2199,
+                "verbal_multi_cue": true,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right.",
+                "verbal_transition_alert_instruction": "Turn right.",
+                "verbal_succinct_transition_instruction": "Turn right.",
+                "verbal_pre_transition_instruction": "Turn right.",
+                "verbal_post_transition_instruction": "Continue for 70 meters.",
+                "bearing_before": 298,
+                "bearing_after": 9,
+                "time": 36.692,
+                "length": 0.07,
+                "cost": 55.799,
+                "begin_shape_index": 2199,
+                "end_shape_index": 2204,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right.",
+                "verbal_transition_alert_instruction": "Turn right.",
+                "verbal_succinct_transition_instruction": "Turn right.",
+                "verbal_pre_transition_instruction": "Turn right.",
+                "verbal_post_transition_instruction": "Continue for 3 kilometers.",
+                "bearing_before": 3,
+                "bearing_after": 84,
+                "time": 1740.652,
+                "length": 3.381,
+                "cost": 3602.582,
+                "begin_shape_index": 2204,
+                "end_shape_index": 2257,
+                "rough": true,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 4,
+                "instruction": "You have arrived at your destination.",
+                "verbal_transition_alert_instruction": "You will arrive at your destination.",
+                "verbal_pre_transition_instruction": "You have arrived at your destination.",
+                "bearing_before": 81,
+                "time": 0.0,
+                "length": 0.0,
+                "cost": 0.0,
+                "begin_shape_index": 2257,
+                "end_shape_index": 2257,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              }
+            ],
+            "summary": {
+              "has_time_restrictions": false,
+              "has_toll": false,
+              "has_highway": true,
+              "has_ferry": false,
+              "min_lat": 52.16484,
+              "min_lon": 10.723175,
+              "max_lat": 52.607641,
+              "max_lon": 11.874537,
+              "time": 7483.286,
+              "length": 143.496,
+              "cost": 9234.103
+            },
+            "shape": "m_yicBazvrUiJxFmFs\\kCuN_BaHuCuMyHe\\q@uBu@kBjKgPlNyTxC_FzCwGmA_CcAaC{@gD{Gg_@sBaLkAyFwBgGiBkEw\\qx@}HqR{DqKyCiIcHoRuBwFkAaDyC_IrF{@dGwArEqAhDcA~CoAjD_BnCyAfDwBjDcCvw@kj@p|@qn@x@m@lGyE|GmFjDmCzLqIdDuB|BiAfBo@bGuB~Bw@tK_DvB]fCU|BQnC?jBN~B\\hCn@hCx@`Bn@~BlAjLhG`NnG`I~CrvAvi@bZzKpF~BjEfC~C|B`DpC|ClD|CxDzBhDnCnEtAxBz@vAlAzAv@x@l@b@h@Lf@Fb@AbAS|@_@v@{@tAaBhJeO`AoAbAeAxAy@`Bk@`@MrA_@~KuBbAU`Ck@zAe@na@iMrHiCpj@oQtHgCjDcAvBo@hFuAjFmA|FcAnFq@|Fo@bV{BhHq@vMiAtSkBhBInDFvBXvC~@n@aFTqBD[lBkPHu@|AwMd@eE`@kC`@{At@oBlAsChBsC~BmCjC_CbScP~XeTrAkAz@cAtBmD|EaJJQ`@w@Vi@dAsBd@_Ax@jA~@h@`AHbASz@s@n@mA`@aBLkBCuBx@U|Ac@fA[DAJChDy@jAYlAk@nAw@nA}@tDcDhCyB`l@uh@`[gYpa@m_@f_@i]tGcG|HcH~HsGfHcF|GcEjEaChH_DvEiBxEaBlFyAfFoAtFcAjFs@dFq@p@EfHo@|VqB`MaAhKw@vBOjOkAvGg@~o@yEzwAeIxFYNA`AEb@C~@GjAENrBb@bBt@lA`Al@t@NvA_@|@{@l@yA\\kBByBbAGXAfCMVC`o@sD|Ko@hNeA~V_CjVuAlDWfBMtFWhRaAtDSpFk@nFgA|DoAfEcBzF}C~FqDpBmArMkIn^yUhDyB~GkEpHgE~G_D|Am@tCkA|@YfCs@dE{@tEq@xJeAzNoA`YcCfQ}A|MkAxH_AxCg@nHeB`BrCxA?vAFfBdAxFxFzBxN`E`Z\\rB`@nBb@nBb@`Bx@dC~@~BbAtBdAhBlAjBpA|AvAvAvAjAfBjAhBv@jBh@jBZ|BN~BCtCY|Cq@~GgBrBc@vFaAhCm@nEpu@vBd_@`_@tnGnFt~@vZniF~\\d|Fdf@rkIjEdw@tClm@~@jTbAbY`ArWv@xWrAxi@f@t_@XfVNfSLpTBtT@r_@Kj_@c@hj@[rT]vTq@xYy@dZo@|Sw@~TkBdc@y@hP_BtYaBtXeBlVmBxVq@~Iy@bKcCrXaBfQsAxMoB~QsB~QkEx^gBtNeBfNwEb^oB~MmB~MqMf|@qJxo@aTdvAeG`a@oSztAiKfr@_OraAmKrs@eFp\\gj@zsDa[`tBoF~^_Fb]yAhLaBnMwApLuA~LiApK{@tIaA~Jw@~Is@jI_A~KcBbVsBl\\e@dKg@~LiAv\\EhA[vJ[xLc@jWMlGMpJIhJGjJCbJ?lJAlJB~IB`JFdJH`JPbO\\xSl@pWr@bV~@lYx@zUdAtYj@dNj@nMt@rNt@~L\\rF`@hFb@pFb@fFf@rFf@dFh@rFj@~El@xFn@jFbA~HbAjHjA~HjAnHvAdIvAdI|AdI~AvHlBtIhB`InB~HjBjHvDtNrDxM~D~M|DxMb\\rfAl]riAnUpu@hFbRxCvKvB~HjBhHhArEjArEdApEhAzE`CbLbA|E`AbFx@lEv@pEr@`Er@hEh@tDl@`Ep@tEl@nEl@`Fr@`Gl@vFf@rExA|Oh@rGd@xGf@jHh@`J\\|FZvGh@lLh@tM~@xZtB`w@bAt`@d@vNj@`Pp@zOr@~Nx@bO|@`Nx@`Kx@rJbA~JdAnJjAvJlA~IlAhIvA~IhB|KjB~JpBxJxB|JxBhJxBtIrBrH`ClI|AjF|A~ExDpL~JlYpIhUfDvIlGjPzSnj@pAnDtJbW|CtIdC`HfBbFfBjFvBfH`AlD~@rDjArFbAhFdA|FnBpLlA|HxG|b@rHtf@pBvMfAdHx\\jyBbb@foCbGnZ~DxO`HzSzCzHzIvQjKdQp]xd@`GdJnHdOxIpUnCzI|EzQtD|QvCnQdBxL]Xi@n@a@x@]bAShAMnACnA@bAD`ATxA\\nA^z@d@p@n@h@p@Xr@J|@Ex@YhUvyA|]~{Bi@^g@j@a@t@[|@UbAMfAGjA?hADhAJdA_ThMgM`GoK`CmHg@eGiCyDmE_GqKoCwSW_T|BsTvGoOhLkJbLkF`Vi@`JQ`HOlCGzkBkAdsBfBbjB`G~iBfLfpAdLnnAbNjnArQp{AnWjaAzRbcBz^pcBpd@doAt`@zoClcAdyBvbA`oApl@rjAvm@jlArr@fkAdu@r~@vo@pmA`}@rmCvuB`S`RbhBnaBpfBvgBvjBzsBloBbaCzkBnfCt}BlkDjjBh|Ch_Df|FfjA~qBzxAx_CdJvNpt@`jAvjAbdBxLxPl]lf@pZpb@lnAvaBfkCpdDdMbOzIdKdkAzqAjmBxqBx}A|aBjjBvxBrr@l|@fItK`b@xj@fh@jt@bGrI~MhSvoAvmBdmAzrBbj@f`Ark@bhAdi@bcAxx@~bBzHrPlfAjbCvgAzmC`EjKleAzuCfeAn_Dv|@~wCbIrYvHvX|j@rrBj`@xtApk@jlBxr@hxBdo@liBr}@l`Cxy@hsBlaArzBrv@z`BddAxrB`aAdgBliAboBj]ti@b\\bh@tb@tn@j_ArsAfiAv{Avy@rbAxs@jz@hvBp~B~lAniAbr@fo@~oA|eAr~BphB|~BtaBz|BxbBbzBz_BrtBd{AzfC`jBbLfIrqBfyA`q@bf@jsAbaAd}B`bBv`ExvCdfA`w@fvBt|AhQhLrZrTnv@ze@dt@z_@roApj@~y@|XvnA`[bz@bOtz@jL`lA|Ht_@x@jm@o@do@o@taBmIllBiRnhAuH`lAgFfeAqBbm@c@h{An@lz@nBz|@nD`k@jDf~@|Gbw@jJveAbOhw@zKl^~FhyA|X~cBpc@zhBjk@huBvx@~`Abb@xbA|e@nyAnx@vC`Bvp@~a@pt@td@pu@jh@dr@hh@d{@|o@po@fj@lr@bo@zRpQhx@`w@tvBhvB|x@xs@d|@bu@f_Ars@~jA|z@rcAfp@vdAtn@bsBxfA|w@~]b`Bnp@d_Bhk@tu@fUfMxDd]fK|kBjc@fz@`Qj|@hOhrAlU`rAtYzwAzc@|i@vR|{Azs@n`A|h@ri@n^vnB`sAxt@rg@zt@hf@t[nSz\\dSx\\pQ|[tP~[zNt]|Nb_@nNrJnD|]pL|MpEz^|J``@nJhbAhSdoApTfpEbw@jhGheApr@`Ltq@`K~UvChV~Cho@vHno@|F~G^fNz@jz@|Dlj@x@fk@Edv@}Ahi@qBfi@iErd@wEbc@{GrbAyQvt@sQfm@_Rru@eXbh@iTp\\_Pnl@uZze@mXx}@qm@hk@qb@`}@uv@`YsVvn@ip@`RsSnZ}]|NuOxHqJrxAunBd~AwzBxh@at@pd@yl@z[y`@z]ma@`Z}[~WgXza@ea@vb@c`@pYiVhZ{UhYgTnZcTh^aVpe@mY|Z}Pxc@mUf_@kQ|^wOdf@cR`a@sN`f@}Nle@gM`f@aLf_@iH~c@mHdTyCpSiCxZiD`X_Cll@qDd]sA`Te@v\\e@v\\Gxa@Vjt@nBpt@fEtu@|FhrFhi@jfCtV|Ef@l~@`Jj~@bJbh@fFfm@~F~_A`L|RbC|_@pGzi@hKri@zMvN~DxZjJdUtH`[rLte@vRhv@n_@|IvEz^~S|^nU|i@~_@hMpJxk@re@tv@|s@lLxQpCfFrBnElAnDj@jCb@jCd@dEZ~DFrDAdECvCOnC]zDw@xEeAtEeA`DuAlDgFhLuBtCm@l@eAhAaC`BqBfAuCpAyCr@cCf@mCBwC?}CY_Dq@cC}@oCwAsC}B{CkCqBqCiBqC{AwC{AmDqAyD}@mDcBqHk@gO_@eKMqDS_Fv`@oMr\\mKhx@iW`]}Kx`@eM~CcAlRmGh]yKzb@iNfH}Bv^iLz_A_[pS}H~RoG|VoHpQeF~e@oOxc@sNpr@oTjH_CtMgEdZuJdZqJ`DcAt`A}Zbq@eTx]iKdEqA`e@sNlIiCnE{A~DuAx@Y|KqDpTyGhH{BlUaJ|d@aOdw@{VnpAqa@dWaI`RoFhNsDjPoDrJgB`I{AvJmA~JcAxIk@nJc@|VOvM^|Lp@fNrAdL|AjOzClOvDxMhExNrF|JnEfKdFlOxI|SbOxFtHnIzHvKxKjMxNxRrVbJfMlHdLzJpPtHhNpGbMxGfObGxM~F`PzJdXhQ~o@~EnSpErRnC~JxBlLfEzVnBpMrFzc@jChUtD~`@jKpmAxDra@lCbV~CrWpAjO|B`PtCzQfD~RnDnRfEnSbEjRjEfRtEtQtJf]hIxWzHnUdInTbIhShIbRvJbThH|NlHhNrRf\\`RhYlVh]ld@nn@xh@ft@vtAflB|Wx^`{@nkArRfXrp@`~@jNjRvOlRzSvUjOtObJrInRvO|NpK~N~JhJrFfRfKdPrHlGpClHvCtRvGzRpF`Z|Gv}@`Q~sB``@v]rG~UpEfZ~Fpn@dLpq@rMzd@zIld@rHtUnBzMx@zN\\bOGjUy@~Fc@zJ}@rNmBvMaCfnBcb@nnBwa@|oDmv@rsAsY~}@wR|q@gOtRiEdXwFvNcD~v@mPp}@sRbQwD~wGkwAhT{DtRiCjMsAtPoAjPm@~ROvPI~rAWbpB]~g@GruCm@x{Du@rzAU|zA_@rv@UpZ?lLGhtAWzoAUtjB]lsBYjeBa@dnAYrd@[t[mAfa@eDfU_DvNgCdHeBtH}ArPiE~QwFnRaHzKqEdO{G~QeJ|]qSdOmKhVaRl]{YlOkOfPiQpP{RjPaTlU}[dOiUdUu^~FiJpvAa|BfU_WlBsBlBgBpB_B|AgAbBcA~Ay@fBs@`Cm@hCa@pBUpBSfCItBBtBPtCb@hCb@jBb@xCbAvClAj|Ahp@~DrBfEtCdCxBfGxGvCnEpCfFlCtGbCjHzAtGdHbZpVb{AxB`NpRfaApHv]fJlRnv@nsErg@dxCdFrZnu@zlE`}AdbJ~w@jvEz|@niFjg@twC`mBb`LnuC~xP`pBxjLnl@jlDrMvy@pIbl@nFx`@bLb`A|Gdq@vGrt@dKdoArHp_A`q@lqIhFtp@~h@t{GnEjj@pExk@hB|TtDpd@lIpfArH|_A|Qd_CxHdaApExk@vB|WrDrd@FpBdWnaDnUrvChLpzAjGhx@bBzVbDlf@bDtn@dBra@vAx`@|@t[r@j\\h@vU\\hYn@fo@Jj_@F`XEhb@Yl_@Q|Ug@f`@Y|TaBpp@iAb]{Ala@uCfm@gBj]oCz`@wCta@qBhXiEre@uEvd@mFff@iEh]uEp]sM`|@yGta@eFnYePdy@qQvy@}GxXiIf]wNlj@eI|YqIzZaThu@mq@`zB}[beAe[dcAw_@fnAcQpj@}]tjAiWjy@wN`e@cYz}@uNpe@q^lkAkZjaAy\\xfAuUvu@eE|MiGbSkHxU}Rjo@eJbZuLv`@{FhRuG~T_F|P}HxYeJ|^uGzXwGhZgI``@wI~c@qIvc@aKfi@iKnj@_TphAePl{@gTniAaTthAcTdiA_T|hAaTzhAkT`jAoI`d@mItc@kOxw@yPd~@mXjxAwOpy@eTviAwUvnAoLpn@uD~R_Pd{@uGr\\qBdLmPx{@iZr~AmEzUgT|iAcKxi@cMhp@eO`x@{SnhAeXnwAuGr]{Mns@eGr[eBhJuMtr@{Mzr@uNpv@oKzl@eFrZ_Gl_@sIpl@{E~]}ClVoCrV{Dj]eCjWyCr\\aClXqC`_@oCb`@kDtl@wA~WmAfW}Bvn@eBbl@y@nc@o@r_@a@b\\OjRMfXEdYFjp@T|h@p@`w@t@fy@VtXnAdmA~@x`A~@n~@`AraAdBjhBTpTJtJx@lw@dAhgAjA`jAdAr`Az@d`AbAx`A~@f`A`An`An@nj@`@va@h@ln@|@f{@fB|fB`DzcD~An~AtAbsAjAziAfBngBzAz{AdDzdDrAbrAtApvAp@zbAf@ru@NjXFtLLtj@L~q@JvcA@vJR`aCHhaAHt~@R~sBR`aBRflCTpxBH`aAL|_A^jcE`@ddFHbk@BbTLvqANj_AHpqAH`bAH`eA?r[@p\\Abh@Ozi@E|LKve@u@r_Aa@z]s@rf@i@vYkApi@aAvc@oBrq@wBhp@g@dOgDx|@sBdi@wBzh@cIhpBiCho@wAr_@aAfVoB|f@yD``AkFpqAcFloAcFvnAyDtaAcFpoAeFrpA{HzmB_GjyA_Dvu@yDbcA{Dp~@_FtoAoGf_B{D~`AaFhoA}D|`AeG~{AuIpvBsDh~@gEfeAyE`nAyFzvAwH~lBkF|rAmDb|@uHlkBuF|tA{Crv@_E|cAkEvgAaFfiA}Bzh@mBda@u@tN{PzoCq^b_Gw@nKwH~fAsNdtBmItmA}M|nB_N|mBqOt{Bs^`kFgQlhCkJdtA{PleCyC`b@mK||AwRfrCeDxf@uGj~@qA~PuDzj@oPzbCoLtdBy@lLwK``BkBfWeAvNuCzb@cJnrAwI`pAwGl_AmIxlAwEtq@yGfaAcIlkAoB~YeA`OmCt_@q@pKwRxrCoB`YkHfdAcFru@ef@hgHeB|V{HxkAsOfmC_Dzm@uAtWMxCaGpuAsCzv@_C`t@iB`r@sD|wAeD`}AsC~bBq@b`@kDlmB{CvbBuIrsEqDf|BMxGgInpEem@h_]g@dXqGpnDyEdrCiD~_BeBrp@eC`_AaBjh@gBlg@{An`@sC`o@kBp_@qAxV{AhW}Bj_@cC|^qC~^uCz^aD~^kDn^mD~]wDr^}Ipv@iJrt@kGbe@qGfe@iTvzAg[pvBeU~}Am_@zhCyTv{AsLdy@gUv}AwLr|@uE`]sEn^kHlm@qI~v@_AxIaElb@yEhf@_D|^iH`~@mGb`AyB|^qBn_@mAtVmAnW_Bt_@uAl_@uBpo@cA~_@_B|u@s@x`@SxMiAtkAY|o@Cfy@Jhg@Z`r@`@ra@dAry@h@lZr@lZz@r^XfLzCdaAhGj`BfDlx@bBda@|LrwCvMv`DjHljBhBpg@bAj\\fAb`@z@n`@j@h_@^`]RhZFbW?bd@U~n@]xZa@|[y@xd@y@l^iEp`BuGdaCoD~nAYlJqDfsAyKhwD{CljAcExyAUbHwB~s@}A|g@kE|gAiDlp@oGrdAuGtx@kIb~@kFnf@kFfe@iLb~@uOfhAqQrkA{XfdB_ZxdBk~@blF{L|q@iHz`@{Hn`@mLnj@aIf^_Mlh@_Nri@gNxh@yS|x@yWjeAyDzP}Kvf@{J`e@eEjTqI|d@qHlc@uFt]uIlm@sE~]_E`\\mEr_@wD`_@gDf^cG`s@yFzz@uCxf@yAnWqAxWiAhWyDh_AkC~y@yA`f@iArc@mEnjBcNnfGmF~`Ck@nWmKdyEaDz_AgEr_AmGtaAoC`_@yCf^gGfq@mHhq@_Ibp@oV`bBgFvZsK~l@kFxW{BzKiCnMgIf^uF~UiGnVyNbj@sh@|kBuo@d}Bwb@tyAuQhq@oFdSo[~gAkt@lkC{gBdhGioBlkGmb@vnAcH~SubAlvCskAdgD{k@fdBol@zdBsLf\\a\\zz@mB`FkJhUcN~[yMn[mS`f@aU|c@iFzJye@p|@ga@|n@wc@dn@kf@fl@uJxKmdAhmAev@rdA}Vl^ic@xs@iQ|[iRx^yd@z_AuSxf@mKtWmh@buA_Wfp@aP|b@eO`e@_Sfh@mMl[kPf_@ye@leAs@rAql@fgAwSb]ij@~y@qc@jl@aVlYcXnZy^~^yIxI_tCrmCgDbDosAroAqv@~r@yP|Oyo@fm@qo@rn@se@te@yPzQux@l{@yu@f{@au@z|@sQnTal@~t@}x@bgAya@|k@y`@|m@w\\fk@s[jm@eUbf@qP|^kT|g@aNh]_Z~y@kR|l@kQbn@yU~{@sm@|jC_g@huBmcAhrEuOrv@cPb}@oM`y@oLpy@yGbi@mGhi@eFxe@uE`f@}Ddf@yIvkAaDrg@cMh~BaM||BcFlu@}Bf]_BhScHdv@{H`u@kFvd@uFhd@iNdcAaKzn@kI~d@yOdx@iJ~c@wMpk@{Rnx@kQro@uSnr@e]veAkQdi@}@pCqmAzqDauAhaE_j@j`B_o@pkBaV`t@a\\xbAsOlg@wZhfAgNlh@aS`y@oQfx@mLhl@mL~l@yNlz@uMnz@_H`f@yGdf@uK~|@oIfx@cIx|@iF~m@qHleAeEft@_Fl`A{M`mCcMjjCkKhwB}QhvDiKbtBuDxn@cE`p@sEvo@}E|o@oF|m@aGxo@kLjeAgHtl@sNhhAoKbv@aIxg@_RdgAkTljAiN`q@mK~f@}Kxf@oQvs@gNvh@aLz`@q\\tiAe]|hAwy@jiCsb@lsAifAfhDsPtg@efFtgPwSdr@_mB~fGiGfRqPtj@k{Ab{Eiu@xaCuUhw@yQnq@qQby@yuAttGy|BfrKw}@~fEoa@dlBg]b`B_uAlsGkMtm@uIta@}Nzp@kKrg@}VlkAsPvy@mPd|@_Or{@cHbd@eIjh@}Lb|@yHfm@oHhn@{G|m@aFxg@}Edj@eHfy@oGpx@gF|w@qB~[iCbb@cFlcAgGnoAsFptAqFfvAsGbgBiB~f@aRpiF}IfbCcAvXm@pP{Aja@sDfgAaK|nCmI`qBoJbuBoIbvBaFtyA_D|{@eHtaCi@vT{Ahj@yCf_AqLzdDqMzvDsClbAoBvh@sDzaBiApp@_Ahn@]zq@Udn@Gns@Tr~@\\vb@t@xn@z@zp@nAdn@pAji@vBrr@hE~iAhJzlB`_@deHfJffBzN|iCnJpzAn\\~}EtSxuDbI~{AfQjlDxo@tbMdd@lyInSh}Dm@xs@Cf^Tlb@p@n_@f@xSt@rWQ|Xe@vNu@dN_A`KmAjIeBtIiCjJmClI{C`H{JrR{IjPcFjImEvF{FvFcEdDqEdC{EfBkDbAiJlA_KBqKeAkLgCucAm\\}f@aO_e@sJe_Bqf@}E}@wD]}J_@afBwe@wiAuY_{@mSq_Bq\\okA_TelA_Rcx@qKew@eJokAaLa}@cGeiB_IejAqBslAMo_AtAedAtCarBzMkxA`PydBdWchBf]obApT_qAj\\mfA|YaoAl^eNzDsqAjc@o~@d[qgBrm@yp@bVcsBlt@ogBtl@wb@|Ng~Axh@cxA|b@cY`I}kAl[smAhYcmArUoz@fNun@`Iy^tE{o@~Foh@fD}ZfBow@nCqqAn@q_@o@_Uk@qh@_Bgf@eCc|@gH{s@}Jqk@qIw_@iHaa@cI{`@cJ}a@gKya@oL{`@kMu`@sNs{@q]mb@yRq]{P_VuLsUuMce@}Wce@cZyWaQm\\yUs^iXe^kY}g@mc@wYyWkYuYgc@cg@qVa\\wYme@m^al@eFkHcJqNaN{TqPeXaU}]cSaZ{MmQ{QgUiRsS_v@cp@eSqM_LqG_MiGsLcFcJ_EmU{HwS{Fu]mGqKuAqOuAoOk@cT[_TTqOZkOlAgP`BaPhC{RdEyRvFq_@lMi_@hPk\\jPm\\lR{lCnbB_KhGgJtFwpDzzB{\\nS_]vOgVhIiVfFsUlCmUz@qMBuMc@aKu@{JqAeK_BsJ}BuMsDkM{EsTuJiTiLqd@uW_uAuw@kzAkz@}s@q\\qYsKqYkJyc@aK}PeDeTiDq[eEcVsCowA{Oqj@yFchB{RmfAqL{l@}Gup@kH{gB{RaViCyZuEiWgCkHy@oC}BcGs@iD{@qCyAaDkD}C_GeBeGaAkH[oH?cKpK{|@pBoIbDaGpCU`DQfCjAbCxC`BvD~@hF|@zGfApKp@vHdB`iAjCt{AlCx|ApAjt@zA~v@l@d[L|K?tL]nQgA|Nk@hGyAvGuCzHqCxGcCjDiFzGyCx@_BHgDBsLEsOBoIHqCT}C^}Bh@kC`AsE~CmC~CkDfG{CpHuA~GaAbGy@pI]hJCzKVjQh@vPfAz]tAhg@b@xTzDzBtBMxAsAtB}FzCyHp@gFV}GOeHk@mIcAmI[oEm@wG_@wGWsFGyI@yMbAo|@EqGUuDu@kIcAwFsA_FqB{EmByCgEaD}IaDa@nEi@zEmAnCqBPyAq@wI}EcK_DwGW]aMYkGGma@Wel@DyQnAgNH_Ik@_eCeA}gDDqHZkGf@qChAsCpDsFrAoDfAaGp@sIz@iOt@qLnAsHhBeLt@gIPqJoAaXiFk}@c@uLm@uKy@}H_BgOu@{_@uD_u@iEuSoBshAsIaaCgOsyCuc@}uIiNonCyVo{E{KywBoJapBcBuPm@qNa@{MsOe}CgIgaBuFcfA_FseAWiSu@uTu@uLgAoOqOa|DiT}cF"
+          }
+        ],
+        "summary": {
+          "has_time_restrictions": false,
+          "has_toll": false,
+          "has_highway": true,
+          "has_ferry": false,
+          "min_lat": 52.16484,
+          "min_lon": 10.723175,
+          "max_lat": 52.607641,
+          "max_lon": 11.874537,
+          "time": 7483.286,
+          "length": 143.496,
+          "cost": 9234.103
+        },
+        "status_message": "Found route between points",
+        "status": 0,
+        "units": "kilometers",
+        "language": "en-US"
+      }
+    }
+  },
+  "stendal_to_anchor": {
+    "request": {
+      "locations": [
+        {
+          "lat": 52.605959,
+          "lon": 11.85784
+        },
+        {
+          "lat": 52.433471,
+          "lon": 10.776845
+        }
+      ],
+      "costing": "truck",
+      "units": "kilometers",
+      "shape_format": "geojson",
+      "directions_options": {
+        "units": "kilometers"
+      }
+    },
+    "status": 200,
+    "response": {
+      "trip": {
+        "locations": [
+          {
+            "type": "break",
+            "lat": 52.605959,
+            "lon": 11.85784,
+            "original_index": 0
+          },
+          {
+            "type": "break",
+            "lat": 52.433471,
+            "lon": 10.776845,
+            "side_of_street": "left",
+            "original_index": 1
+          }
+        ],
+        "legs": [
+          {
+            "maneuvers": [
+              {
+                "type": 1,
+                "instruction": "Drive north on Hohe Bude.",
+                "verbal_succinct_transition_instruction": "Drive north. Then Turn right onto Hoock.",
+                "verbal_pre_transition_instruction": "Drive north on Hohe Bude. Then Turn right onto Hoock.",
+                "verbal_post_transition_instruction": "Continue for 20 meters.",
+                "street_names": [
+                  "Hohe Bude"
+                ],
+                "bearing_after": 337,
+                "time": 4.929,
+                "length": 0.021,
+                "cost": 7.394,
+                "begin_shape_index": 0,
+                "end_shape_index": 1,
+                "verbal_multi_cue": true,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right onto Hoock.",
+                "verbal_transition_alert_instruction": "Turn right onto Hoock.",
+                "verbal_succinct_transition_instruction": "Turn right.",
+                "verbal_pre_transition_instruction": "Turn right onto Hoock.",
+                "verbal_post_transition_instruction": "Continue for 100 meters.",
+                "street_names": [
+                  "Hoock"
+                ],
+                "bearing_before": 337,
+                "bearing_after": 68,
+                "time": 31.152,
+                "length": 0.129,
+                "cost": 53.937,
+                "begin_shape_index": 1,
+                "end_shape_index": 8,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right onto Breite Stra\u00dfe.",
+                "verbal_transition_alert_instruction": "Turn right onto Breite Stra\u00dfe.",
+                "verbal_succinct_transition_instruction": "Turn right.",
+                "verbal_pre_transition_instruction": "Turn right onto Breite Stra\u00dfe.",
+                "verbal_post_transition_instruction": "Continue for 90 meters.",
+                "street_names": [
+                  "Breite Stra\u00dfe"
+                ],
+                "bearing_before": 56,
+                "bearing_after": 140,
+                "time": 21.417,
+                "length": 0.089,
+                "cost": 38.637,
+                "begin_shape_index": 8,
+                "end_shape_index": 12,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 15,
+                "instruction": "Turn left onto Bruchstra\u00dfe.",
+                "verbal_transition_alert_instruction": "Turn left onto Bruchstra\u00dfe.",
+                "verbal_succinct_transition_instruction": "Turn left.",
+                "verbal_pre_transition_instruction": "Turn left onto Bruchstra\u00dfe.",
+                "verbal_post_transition_instruction": "Continue for 300 meters.",
+                "street_names": [
+                  "Bruchstra\u00dfe"
+                ],
+                "bearing_before": 133,
+                "bearing_after": 50,
+                "time": 72.245,
+                "length": 0.3,
+                "cost": 120.638,
+                "begin_shape_index": 12,
+                "end_shape_index": 28,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right onto Ostwall/L 32.",
+                "verbal_transition_alert_instruction": "Turn right onto Ostwall.",
+                "verbal_succinct_transition_instruction": "Turn right.",
+                "verbal_pre_transition_instruction": "Turn right onto Ostwall, L 32.",
+                "verbal_post_transition_instruction": "Continue for 900 meters.",
+                "street_names": [
+                  "L 32"
+                ],
+                "begin_street_names": [
+                  "Ostwall",
+                  "L 32"
+                ],
+                "bearing_before": 52,
+                "bearing_after": 170,
+                "time": 82.297,
+                "length": 0.948,
+                "cost": 96.547,
+                "begin_shape_index": 28,
+                "end_shape_index": 80,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 15,
+                "instruction": "Turn left onto Im Tangerm\u00fcnder Tor.",
+                "verbal_transition_alert_instruction": "Turn left onto Im Tangerm\u00fcnder Tor.",
+                "verbal_succinct_transition_instruction": "Turn left.",
+                "verbal_pre_transition_instruction": "Turn left onto Im Tangerm\u00fcnder Tor.",
+                "verbal_post_transition_instruction": "Continue for 800 meters.",
+                "street_names": [
+                  "Im Tangerm\u00fcnder Tor"
+                ],
+                "bearing_before": 206,
+                "bearing_after": 142,
+                "time": 64.052,
+                "length": 0.776,
+                "cost": 83.986,
+                "begin_shape_index": 80,
+                "end_shape_index": 140,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 26,
+                "instruction": "Enter the roundabout and take the 1st exit toward Heeren/S\u00fcd-Ost Altmarkpark.",
+                "verbal_transition_alert_instruction": "Enter the roundabout and take the 1st exit toward Heeren.",
+                "verbal_succinct_transition_instruction": "Enter the roundabout and take the 1st exit toward Heeren, S\u00fcd-Ost Altmarkpark.",
+                "verbal_pre_transition_instruction": "Enter the roundabout and take the 1st exit toward Heeren, S\u00fcd-Ost Altmarkpark.",
+                "bearing_before": 134,
+                "bearing_after": 182,
+                "time": 6.47,
+                "length": 0.035,
+                "cost": 11.985,
+                "begin_shape_index": 140,
+                "end_shape_index": 149,
+                "roundabout_exit_count": 1,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 27,
+                "instruction": "Exit the roundabout toward Heeren/S\u00fcd-Ost Altmarkpark.",
+                "verbal_succinct_transition_instruction": "Exit the roundabout toward Heeren, S\u00fcd-Ost Altmarkpark.",
+                "verbal_pre_transition_instruction": "Exit the roundabout toward Heeren, S\u00fcd-Ost Altmarkpark.",
+                "verbal_post_transition_instruction": "Continue for 1 kilometer.",
+                "street_names": [
+                  "Heerener Stra\u00dfe",
+                  "L 32"
+                ],
+                "bearing_before": 123,
+                "bearing_after": 167,
+                "time": 77.196,
+                "length": 1.002,
+                "cost": 89.768,
+                "begin_shape_index": 149,
+                "end_shape_index": 195,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 26,
+                "instruction": "Enter the roundabout and take the 2nd exit onto Heerener Stra\u00dfe/L 32.",
+                "verbal_transition_alert_instruction": "Enter the roundabout and take the 2nd exit onto Heerener Stra\u00dfe.",
+                "verbal_succinct_transition_instruction": "Enter the roundabout and take the 2nd exit.",
+                "verbal_pre_transition_instruction": "Enter the roundabout and take the 2nd exit onto Heerener Stra\u00dfe, L 32.",
+                "bearing_before": 177,
+                "bearing_after": 224,
+                "time": 11.693,
+                "length": 0.04,
+                "cost": 12.66,
+                "begin_shape_index": 195,
+                "end_shape_index": 205,
+                "roundabout_exit_count": 2,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 27,
+                "instruction": "Exit the roundabout onto Heerener Stra\u00dfe/L 32.",
+                "verbal_succinct_transition_instruction": "Exit the roundabout.",
+                "verbal_pre_transition_instruction": "Exit the roundabout onto Heerener Stra\u00dfe, L 32.",
+                "verbal_post_transition_instruction": "Continue for 800 meters.",
+                "street_names": [
+                  "Heerener Stra\u00dfe",
+                  "L 32"
+                ],
+                "bearing_before": 93,
+                "bearing_after": 176,
+                "time": 62.537,
+                "length": 0.796,
+                "cost": 68.851,
+                "begin_shape_index": 205,
+                "end_shape_index": 246,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 18,
+                "instruction": "Turn right to take the B 188/B 188 ramp toward Wittenberge/Magdeburg/Gardelegen/Rathenow.",
+                "verbal_transition_alert_instruction": "Turn right to take the B 188 ramp.",
+                "verbal_pre_transition_instruction": "Turn right to take the B 188, B 188 ramp toward Wittenberge, Magdeburg.",
+                "street_names": [
+                  "B 188",
+                  "B 189"
+                ],
+                "bearing_before": 169,
+                "bearing_after": 200,
+                "time": 32.244,
+                "length": 0.252,
+                "cost": 37.384,
+                "begin_shape_index": 246,
+                "end_shape_index": 277,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "B 188",
+                      "consecutive_count": 1
+                    },
+                    {
+                      "text": "B 188",
+                      "consecutive_count": 1
+                    },
+                    {
+                      "text": "B 189"
+                    },
+                    {
+                      "text": "B 189"
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Wittenberge"
+                    },
+                    {
+                      "text": "Magdeburg"
+                    },
+                    {
+                      "text": "Gardelegen"
+                    },
+                    {
+                      "text": "Rathenow"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right toward Wolfsburg/Gardelegen.",
+                "verbal_transition_alert_instruction": "Turn right toward Wolfsburg.",
+                "verbal_succinct_transition_instruction": "Turn right toward Wolfsburg, Gardelegen.",
+                "verbal_pre_transition_instruction": "Turn right toward Wolfsburg, Gardelegen.",
+                "verbal_post_transition_instruction": "Continue on B 188 for 3 kilometers.",
+                "street_names": [
+                  "B 188"
+                ],
+                "begin_street_names": [
+                  "B 188",
+                  "B 189"
+                ],
+                "bearing_before": 169,
+                "bearing_after": 259,
+                "time": 195.771,
+                "length": 2.851,
+                "cost": 188.287,
+                "begin_shape_index": 277,
+                "end_shape_index": 329,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 8,
+                "instruction": "Continue toward Wolfsburg/Gardelegen.",
+                "verbal_transition_alert_instruction": "Continue toward Wolfsburg.",
+                "verbal_pre_transition_instruction": "Continue toward Wolfsburg, Gardelegen.",
+                "verbal_post_transition_instruction": "Continue for 4 kilometers.",
+                "street_names": [
+                  "B 189"
+                ],
+                "bearing_before": 291,
+                "bearing_after": 292,
+                "time": 263.922,
+                "length": 3.884,
+                "cost": 244.488,
+                "begin_shape_index": 329,
+                "end_shape_index": 507,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 26,
+                "instruction": "Enter the roundabout and take the 2nd exit toward Wolfsburg/Gardelegen/Vinzelberg.",
+                "verbal_transition_alert_instruction": "Enter the roundabout and take the 2nd exit toward Wolfsburg.",
+                "verbal_succinct_transition_instruction": "Enter the roundabout and take the 2nd exit toward Wolfsburg, Gardelegen.",
+                "verbal_pre_transition_instruction": "Enter the roundabout and take the 2nd exit toward Wolfsburg, Gardelegen.",
+                "bearing_before": 249,
+                "bearing_after": 299,
+                "time": 12.257,
+                "length": 0.051,
+                "cost": 8.649,
+                "begin_shape_index": 507,
+                "end_shape_index": 525,
+                "sign": {},
+                "roundabout_exit_count": 2,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 27,
+                "instruction": "Exit the roundabout toward Wolfsburg/Gardelegen/Vinzelberg.",
+                "verbal_succinct_transition_instruction": "Exit the roundabout toward Wolfsburg, Gardelegen.",
+                "verbal_pre_transition_instruction": "Exit the roundabout toward Wolfsburg, Gardelegen.",
+                "verbal_post_transition_instruction": "Continue for 300 meters.",
+                "street_names": [
+                  "B 188"
+                ],
+                "bearing_before": 196,
+                "bearing_after": 248,
+                "time": 17.359,
+                "length": 0.252,
+                "cost": 14.977,
+                "begin_shape_index": 525,
+                "end_shape_index": 527,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 26,
+                "instruction": "Enter the roundabout and take the 1st exit.",
+                "verbal_transition_alert_instruction": "Enter the roundabout and take the 1st exit.",
+                "verbal_succinct_transition_instruction": "Enter the roundabout and take the 1st exit.",
+                "verbal_pre_transition_instruction": "Enter the roundabout and take the 1st exit.",
+                "bearing_before": 248,
+                "bearing_after": 302,
+                "time": 4.725,
+                "length": 0.026,
+                "cost": 4.9,
+                "begin_shape_index": 527,
+                "end_shape_index": 537,
+                "sign": {},
+                "roundabout_exit_count": 1,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 27,
+                "instruction": "Exit the roundabout onto A 14.",
+                "verbal_succinct_transition_instruction": "Exit the roundabout.",
+                "verbal_pre_transition_instruction": "Exit the roundabout onto A 14.",
+                "verbal_post_transition_instruction": "Continue for 35 kilometers.",
+                "street_names": [
+                  "A 14"
+                ],
+                "bearing_before": 286,
+                "bearing_after": 337,
+                "time": 1133.826,
+                "length": 35.322,
+                "cost": 1000.859,
+                "begin_shape_index": 537,
+                "end_shape_index": 844,
+                "highway": true,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "A 14"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 20,
+                "instruction": "Take exit Wolmirstedt onto B 189.",
+                "verbal_transition_alert_instruction": "Take exit Wolmirstedt.",
+                "verbal_pre_transition_instruction": "Take exit Wolmirstedt onto B 189.",
+                "bearing_before": 210,
+                "bearing_after": 221,
+                "time": 48.559,
+                "length": 0.391,
+                "cost": 43.684,
+                "begin_shape_index": 844,
+                "end_shape_index": 889,
+                "sign": {
+                  "exit_number_elements": [
+                    {
+                      "text": "Wolmirstedt"
+                    }
+                  ],
+                  "exit_branch_elements": [
+                    {
+                      "text": "B 189",
+                      "consecutive_count": 1
+                    }
+                  ],
+                  "exit_name_elements": [
+                    {
+                      "text": "Wolmirstedt"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right toward Wolmirstedt/Zielitz/Rog\u00e4tz/Magdeburg.",
+                "verbal_transition_alert_instruction": "Turn right toward Wolmirstedt.",
+                "verbal_succinct_transition_instruction": "Turn right toward Wolmirstedt, Zielitz.",
+                "verbal_pre_transition_instruction": "Turn right toward Wolmirstedt, Zielitz.",
+                "verbal_post_transition_instruction": "Continue for 12 kilometers.",
+                "street_names": [
+                  "B 189"
+                ],
+                "bearing_before": 82,
+                "bearing_after": 165,
+                "time": 603.386,
+                "length": 12.383,
+                "cost": 584.892,
+                "begin_shape_index": 889,
+                "end_shape_index": 1104,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 18,
+                "instruction": "Take the A 2 ramp toward A 14/Hannover/Halle.",
+                "verbal_transition_alert_instruction": "Take the A 2 ramp.",
+                "verbal_pre_transition_instruction": "Take the A 2 ramp toward A 14, Hannover.",
+                "verbal_post_transition_instruction": "Continue for 65 kilometers.",
+                "street_names": [
+                  "A 2",
+                  "E 30"
+                ],
+                "bearing_before": 139,
+                "bearing_after": 147,
+                "time": 2210.763,
+                "length": 65.367,
+                "cost": 2023.722,
+                "begin_shape_index": 1104,
+                "end_shape_index": 1921,
+                "highway": true,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "A 2",
+                      "consecutive_count": 1
+                    },
+                    {
+                      "text": "A 14"
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "A 14"
+                    },
+                    {
+                      "text": "Hannover"
+                    },
+                    {
+                      "text": "Halle"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 20,
+                "instruction": "Take exit 58 onto A 39 toward Flechtorf.",
+                "verbal_transition_alert_instruction": "Take exit 58.",
+                "verbal_pre_transition_instruction": "Take exit 58 onto A 39 toward Flechtorf.",
+                "bearing_before": 260,
+                "bearing_after": 273,
+                "time": 16.138,
+                "length": 0.216,
+                "cost": 14.509,
+                "begin_shape_index": 1921,
+                "end_shape_index": 1927,
+                "sign": {
+                  "exit_number_elements": [
+                    {
+                      "text": "58"
+                    }
+                  ],
+                  "exit_branch_elements": [
+                    {
+                      "text": "A 39",
+                      "consecutive_count": 2
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Flechtorf",
+                      "consecutive_count": 1
+                    },
+                    {
+                      "text": "Kassel Salzgitter"
+                    },
+                    {
+                      "text": "Braunschweig-S\u00fcd"
+                    },
+                    {
+                      "text": "Wolfsburg Autostadt"
+                    }
+                  ],
+                  "exit_name_elements": [
+                    {
+                      "text": "Kreuz Wolfsburg/K\u00f6nigslutter"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 23,
+                "instruction": "Keep right to take A 39 toward Flechtorf.",
+                "verbal_transition_alert_instruction": "Keep right to take A 39.",
+                "verbal_pre_transition_instruction": "Keep right to take A 39 toward Flechtorf.",
+                "verbal_post_transition_instruction": "Continue for 10 kilometers.",
+                "street_names": [
+                  "A 39"
+                ],
+                "bearing_before": 264,
+                "bearing_after": 272,
+                "time": 376.291,
+                "length": 9.559,
+                "cost": 361.439,
+                "begin_shape_index": 1927,
+                "end_shape_index": 2050,
+                "highway": true,
+                "sign": {
+                  "exit_branch_elements": [
+                    {
+                      "text": "A 39",
+                      "consecutive_count": 2
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Flechtorf",
+                      "consecutive_count": 1
+                    },
+                    {
+                      "text": "Wolfsburg"
+                    },
+                    {
+                      "text": "Autostadt"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 24,
+                "instruction": "Keep left to stay on A 39.",
+                "verbal_transition_alert_instruction": "Keep left to stay on A 39.",
+                "verbal_pre_transition_instruction": "Keep left to stay on A 39.",
+                "verbal_post_transition_instruction": "Continue for 4 kilometers.",
+                "street_names": [
+                  "A 39"
+                ],
+                "bearing_before": 13,
+                "bearing_after": 10,
+                "time": 146.384,
+                "length": 3.76,
+                "cost": 154.032,
+                "begin_shape_index": 2050,
+                "end_shape_index": 2108,
+                "highway": true,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 20,
+                "instruction": "Take exit 23 toward Fallersleben.",
+                "verbal_transition_alert_instruction": "Take exit 23.",
+                "verbal_pre_transition_instruction": "Take exit 23 toward Fallersleben.",
+                "bearing_before": 7,
+                "bearing_after": 28,
+                "time": 34.543,
+                "length": 0.294,
+                "cost": 38.778,
+                "begin_shape_index": 2108,
+                "end_shape_index": 2130,
+                "sign": {
+                  "exit_number_elements": [
+                    {
+                      "text": "23"
+                    }
+                  ],
+                  "exit_toward_elements": [
+                    {
+                      "text": "Fallersleben"
+                    }
+                  ],
+                  "exit_name_elements": [
+                    {
+                      "text": "Wolfsburg-West"
+                    }
+                  ]
+                },
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 9,
+                "instruction": "Bear right onto L 321.",
+                "verbal_transition_alert_instruction": "Bear right onto L 321.",
+                "verbal_succinct_transition_instruction": "Bear right.",
+                "verbal_pre_transition_instruction": "Bear right onto L 321.",
+                "verbal_post_transition_instruction": "Continue for 500 meters.",
+                "street_names": [
+                  "L 321"
+                ],
+                "bearing_before": 254,
+                "bearing_after": 266,
+                "time": 62.535,
+                "length": 0.521,
+                "cost": 81.128,
+                "begin_shape_index": 2130,
+                "end_shape_index": 2142,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 9,
+                "instruction": "Bear right toward Gifhorn/Meine/Wolfsburg-S\u00fclfeld/Westrampe.",
+                "verbal_transition_alert_instruction": "Bear right toward Gifhorn.",
+                "verbal_succinct_transition_instruction": "Bear right toward Gifhorn, Meine.",
+                "verbal_pre_transition_instruction": "Bear right toward Gifhorn, Meine.",
+                "verbal_post_transition_instruction": "Continue for 400 meters.",
+                "street_names": [
+                  "Hafenstra\u00dfe"
+                ],
+                "bearing_before": 298,
+                "bearing_after": 309,
+                "time": 49.881,
+                "length": 0.429,
+                "cost": 64.409,
+                "begin_shape_index": 2142,
+                "end_shape_index": 2170,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 15,
+                "instruction": "Turn left toward Sandkamp.",
+                "verbal_transition_alert_instruction": "Turn left toward Sandkamp.",
+                "verbal_succinct_transition_instruction": "Turn left toward Sandkamp.",
+                "verbal_pre_transition_instruction": "Turn left toward Sandkamp.",
+                "verbal_post_transition_instruction": "Continue for 300 meters.",
+                "street_names": [
+                  "Tappenbecker Landstra\u00dfe",
+                  "K 115"
+                ],
+                "bearing_before": 265,
+                "bearing_after": 192,
+                "time": 46.918,
+                "length": 0.326,
+                "cost": 74.431,
+                "begin_shape_index": 2170,
+                "end_shape_index": 2196,
+                "sign": {},
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 15,
+                "instruction": "Turn left.",
+                "verbal_transition_alert_instruction": "Turn left.",
+                "verbal_succinct_transition_instruction": "Turn left. Then Turn right.",
+                "verbal_pre_transition_instruction": "Turn left. Then Turn right.",
+                "verbal_post_transition_instruction": "Continue for 20 meters.",
+                "bearing_before": 16,
+                "bearing_after": 285,
+                "time": 16.437,
+                "length": 0.021,
+                "cost": 50.74,
+                "begin_shape_index": 2196,
+                "end_shape_index": 2199,
+                "verbal_multi_cue": true,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right.",
+                "verbal_transition_alert_instruction": "Turn right.",
+                "verbal_succinct_transition_instruction": "Turn right.",
+                "verbal_pre_transition_instruction": "Turn right.",
+                "verbal_post_transition_instruction": "Continue for 70 meters.",
+                "bearing_before": 298,
+                "bearing_after": 9,
+                "time": 36.692,
+                "length": 0.07,
+                "cost": 55.799,
+                "begin_shape_index": 2199,
+                "end_shape_index": 2204,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 10,
+                "instruction": "Turn right.",
+                "verbal_transition_alert_instruction": "Turn right.",
+                "verbal_succinct_transition_instruction": "Turn right.",
+                "verbal_pre_transition_instruction": "Turn right.",
+                "verbal_post_transition_instruction": "Continue for 3 kilometers.",
+                "bearing_before": 3,
+                "bearing_after": 84,
+                "time": 1642.325,
+                "length": 3.19,
+                "cost": 3398.552,
+                "begin_shape_index": 2204,
+                "end_shape_index": 2257,
+                "rough": true,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              },
+              {
+                "type": 6,
+                "instruction": "Your destination is on the left.",
+                "verbal_transition_alert_instruction": "Your destination will be on the left.",
+                "verbal_pre_transition_instruction": "Your destination is on the left.",
+                "bearing_before": 81,
+                "time": 0.0,
+                "length": 0.0,
+                "cost": 0.0,
+                "begin_shape_index": 2257,
+                "end_shape_index": 2257,
+                "travel_mode": "drive",
+                "travel_type": "truck"
+              }
+            ],
+            "summary": {
+              "has_time_restrictions": false,
+              "has_toll": false,
+              "has_highway": true,
+              "has_ferry": false,
+              "min_lat": 52.16484,
+              "min_lon": 10.723175,
+              "max_lat": 52.607641,
+              "max_lon": 11.874537,
+              "time": 7384.959,
+              "length": 143.305,
+              "cost": 9030.074
+            },
+            "shape": "m_yicBazvrUiJxFmFs\\kCuN_BaHuCuMyHe\\q@uBu@kBjKgPlNyTxC_FzCwGmA_CcAaC{@gD{Gg_@sBaLkAyFwBgGiBkEw\\qx@}HqR{DqKyCiIcHoRuBwFkAaDyC_IrF{@dGwArEqAhDcA~CoAjD_BnCyAfDwBjDcCvw@kj@p|@qn@x@m@lGyE|GmFjDmCzLqIdDuB|BiAfBo@bGuB~Bw@tK_DvB]fCU|BQnC?jBN~B\\hCn@hCx@`Bn@~BlAjLhG`NnG`I~CrvAvi@bZzKpF~BjEfC~C|B`DpC|ClD|CxDzBhDnCnEtAxBz@vAlAzAv@x@l@b@h@Lf@Fb@AbAS|@_@v@{@tAaBhJeO`AoAbAeAxAy@`Bk@`@MrA_@~KuBbAU`Ck@zAe@na@iMrHiCpj@oQtHgCjDcAvBo@hFuAjFmA|FcAnFq@|Fo@bV{BhHq@vMiAtSkBhBInDFvBXvC~@n@aFTqBD[lBkPHu@|AwMd@eE`@kC`@{At@oBlAsChBsC~BmCjC_CbScP~XeTrAkAz@cAtBmD|EaJJQ`@w@Vi@dAsBd@_Ax@jA~@h@`AHbASz@s@n@mA`@aBLkBCuBx@U|Ac@fA[DAJChDy@jAYlAk@nAw@nA}@tDcDhCyB`l@uh@`[gYpa@m_@f_@i]tGcG|HcH~HsGfHcF|GcEjEaChH_DvEiBxEaBlFyAfFoAtFcAjFs@dFq@p@EfHo@|VqB`MaAhKw@vBOjOkAvGg@~o@yEzwAeIxFYNA`AEb@C~@GjAENrBb@bBt@lA`Al@t@NvA_@|@{@l@yA\\kBByBbAGXAfCMVC`o@sD|Ko@hNeA~V_CjVuAlDWfBMtFWhRaAtDSpFk@nFgA|DoAfEcBzF}C~FqDpBmArMkIn^yUhDyB~GkEpHgE~G_D|Am@tCkA|@YfCs@dE{@tEq@xJeAzNoA`YcCfQ}A|MkAxH_AxCg@nHeB`BrCxA?vAFfBdAxFxFzBxN`E`Z\\rB`@nBb@nBb@`Bx@dC~@~BbAtBdAhBlAjBpA|AvAvAvAjAfBjAhBv@jBh@jBZ|BN~BCtCY|Cq@~GgBrBc@vFaAhCm@nEpu@vBd_@`_@tnGnFt~@vZniF~\\d|Fdf@rkIjEdw@tClm@~@jTbAbY`ArWv@xWrAxi@f@t_@XfVNfSLpTBtT@r_@Kj_@c@hj@[rT]vTq@xYy@dZo@|Sw@~TkBdc@y@hP_BtYaBtXeBlVmBxVq@~Iy@bKcCrXaBfQsAxMoB~QsB~QkEx^gBtNeBfNwEb^oB~MmB~MqMf|@qJxo@aTdvAeG`a@oSztAiKfr@_OraAmKrs@eFp\\gj@zsDa[`tBoF~^_Fb]yAhLaBnMwApLuA~LiApK{@tIaA~Jw@~Is@jI_A~KcBbVsBl\\e@dKg@~LiAv\\EhA[vJ[xLc@jWMlGMpJIhJGjJCbJ?lJAlJB~IB`JFdJH`JPbO\\xSl@pWr@bV~@lYx@zUdAtYj@dNj@nMt@rNt@~L\\rF`@hFb@pFb@fFf@rFf@dFh@rFj@~El@xFn@jFbA~HbAjHjA~HjAnHvAdIvAdI|AdI~AvHlBtIhB`InB~HjBjHvDtNrDxM~D~M|DxMb\\rfAl]riAnUpu@hFbRxCvKvB~HjBhHhArEjArEdApEhAzE`CbLbA|E`AbFx@lEv@pEr@`Er@hEh@tDl@`Ep@tEl@nEl@`Fr@`Gl@vFf@rExA|Oh@rGd@xGf@jHh@`J\\|FZvGh@lLh@tM~@xZtB`w@bAt`@d@vNj@`Pp@zOr@~Nx@bO|@`Nx@`Kx@rJbA~JdAnJjAvJlA~IlAhIvA~IhB|KjB~JpBxJxB|JxBhJxBtIrBrH`ClI|AjF|A~ExDpL~JlYpIhUfDvIlGjPzSnj@pAnDtJbW|CtIdC`HfBbFfBjFvBfH`AlD~@rDjArFbAhFdA|FnBpLlA|HxG|b@rHtf@pBvMfAdHx\\jyBbb@foCbGnZ~DxO`HzSzCzHzIvQjKdQp]xd@`GdJnHdOxIpUnCzI|EzQtD|QvCnQdBxL]Xi@n@a@x@]bAShAMnACnA@bAD`ATxA\\nA^z@d@p@n@h@p@Xr@J|@Ex@YhUvyA|]~{Bi@^g@j@a@t@[|@UbAMfAGjA?hADhAJdA_ThMgM`GoK`CmHg@eGiCyDmE_GqKoCwSW_T|BsTvGoOhLkJbLkF`Vi@`JQ`HOlCGzkBkAdsBfBbjB`G~iBfLfpAdLnnAbNjnArQp{AnWjaAzRbcBz^pcBpd@doAt`@zoClcAdyBvbA`oApl@rjAvm@jlArr@fkAdu@r~@vo@pmA`}@rmCvuB`S`RbhBnaBpfBvgBvjBzsBloBbaCzkBnfCt}BlkDjjBh|Ch_Df|FfjA~qBzxAx_CdJvNpt@`jAvjAbdBxLxPl]lf@pZpb@lnAvaBfkCpdDdMbOzIdKdkAzqAjmBxqBx}A|aBjjBvxBrr@l|@fItK`b@xj@fh@jt@bGrI~MhSvoAvmBdmAzrBbj@f`Ark@bhAdi@bcAxx@~bBzHrPlfAjbCvgAzmC`EjKleAzuCfeAn_Dv|@~wCbIrYvHvX|j@rrBj`@xtApk@jlBxr@hxBdo@liBr}@l`Cxy@hsBlaArzBrv@z`BddAxrB`aAdgBliAboBj]ti@b\\bh@tb@tn@j_ArsAfiAv{Avy@rbAxs@jz@hvBp~B~lAniAbr@fo@~oA|eAr~BphB|~BtaBz|BxbBbzBz_BrtBd{AzfC`jBbLfIrqBfyA`q@bf@jsAbaAd}B`bBv`ExvCdfA`w@fvBt|AhQhLrZrTnv@ze@dt@z_@roApj@~y@|XvnA`[bz@bOtz@jL`lA|Ht_@x@jm@o@do@o@taBmIllBiRnhAuH`lAgFfeAqBbm@c@h{An@lz@nBz|@nD`k@jDf~@|Gbw@jJveAbOhw@zKl^~FhyA|X~cBpc@zhBjk@huBvx@~`Abb@xbA|e@nyAnx@vC`Bvp@~a@pt@td@pu@jh@dr@hh@d{@|o@po@fj@lr@bo@zRpQhx@`w@tvBhvB|x@xs@d|@bu@f_Ars@~jA|z@rcAfp@vdAtn@bsBxfA|w@~]b`Bnp@d_Bhk@tu@fUfMxDd]fK|kBjc@fz@`Qj|@hOhrAlU`rAtYzwAzc@|i@vR|{Azs@n`A|h@ri@n^vnB`sAxt@rg@zt@hf@t[nSz\\dSx\\pQ|[tP~[zNt]|Nb_@nNrJnD|]pL|MpEz^|J``@nJhbAhSdoApTfpEbw@jhGheApr@`Ltq@`K~UvChV~Cho@vHno@|F~G^fNz@jz@|Dlj@x@fk@Edv@}Ahi@qBfi@iErd@wEbc@{GrbAyQvt@sQfm@_Rru@eXbh@iTp\\_Pnl@uZze@mXx}@qm@hk@qb@`}@uv@`YsVvn@ip@`RsSnZ}]|NuOxHqJrxAunBd~AwzBxh@at@pd@yl@z[y`@z]ma@`Z}[~WgXza@ea@vb@c`@pYiVhZ{UhYgTnZcTh^aVpe@mY|Z}Pxc@mUf_@kQ|^wOdf@cR`a@sN`f@}Nle@gM`f@aLf_@iH~c@mHdTyCpSiCxZiD`X_Cll@qDd]sA`Te@v\\e@v\\Gxa@Vjt@nBpt@fEtu@|FhrFhi@jfCtV|Ef@l~@`Jj~@bJbh@fFfm@~F~_A`L|RbC|_@pGzi@hKri@zMvN~DxZjJdUtH`[rLte@vRhv@n_@|IvEz^~S|^nU|i@~_@hMpJxk@re@tv@|s@lLxQpCfFrBnElAnDj@jCb@jCd@dEZ~DFrDAdECvCOnC]zDw@xEeAtEeA`DuAlDgFhLuBtCm@l@eAhAaC`BqBfAuCpAyCr@cCf@mCBwC?}CY_Dq@cC}@oCwAsC}B{CkCqBqCiBqC{AwC{AmDqAyD}@mDcBqHk@gO_@eKMqDS_Fv`@oMr\\mKhx@iW`]}Kx`@eM~CcAlRmGh]yKzb@iNfH}Bv^iLz_A_[pS}H~RoG|VoHpQeF~e@oOxc@sNpr@oTjH_CtMgEdZuJdZqJ`DcAt`A}Zbq@eTx]iKdEqA`e@sNlIiCnE{A~DuAx@Y|KqDpTyGhH{BlUaJ|d@aOdw@{VnpAqa@dWaI`RoFhNsDjPoDrJgB`I{AvJmA~JcAxIk@nJc@|VOvM^|Lp@fNrAdL|AjOzClOvDxMhExNrF|JnEfKdFlOxI|SbOxFtHnIzHvKxKjMxNxRrVbJfMlHdLzJpPtHhNpGbMxGfObGxM~F`PzJdXhQ~o@~EnSpErRnC~JxBlLfEzVnBpMrFzc@jChUtD~`@jKpmAxDra@lCbV~CrWpAjO|B`PtCzQfD~RnDnRfEnSbEjRjEfRtEtQtJf]hIxWzHnUdInTbIhShIbRvJbThH|NlHhNrRf\\`RhYlVh]ld@nn@xh@ft@vtAflB|Wx^`{@nkArRfXrp@`~@jNjRvOlRzSvUjOtObJrInRvO|NpK~N~JhJrFfRfKdPrHlGpClHvCtRvGzRpF`Z|Gv}@`Q~sB``@v]rG~UpEfZ~Fpn@dLpq@rMzd@zIld@rHtUnBzMx@zN\\bOGjUy@~Fc@zJ}@rNmBvMaCfnBcb@nnBwa@|oDmv@rsAsY~}@wR|q@gOtRiEdXwFvNcD~v@mPp}@sRbQwD~wGkwAhT{DtRiCjMsAtPoAjPm@~ROvPI~rAWbpB]~g@GruCm@x{Du@rzAU|zA_@rv@UpZ?lLGhtAWzoAUtjB]lsBYjeBa@dnAYrd@[t[mAfa@eDfU_DvNgCdHeBtH}ArPiE~QwFnRaHzKqEdO{G~QeJ|]qSdOmKhVaRl]{YlOkOfPiQpP{RjPaTlU}[dOiUdUu^~FiJpvAa|BfU_WlBsBlBgBpB_B|AgAbBcA~Ay@fBs@`Cm@hCa@pBUpBSfCItBBtBPtCb@hCb@jBb@xCbAvClAj|Ahp@~DrBfEtCdCxBfGxGvCnEpCfFlCtGbCjHzAtGdHbZpVb{AxB`NpRfaApHv]fJlRnv@nsErg@dxCdFrZnu@zlE`}AdbJ~w@jvEz|@niFjg@twC`mBb`LnuC~xP`pBxjLnl@jlDrMvy@pIbl@nFx`@bLb`A|Gdq@vGrt@dKdoArHp_A`q@lqIhFtp@~h@t{GnEjj@pExk@hB|TtDpd@lIpfArH|_A|Qd_CxHdaApExk@vB|WrDrd@FpBdWnaDnUrvChLpzAjGhx@bBzVbDlf@bDtn@dBra@vAx`@|@t[r@j\\h@vU\\hYn@fo@Jj_@F`XEhb@Yl_@Q|Ug@f`@Y|TaBpp@iAb]{Ala@uCfm@gBj]oCz`@wCta@qBhXiEre@uEvd@mFff@iEh]uEp]sM`|@yGta@eFnYePdy@qQvy@}GxXiIf]wNlj@eI|YqIzZaThu@mq@`zB}[beAe[dcAw_@fnAcQpj@}]tjAiWjy@wN`e@cYz}@uNpe@q^lkAkZjaAy\\xfAuUvu@eE|MiGbSkHxU}Rjo@eJbZuLv`@{FhRuG~T_F|P}HxYeJ|^uGzXwGhZgI``@wI~c@qIvc@aKfi@iKnj@_TphAePl{@gTniAaTthAcTdiA_T|hAaTzhAkT`jAoI`d@mItc@kOxw@yPd~@mXjxAwOpy@eTviAwUvnAoLpn@uD~R_Pd{@uGr\\qBdLmPx{@iZr~AmEzUgT|iAcKxi@cMhp@eO`x@{SnhAeXnwAuGr]{Mns@eGr[eBhJuMtr@{Mzr@uNpv@oKzl@eFrZ_Gl_@sIpl@{E~]}ClVoCrV{Dj]eCjWyCr\\aClXqC`_@oCb`@kDtl@wA~WmAfW}Bvn@eBbl@y@nc@o@r_@a@b\\OjRMfXEdYFjp@T|h@p@`w@t@fy@VtXnAdmA~@x`A~@n~@`AraAdBjhBTpTJtJx@lw@dAhgAjA`jAdAr`Az@d`AbAx`A~@f`A`An`An@nj@`@va@h@ln@|@f{@fB|fB`DzcD~An~AtAbsAjAziAfBngBzAz{AdDzdDrAbrAtApvAp@zbAf@ru@NjXFtLLtj@L~q@JvcA@vJR`aCHhaAHt~@R~sBR`aBRflCTpxBH`aAL|_A^jcE`@ddFHbk@BbTLvqANj_AHpqAH`bAH`eA?r[@p\\Abh@Ozi@E|LKve@u@r_Aa@z]s@rf@i@vYkApi@aAvc@oBrq@wBhp@g@dOgDx|@sBdi@wBzh@cIhpBiCho@wAr_@aAfVoB|f@yD``AkFpqAcFloAcFvnAyDtaAcFpoAeFrpA{HzmB_GjyA_Dvu@yDbcA{Dp~@_FtoAoGf_B{D~`AaFhoA}D|`AeG~{AuIpvBsDh~@gEfeAyE`nAyFzvAwH~lBkF|rAmDb|@uHlkBuF|tA{Crv@_E|cAkEvgAaFfiA}Bzh@mBda@u@tN{PzoCq^b_Gw@nKwH~fAsNdtBmItmA}M|nB_N|mBqOt{Bs^`kFgQlhCkJdtA{PleCyC`b@mK||AwRfrCeDxf@uGj~@qA~PuDzj@oPzbCoLtdBy@lLwK``BkBfWeAvNuCzb@cJnrAwI`pAwGl_AmIxlAwEtq@yGfaAcIlkAoB~YeA`OmCt_@q@pKwRxrCoB`YkHfdAcFru@ef@hgHeB|V{HxkAsOfmC_Dzm@uAtWMxCaGpuAsCzv@_C`t@iB`r@sD|wAeD`}AsC~bBq@b`@kDlmB{CvbBuIrsEqDf|BMxGgInpEem@h_]g@dXqGpnDyEdrCiD~_BeBrp@eC`_AaBjh@gBlg@{An`@sC`o@kBp_@qAxV{AhW}Bj_@cC|^qC~^uCz^aD~^kDn^mD~]wDr^}Ipv@iJrt@kGbe@qGfe@iTvzAg[pvBeU~}Am_@zhCyTv{AsLdy@gUv}AwLr|@uE`]sEn^kHlm@qI~v@_AxIaElb@yEhf@_D|^iH`~@mGb`AyB|^qBn_@mAtVmAnW_Bt_@uAl_@uBpo@cA~_@_B|u@s@x`@SxMiAtkAY|o@Cfy@Jhg@Z`r@`@ra@dAry@h@lZr@lZz@r^XfLzCdaAhGj`BfDlx@bBda@|LrwCvMv`DjHljBhBpg@bAj\\fAb`@z@n`@j@h_@^`]RhZFbW?bd@U~n@]xZa@|[y@xd@y@l^iEp`BuGdaCoD~nAYlJqDfsAyKhwD{CljAcExyAUbHwB~s@}A|g@kE|gAiDlp@oGrdAuGtx@kIb~@kFnf@kFfe@iLb~@uOfhAqQrkA{XfdB_ZxdBk~@blF{L|q@iHz`@{Hn`@mLnj@aIf^_Mlh@_Nri@gNxh@yS|x@yWjeAyDzP}Kvf@{J`e@eEjTqI|d@qHlc@uFt]uIlm@sE~]_E`\\mEr_@wD`_@gDf^cG`s@yFzz@uCxf@yAnWqAxWiAhWyDh_AkC~y@yA`f@iArc@mEnjBcNnfGmF~`Ck@nWmKdyEaDz_AgEr_AmGtaAoC`_@yCf^gGfq@mHhq@_Ibp@oV`bBgFvZsK~l@kFxW{BzKiCnMgIf^uF~UiGnVyNbj@sh@|kBuo@d}Bwb@tyAuQhq@oFdSo[~gAkt@lkC{gBdhGioBlkGmb@vnAcH~SubAlvCskAdgD{k@fdBol@zdBsLf\\a\\zz@mB`FkJhUcN~[yMn[mS`f@aU|c@iFzJye@p|@ga@|n@wc@dn@kf@fl@uJxKmdAhmAev@rdA}Vl^ic@xs@iQ|[iRx^yd@z_AuSxf@mKtWmh@buA_Wfp@aP|b@eO`e@_Sfh@mMl[kPf_@ye@leAs@rAql@fgAwSb]ij@~y@qc@jl@aVlYcXnZy^~^yIxI_tCrmCgDbDosAroAqv@~r@yP|Oyo@fm@qo@rn@se@te@yPzQux@l{@yu@f{@au@z|@sQnTal@~t@}x@bgAya@|k@y`@|m@w\\fk@s[jm@eUbf@qP|^kT|g@aNh]_Z~y@kR|l@kQbn@yU~{@sm@|jC_g@huBmcAhrEuOrv@cPb}@oM`y@oLpy@yGbi@mGhi@eFxe@uE`f@}Ddf@yIvkAaDrg@cMh~BaM||BcFlu@}Bf]_BhScHdv@{H`u@kFvd@uFhd@iNdcAaKzn@kI~d@yOdx@iJ~c@wMpk@{Rnx@kQro@uSnr@e]veAkQdi@}@pCqmAzqDauAhaE_j@j`B_o@pkBaV`t@a\\xbAsOlg@wZhfAgNlh@aS`y@oQfx@mLhl@mL~l@yNlz@uMnz@_H`f@yGdf@uK~|@oIfx@cIx|@iF~m@qHleAeEft@_Fl`A{M`mCcMjjCkKhwB}QhvDiKbtBuDxn@cE`p@sEvo@}E|o@oF|m@aGxo@kLjeAgHtl@sNhhAoKbv@aIxg@_RdgAkTljAiN`q@mK~f@}Kxf@oQvs@gNvh@aLz`@q\\tiAe]|hAwy@jiCsb@lsAifAfhDsPtg@efFtgPwSdr@_mB~fGiGfRqPtj@k{Ab{Eiu@xaCuUhw@yQnq@qQby@yuAttGy|BfrKw}@~fEoa@dlBg]b`B_uAlsGkMtm@uIta@}Nzp@kKrg@}VlkAsPvy@mPd|@_Or{@cHbd@eIjh@}Lb|@yHfm@oHhn@{G|m@aFxg@}Edj@eHfy@oGpx@gF|w@qB~[iCbb@cFlcAgGnoAsFptAqFfvAsGbgBiB~f@aRpiF}IfbCcAvXm@pP{Aja@sDfgAaK|nCmI`qBoJbuBoIbvBaFtyA_D|{@eHtaCi@vT{Ahj@yCf_AqLzdDqMzvDsClbAoBvh@sDzaBiApp@_Ahn@]zq@Udn@Gns@Tr~@\\vb@t@xn@z@zp@nAdn@pAji@vBrr@hE~iAhJzlB`_@deHfJffBzN|iCnJpzAn\\~}EtSxuDbI~{AfQjlDxo@tbMdd@lyInSh}Dm@xs@Cf^Tlb@p@n_@f@xSt@rWQ|Xe@vNu@dN_A`KmAjIeBtIiCjJmClI{C`H{JrR{IjPcFjImEvF{FvFcEdDqEdC{EfBkDbAiJlA_KBqKeAkLgCucAm\\}f@aO_e@sJe_Bqf@}E}@wD]}J_@afBwe@wiAuY_{@mSq_Bq\\okA_TelA_Rcx@qKew@eJokAaLa}@cGeiB_IejAqBslAMo_AtAedAtCarBzMkxA`PydBdWchBf]obApT_qAj\\mfA|YaoAl^eNzDsqAjc@o~@d[qgBrm@yp@bVcsBlt@ogBtl@wb@|Ng~Axh@cxA|b@cY`I}kAl[smAhYcmArUoz@fNun@`Iy^tE{o@~Foh@fD}ZfBow@nCqqAn@q_@o@_Uk@qh@_Bgf@eCc|@gH{s@}Jqk@qIw_@iHaa@cI{`@cJ}a@gKya@oL{`@kMu`@sNs{@q]mb@yRq]{P_VuLsUuMce@}Wce@cZyWaQm\\yUs^iXe^kY}g@mc@wYyWkYuYgc@cg@qVa\\wYme@m^al@eFkHcJqNaN{TqPeXaU}]cSaZ{MmQ{QgUiRsS_v@cp@eSqM_LqG_MiGsLcFcJ_EmU{HwS{Fu]mGqKuAqOuAoOk@cT[_TTqOZkOlAgP`BaPhC{RdEyRvFq_@lMi_@hPk\\jPm\\lR{lCnbB_KhGgJtFwpDzzB{\\nS_]vOgVhIiVfFsUlCmUz@qMBuMc@aKu@{JqAeK_BsJ}BuMsDkM{EsTuJiTiLqd@uW_uAuw@kzAkz@}s@q\\qYsKqYkJyc@aK}PeDeTiDq[eEcVsCowA{Oqj@yFchB{RmfAqL{l@}Gup@kH{gB{RaViCyZuEiWgCkHy@oC}BcGs@iD{@qCyAaDkD}C_GeBeGaAkH[oH?cKpK{|@pBoIbDaGpCU`DQfCjAbCxC`BvD~@hF|@zGfApKp@vHdB`iAjCt{AlCx|ApAjt@zA~v@l@d[L|K?tL]nQgA|Nk@hGyAvGuCzHqCxGcCjDiFzGyCx@_BHgDBsLEsOBoIHqCT}C^}Bh@kC`AsE~CmC~CkDfG{CpHuA~GaAbGy@pI]hJCzKVjQh@vPfAz]tAhg@b@xTzDzBtBMxAsAtB}FzCyHp@gFV}GOeHk@mIcAmI[oEm@wG_@wGWsFGyI@yMbAo|@EqGUuDu@kIcAwFsA_FqB{EmByCgEaD}IaDa@nEi@zEmAnCqBPyAq@wI}EcK_DwGW]aMYkGGma@Wel@DyQnAgNH_Ik@_eCeA}gDDqHZkGf@qChAsCpDsFrAoDfAaGp@sIz@iOt@qLnAsHhBeLt@gIPqJoAaXiFk}@c@uLm@uKy@}H_BgOu@{_@uD_u@iEuSoBshAsIaaCgOsyCuc@}uIiNonCyVo{E{KywBoJapBcBuPm@qNa@{MsOe}CgIgaBuFcfA_FseAWiSu@uTu@uLgAoOqOa|DcD}u@"
+          }
+        ],
+        "summary": {
+          "has_time_restrictions": false,
+          "has_toll": false,
+          "has_highway": true,
+          "has_ferry": false,
+          "min_lat": 52.16484,
+          "min_lon": 10.723175,
+          "max_lat": 52.607641,
+          "max_lon": 11.874537,
+          "time": 7384.959,
+          "length": 143.305,
+          "cost": 9030.074
+        },
+        "status_message": "Found route between points",
+        "status": 0,
+        "units": "kilometers",
+        "language": "en-US"
+      }
+    }
+  }
+}

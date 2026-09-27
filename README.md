@@ -93,12 +93,19 @@ $env:HOST = "127.0.0.1"
 | GAME_TIME_SCALE | 1 = Echtzeit; Beschleunigung nur für lokale Tests |
 | COOKIE_SECURE | false für lokales HTTP; true bei HTTPS-Betrieb |
 | VALHALLA_URL | Routing gespeicherter Facility-Koordinaten |
-| NOMINATIM_URL | Ausschließlich Offline-Import/Enrichment, kein Spielserver-Lookup |
+| ROUTING_ANCHOR_MAX_SNAP_M | 1000; maximale Entfernung realer Straßenkandidaten vom ursprünglichen Standort |
+| NOMINATIM_URL | Offline-Enrichment und begrenzter Backend-Fallback für Routing-Anker |
 | HTTP_USER_AGENT | Vor öffentlichen Providerabrufen mit passendem Kontakt setzen |
 
 Der Katalog wird nur lesend geöffnet und unabhängig vom Spielstandpfad gefunden.
 Fehlende/defekte Katalogdaten ergeben 503 bei Katalog/Kauf oder erster Startflotte;
 bestehende Fahrzeuge bleiben nutzbar. Spielstände und Backups gehören nicht ins Git.
+
+Anfahrt und Lieferung benötigen geprüfte Hin- und Rückwege mit passenden
+Straßenendpunkten. Erfolgreiche Nachweise gelten maximal 24 Stunden; definitive
+Fehler werden nach einer Stunde, vorübergehende Fehler nach 60 Sekunden erneut
+vorbereitbar. Details und Wolfsburger Kopie-Abnahme:
+[Verbindungsprüfung](docs/CONNECTED_ROUTING_REVIEW.md).
 Nur die beiden Referenz-Katalogdateien werden mitgeliefert. Lizenz-/Datenherkunft:
 [DATA_SOURCES](docs/DATA_SOURCES.md).
 

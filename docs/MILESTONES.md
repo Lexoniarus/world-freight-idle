@@ -233,3 +233,19 @@ fahrzeugbezogene Coverage ergänzen den bestehenden globalen Routingpfad.
 Status: implemented / targeted tests passed / full acceptance pending,
 maßgeblich sind die tatsächlich dokumentierten Ergebnisse im Qualitätsbericht.
 Frühere Gesamtabnahmen gelten nicht für diesen Korrekturstand.
+
+
+## Befahrbare Standortverbindungen (27.09.2026)
+
+Auf Basis `5d7ff77` im bestehenden `feature/frontend-v2` umgesetzt: Freigabe
+jeder Lieferung und Anfahrt erst mit echten Hin- und Rückwegen und passenden
+Endpunkten. Automatische Kandidatensuche höchstens 1.000 Meter, fünf Kandidaten
+je Standort, 25 Paare und 120 Sekunden. Gemeinsame Leases und atomare
+Veröffentlichung; versionierte Nachweise mit Wiederprüfung nach 24 Stunden,
+einer Stunde bei definitiven Fehlern beziehungsweise 60 Sekunden bei Störungen.
+
+Wolfsburger LKW auf isolierter Spielstandkopie regulär disponiert; Ankunft und
+Folgeauftrag geprüft. Zehn begrenzte Live-Provideranfragen insgesamt. Backup vorhanden, echter
+Spielstand unverändert. Gezielte Prüfungen siehe
+[Änderungs- und Abnahmebericht](CONNECTED_ROUTING_REVIEW.md).
+Vollständige Suite und Gesamtintegration verbleiben ausdrücklich beim Nutzer.

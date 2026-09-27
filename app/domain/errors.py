@@ -8,6 +8,7 @@ RoutingFailureCategory: TypeAlias = Literal[
     "distance_limit",
     "provider_unavailable",
     "invalid_response",
+    "endpoint_mismatch",
 ]
 
 

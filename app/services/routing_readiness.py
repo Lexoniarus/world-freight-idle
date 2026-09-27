@@ -1,10 +1,9 @@
-"""Prepare global truck relations outside player write transactions."""
+"""Prepare certified two-way road connections outside player transactions."""
 
 import asyncio
-import json
 import uuid
 from collections.abc import Callable
-from dataclasses import asdict, replace
+from dataclasses import replace
 from hashlib import sha256
 
 from app.domain.errors import RoutingError
@@ -14,6 +13,13 @@ from app.domain.routing_anchor_ports import (
     RoutingAnchorResolverPort,
     RoutingAnchorStore,
 )
+from app.domain.routing_anchors import (
+    NEGATIVE_TTL,
+    POSITIVE_TTL,
+    VALIDATION_VERSION,
+    RoutingAnchor,
+)
+from app.domain.routing_connections import anchor_identity, connection_leases
 from app.domain.routing_readiness import (
     RoutePayload,
     RouteReference,
@@ -22,11 +28,12 @@ from app.domain.routing_readiness import (
     relation_identity,
 )
 from app.domain.world_scopes import WorldScope
+from app.services.routing_connections import RoutingConnectionValidator
 from app.tracing import get_trace_id
 
 
 class RoutingReadinessService:
-    """Coordinate anchor resolution and globally fenced route validation."""
+    """Coordinate versioned proofs, global leases and atomic publication."""
 
     def __init__(
         self,
@@ -39,10 +46,11 @@ class RoutingReadinessService:
         clock: Callable[[], float],
         timeout_seconds: float = 120,
         provider_revision: Callable[[], str | None] | None = None,
+        connections: RoutingConnectionValidator | None = None,
     ) -> None:
-        """Inject infrastructure ports and a bounded provider-work deadline."""
+        """Inject infrastructure; enforce the total provider-work deadline."""
         if timeout_seconds <= 0:
-            raise ValueError("Readiness timeout must be positive.")
+            raise ValueError("Lease must have a positive timeout.")
         self.store = store
         self.anchors = anchors
         self.anchor_store = anchor_store
@@ -50,60 +58,82 @@ class RoutingReadinessService:
         self.world = world
         self.provider_identity = provider_identity
         self.clock = clock
-        self.timeout = timeout_seconds
+        self.timeout = min(timeout_seconds, 120)
         self.provider_revision = provider_revision
+        self.connections = connections or RoutingConnectionValidator()
 
-    def fingerprint(self, origin: str, destination: str) -> str:
-        """Bind readiness to current facilities, anchors and provider graph."""
+    def fingerprint(
+        self,
+        origin: str,
+        destination: str,
+        anchors: tuple[RoutingAnchor | None, RoutingAnchor | None]
+        | None = None,
+    ) -> str:
+        """Bind evidence to policy, graph, locations and road access."""
         scope = WorldScope(self.world.read())
-        facts: list[object] = [
+        selected = (
+            anchors
+            if anchors is not None
+            else (
+                self.anchor_store.get(origin, "truck"),
+                self.anchor_store.get(destination, "truck"),
+            )
+        )
+        facts = (
+            VALIDATION_VERSION,
             self.provider_identity,
             self.provider_revision() if self.provider_revision else None,
-        ]
-        for uid in (origin, destination):
-            facility = scope.facility(uid)
-            anchor = self.anchor_store.get(uid, "truck")
-            facts.append(
+            self.anchors.max_snap_distance_m,
+            tuple(
                 (
                     uid,
-                    facility.address.display_text(),
-                    asdict(facility.coordinates)
-                    if facility.coordinates
-                    else None,
-                    (
-                        anchor.anchor,
-                        anchor.provider_revision,
-                        anchor.validation_status,
-                        anchor.facility_coordinates,
-                    )
-                    if anchor
-                    else None,
+                    scope.facility(uid).address.display_text(),
+                    scope.facility(uid).coordinates,
+                    anchor_identity(anchor),
                 )
-            )
-        return sha256(json.dumps(facts, default=str).encode()).hexdigest()
+                for uid, anchor in zip((origin, destination), selected)
+            ),
+        )
+        return sha256(repr(facts).encode()).hexdigest()
 
     def current(self, origin: str, destination: str) -> RoutingRelation | None:
-        """Return current ready or negative evidence without any HTTP call."""
+        """Reject expired, legacy or one-sided evidence without HTTP."""
         relation = self.store.get(relation_identity(origin, destination))
         if relation is None:
             return None
-        if relation.fingerprint != self.fingerprint(origin, destination):
-            return replace(relation, status="stale", retry_at=None)
-        if relation.status == "ready" and not self.store.payload(
-            relation.reference
-        ):
+        now = self.clock()
+        stale = relation.fingerprint != self.fingerprint(origin, destination)
+        if relation.status == "ready":
+            reverse = self.store.get(relation_identity(destination, origin))
+            stale = stale or (
+                now - relation.checked_at >= POSITIVE_TTL
+                or reverse is None
+                or reverse.status != "ready"
+                or now - reverse.checked_at >= POSITIVE_TTL
+                or reverse.fingerprint != self.fingerprint(destination, origin)
+                or not self.store.connected(
+                    relation.reference, reverse.reference
+                )
+                or self.store.payload(relation.reference) is None
+                or self.store.payload(reverse.reference) is None
+            )
+        elif relation.status == "deterministic_failure":
+            stale = stale or now - relation.checked_at >= NEGATIVE_TTL
+        if stale:
             return replace(relation, status="stale", retry_at=None)
         return relation
 
     def ready(self, origin: str, destination: str) -> RouteReference | None:
-        """Expose only a validated current relation to market publication."""
+        """Expose only current two-way evidence to the market and dispatch."""
         relation = self.current(origin, destination)
-        if relation is None or relation.status != "ready":
-            return None
-        return relation.reference
+        return (
+            relation.reference
+            if relation and relation.status == "ready"
+            else None
+        )
 
     def load(self, origin: str, destination: str) -> RoutePayload:
-        """Load validated metrics without a quote-time provider fallback."""
+        """Load certified metrics without a quote-time provider fallback."""
         reference = self.ready(origin, destination)
         payload = self.store.payload(reference) if reference else None
         if payload is None:
@@ -113,134 +143,121 @@ class RoutingReadinessService:
     async def prepare(
         self, origin: str, destination: str
     ) -> RoutingRelation | None:
-        """Deduplicate directed work globally and reuse negative evidence."""
+        """Deduplicate both directions and release all leases on every exit."""
+        if origin == destination:
+            raise ValueError("Connection requires different facilities.")
         cached = self.current(origin, destination)
         now = self.clock()
-        if cached is not None and (
+        if cached and (
             cached.status in {"ready", "deterministic_failure"}
             or (cached.retry_at is not None and cached.retry_at > now)
         ):
             return cached
-        subject = relation_identity(origin, destination)
         owner = uuid.uuid4().hex
-        if not self.store.acquire(
-            subject, owner, now, now + self.timeout + 10
-        ):
-            return None
+        acquired: list[str] = []
+        expected = self.fingerprint(origin, destination)
         try:
+            for subject in connection_leases(origin, destination):
+                if not self.store.acquire(
+                    subject, owner, now, now + self.timeout + 10
+                ):
+                    return None
+                acquired.append(subject)
             async with asyncio.timeout(self.timeout):
                 return await self._validate(origin, destination, owner)
         except TimeoutError:
+            if self.fingerprint(origin, destination) != expected:
+                return None
             return self._failure(
-                origin, destination, owner, "provider_unavailable"
+                origin, destination, owner, RoutingError("Timeout")
             )
         finally:
-            self.store.release(subject, owner)
+            for subject in reversed(acquired):
+                self.store.release(subject, owner)
 
     async def _validate(
         self,
         origin: str,
         destination: str,
         owner: str,
-        revalidated: bool = False,
     ) -> RoutingRelation | None:
-        """Resolve truck endpoints and validate one provider route."""
+        """Revalidate inputs after awaits before committing the proof."""
         snapshot = self.world.read()
         scope = WorldScope(snapshot)
-        start = await self.anchors.resolve(scope.facility(origin))
-        end = await self.anchors.resolve(scope.facility(destination))
-        if start.anchor is None or end.anchor is None:
-            transient = any(
-                a.validation_status in {"provider_unavailable"}
-                for a in (start, end)
-            )
-            return self._failure(
-                origin,
-                destination,
-                owner,
-                "provider_unavailable"
-                if transient
-                else "endpoint_unreachable",
-            )
+        expected_anchors = (
+            self.anchor_store.get(origin, "truck"),
+            self.anchor_store.get(destination, "truck"),
+        )
+        expected = self.fingerprint(origin, destination)
         if self.world.read() != snapshot:
             return None
-        expected_fingerprint = self.fingerprint(origin, destination)
-        if not self.store.renew(
-            relation_identity(origin, destination),
-            owner,
-            self.clock(),
-            self.clock() + self.timeout + 10,
-        ):
-            return None
+        for subject in connection_leases(origin, destination):
+            if not self.store.renew(
+                subject, owner, self.clock(), self.clock() + self.timeout + 10
+            ):
+                return None
         try:
-            route = await self.router.route(
-                start.anchor.latitude,
-                start.anchor.longitude,
-                end.anchor.latitude,
-                end.anchor.longitude,
+            result = await self.connections.validate(
+                scope.facility(origin),
+                scope.facility(destination),
+                self.router,
+                self.anchors,
+                self.clock,
+                self.store.append_attempt,
             )
         except RoutingError as error:
-            if self.fingerprint(origin, destination) != expected_fingerprint:
+            if (
+                self.world.read() != snapshot
+                or self.fingerprint(origin, destination) != expected
+            ):
                 return None
-            if error.category == "endpoint_unreachable" and not revalidated:
-                self.store.append_attempt(
-                    RoutingAttempt(
-                        relation_identity(origin, destination),
-                        "truck_route",
-                        error.category,
-                        self.clock(),
-                        get_trace_id(),
-                        provider_code=error.provider_code,
-                        provider_message=error.provider_message,
-                    )
-                )
-                await self.anchors.resolve(scope.facility(origin), force=True)
-                await self.anchors.resolve(
-                    scope.facility(destination), force=True
-                )
-                return await self._validate(
-                    origin, destination, owner, revalidated=True
-                )
-            return self._failure(
-                origin,
-                destination,
-                owner,
-                error.category,
-                error.provider_code,
-                error.provider_message,
-            )
-        if self.fingerprint(origin, destination) != expected_fingerprint:
+            return self._failure(origin, destination, owner, error)
+        if (
+            self.world.read() != snapshot
+            or self.fingerprint(origin, destination) != expected
+        ):
             return None
-        payload = RoutePayload(
-            route.coordinates,
-            route.distance_km,
-            route.duration_seconds,
-            route.provider,
-        )
-        reference = RouteReference(
-            relation_identity(origin, destination), uuid.uuid4().hex
-        )
-        relation = RoutingRelation(
-            reference,
+        now = self.clock()
+        forward = RoutingRelation(
+            RouteReference(
+                relation_identity(origin, destination), uuid.uuid4().hex
+            ),
             origin,
             destination,
-            expected_fingerprint,
+            self.fingerprint(
+                origin, destination, (result.origin, result.destination)
+            ),
             "ready",
             None,
             None,
-            self.clock(),
+            now,
         )
-        self.store.append_attempt(
-            RoutingAttempt(
-                reference.relation_id,
-                "truck_route",
-                "validated",
-                self.clock(),
-                get_trace_id(),
-            )
+        reverse = RoutingRelation(
+            RouteReference(
+                relation_identity(destination, origin), uuid.uuid4().hex
+            ),
+            destination,
+            origin,
+            self.fingerprint(
+                destination, origin, (result.destination, result.origin)
+            ),
+            "ready",
+            None,
+            None,
+            now,
         )
-        if self.store.publish(relation, payload, owner, self.clock()):
-            return relation
+        revision = self.provider_revision() if self.provider_revision else None
+        if self.store.publish_connection(
+            result,
+            forward,
+            reverse,
+            expected_anchors,
+            owner,
+            now,
+            self.provider_identity,
+            revision,
+        ):
+            return forward
         return None
 
     def _failure(
@@ -248,12 +265,13 @@ class RoutingReadinessService:
         origin: str,
         destination: str,
         owner: str,
-        category: str,
-        code: int | None = None,
-        message: str | None = None,
+        error: RoutingError,
     ) -> RoutingRelation | None:
-        """Persist diagnostic failure and its bounded retry schedule."""
-        transient = category == "provider_unavailable"
+        """Cache negative evidence with its cause for a bounded period."""
+        transient = error.category in {
+            "provider_unavailable",
+            "invalid_response",
+        }
         relation = RoutingRelation(
             RouteReference(
                 relation_identity(origin, destination), uuid.uuid4().hex
@@ -262,19 +280,19 @@ class RoutingReadinessService:
             destination,
             self.fingerprint(origin, destination),
             "transient_failure" if transient else "deterministic_failure",
-            category,
-            self.clock() + 60 if transient else None,
+            error.category,
+            self.clock() + (60 if transient else NEGATIVE_TTL),
             self.clock(),
         )
         self.store.append_attempt(
             RoutingAttempt(
                 relation.reference.relation_id,
-                "truck_route",
-                category,
+                "truck_connection_failure",
+                error.category,
                 self.clock(),
                 get_trace_id(),
-                provider_code=code,
-                provider_message=message,
+                provider_code=error.provider_code,
+                provider_message=error.provider_message,
             )
         )
         if self.store.publish(relation, None, owner, self.clock()):

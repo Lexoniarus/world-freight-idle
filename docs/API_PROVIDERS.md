@@ -53,6 +53,8 @@ Provider-Adapter ausgewertet. Nach außen verlässt den Adapter nur ein
 - `provider_unavailable`: HTTP-, Timeout- oder sonstige Providerstörung.
 - `invalid_response`: eine erfolgreiche Providerantwort ist strukturell
   unbrauchbar.
+- `endpoint_mismatch`: der Verbindungsprüfer erkennt einen tatsächlichen
+  Geometrie-Endpunkt über 10 Meter vom vorgesehenen Anker entfernt.
 
 Der Adapter ordnet die dokumentierten Valhalla-Codes `171` und `441`
 `endpoint_unreachable`, `170` und `442` `no_path` sowie `154`
@@ -79,15 +81,24 @@ unterstützt. Die korrelierte Position wird aus den zurückgegebenen
 `edges[].correlated_lat` / `edges[].correlated_lon` gelesen. Referenz:
 https://github.com/valhalla/valhalla/blob/master/docs/docs/api/openapi.yaml
 
-Die Anwendung berechnet die Snap-Distanz zwischen Kandidat und korreliertem
-Edge-Punkt und akzeptiert den Anker nur innerhalb
-`ROUTING_ANCHOR_MAX_SNAP_M`. Eine Provider-/Graph-Revision wird nur gespeichert,
+Locate liefert Kandidaten, keinen Verbindungsnachweis. Die Anwendung berechnet
+deren Entfernung stets von der ursprünglichen Facility-Koordinate, auch nach
+Adress-Fallback. `ROUTING_ANCHOR_MAX_SNAP_M` hat den Default und die Obergrenze
+1000 Meter. Verschachtelte Truck-Zugriffe (`edges[].edge.access.truck`) werden
+ausgewertet. Eine Provider-/Graph-Revision wird nur gespeichert,
 wenn Valhalla sie tatsächlich in bekannten Response-Headern liefert.
 
 Kann die Facility-Koordinate nicht als Truck-Anker verwendet werden, darf der
 bereits vorhandene gecachte und rate-limitierte `NominatimGeocoder` die
 gespeicherte Facility-Adresse backendseitig auflösen. Dieser Kandidat muss
 erneut `/locate` bestehen. Der Browser geocodiert nicht.
+
+Je Facility werden über beide Suchphasen höchstens fünf unterschiedliche
+Kandidaten geprüft. Der injizierte Verbindungsprüfer verlangt echte Truck-Routen
+in beiden Richtungen; alle vier Geometrie-Endpunkte müssen innerhalb 10 Metern
+der vorgesehenen Anker liegen. Maximal 25 Paare und 120 Sekunden einschließlich
+Limiter; erfolgreiche aktuelle Anker bleiben bevorzugt stabil. Erst dann werden
+Anker, beide Richtungen und gemeinsamer Nachweis atomar gespeichert.
 
 
 ## Vorbereitung und Betriebsbudget
@@ -112,4 +123,8 @@ verhindern doppelte Relationsarbeit, aggregieren aber keine Provider-Rate.
 Graphwechsel werden über tatsächlich gelieferte `x-graph-revision`-Header,
 sonst `x-valhalla-version`, beobachtet. Fehlende Header erfinden keine Revision
 und invalidieren keine Route fortlaufend. Ein nicht angekündigter Graphwechsel
-ist ohne Provider-Metadaten nicht automatisch erkennbar.
+ist ohne Provider-Metadaten nicht sofort erkennbar. Erfolgreiche Nachweise gelten
+deshalb höchstens 24 Stunden. Definitive Fehler werden nach einer Stunde,
+temporäre Störungen und ausgeschöpftes Reparaturbudget nach 60 Sekunden wieder
+vorbereitbar. Der Worker reagiert auf Nachfrage; Details und Abnahme:
+[Verbindungsprüfung](CONNECTED_ROUTING_REVIEW.md).

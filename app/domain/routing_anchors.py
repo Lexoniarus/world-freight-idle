@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from hashlib import sha256
 from typing import Literal
@@ -9,6 +10,38 @@ from typing import Literal
 from app.domain.geography import Coordinates
 from app.domain.validation import require_finite, require_identity
 from app.domain.world import Facility
+
+VALIDATION_VERSION = "truck-connected-v2"
+POSITIVE_TTL = 86_400.0
+NEGATIVE_TTL = 3_600.0
+ENDPOINT_TOLERANCE_M = 10.0
+MAX_CANDIDATES = 5
+
+
+def distance_m(first: Coordinates, second: Coordinates) -> float:
+    """Measure actual WGS84 separation, independently of provider snaps."""
+    lat1, lat2 = map(math.radians, (first.latitude, second.latitude))
+    delta_lon = math.radians(second.longitude - first.longitude)
+    value = (
+        math.sin((lat2 - lat1) / 2) ** 2
+        + math.cos(lat1) * math.cos(lat2) * math.sin(delta_lon / 2) ** 2
+    )
+    return 12_742_017.6 * math.asin(math.sqrt(min(1.0, value)))
+
+
+@dataclass(frozen=True, slots=True)
+class RoutingCandidate:
+    """A real road correlation, still requiring connection validation."""
+
+    coordinates: Coordinates
+    distance_m: float
+    provider: str
+    provider_revision: str | None
+    method: str = "facility_coordinate"
+    way_id: int | None = None
+    inbound_reach: int | None = None
+    outbound_reach: int | None = None
+
 
 RoutingAnchorStatus = Literal[
     "validated",
@@ -63,15 +96,19 @@ class LocateResult:
     snap_distance_m: float | None
     provider: str
     provider_revision: str | None
-    status: RoutingAnchorStatus
-    candidates: tuple[Coordinates, ...] = ()
+    status: RoutingAnchorStatus | Literal["located"]
+    candidates: tuple[RoutingCandidate, ...] = ()
     provider_code: int | None = None
     provider_message: str | None = None
 
 
-def anchor_source_fingerprint(facility: Facility) -> str:
+def anchor_source_fingerprint(
+    facility: Facility, maximum_distance_m: float = 1000.0
+) -> str:
     """Bind cached access to facility identity, address and coordinates."""
     value = (
+        VALIDATION_VERSION,
+        float(maximum_distance_m),
         facility.facility_uid,
         facility.address.display_text(),
         facility.coordinates,

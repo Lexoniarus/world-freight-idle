@@ -5,7 +5,7 @@ FUNCTION_TESTS = {
     "app.providers.valhalla_metadata.graph_revision": "test_graph_revision_prefers_graph_metadata_without_inventing_versions",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.provider_revision": "test_observed_global_graph_revision_invalidates_shared_routes",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.observe_provider_revision": "test_observed_global_graph_revision_invalidates_shared_routes",
-    "app.domain.routing_anchors.anchor_source_fingerprint": "test_anchor_address_change_invalidates_cached_access",
+    "app.domain.routing_anchors.anchor_source_fingerprint": "test_anchor_policy_changes_invalidate_coordinate_and_address_evidence",
     "app.providers.routing_anchor.ValhallaTruckAnchorLocator._response_failure": "test_locate_failure_preserves_bounded_provider_diagnostics",
     "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.put_leased": "test_anchor_publication_rejects_expired_owner",
     "app.bootstrap.build_market_preparation": "test_preparation_composition_preserves_unconfigured_test_runtime",
@@ -52,9 +52,7 @@ FUNCTION_TESTS = {
     "app.services.preparation_worker.MarketPreparationWorker.close": "test_worker_fills_ready_market_and_owns_shutdown",
     "app.services.preparation_worker.MarketPreparationWorker.process": "test_worker_fills_ready_market_and_owns_shutdown",
     "app.services.preparation_worker.MarketPreparationWorker.start": "test_worker_fills_ready_market_and_owns_shutdown",
-    "app.services.routing_anchors.RoutingAnchorResolver._attempt": "test_routing_anchor_no_truck_edge_is_persisted",
-    "app.services.routing_anchors.RoutingAnchorResolver._record": "test_routing_anchor_no_truck_edge_is_persisted",
-    "app.services.routing_anchors.RoutingAnchorResolver._repair": "test_routing_anchor_no_truck_edge_is_persisted",
+    "app.services.routing_anchors.RoutingAnchorResolver._record": "test_candidate_search_keeps_evidence_and_never_changes_saved_anchor",
     "app.services.routing_inventory.routing_inventory": "test_audit_inventory_is_structural_and_report_preserves_history",
     "app.services.routing_readiness.RoutingReadinessService.__init__": "test_global_negative_cache_timeout_and_stale_payload",
     "app.services.routing_readiness.RoutingReadinessService._failure": "test_global_negative_cache_timeout_and_stale_payload",
@@ -689,25 +687,19 @@ FUNCTION_TESTS.update(
 FUNCTION_TESTS.update(
     {
         "app.domain.routing_anchors.RoutingAnchor.__post_init__": (
-            "test_routing_anchor_cached_validated_anchor_is_reused"
+            "test_certified_access_is_stable_and_legacy_access_is_only_candidate"
         ),
         "app.providers.routing_anchor.ValhallaTruckAnchorLocator.__init__": (
-            "test_routing_anchor_direct_facility_coordinate_works"
+            "test_candidates_never_publish_before_connection_proof"
         ),
         "app.providers.routing_anchor.ValhallaTruckAnchorLocator.locate": (
             "test_routing_anchor_provider_temporarily_offline"
         ),
         "app.providers.routing_anchor.ValhallaTruckAnchorLocator._correlated_location": (
-            "test_routing_anchor_valhalla_snap_works"
-        ),
-        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._edge_count": (
-            "test_routing_anchor_no_truck_edge_is_persisted"
-        ),
-        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._snap_distance_m": (
-            "test_routing_anchor_valhalla_snap_works"
+            "test_candidates_never_publish_before_connection_proof"
         ),
         "app.providers.routing_anchor.ValhallaTruckAnchorLocator._revision": (
-            "test_routing_anchor_valhalla_snap_works"
+            "test_candidates_never_publish_before_connection_proof"
         ),
         "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.__init__": (
             "test_routing_anchor_repository_roundtrip"
@@ -719,22 +711,16 @@ FUNCTION_TESTS.update(
             "test_routing_anchor_repository_roundtrip"
         ),
         "app.services.routing_anchors.RoutingAnchorResolver.__init__": (
-            "test_routing_anchor_direct_facility_coordinate_works"
+            "test_candidates_never_publish_before_connection_proof"
         ),
         "app.services.routing_anchors.RoutingAnchorResolver.resolve": (
-            "test_routing_anchor_address_fallback_works"
-        ),
-        "app.services.routing_anchors.RoutingAnchorResolver._accepted_anchor": (
-            "test_routing_anchor_too_large_snap_is_rejected"
-        ),
-        "app.services.routing_anchors.RoutingAnchorResolver._failure": (
-            "test_routing_anchor_no_truck_edge_is_persisted"
+            "test_address_and_missing_coordinate_fallbacks_are_bounded"
         ),
     }
 )
 
 FUNCTION_TESTS["app.bootstrap.build_routing_anchor_resolver"] = (
-    "test_routing_anchor_direct_facility_coordinate_works"
+    "test_candidates_never_publish_before_connection_proof"
 )
 
 # routing-anchor-standards-2026-09-26
@@ -752,12 +738,6 @@ FUNCTION_TESTS.update(
         "app.providers.routing_anchor.ValhallaTruckAnchorLocator._correlated_location": (
             "test_truck_anchor_locator_rejects_missing_or_malformed_edges"
         ),
-        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._edge_count": (
-            "test_truck_anchor_locator_helpers_cover_unusable_metadata"
-        ),
-        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._snap_distance_m": (
-            "test_truck_anchor_locator_uses_real_locate_edge_shape"
-        ),
         "app.providers.routing_anchor.ValhallaTruckAnchorLocator._revision": (
             "test_truck_anchor_locator_uses_real_locate_edge_shape"
         ),
@@ -774,13 +754,7 @@ FUNCTION_TESTS.update(
             "test_routing_anchor_resolver_rejects_nonpositive_snap_limit"
         ),
         "app.services.routing_anchors.RoutingAnchorResolver.resolve": (
-            "test_routing_anchor_address_fallback_works"
-        ),
-        "app.services.routing_anchors.RoutingAnchorResolver._accepted_anchor": (
-            "test_routing_anchor_too_large_snap_is_rejected"
-        ),
-        "app.services.routing_anchors.RoutingAnchorResolver._failure": (
-            "test_routing_anchor_no_truck_edge_is_persisted"
+            "test_address_and_missing_coordinate_fallbacks_are_bounded"
         ),
         "app.bootstrap.build_routing_anchor_resolver": (
             "test_build_game_service_wires_real_provider_adapters"
@@ -846,5 +820,22 @@ FUNCTION_TESTS.update(
     {
         "app.repositories.analytics.validate_scalars": "test_analytics_rejects_invalid_sql_scalars",
         "app.repositories.analytics.map_ongoing": "test_analytics_rejects_invalid_sql_scalars",
+    }
+)
+
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.routing_anchors.distance_m": "test_search_budget_is_transient_and_successful_direct_path_is_certified",
+        "app.domain.routing_connections.connection_identity": "test_reverse_requests_cancellation_and_expired_leases",
+        "app.domain.routing_connections.connection_leases": "test_reverse_requests_cancellation_and_expired_leases",
+        "app.domain.routing_connections.anchor_identity": "test_anchor_fingerprints_survive_sqlite_numeric_normalization",
+        "app.services.routing_anchors.RoutingAnchorResolver._locate": "test_candidate_bound_uses_original_location_even_after_address_snap",
+        "app.services.routing_connections.RoutingConnectionValidator.validate": "test_connection_deadline_is_transient_for_direct_planning",
+        "app.services.routing_connections.RoutingConnectionValidator._search": "test_search_budget_is_transient_and_successful_direct_path_is_certified",
+        "app.services.routing_connections.RoutingConnectionValidator._route": "test_no_direction_is_published_without_matching_return_geometry",
+        "app.services.routing_connections.RoutingConnectionValidator._anchor": "test_wolfsburg_real_candidates_recover_without_changing_facility",
+        "app.repositories.routing_readiness.SqliteRoutingReadinessStore.connected": "test_cache_versions_ttls_and_broken_reverse_evidence",
+        "app.repositories.routing_readiness.SqliteRoutingReadinessStore.publish_connection": "test_connection_publication_rolls_back_both_directions_and_anchors",
     }
 )

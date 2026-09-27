@@ -231,10 +231,19 @@ Facilities behalten ihre dokumentierte oder als Simulation gekennzeichnete
 WorldCatalogue-Koordinate für Karte und historische Anzeige. Lkw-Routing
 verwendet davon getrennte globale Routing-Anker je `facility_uid` und Profil.
 Die strukturelle Candidate-Erzeugung bleibt facility-basiert und routerfrei.
-Die anschließende Market Preparation löst Truck-Anker auf und validiert die
-Delivery-Relation vor Veröffentlichung. Fehlschläge veröffentlichen keinen Auftrag.
+Die anschließende Market Preparation prüft für jede Lieferung und Anfahrt
+echte Hin- und Rückwege mit vier passenden Straßenendpunkten (Toleranz 10 Meter).
+Erst dann veröffentlicht sie die gewählten Anker und beide Richtungen atomar.
+Bis zu fünf reale Straßenkandidaten je Standort dürfen höchstens 1.000 Meter
+von der ursprünglichen Facility entfernt liegen. Fehlschläge veröffentlichen
+keinen Auftrag. Die Wiederprüfung erfolgt nach Nachfrage; erfolgreiche
+Nachweise verfallen nach 24 Stunden, definitive Fehler nach einer Stunde und
+vorübergehende Providerfehler nach 60 Sekunden.
 Quote und Dispatch laden vorbereitete Routen. Die Fahrzeug-Journey ergänzt
 Geschwindigkeit, Energie und Pausen; Facility-Anzeigekoordinaten bleiben erhalten.
+
+Umsetzung und isolierte Wolfsburger Abnahme:
+[Durchgängig befahrbare Standortverbindungen](CONNECTED_ROUTING_REVIEW.md).
 
 
 ## Route-ready Market v2

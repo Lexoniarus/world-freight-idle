@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
+from app.domain.errors import RoutingError
 from app.domain.geography import Coordinates
-from app.domain.routing_anchors import RoutingAnchor
+from app.domain.routing_anchors import RoutingCandidate
 from app.domain.transports import RouteSnapshot
 from app.domain.world import Facility
 from app.services.cost_profiles import VehicleCostResolver
@@ -41,40 +42,25 @@ class CaptureRouter:
 
 
 class OffsetAnchorResolver:
+    max_snap_distance_m = 1000.0
+
     def __init__(self, failed_uid: str | None = None) -> None:
         self.failed_uid = failed_uid
 
-    async def resolve(
-        self, facility: Facility, *, force: bool = False
-    ) -> RoutingAnchor:
+    async def resolve(self, facility: Facility, *, force: bool = False):
         if facility.facility_uid == self.failed_uid:
-            return RoutingAnchor(
-                facility_uid=facility.facility_uid,
-                routing_profile="truck",
-                anchor=None,
-                method="facility_coordinate",
-                facility_coordinates=facility.coordinates,
-                snap_distance_m=None,
-                validation_status="no_truck_edge",
-                provider="fake",
-                provider_revision=None,
-                validated_at=1.0,
-            )
+            return ()
         assert facility.coordinates is not None
-        return RoutingAnchor(
-            facility_uid=facility.facility_uid,
-            routing_profile="truck",
-            anchor=Coordinates(
-                facility.coordinates.latitude + 0.01,
-                facility.coordinates.longitude + 0.01,
+        return (
+            RoutingCandidate(
+                Coordinates(
+                    facility.coordinates.latitude + 0.001,
+                    facility.coordinates.longitude + 0.001,
+                ),
+                150.0,
+                "fake",
+                None,
             ),
-            method="facility_coordinate",
-            facility_coordinates=facility.coordinates,
-            snap_distance_m=10.0,
-            validation_status="validated",
-            provider="fake",
-            provider_revision="test",
-            validated_at=1.0,
         )
 
 
@@ -105,11 +91,17 @@ async def test_dispatch_routing_uses_anchors_not_display_coordinates(
     assert destination.coordinates is not None
     assert router.calls == [
         (
-            start.coordinates.latitude + 0.01,
-            start.coordinates.longitude + 0.01,
-            destination.coordinates.latitude + 0.01,
-            destination.coordinates.longitude + 0.01,
-        )
+            start.coordinates.latitude + 0.001,
+            start.coordinates.longitude + 0.001,
+            destination.coordinates.latitude + 0.001,
+            destination.coordinates.longitude + 0.001,
+        ),
+        (
+            destination.coordinates.latitude + 0.001,
+            destination.coordinates.longitude + 0.001,
+            start.coordinates.latitude + 0.001,
+            start.coordinates.longitude + 0.001,
+        ),
     ]
     assert start.location_snapshot().coordinates == start.coordinates
 
@@ -129,7 +121,7 @@ async def test_dispatch_routing_rejects_failed_anchor(world_catalogue):
         world_catalogue,
     )
 
-    with pytest.raises(ValueError, match="Truck-Routing-Anchor"):
+    with pytest.raises(RoutingError, match="Truck-Routing-Anchor"):
         await planner._route_between(
             start.location_snapshot(),
             destination.location_snapshot(),
@@ -162,7 +154,30 @@ async def test_dispatch_approach_uses_facility_identity_not_display_coordinate(
         game.world,
     )
 
-    route = await planner.route(start, offer)
+    calls: dict[str, int] = {}
+    resolve = planner.anchors.resolve
+
+    async def changing_candidates(facility, *, force=False):
+        count = calls.get(facility.facility_uid, 0)
+        calls[facility.facility_uid] = count + 1
+        candidates = await resolve(facility, force=force)
+        return tuple(
+            replace(
+                candidate,
+                coordinates=Coordinates(
+                    candidate.coordinates.latitude + count * 0.001,
+                    candidate.coordinates.longitude,
+                ),
+            )
+            for candidate in candidates
+        )
+
+    with patch.object(
+        planner.anchors, "resolve", side_effect=changing_candidates
+    ):
+        route = await planner.route(start, offer)
 
     assert route.approach is not None
-    assert len(router.calls) == 2
+    assert len(router.calls) == 4
+    assert calls[origin_uid] == 1
+    assert route.approach.coordinates[-1] == route.delivery.coordinates[0]

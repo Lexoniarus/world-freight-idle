@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import logging
-import math
 from collections.abc import Callable
 from typing import Any
 
 import httpx
 
 from app.domain.geography import Coordinates
-from app.domain.routing_anchors import LocateResult, RoutingAnchorStatus
+from app.domain.routing_anchors import (
+    MAX_CANDIDATES,
+    LocateResult,
+    RoutingAnchorStatus,
+    RoutingCandidate,
+    distance_m,
+)
 from app.providers.request_limiter import ProviderRequestLimiter
 from app.providers.valhalla_metadata import graph_revision
 from app.tracing import get_trace_id
@@ -113,7 +118,10 @@ class ValhallaTruckAnchorLocator:
         try:
             payload = response.json()
             correlated = self._correlated_location(payload)
-            if self._edge_count(correlated) < 1:
+            candidates = self._access_candidates(
+                correlated["edges"], coordinates, revision
+            )
+            if not candidates:
                 return LocateResult(
                     accepted=False,
                     coordinates=None,
@@ -122,12 +130,8 @@ class ValhallaTruckAnchorLocator:
                     provider_revision=revision,
                     status="no_truck_edge",
                 )
-            anchor = Coordinates(
-                float(correlated["lat"]),
-                float(correlated["lon"]),
-            )
-            distance = self._snap_distance_m(coordinates, anchor)
-            candidates = self._access_candidates(correlated["edges"])
+            anchor = candidates[0].coordinates
+            distance = candidates[0].distance_m
         except (ValueError, KeyError, TypeError, IndexError):
             return LocateResult(
                 accepted=False,
@@ -144,7 +148,7 @@ class ValhallaTruckAnchorLocator:
             snap_distance_m=distance,
             provider=PROVIDER,
             provider_revision=revision,
-            status="validated",
+            status="located",
             candidates=candidates,
         )
 
@@ -176,69 +180,53 @@ class ValhallaTruckAnchorLocator:
     @staticmethod
     def _access_candidates(
         edges: list[dict[str, Any]],
-    ) -> tuple[Coordinates, ...]:
-        """Retain at most five distinct truck-compatible OSM correlations."""
-        candidates: list[Coordinates] = []
+        original: Coordinates,
+        revision: str | None,
+    ) -> tuple[RoutingCandidate, ...]:
+        """Read verbose truck access and retain distinct real correlations."""
+        candidates: dict[Coordinates, RoutingCandidate] = {}
         for edge in edges:
-            if edge.get("access", {}).get("truck") is False:
+            if not isinstance(edge, dict):
+                raise ValueError("Invalid locate edge.")
+            details = edge.get("edge", {})
+            info = edge.get("edge_info", {})
+            if not isinstance(details, dict) or not isinstance(info, dict):
+                raise ValueError("Invalid verbose edge metadata.")
+            access = details.get("access", edge.get("access", {}))
+            if not isinstance(access, dict):
+                raise ValueError("Invalid edge access metadata.")
+            if access.get("truck") is False:
                 continue
-            candidate = Coordinates(
+            point = Coordinates(
                 float(edge["correlated_lat"]), float(edge["correlated_lon"])
             )
-            if candidate not in candidates:
-                candidates.append(candidate)
-            if len(candidates) == 5:
-                break
-        return tuple(candidates)
+            if point not in candidates:
+                candidates[point] = RoutingCandidate(
+                    point,
+                    distance_m(original, point),
+                    PROVIDER,
+                    revision,
+                    way_id=info.get("way_id", edge.get("way_id")),
+                    inbound_reach=edge.get("inbound_reach"),
+                    outbound_reach=edge.get("outbound_reach"),
+                )
+        return tuple(
+            sorted(candidates.values(), key=lambda item: item.distance_m)[
+                :MAX_CANDIDATES
+            ]
+        )
 
     @staticmethod
     def _correlated_location(payload: Any) -> dict[str, Any]:
-        """Extract the closest correlated edge from a locate response."""
+        """Validate the locate envelope without selecting the first road."""
         if not isinstance(payload, list) or not payload:
             raise ValueError("Unsupported locate payload.")
         location = payload[0]
         if not isinstance(location, dict):
             raise ValueError("Invalid locate location.")
-        edges = location.get("edges")
-        if not isinstance(edges, list):
+        if not isinstance(location.get("edges"), list):
             raise ValueError("Invalid locate edges.")
-        if not edges:
-            return {"edges": []}
-        edge = edges[0]
-        if not isinstance(edge, dict):
-            raise ValueError("Invalid locate edge.")
-        return {
-            "lat": edge["correlated_lat"],
-            "lon": edge["correlated_lon"],
-            "edges": edges,
-        }
-
-    @staticmethod
-    def _edge_count(location: dict[str, Any]) -> int:
-        """Count correlated truck-compatible edges."""
-        edges = location.get("edges")
-        if not isinstance(edges, list):
-            return 0
-        return len(edges)
-
-    @staticmethod
-    def _snap_distance_m(
-        candidate: Coordinates,
-        anchor: Coordinates,
-    ) -> float:
-        """Calculate great-circle distance between candidate and anchor."""
-        radius_m = 6_371_008.8
-        latitude_one = math.radians(candidate.latitude)
-        latitude_two = math.radians(anchor.latitude)
-        latitude_delta = latitude_two - latitude_one
-        longitude_delta = math.radians(anchor.longitude - candidate.longitude)
-        haversine = (
-            math.sin(latitude_delta / 2) ** 2
-            + math.cos(latitude_one)
-            * math.cos(latitude_two)
-            * math.sin(longitude_delta / 2) ** 2
-        )
-        return radius_m * 2 * math.asin(math.sqrt(haversine))
+        return location
 
     @staticmethod
     def _revision(headers: httpx.Headers) -> str | None:

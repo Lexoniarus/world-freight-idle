@@ -99,8 +99,13 @@ async def test_partial_market_never_publishes_unchecked_offers(game, database):
     offers = game.refresh_market()
     assert offers
     assert all(preparation.retained(o) for o in offers)
-    assert all(o.destination.facility_uid == destination for o in offers)
-    offer = offers[0]
+    assert all(
+        readiness.ready(o.origin.facility_uid, o.destination.facility_uid)
+        for o in offers
+    )
+    offer = next(
+        o for o in offers if o.destination.facility_uid == destination
+    )
     vehicle = owned[0]
     readiness.router = AsyncMock()
     choices = game.contract_choices((offer,))
@@ -225,7 +230,7 @@ async def test_players_share_one_provider_calculation(game, database):
     assert await readiness.prepare(*pair) is None
     release.set()
     assert require_value(await first).status == "ready"
-    assert readiness.router.route.await_count == 1
+    assert readiness.router.route.await_count == 2
 
 
 @pytest.mark.asyncio
@@ -331,25 +336,28 @@ async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
         candidate.trade.origin.facility_uid,
         candidate.trade.destination.facility_uid,
     )
-    failed_anchor = await readiness.anchors.resolve(candidate.trade.origin)
     readiness.anchors = AsyncMock()
-    readiness.anchors.resolve.return_value = replace(
-        failed_anchor, anchor=None, validation_status="provider_unavailable"
-    )
+    readiness.anchors.max_snap_distance_m = 1000.0
+    readiness.anchors.resolve.side_effect = RoutingError("locate unavailable")
     transient = require_value(await readiness.prepare(*pair))
     assert transient.status == "transient_failure"
     complete, retry = await preparation.prepare_batch((candidate,), fleet)
     assert not complete and retry is not None
     readiness.provider_identity = "retry-generation"
     readiness.anchors = FakeRoutingAnchorResolver()
-    with patch.object(readiness.store, "publish", return_value=False):
+    with (
+        patch.object(
+            readiness.store, "publish_connection", return_value=False
+        ),
+        patch.object(readiness.store, "publish", return_value=False),
+    ):
         assert await readiness.prepare(*pair) is None
         error = RoutingError("endpoint")
         error.category = "endpoint_unreachable"
         readiness.router = AsyncMock()
         readiness.router.route.side_effect = error
         assert await readiness.prepare(*pair) is None
-        assert readiness.router.route.await_count == 2
+        assert readiness.router.route.await_count == 1
     with patch.object(readiness, "prepare", return_value=None):
         complete, retry = await preparation.prepare_batch((candidate,), fleet)
         assert not complete and retry is not None
@@ -391,7 +399,9 @@ async def test_route_publication_rechecks_inputs_after_provider_await(
     original = readiness.world.read()
     changed = replace(original, facilities=original.facilities[:-1])
     with patch.object(
-        readiness.world, "read", side_effect=[original, changed]
+        readiness.world,
+        "read",
+        side_effect=[original, original, changed, changed],
     ):
         assert await readiness.prepare(*pair) is None
     router = FakeRouter()
@@ -422,6 +432,7 @@ async def test_observed_global_graph_revision_invalidates_shared_routes(
     preparation = bind_preparation(game, database)
     readiness = preparation.readiness
     store = SqliteRoutingReadinessStore(database)
+    readiness.provider_identity = "test"
     readiness.provider_revision = partial(store.provider_revision, "test")
     assert store.provider_revision("test") is None
     offer = game.state_repository.list_offers()[0]
@@ -527,4 +538,11 @@ async def test_dispatch_rejects_retired_and_changed_prepared_routes(
     with pytest.raises(ValueError, match="Anfahrtsroute"):
         planner.quote(
             offer, replace(route, approach=changed_approach), vehicle, 1
+        )
+    with pytest.raises(ValueError, match="NHM-Tarif"):
+        planner.quote(
+            replace(offer, market_model="nhm_v1", market_context=None),
+            route,
+            vehicle,
+            1,
         )
