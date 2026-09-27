@@ -372,3 +372,19 @@ Preparationstatus `partial` bezeichnet noch unvollständige Vorbereitung,
 Pool bei verbleibender Coverage-Lücke. Alle drei Zustände veröffentlichen
 nur Delivery-ready Offers; Fahrzeug-Eignung verlangt zusätzlich den
 vorbereiteten Approach. Rohdiagnosen bleiben im Backend/Audit.
+
+
+## Fahrzeugbezogene Marktprojektion
+
+`GET /api/v1/contracts` und `POST /api/v1/contracts/refresh` akzeptieren optional
+`vehicle_id`. Ein angegebenes Fahrzeug muss dem Account gehören und idle sein;
+ungültige Auswahl ergibt HTTP 400. Ohne Parameter bleibt der gemeinsame Spielerpool
+als kompatible API-Basis verfügbar. Mit Parameter enthält `contracts` ausschließlich
+Offers mit dieser ID in `eligible_vehicle_ids`. Die UI verwendet denselben
+serverseitigen Eignungswert, ohne eigene Klassen-/Scale-/Routingprüfung.
+
+Zusätzlich enthält die Antwort `vehicle_coverage` mit `vehicle_id`, `city_uid`,
+`offer_count`, `distance_counts` (short/medium/long), `unmet_bands` und
+`unmet_facilities`. `preparation` behält Generation, Status und Retry-Zeitpunkt.
+Die bestehende Analytics-JSON-Struktur bleibt unverändert; ein eigener
+API-Projektor übersetzt die typisierten Service-Ergebnisse.

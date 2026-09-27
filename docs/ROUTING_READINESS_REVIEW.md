@@ -1,3 +1,7 @@
+> Historischer Reviewstand der ersten Routing-Readiness-Implementierung.
+> Das aktuelle Einzelreview der zehn Korrekturen und des Vehicle-Ready-Fixes
+> steht in [REVIEW_VEHICLE_READY.md](REVIEW_VEHICLE_READY.md).
+
 # Routing Readiness: Einzelreview
 
 Stand: 27.09.2026. Basis `df40e7c800d21ac4187912fc9a81a6e08e1349bb`.

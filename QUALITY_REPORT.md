@@ -1,3 +1,134 @@
+# Qualitätsbericht: Reviewkorrekturen und Vehicle-Ready-Markt
+
+Stand: 27.09.2026. **Implemented / targeted tests passed / full acceptance pending.**
+Basis: `e49e5fa7e29e64ac3a10c0e7a365ede88ad37c68`, lokal und auf
+`origin/feature/frontend-v2` vor Abschluss erneut identisch geprüft.
+Direkte Umsetzung auf dem vom Nutzer ausdrücklich vorgegebenen bestehenden
+Arbeitsbranch als Ausnahme vom normalen Branchingprozess. Kein ZIP, Push, PR,
+Merge, Branchwechsel, Reset oder Rebase. Hooks: `.githooks`.
+
+Lokale Umsetzungscommits mit aktiven Hooks:
+`58ca257` (Backend und Python-Regressionen),
+`4740c87` (Frontend und Browser-/Node-Regressionen).
+Dokumentation folgt im separaten lokalen Abschlusscommit. Kein Push.
+
+## Ergebnis und geschützte Verträge
+
+Alle zehn Reviewpunkte wurden korrigiert: fachlicher Generation-Fingerprint
+auch für negative/stale Relationen; vollständiger Worker-Fehlerschutz;
+separater injizierter Batch-Service; atomarer eigenständiger Bind;
+Cache-Schlüssel nur im Repository; typisierte Analytics samt API-Projektion;
+injizierter EconomyAuditService mit Composition Root; aggregierender Cleanup;
+öffentliche JSDoc-Verträge; `synchronizeMapSelection` statt `selectTransport`.
+
+Der Fahrzeugmarkt zeigt nur Offers mit dem ausgewählten eigenen idle Fahrzeug
+in `eligible_vehicle_ids`. Ohne gültige Auswahl erscheint „Fahrzeug wählen“.
+Der gemeinsame Spielerpool bleibt erhalten. Stadt-Coverage wird um teilbare
+Coverage je Fahrzeug ergänzt, einschließlich individueller ready Approaches.
+Kleine Fahrzeuge erhalten passende Generierungskontexte. Fehlende Coverage wird
+diagnostiziert, nicht durch ungeeignete Offers aufgefüllt. Approach-Priorität
+verhindert Starvation durch wechselnde Delivery-Auswahlen in begrenzten Batches.
+Liste und Kartenmarker verwenden denselben Fahrzeugkontext.
+
+Game-Schema 1.1.0, historische Snapshots, globale Routing-/Lease-Infrastruktur,
+Economy, Tarife, Tonnagenverteilung und A → B → C bleiben fachlich unverändert.
+Keine Referenz- oder Spieler-Datenbanken geändert. Keine realen Provider-Bulk-
+Aufrufe. `static/dist` ist ausschließlich lokaler generierter Build-Output.
+
+## Tatsächlich ausgeführte gezielte Prüfungen
+
+- 108 Tests in den folgenden expliziten Dateien bestanden:
+  `test_review_regressions.py`, `test_market_preparation.py`,
+  `test_vehicle_market.py`, `test_market_lifecycle.py`, `test_market.py`,
+  `test_api.py`, `test_analytics.py`, `test_economy_v2.py`,
+  `test_routing_readiness_store.py`, `test_function_contract.py`,
+  `test_architecture.py`.
+- Im ersten Coverage-Lauf fehlte die Koordinatenvalidierung eines RoutingAttempt.
+  Der zusätzliche Valid-/Invalid-Koordinatentest schließt diese Lücke;
+  `test_routing_readiness_store.py`: 4 Tests bestanden.
+- Nach expliziter SQL-Skalarvalidierung erneut
+  `test_analytics.py test_function_contract.py`: 21 Tests bestanden.
+- Kumulierte gezielte Statement-Coverage: **574/574 Statements, 100 %** in den
+  elf separat gemessenen Modulen (unten). Keine Senkung des Grenzwerts.
+  Dies ist ausdrücklich kein Nachweis der gesamten Core-Coverage.
+- Ruff check/format: 32 betroffene Python-Dateien bestanden; mypy: 25 betroffene
+  Source-Dateien bestanden; Pyright derselben betroffenen Dateien: 0 Fehler,
+  0 Warnungen. Audit-CLI ist bereits in allen expliziten Quality-Dateilisten
+  enthalten; deren Einträge wurden beibehalten.
+- Node: `node --test frontend/frontend-v2.test.mjs frontend/behavior.test.mjs
+  frontend/lifecycle.test.mjs frontend/journey.test.mjs`: **52 bestanden**.
+- ESLint und Prettier für geänderte Frontend-Dateien sowie checkJs bestanden.
+  Keine CSS-Änderung; kein erneuter vollständiger Stylelint-Lauf.
+- Vite-Build vollständig vor dem Browserlauf abgeschlossen.
+- `npm run test:e2e -- tests/browser/game.spec.js --grep
+  "vehicle market shows only eligible|DB vehicle selection changes|city offers survive pan"`:
+  **3 bestanden**. Gemockte Provider. Keine parallelen Builds während Playwright.
+- `git diff --check`: bestanden nach Entfernung von JSDoc-Leerraum.
+
+Reproduzierbarer gezielter Python-Aufruf (aus dem Repository):
+
+```powershell
+.venv/Scripts/python.exe -X utf8 -u -m pytest tests/test_review_regressions.py tests/test_market_preparation.py tests/test_vehicle_market.py tests/test_market_lifecycle.py tests/test_market.py tests/test_api.py tests/test_analytics.py tests/test_economy_v2.py tests/test_routing_readiness_store.py tests/test_function_contract.py tests/test_architecture.py --cov=app.services.preparation_batch --cov=app.services.vehicle_coverage --cov=app.services.market_preparation --cov=app.services.preparation_worker --cov=app.services.economy_audit --cov=app.services.analytics --cov=app.api.v1.analytics_projection --cov=app.repositories.analytics --cov=app.domain.market_preparation --cov=app.domain.routing_readiness --cov=app.repositories.routing_readiness --cov-report=term-missing --cov-fail-under=100
+```
+
+Die beiden Nachläufe verwendeten dieselbe Modulauswahl mit `--cov-append`.
+Lokale Logs: `artifacts/review-targeted-python-final.log`,
+`review-targeted-coverage-final.log`, `review-targeted-analytics-final.log`,
+`review-targeted-frontend-final.log`, `review-targeted-playwright-final.log`.
+Artefakte bleiben unversioniert. Zwei bestehende Starlette/HTTPX-/AnyIO-
+Deprecation-Warnungen wurden beobachtet; keine Testfehler daraus.
+
+## Wirtschaftsaudit und sichtbarer Befund
+
+Der vollständige lokale Economy-Audit wurde vor/nach dem Refactoring verglichen:
+Seed 20260925, 14 Modelle, 163296 Zeilen, 2457 inkompatible Kombinationen,
+kleinste Referenzmarge 0,45748730964467005, 16298 negative Cashflow-Szenarien,
+davon 4878 typische Beladungen. Negative Ergebnisse bleiben zulässig.
+Matrix und Summary sind byteidentisch. Matrix-SHA256:
+`30213F9AC3D459E48BC4F525D9A5B3E646C7DC5F60ADC9DBABEA27B4BAFCA344`.
+Summary-SHA256:
+`9A88DABFFAFE1F644E4D95AC05A4A54CC8B505DFB8EEE81A98FD52DF7655F397`.
+Aufruf: `.venv/Scripts/python.exe -X utf8 scripts/audit_economy.py --output artifacts/review-economy-after`.
+
+Der tatsächlich angesehene Desktop-Screenshot
+`%TEMP%/world-freight-vehicle-ready-market.png` zeigt das zweite Fahrzeug,
+zwei geeignete Angebote, `partial`-Hinweis und nach Korrektur ebenfalls zwei
+Aufträge am Kartenmarker. Die erste Sichtprüfung fand dort noch vier Pool-
+Angebote; die Map-Projektion wurde daraufhin korrigiert und erneut geprüft.
+Kein neuer vollständiger Mobil-/Reduced-Motion-/Renderer-Abnahmelauf.
+
+## Einzelreview und offene Gesamtabnahme
+
+[REVIEW_VEHICLE_READY.md](docs/REVIEW_VEHICLE_READY.md) inventarisiert jede neue
+oder geänderte Python-Funktion sowie die Frontend-Methodenverträge mit Zweck,
+Schicht, Abhängigkeiten und Seiteneffekten. Keine verdeckte zweite Runtime-DB,
+keine HTTP-Aufrufe im Candidate-Service, keine Preise oder Eignungsheuristiken
+in Views. Die Coverage- und Batch-Schichten materialisieren keine Offers.
+
+**Full quality suite:**
+NOT RUN – explicitly reserved for user
+
+**Full Playwright suite:**
+NOT RUN – explicitly reserved for user
+
+Dieser Stand ist nicht als integration-ready oder vollständig abgenommen
+bezeichnet. Die vollständige Core-Coverage, gesamte Browserregression und echte
+Provider-/Wolfsburg-Betriebsprüfung bleiben offen. Die Gesamtabnahme führt der
+Nutzer anschließend nacheinander aus:
+
+```powershell
+.venv/Scripts/python.exe -X utf8 scripts/quality.py
+npm run test:e2e
+git diff --check
+```
+
+---
+
+## Historischer Bericht: vorheriger Routing-Readiness-Stand
+
+Die folgenden Ergebnisse gehören zur früheren Implementierung und sind keine
+Gesamtabnahme des oben beschriebenen Korrekturstands.
+
 # Qualitätsbericht: Global Routing Readiness
 
 Stand: 27.09.2026. **Implementiert und lokal vollständig geprüft.**

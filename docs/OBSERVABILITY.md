@@ -75,3 +75,13 @@ hat einen neuen Trace-Kontext mit dieser ID und einer Ausführungs-ID. HTTP-Trac
 werden nicht über den Worker fortgeführt. Providerrequests übernehmen den jeweiligen
 Ausführungstrace. CLI-Prewarm nutzt einen eigenen CLI-Kontext. RoutingAttempts
 bewahren Methoden, Ergebnisse und Providerdiagnostik append-only.
+
+
+## Preparation-Fehlererholung
+
+`market.preparation_scheduler_failed` protokolliert Fehler des gesamten
+Schedulingdurchlaufs einschließlich Jobauswahl, Statuslesen und Fehlerstatus-
+Speicherung. Danach folgt cancellable Backoff von 60 Sekunden. Batchfehler bleiben
+`market.preparation_failed` im eigenen preparation_id-Ausführungskontext.
+`market.preparation_progress` beschreibt typisierte aktuelle Batchdiagnosen.
+Keine Übernahme eines langlebigen HTTP-Trace-Kontexts.

@@ -176,3 +176,25 @@ RoutePayload speichert road_distance_km und provider_duration_seconds,
 keine finale Spielerfahrzeit. RouteReference identifiziert eine gerichtete Relation
 und Revision. Candidate-Erzeugung bleibt routerfrei; auch partial Markets bestehen
 ausschließlich aus route-ready Offers. Journey ergänzt Fahrzeugzeit und Energie.
+
+
+## Vehicle-ready Marktkontext und typisierte Auswertungen
+
+`VehicleReadyCandidate` verbindet immutable Candidate, Delivery-Referenz und
+individuell approach-bereite Fahrzeugkontexte. `VehicleCoverageDiagnostic`
+enthält Fahrzeug/Stadt, tatsächliche Angebotszahl, Bandzählungen und fehlende
+Bänder/Facilities. Teilbare Offers bleiben im Spielerpool; keine Reservierung
+für das Generierungsfahrzeug. Die tatsächliche Tonnage muss zum gewählten
+Fahrzeug passen. Coverage-Planung begrenzt den Generierungskontext auf garantiert
+passende Kapazitäten, ohne Profile, Verteilung oder Tarif zu verändern.
+
+`MarketPresentation` bündelt Angebotsprojektionen, Vehicle-Coverage und
+Preparation-Status aus einem konsistenten lokalen Lesekontext. `partial` enthält
+nur geprüfte Offers. Eine stale Anfahrt entfernt die entsprechende Eignung;
+eine stale Delivery verhindert die Offer-Projektion insgesamt.
+
+AnalyticsStatus/Transport/Ongoing/Data und Summary/Group/Day/Result sind immutable
+Schichtverträge. EconomyMatrixRow/EconomyAuditSummary sind immutable Auditresultate.
+SQL-/JSON-Skalarvalidierung liegt im Repository, HTTP-Projektion in der API.
+Historische Klassifizierung, Nullquotienten und vehicle_id-Gruppierung bleiben
+unverändert. RoutingRelation kennt keine Cache-Schlüssel.

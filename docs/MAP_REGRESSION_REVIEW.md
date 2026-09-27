@@ -1,3 +1,8 @@
+> Historischer Kartenreview. Der neuere Fahrzeugmarkt-Vertrag und die
+> synchronisierte Eignungsprojektion von Liste/Kartenmarkern stehen in
+> [REVIEW_VEHICLE_READY.md](REVIEW_VEHICLE_READY.md); ungeeignete Angebote
+> werden in dieser Fahrzeugmarktansicht inzwischen ausgeblendet.
+
 # Karten-, Asset- und Fokusregressionsreview
 
 Ausgangspunkt: `c962696`, Branch `feature/frontend-v2`, 25.09.2026.

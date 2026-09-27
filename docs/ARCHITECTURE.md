@@ -351,3 +351,39 @@ Nominatim und Valhalla besitzen getrennte Provider-Limits. Worker steuern Batche
 und Backoff, keine providerspezifischen Sleeps. Nominatim liefert lediglich
 Kandidaten; Akzeptanz benötigt finale Valhalla-Truck-Validierung. Versuche bleiben
 append-only. No-path und Distanzlimit erzwingen keine Anchor-Verschiebung.
+
+
+## Reviewgrenzen und Vehicle-Ready-Veröffentlichung
+
+`RelationDemandState` enthält gerichtete Identität, erwarteten Fingerprint,
+effektiven Status und Referenz auch für fehlgeschlagene/ungeprüfte Relationen.
+Zeitabhängige Abfragewerte gehören nicht in die Preparation-Generation.
+Cache-Schlüssel bleiben ausschließlich im Routing-Repository; das bisherige
+Schlüsselformat und Schema bleiben lesbar. Bind und Repository-Ersetzung besitzen
+ihre atomare Grenze und beteiligen sich an einer äußeren Markt-UoW.
+
+`MarketPreparationBatchService` erhält State-Port, Candidate-/Coverage-/Scope-
+Services, Preparation und Refresh injiziert. Sein immutable Plan/Ergebnis trennt
+fachlichen Bedarf vom Worker. Der Worker besitzt Scheduling, Trace, Lifecycle
+und Fehlerschutz des gesamten Durchlaufs einschließlich Status und Finish.
+Datenbankfehler führen zu abbrechbarem 60-Sekunden-Backoff. Nach externen Awaits
+werden Generation und aktuelle Coverage neu gelesen; alte Ergebnisse sind gefenced.
+
+`MarketCandidateService` bleibt routerfrei. Preparation reduziert kompatible
+Kontexte auf ready Delivery plus individuellen ready Approach. `VehicleCoverageService`
+plant zusätzliche, teilbare Coverage, ohne Offers zu materialisieren oder HTTP/SQL.
+Approaches werden vor wechselnden Delivery-Auswahlen vorbereitet, um bei begrenzten
+Batches nicht zu verhungern. Lifecycle publiziert und projiziert atomar lokal;
+Provider-Awaits bleiben außerhalb aller Schreibtransaktionen.
+
+Analytics-Repositories liefern immutable validierte Zeilen, der Service liefert
+typisierte fachliche Aggregate. Nur die API-Projektion erzeugt die bisherige
+JSON-Struktur. `EconomyAuditService` erhält Katalogports und RNG; Bootstrap verdrahtet
+SQLite, die CLI formatiert CSV/JSON. Keine neue Persistenzarchitektur.
+
+`releaseAll` versucht jede synchrone Freigabe in Reihenfolge und wirft danach
+AggregateError. App und Karte sperren verspätete Antworten sofort. Bootstrap/Logout
+melden Cleanupfehler zusätzlich zum ursprünglichen Workflowfehler. Controller-
+und Map-Verträge sind typisiert; `synchronizeMapSelection` beschreibt die Auswahl
+von Fahrzeug, Transport oder Offer. Kartenmarkt und Liste verwenden ausschließlich
+serverseitige Eignungs-IDs; Views berechnen keine neue Kompatibilität.

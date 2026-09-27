@@ -112,3 +112,11 @@ werden nicht gecacht. Ein neuer Katalogstand erfordert einen Serverneustart
 mit erneuter Validierung und globalem Marktneuaufbau. Offline-Werkzeuge lesen
 weiterhin explizit ihren gewählten Katalog. Historische Transporte bleiben
 von neuen Revisionen unabhängig.
+
+
+Der Audit wird durch `EconomyAuditService` mit injizierten Katalogports und RNG
+ausgeführt. Bootstrap verdrahtet die read-only SQLite-Adapter; die CLI übernimmt
+nur Argumente, CSV-/JSON-Projektion und Exitstatus. Typisierte Matrix-/Summary-
+Werte und fachliche Szenarien unterliegen Manifest und Core-Coverage. Der
+Review-Fix vom 27.09.2026 änderte weder Seed noch Reihenfolge oder Berechnungen;
+Matrix und Summary wurden byteidentisch gegen den vorherigen Stand geprüft.

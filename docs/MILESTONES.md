@@ -201,9 +201,12 @@ finale Gate-Ergebnisse: `../QUALITY_REPORT.md`. Keine Veröffentlichung.
 
 Ergänzung zum freigegebenen Navigationsmodell: Weltkarte als Überblick ohne
 „Alle Städte“-Scope. Fahrzeug → Transport beziehungsweise idle Fahrzeug →
-Stadtmarkt. Dieser zeigt alle Angebote der Fahrzeugstadt mit serverseitiger
-Eignung, statt ungeeignete Angebote auszublenden. Der ausgewählte Kontext wird
-bei Abfahrt geleert; keine automatische andere Stadt beim Polling.
+Stadtmarkt. Dieser zeigt ausschließlich Angebote, deren serverseitige
+`eligible_vehicle_ids` das ausgewählte eigene idle Fahrzeug enthalten.
+Liste und Kartenmarker verwenden dieselbe Eignungsprojektion. Ohne gültige
+Auswahl erscheint „Fahrzeug wählen“. Bei Abfahrt wird der Kontext geleert;
+Polling wählt kein Ersatzfahrzeug. Der gespeicherte Spielerpool bleibt geteilt;
+ein Offer darf mehrere Fahrzeuge versorgen.
 
 ## Truck Routing Anchors – 26.09.2026
 
@@ -220,3 +223,13 @@ Abnahme: `python scripts/quality.py`, `npm run test:e2e` und
 Global Routing Readiness: implementiert / vollständige lokale Quality- und E2E-Gates bestanden.
 Abnahme am 27.09.2026: vollständiges Quality-Gate, 30 Playwright-Fälle und
 git diff --check bestanden. Reale Providerprüfungen bleiben separat.
+
+
+## Reviewkorrekturen und Vehicle-Ready-Markt (27.09.2026)
+
+Direkte Umsetzung auf dem ausdrücklich vorgegebenen `feature/frontend-v2`,
+Basis `e49e5fa`. Kein ZIP, Push, PR oder Merge. Zehn Reviewkorrekturen sowie
+fahrzeugbezogene Coverage ergänzen den bestehenden globalen Routingpfad.
+Status: implemented / targeted tests passed / full acceptance pending,
+maßgeblich sind die tatsächlich dokumentierten Ergebnisse im Qualitätsbericht.
+Frühere Gesamtabnahmen gelten nicht für diesen Korrekturstand.

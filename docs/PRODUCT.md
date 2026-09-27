@@ -17,7 +17,7 @@ Der MVP muss einen vollständigen Road-Freight-Loop liefern:
 
 1. Spieler meldet sich an und öffnet die Weltkarte.
 2. Spieler öffnet über ein eigenes idle Fahrzeug dessen Stadtmarkt.
-3. Der Markt zeigt alle Stadtangebote mit Eignungsanzeige; veröffentlicht werden ausschließlich Aufträge mit vorbereiteter, validierter Delivery-Route.
+3. Der Fahrzeugmarkt zeigt ausschließlich für das gewählte idle Fahrzeug geeignete Angebote mit validierter Delivery und erforderlicher vorbereiteter Anfahrt.
 4. Spieler öffnet einen Auftrag mit **realer Von-Adresse und realer Zu-Adresse**.
 5. Spieler wählt vor der Quote ausdrücklich ein geeignetes Fahrzeug in der Abholstadt. Sein tatsächlicher Standort darf von der Abholung abweichen.
 6. Die Quote lädt die vorbereitete Delivery-Route und eine erforderliche vorbereitete Anfahrt; sie berechnet daraus die fahrzeugspezifische Journey.
@@ -218,9 +218,12 @@ Economy, Markt, Anfahrt und historische Konditionen bleiben unverändert.
 
 Ergänzung zum freigegebenen Navigationsmodell: Weltkarte als Überblick ohne
 „Alle Städte“-Scope. Fahrzeug → Transport beziehungsweise idle Fahrzeug →
-Stadtmarkt. Dieser zeigt alle Angebote der Fahrzeugstadt mit serverseitiger
-Eignung, statt ungeeignete Angebote auszublenden. Der ausgewählte Kontext wird
-bei Abfahrt geleert; keine automatische andere Stadt beim Polling.
+Stadtmarkt. Dieser zeigt ausschließlich Angebote, deren serverseitige
+`eligible_vehicle_ids` das ausgewählte eigene idle Fahrzeug enthalten.
+Liste und Kartenmarker verwenden dieselbe Eignungsprojektion. Ohne gültige
+Auswahl erscheint „Fahrzeug wählen“. Bei Abfahrt wird der Kontext geleert;
+Polling wählt kein Ersatzfahrzeug. Der gespeicherte Spielerpool bleibt geteilt;
+ein Offer darf mehrere Fahrzeuge versorgen.
 
 ## Truck-Routing-Anker
 
@@ -244,5 +247,22 @@ Standort, außer bei identischer Facility. Bestehende geprüfte Offers erscheine
 sofort, während der Backend-Worker fehlende Coverage vorbereitet. Es gibt kein
 Browser-Geocoding und keine Rückkehr zum ungeprüften Quote-Routing.
 
-Status: implementiert und lokal vollständig geprüft (Quality, E2E und
-Diff-Prüfung). Reale Providerprüfungen bleiben eine gesonderte Betriebsabnahme.
+Status des aktuellen Review-/Vehicle-Ready-Fixes: implementiert; gezielte
+Prüfungen siehe Qualitätsbericht. Vollständige Nutzer-Gesamtabnahme ausstehend.
+Reale Providerprüfungen bleiben eine gesonderte Betriebsabnahme.
+
+
+## Vehicle-Ready-Coverage
+
+Die Stadt-/Facility-/Distanzziele bleiben erhalten. Zusätzlich benötigt jedes
+eigene idle Fahrzeug fahrbare Angebote für seine geeigneten Abholstandorte und
+mindestens drei pro strukturell verfügbarem Distanzband. Geteilte Offers zählen
+für jedes tatsächlich geeignete Fahrzeug. Die Vorbereitung berücksichtigt
+Kapazität und ready Approaches bereits vor Materialisierung; kleinere Fahrzeuge
+werden nicht mit nur für große Fahrzeuge geeigneten Angeboten abgefertigt.
+Bei unerreichbarer Coverage bleiben nur tatsächlich fahrbare Angebote sichtbar,
+mit Diagnose fehlender Standorte/Bänder. `partial` bedeutet fehlende Coverage,
+`exhausted` einen ausgeschöpften nutzbaren Pool; beide erlauben keine ungeprüften
+Angebote. Ein späterer Anchor-/Providerwechsel kann die Vorbereitung reaktivieren.
+Tonnagenverteilung, Tarif, Anfahrt, Energie und historische Transporte bleiben
+unverändert. Ein Generierungsfahrzeug reserviert weiterhin kein Angebot.

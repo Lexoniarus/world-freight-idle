@@ -224,8 +224,8 @@ Lokale Renderer-Belege: `artifacts/map-regressions/`, Lackierungs-Proofs:
 
 
 Die Ergänzung `market-context` prüft den scopefreien Kartenüberblick,
-Fahrzeugpriorität vor widersprechender Stadt-URL, alle Stadtangebote mit
-geeignet/ungeeignet sowie das Leeren nach Abfahrt. Ein explizit ungeeignetes
+Fahrzeugpriorität vor widersprechender Stadt-URL, ausschließlich serverseitig
+geeignete Angebote in Liste und Karte sowie das Leeren nach Abfahrt. Ein explizit ungeeignetes
 Fahrzeug blockiert die Quote bis zur bewussten Neuwahl. Browserregression
 verifiziert auch Back/Forward und die Rückkehr zur Weltkarte ohne Stadtparameter.
 Die Rendererprüfung deckt zusätzlich gedrehte Karten, fremde Gruppen und
@@ -240,8 +240,10 @@ niemals ungeprüfte Offers. Gezielte Tests prüfen Relations-Leases, historische
 Snapshot-Kompatibilität, Offer-Referenz-Rollback, Worker und Providerlimits.
 Automatisierte Providerprüfungen verwenden Mocks.
 
-Für die direkte Branch-Integration werden das vollständige Quality-Gate,
-die vollständige Playwright-Suite und git diff --check ausgeführt. Fehler
+Vor Integration bleiben das vollständige Quality-Gate, die vollständige
+Playwright-Suite und git diff --check erforderlich. Für diesen Korrekturauftrag
+führt Codex ausdrücklich nur gezielte Prüfungen aus; die Gesamtsuiten übernimmt
+der Nutzer anschließend. Fehler
 werden ohne Abschwächung von Tests oder Coverage-Anforderungen behoben.
 Vite Build muss vor dem Browserlauf vollständig abgeschlossen sein.
 
@@ -249,3 +251,29 @@ Einzelreview der Implementierung: [ROUTING_READINESS_REVIEW.md](ROUTING_READINES
 Tatsächliche gezielte und vollständige Befehle sowie Ergebnisse stehen im aktuellen Abschnitt des
 [Qualitätsberichts](../QUALITY_REPORT.md); frühere vollständige Gates in dessen
 historischen Abschnitten gelten nicht als Abnahme dieser Implementierung.
+
+
+## Gezielte Review- und Vehicle-Ready-Regressionen
+
+`test_review_regressions.py` prüft negative/stale Generationen, eigenständigen
+und äußeren Bind-Rollback, Scheduler-/Status-/Finish-Fehler, verschwundene Jobs,
+Cancellation, Generationwechsel und die typisierte deterministische Auditmatrix.
+`test_vehicle_market.py` prüft kleinere/größere Fahrzeuge, geteilte Offers,
+Delivery plus individuelle Approaches, stale Eligibility, erschöpfte Pools,
+Abfahrt während Await, API-Besitz/idle-Prüfung und priorisierte Approaches ohne
+Delivery-Batch-Starvation. Stadt-Coverage allein beendet den Worker nicht.
+Die expliziten Manifest-Gegentests bleiben verbindlich; kein Coverage-Limit
+wird gesenkt. Gezielte Coverage ersetzt keinen Nachweis der gesamten Core-Suite.
+Frontend-Cleanup versucht alle Freigaben und meldet danach AggregateError;
+Destroy ist idempotent. Browsertests erwarten passende Offers auch in partial
+Markets, statt globales `ready` vorauszusetzen. Provider bleiben gemockt.
+
+Die vollständigen Befehle für die anschließende Nutzerabnahme, nacheinander:
+
+```powershell
+.venv/Scripts/python.exe -X utf8 scripts/quality.py
+npm run test:e2e
+git diff --check
+```
+
+Kein Build während Playwright. Keine echten Provider-Bulk-Aufrufe.

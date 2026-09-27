@@ -184,3 +184,14 @@ Providerrevision. Geometrie liegt weiterhin ausschließlich in `route_cache`.
 stale-Projektion; die gespeicherte vorige Evidenz bleibt bis zur Neubewertung
 erhalten. Der Auditbericht unterscheidet deshalb gespeicherte Statusaggregate
 von `current_relations` (effektiver aktueller Status).
+
+
+## Reviewkorrektur: atomare Referenzbindung
+
+Game-Schema 1.1.0 und historische Snapshot-Hüllen bleiben unverändert.
+RoutingRelation enthält keinen `cache_key`; das Repository liest/schreibt die
+existierende Infrastrukturspalte und erzeugt den bisherigen `readiness:v1`-
+Schlüssel intern. Ready Relation und Payload bleiben atomar. Offer-Referenzen
+werden vollständig validiert und transaktional ersetzt. Eigenständiger Bind
+und äußere Markt-UoW rollen vollständig zurück. Coverage-/Analytics-/Audit-
+Read-Modelle benötigen keine Schema-Migration.
