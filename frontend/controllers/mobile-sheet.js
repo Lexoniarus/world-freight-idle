@@ -17,12 +17,16 @@ export class MobileSheet {
       },
     };
   }
-  /** Attach sheet controls once for the application lifetime. */
+  /** Attach sheet controls once for the application lifetime.
+   * @returns {void}
+   */
   start() {
     for (const [event, listener] of Object.entries(this.listeners))
       this.handle.addEventListener(event, listener);
   }
-  /** Advance the three accessible sheet sizes. */
+  /** Advance the three accessible sheet sizes.
+   * @returns {void}
+   */
   cycleHeight() {
     if (this.suppressClick) {
       this.suppressClick = false;
@@ -32,6 +36,8 @@ export class MobileSheet {
   }
   /** Begin a captured pointer gesture.
    * @param {PointerEvent} event
+   *
+   * @returns {void}
    */
   startDrag(event) {
     this.suppressClick = false;
@@ -40,6 +46,8 @@ export class MobileSheet {
   }
   /** Snap a completed gesture without applying its synthetic click twice.
    * @param {PointerEvent} event
+   *
+   * @returns {void}
    */
   finishDrag(event) {
     if (this.dragStart === null) return;
@@ -52,6 +60,8 @@ export class MobileSheet {
   }
   /** Apply a sheet height in dynamic viewport units.
    * @param {number} height
+   *
+   * @returns {void}
    */
   setHeight(height) {
     this.height = height;
@@ -66,7 +76,9 @@ export class MobileSheet {
         (height === 90 ? "volle Höhe" : height === 60 ? "halbe Höhe" : "kompakt"),
     );
   }
-  /** Release pointer and click listeners. */
+  /** Release pointer and click listeners.
+   * @returns {void}
+   */
   destroy() {
     for (const [event, listener] of Object.entries(this.listeners))
       this.handle.removeEventListener(event, listener);

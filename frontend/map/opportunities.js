@@ -22,7 +22,8 @@ export class Opportunities {
     this.navigate = navigate;
     this.markers = new Map();
   }
-  update(contracts, visible, selected = "") {
+  update(contracts, visible, selected = "", vehicleId = "") {
+    this.vehicleId = vehicleId;
     const cityLevel = this.map.getZoom() < ZOOM_TIERS.regional;
     const groups = opportunityGroups(
       visible ? contracts.filter((item) => item.id !== selected) : [],
@@ -38,7 +39,9 @@ export class Opportunities {
         button.addEventListener("click", (event) => {
           event.stopPropagation();
           this.navigate(
-            "/contracts?city=" + encodeURIComponent(this.markers.get(key).group.origin.city_uid),
+            "/contracts?city=" +
+              encodeURIComponent(this.markers.get(key).group.origin.city_uid) +
+              (this.vehicleId ? "&vehicle=" + encodeURIComponent(this.vehicleId) : ""),
           );
         });
         this.markers.set(key, entry);

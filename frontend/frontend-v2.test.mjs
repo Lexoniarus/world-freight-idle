@@ -89,7 +89,7 @@ test("overview stays unscoped and explicit fleet filters survive polling", async
 
 test("city links prefer explicit UID, then saved aliases, then exact lookups", async () => {
   const { city, view, reads } = cityFixture();
-  await city.selectRoute(new URL("http://test/contracts?hub=legacy"));
+  await city.selectRoute(new URL("http://test/contracts?vehicle=v1&hub=legacy"));
   assert.equal(view.cityUid, "a");
   assert.equal(reads.length, 0);
   await city.selectRoute(new URL("http://test/fleet?city=b&hub=bad"));
@@ -187,9 +187,14 @@ test("offer filters use server IDs exclusively even with incompatible-looking ve
     "cargo=fahrzeug",
     "destination=same",
   ])
-    assert.deepEqual(filterContracts(contracts, "a", new URLSearchParams(query)), [offer]);
+    assert.deepEqual(filterContracts(contracts, "a", new URLSearchParams("vehicle=v1&" + query)), [
+      offer,
+    ]);
   for (const query of ["band=long", "class=parcel", "cargo=steel", "destination=else"])
-    assert.deepEqual(filterContracts(contracts, "a", new URLSearchParams(query)), []);
+    assert.deepEqual(
+      filterContracts(contracts, "a", new URLSearchParams("vehicle=v1&" + query)),
+      [],
+    );
 });
 
 test("fleet city roles never count an arriving truck as stationed or double count local trips", () => {
@@ -343,6 +348,8 @@ test("navigation before the first fleet snapshot does not freeze an accidental a
   await city.selectRoute(route);
   assert.equal(route.searchParams.has("city"), false);
   await city.selectRoute(new URL("http://test/contracts"));
+  assert.equal(view.cityUid, "");
+  await city.selectRoute(new URL("http://test/contracts?vehicle=v1"));
   assert.equal(view.cityUid, berlin.city_uid);
   city.destroy();
 });
@@ -369,4 +376,77 @@ test("partial and exhausted markets expose progress without adding offers", () =
     assert.ok(container.textContent.includes(message));
     assert.equal(container.querySelectorAll(".job-card").length, 0);
   }
+});
+
+test("vehicle market projects shared authoritative eligibility and neutral selection", () => {
+  const b = { ...vehicle, id: "v2" };
+  const contracts = [
+    { ...offer, id: "shared", eligible_vehicle_ids: ["v1", "v2"] },
+    { ...offer, id: "only-a", eligible_vehicle_ids: ["v1"] },
+    { ...offer, id: "only-b", eligible_vehicle_ids: ["v2"] },
+    { ...offer, id: "neither", eligible_vehicle_ids: [] },
+  ];
+  for (const [id, expected] of [
+    ["v1", ["shared", "only-a"]],
+    ["v2", ["shared", "only-b"]],
+  ]) {
+    const params = new URLSearchParams({ vehicle: id, band: "short" });
+    assert.deepEqual(
+      filterContracts(contracts, "a", params).map((c) => c.id),
+      expected,
+    );
+    const view = {
+      url: new URL("http://test/contracts?" + params),
+      cityUid: "a",
+      activeCities: ["a"],
+      cities: [berlin],
+      marketLoaded: true,
+      state: {
+        vehicles: [vehicle, b],
+        contracts,
+        transports: [],
+        market_preparation: { status: "partial" },
+      },
+    };
+    const rendered = renderContracts(view);
+    assert.equal(rendered.querySelectorAll(".job-card").length, 2);
+    assert.ok(!rendered.textContent.includes("nicht geeignet"));
+  }
+  assert.deepEqual(filterContracts(contracts, "a", new URLSearchParams()), []);
+  for (const query of ["", "?vehicle=unknown", "?vehicle=v1"]) {
+    const view = {
+      url: new URL("http://test/contracts" + query),
+      cityUid: "a",
+      marketLoaded: true,
+      state: { vehicles: [{ ...vehicle, status: "enroute" }], contracts, transports: [] },
+    };
+    const rendered = renderContracts(view);
+    assert.equal(rendered.querySelectorAll(".job-card").length, 0);
+    assert.ok(rendered.textContent.includes("Fahrzeug wählen"));
+  }
+});
+
+test("vehicle market map uses server eligibility and clears a departed selection", async () => {
+  const { marketMapState } = await import("./market-context.js");
+  const state = {
+    vehicles: [
+      { id: "one", status: "idle" },
+      { id: "two", status: "idle" },
+    ],
+    contracts: [
+      { id: "shared", eligible_vehicle_ids: ["one", "two"] },
+      { id: "first", eligible_vehicle_ids: ["one"] },
+      { id: "second", eligible_vehicle_ids: ["two"] },
+    ],
+  };
+  const url = new URL("http://test/contracts?vehicle=two");
+  assert.deepEqual(
+    marketMapState(state, url).contracts.map((o) => o.id),
+    ["shared", "second"],
+  );
+  assert.equal(marketMapState(state, url).marketVehicleId, "two");
+  state.vehicles[1].status = "enroute";
+  assert.deepEqual(marketMapState(state, url).contracts, []);
+  assert.equal(marketMapState(state, new URL("http://test/")), state);
+  assert.deepEqual(marketMapState(state, new URL("http://test/contracts")).contracts, []);
 });

@@ -1,3 +1,4 @@
+import { releaseAll } from "../lifecycle.js";
 import * as maplibregl from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { nearestLongitude, unwrapRoute } from "../geometry.js";
@@ -27,6 +28,9 @@ const HIT_LAYERS = [
 const FACILITY_HOVER_LAYERS = new Set(["orders", "parked", "hub-points"]);
 
 export class WorldMap {
+  /** @param {string | HTMLElement} container
+   * @param {import("../types.js").WorldMapDependencies} dependencies
+   */
   constructor(
     container,
     { navigate, notify, now, loadAsset, assets, provider, viewport, reducedMotion, isHidden },
@@ -86,6 +90,9 @@ export class WorldMap {
     this.bindMapEvents();
   }
 
+  /** Register map interaction handlers owned by the native map.
+   * @returns {void}
+   */
   bindMapEvents() {
     this.map.on("error", (event) => {
       console.warn("Map rendering:", event.error?.message);
@@ -107,6 +114,7 @@ export class WorldMap {
           this.overlays.state.contracts,
           this.visible.orders,
           this.selected,
+          this.marketVehicleId,
         );
       }
     });
@@ -125,6 +133,9 @@ export class WorldMap {
     });
   }
 
+  /** Install overlay layers after the map becomes ready.
+   * @returns {void}
+   */
   initializeOverlays() {
     if (this.disposed) return;
     addOverlayLayers(this.map);
@@ -138,7 +149,12 @@ export class WorldMap {
     this.animator.start();
   }
 
+  /** Synchronize the map read model and rendered overlays.
+   * @param {import('../types.js').MapState} state
+   * @returns {void}
+   */
   update(state) {
+    this.marketVehicleId = state.marketVehicleId ?? "";
     this.overlays.update(state);
     if (!this.ready || this.disposed) return;
     this.setSourceData("orders", this.overlays.locationFeatures(state.contracts, "origin_hub_id"));
@@ -150,7 +166,12 @@ export class WorldMap {
       selectedLocations(this.overlays.state, this.selected, this.selectedContract),
     );
     this.drawTraffic();
-    this.opportunities.update(state.contracts, this.visible.orders, this.selected);
+    this.opportunities.update(
+      state.contracts,
+      this.visible.orders,
+      this.selected,
+      this.marketVehicleId,
+    );
     void this.syncVehicleIcons([
       ...(state.traffic ?? []).map((trip) => ({
         ...trip,
@@ -164,12 +185,21 @@ export class WorldMap {
     ]);
   }
 
+  /** Refresh own vehicle variants using the effective company color.
+   * @param {string} color
+   * @returns {void}
+   */
   setCompanyColor(color) {
     this.overlays.companyColor = color;
     this.groups.last = -Infinity;
     this.update(this.overlays.state);
   }
 
+  /** Project facility hover information into the owned popup.
+   * @param {import("maplibre-gl").MapGeoJSONFeature | undefined} feature
+   * @param {import("maplibre-gl").LngLat} lngLat
+   * @returns {void}
+   */
   updateFacilityHover(feature, lngLat) {
     if (!feature || !FACILITY_HOVER_LAYERS.has(feature.layer.id)) {
       this.hoverPopup.remove();
@@ -187,6 +217,10 @@ export class WorldMap {
     this.hoverPopup.setLngLat(lngLat).setDOMContent(content).addTo(this.map);
   }
 
+  /** Load current vehicle variants and ignore obsolete completions.
+   * @param {Array<{model_id?: string, player_color: string, role?: string}>} traffic
+   * @returns {Promise<void>}
+   */
   async syncVehicleIcons(traffic) {
     const imageIds = await this.vehicleIcons.ensure(traffic);
     if (this.disposed) return;
@@ -194,6 +228,9 @@ export class WorldMap {
     this.drawTraffic();
   }
 
+  /** Render current interpolated vehicle poses and groups.
+   * @returns {void}
+   */
   drawTraffic() {
     if (this.disposed || !this.ready || this.isHidden()) return;
     const now = this.now();
@@ -224,7 +261,10 @@ export class WorldMap {
     });
   }
 
-  /** Publish facility visibility only when its rendered occupancy changes. */
+  /** Publish facility visibility only when its rendered occupancy changes.
+   * @param {import("geojson").Feature<import("geojson").Point>[]} features
+   * @returns {void}
+   */
   updateFacilityProjection(features) {
     const data = this.overlays.hubFeatures(features);
     const signature = JSON.stringify(data);
@@ -233,12 +273,20 @@ export class WorldMap {
     this.setSourceData("hubs", data);
   }
 
+  /** Apply grouping preference to vehicle presentation.
+   * @param {boolean} value
+   * @returns {void}
+   */
   setGrouping(value) {
     this.groups.enabled = value;
     this.groups.last = -Infinity;
     if (this.ready) this.drawTraffic();
   }
 
+  /** Apply a route-specific visual preset.
+   * @param {string} preset
+   * @returns {void}
+   */
   setPreset(preset) {
     this.preset = preset;
     if (!this.ready) return;
@@ -254,10 +302,19 @@ export class WorldMap {
     this.drawTraffic();
   }
 
+  /** Update a registered GeoJSON source when available.
+   * @param {string} name
+   * @param {import("geojson").GeoJSON} data
+   * @returns {void}
+   */
   setSourceData(name, data) {
     /** @type {import("maplibre-gl").GeoJSONSource} */ (this.map.getSource(name))?.setData(data);
   }
 
+  /** Translate a map hit into navigation or group interaction.
+   * @param {import("maplibre-gl").MapMouseEvent} event
+   * @returns {Promise<void>}
+   */
   async selectFeature(event) {
     if (!this.ready || this.disposed) return;
     const hits = this.map.queryRenderedFeatures(event.point, { layers: HIT_LAYERS });
@@ -307,6 +364,10 @@ export class WorldMap {
     }
   }
 
+  /** Display or clear the current quote geometry.
+   * @param {import('../types.js').Quote | null} quote
+   * @returns {void}
+   */
   setPreview(quote) {
     this.preview = quote;
     if (this.ready)
@@ -318,6 +379,11 @@ export class WorldMap {
     if (this.ready && !this.disposed) this.setSourceData("preview", previewFeatures(quote));
   }
 
+  /** Synchronize the selected vehicle, transport or offer overlay.
+   * @param {string} id
+   * @param {import('../types.js').Contract | null} [contract]
+   * @returns {void}
+   */
   select(id, contract = null) {
     this.selected = id;
     this.selectedContract = contract;
@@ -325,7 +391,12 @@ export class WorldMap {
     this.groups.last = -Infinity;
     this.drawTraffic();
     this.updateSelectedRoute();
-    this.opportunities.update(this.overlays.state.contracts, this.visible.orders, id);
+    this.opportunities.update(
+      this.overlays.state.contracts,
+      this.visible.orders,
+      id,
+      this.marketVehicleId,
+    );
     this.setSourceData("selected-locations", selectedLocations(this.overlays.state, id, contract));
     this.map.setPaintProperty("routes", "line-color", [
       "case",
@@ -336,6 +407,9 @@ export class WorldMap {
     this.map.setPaintProperty("routes", "line-width", ["case", ["==", ["get", "id"], id], 6, 3]);
   }
 
+  /** Render the route associated with the current selection.
+   * @returns {void}
+   */
   updateSelectedRoute() {
     const trip = this.overlays.state.transports.find(
       (item) => item.id === this.selected || item.vehicle_id === this.selected,
@@ -348,16 +422,28 @@ export class WorldMap {
     });
   }
 
+  /** Delegate one route fit to the camera primitives.
+   * @param {import('../types.js').RouteGeometry} route
+   * @returns {void}
+   */
   focusRoute(route) {
     this.camera.fitRoute(unwrapRoute(routeGeometry(route).coordinates));
   }
 
+  /** Delegate a fleet-position fit to the camera primitives.
+   * @returns {void}
+   */
   focusFleet() {
     const points = this.overlays.fleetCoordinates(this.now());
     if (points.length) this.camera.fitCoordinates(points);
     else this.notify("Die Standorte deiner Flotte werden noch geladen.");
   }
 
+  /** Change one overlay visibility and redraw dependent markers.
+   * @param {string} name
+   * @param {boolean} visible
+   * @returns {void}
+   */
   toggle(name, visible) {
     this.visible[name] = visible;
     const layers =
@@ -375,18 +461,30 @@ export class WorldMap {
     if (this.ready) {
       this.groups.last = -Infinity;
       this.drawTraffic();
-      this.opportunities.update(this.overlays.state.contracts, this.visible.orders, this.selected);
+      this.opportunities.update(
+        this.overlays.state.contracts,
+        this.visible.orders,
+        this.selected,
+        this.marketVehicleId,
+      );
     }
   }
 
+  /** Release every map resource once, aggregating cleanup failures.
+   * @returns {void}
+   */
   destroy() {
     if (this.disposed) return;
     this.disposed = true;
-    this.animator.destroy();
-    this.groups.destroy();
-    this.opportunities.destroy();
-    this.hoverPopup.remove();
-    this.vehicleIcons.destroy();
-    this.map.remove();
+    releaseAll([
+      () => this.animator.destroy(),
+      () => this.groups.destroy(),
+      () => this.opportunities.destroy(),
+      () => {
+        this.hoverPopup.remove();
+      },
+      () => this.vehicleIcons.destroy(),
+      () => this.map.remove(),
+    ]);
   }
 }

@@ -4,6 +4,7 @@ import { marketVehicle, vehicleCity } from "../market-context.js";
 
 /** Resolve route-local city context without scoping the world overview. */
 export class CityContextController {
+  /** @param {{state: import('../state.js').GameState, view: import('../types.js').PanelView, request: import('../types.js').RequestJson, notify: import('../types.js').Notify}} dependencies */
   constructor({ state, view, request, notify }) {
     this.state = state;
     this.view = view;
@@ -15,9 +16,15 @@ export class CityContextController {
     this.pending = new LatestRequest();
     this.changed = () => this.update();
   }
+  /** Register owned listeners for this controller.
+   * @returns {void}
+   */
   start() {
     this.state.addEventListener("change", this.changed);
   }
+  /** Synchronize the explicit vehicle city and available city labels.
+   * @returns {void}
+   */
   update() {
     for (const location of cityLocations(this.state.data))
       this.known.set(location.city_uid, location);
@@ -33,12 +40,19 @@ export class CityContextController {
     this.view.activeCities = active;
     this.view.marketCities = this.view.cities.filter((city) => active.includes(city.city_uid));
   }
-  /** Normalize only this route's city parameter. */
+  /** Normalize only this route's city parameter.
+   * @param {URL} url
+   * @returns {void}
+   */
   writeCity(url) {
     if (this.selected) url.searchParams.set("city", this.selected);
     else url.searchParams.delete("city");
     window.history.replaceState({}, "", url.pathname + url.search);
   }
+  /** Resolve and normalize the route-local city selection.
+   * @param {URL} url
+   * @returns {Promise<void>}
+   */
   async selectRoute(url) {
     const pending = this.pending.start();
     this.route = null;
@@ -78,7 +92,7 @@ export class CityContextController {
     }
     if (url.pathname === "/contracts") {
       if (identifier) url.searchParams.set("city", identifier);
-      const vehicle = marketVehicle(this.state.data, url, true);
+      const vehicle = marketVehicle(this.state.data, url);
       if (vehicle) url.searchParams.set("vehicle", vehicle.id);
     }
     this.route = url;
@@ -86,6 +100,9 @@ export class CityContextController {
     url.searchParams.delete("hub");
     this.writeCity(url);
   }
+  /** Release owned resources and reject late updates.
+   * @returns {void}
+   */
   destroy() {
     this.pending.cancel();
     this.state.removeEventListener("change", this.changed);

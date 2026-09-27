@@ -13,16 +13,23 @@ export class MapFocusController {
     this.appliedKey = "";
     this.changed = () => this.flush();
   }
+  /** Register owned listeners for this controller.
+   * @returns {void}
+   */
   start() {
     this.state.addEventListener("change", this.changed);
     this.map?.map.on("load", this.changed);
   }
-  /** Invalidate delayed work before asynchronous navigation resolution. */
+  /** Invalidate delayed work before asynchronous navigation resolution.
+   * @returns {void}
+   */
   cancel() {
     this.generation++;
     this.pending = null;
   }
-  /** Record only a genuine route or visible-filter change. @param {URL} url */
+  /** Record only a genuine route or visible-filter change. @param {URL} url
+   * @returns {void}
+   */
   select(url) {
     const key =
       url.pathname +
@@ -35,7 +42,9 @@ export class MapFocusController {
     this.pending = { url: new URL(url), generation: this.generation };
     this.flush();
   }
-  /** Fulfil a pending intent without establishing a polling camera follower. */
+  /** Fulfil a pending intent without establishing a polling camera follower.
+   * @returns {void}
+   */
   flush() {
     if (!this.pending || !this.state.data || !this.map?.ready) return;
     const points = focusCoordinates(
@@ -51,11 +60,17 @@ export class MapFocusController {
     this.pending = null;
     if (points.length) this.map.camera.fitCoordinates(points);
   }
-  /** A current user-requested quote supersedes the endpoint framing. */
+  /** A current user-requested quote supersedes the endpoint framing.
+   * @param {import('../types.js').Quote} quote
+   * @returns {void}
+   */
   quote(quote) {
     this.pending = null;
     this.map?.focusRoute(quote.route_geojson);
   }
+  /** Release owned resources and reject late updates.
+   * @returns {void}
+   */
   destroy() {
     this.cancel();
     this.state.removeEventListener("change", this.changed);

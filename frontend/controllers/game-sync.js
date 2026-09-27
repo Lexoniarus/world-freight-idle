@@ -1,3 +1,4 @@
+import { marketMapState } from "../market-context.js";
 import { requiredElement, html } from "../ui/dom.js";
 import { energyDisplay } from "../ui/vehicle-energy.js";
 import { money } from "../format.js";
@@ -15,10 +16,17 @@ export class GameSync {
     this.onChange = (event) => this.publish(event.detail);
   }
 
+  /** Register owned listeners for this controller.
+   * @returns {void}
+   */
   start() {
     this.state.addEventListener("change", this.onChange);
   }
 
+  /** Publish a state revision to HUD, panel and map.
+   * @param {{previous: import('../types.js').GameSnapshot | null, current: import('../types.js').GameSnapshot}} change
+   * @returns {void}
+   */
   publish({ previous, current }) {
     if (this.disposed) return;
     this.panel.view.state = current;
@@ -45,13 +53,27 @@ export class GameSync {
       );
     if (current.trafficAvailable === true && previous?.trafficAvailable === false)
       this.notify("Gemeinsamer Live-Verkehr ist wieder verbunden.", "map");
-    this.map?.update({ ...current, marketLoaded: this.state.marketLoaded });
+    this.updateMap();
     const path = this.panel.view.url.pathname;
     if (path.startsWith("/contracts/"))
       this.map?.select(path.split("/")[2], this.state.contractDetail);
     if (!this.panel.view.busy) this.panel.render();
   }
 
+  /** Project current route eligibility without moving the camera.
+   * @returns {void}
+   */
+  updateMap() {
+    if (this.disposed || !this.state.data) return;
+    this.map?.update({
+      ...marketMapState(this.state.data, this.panel.view.url),
+      marketLoaded: this.state.marketLoaded,
+    });
+  }
+
+  /** Refresh player state and display connection failures.
+   * @returns {Promise<void>}
+   */
   async refreshGameState() {
     if (this.disposed) return;
     try {
@@ -68,6 +90,9 @@ export class GameSync {
     }
   }
 
+  /** Update live transport progress from the server clock.
+   * @returns {void}
+   */
   updateProgress() {
     if (this.disposed || !this.state.data) return;
     this.updateEnergyMeters();
@@ -89,7 +114,9 @@ export class GameSync {
     });
   }
 
-  /** Update only meter values and text, preserving vehicle image nodes. */
+  /** Update only meter values and text, preserving vehicle image nodes.
+   * @returns {void}
+   */
   updateEnergyMeters() {
     document.querySelectorAll("[data-energy-vehicle]").forEach((element) => {
       const vehicle = this.state.data.vehicles.find(
@@ -103,6 +130,9 @@ export class GameSync {
     });
   }
 
+  /** Release owned resources and reject late updates.
+   * @returns {void}
+   */
   destroy() {
     this.disposed = true;
     this.state.removeEventListener("change", this.onChange);

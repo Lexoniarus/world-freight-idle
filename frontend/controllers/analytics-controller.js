@@ -2,11 +2,15 @@ import { LatestRequest } from "../state.js";
 
 /** Load private analytics only while its management view is open. */
 export class AnalyticsController {
+  /** @param {{request: import('../types.js').RequestJson, panel: import('./panel-controller.js').PanelController}} dependencies */
   constructor({ request, panel }) {
     this.request = request;
     this.panel = panel;
     this.pending = new LatestRequest();
   }
+  /** Load the current analytics selection with stale-response protection.
+   * @returns {Promise<void>}
+   */
   async refresh() {
     const view = this.panel.view;
     const pending = this.pending.start();
@@ -35,6 +39,9 @@ export class AnalyticsController {
       }
     }
   }
+  /** Release owned resources and reject late updates.
+   * @returns {void}
+   */
   destroy() {
     this.pending.cancel();
   }

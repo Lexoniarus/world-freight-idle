@@ -1,3 +1,4 @@
+import { reportCleanup } from "./lifecycle.js";
 import { MapFocusController } from "./controllers/map-focus-controller.js";
 import { VehicleColorAssets } from "./vehicle-color-assets.js";
 import { VehicleImageController } from "./vehicle-image-bindings.js";
@@ -31,8 +32,7 @@ export async function bootstrap() {
   const api = new GameApiClient(globalThis.fetch.bind(globalThis), redirect);
   let application;
   const pagehide = () => {
-    application?.destroy();
-    api.destroy();
+    reportCleanup([() => application?.destroy(), () => api.destroy()]);
   };
   window.addEventListener("pagehide", pagehide, { once: true });
   // A disposed application restored from the back-forward cache needs a fresh lifecycle.
@@ -50,8 +50,7 @@ export async function bootstrap() {
     }
     await application.start();
   } catch (error) {
-    application?.destroy();
-    api.destroy();
+    reportCleanup([() => application?.destroy(), () => api.destroy()]);
     if (error instanceof ApiError && error.status === 401) {
       redirect("/login");
       return;

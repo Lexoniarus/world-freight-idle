@@ -15,10 +15,16 @@ export class ContractMarketController {
     this.ordersVisible = () => false;
   }
 
+  /** Register owned listeners for this controller.
+   * @returns {void}
+   */
   start() {
     this.started = true;
   }
 
+  /** Load offers required by the current route or visible map layer.
+   * @returns {Promise<void>}
+   */
   async refresh() {
     if (!this.started || this.disposed || !this.state.data) return;
     const path = this.currentUrl().pathname;
@@ -31,12 +37,19 @@ export class ContractMarketController {
     await Promise.all(tasks);
   }
 
+  /** Replace the market for an explicit user refresh.
+   * @returns {Promise<void>}
+   */
   async forceRefresh() {
     if (!this.started || this.disposed || !this.state.data) return;
     if (this.currentUrl().pathname !== "/contracts") return;
     await this.loadList(true);
   }
 
+  /** Load and publish the current shared offer pool.
+   * @param {boolean} force
+   * @returns {Promise<void>}
+   */
   async loadList(force) {
     const request = this.pending.start();
     const path = force ? "/contracts/refresh" : "/contracts";
@@ -46,7 +59,7 @@ export class ContractMarketController {
         signal: request.signal,
       });
       if (request.isCurrent()) {
-        this.state.replaceContracts(result.contracts, result.preparation);
+        this.state.replaceContracts(result.contracts, result.preparation, result.vehicle_coverage);
       }
     } catch (error) {
       if (request.isCurrent() && error.name !== "AbortError") {
@@ -55,6 +68,10 @@ export class ContractMarketController {
     }
   }
 
+  /** Load one selected offer without accepting stale responses.
+   * @param {string} id
+   * @returns {Promise<void>}
+   */
   async loadDetail(id) {
     const request = this.detailPending.start();
     try {
@@ -70,6 +87,9 @@ export class ContractMarketController {
     }
   }
 
+  /** Release owned resources and reject late updates.
+   * @returns {void}
+   */
   destroy() {
     this.disposed = true;
     this.pending.cancel();

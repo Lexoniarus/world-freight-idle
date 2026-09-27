@@ -25,6 +25,8 @@ export class PanelController {
   }
   /** Reset only panel-specific selection when the route changes.
    * @param {URL} url
+   *
+   * @returns {void}
    */
   selectRoute(url) {
     const sameView = this.view.url.pathname === url.pathname;
@@ -51,7 +53,9 @@ export class PanelController {
     else if (!sameView) this.title.focus({ preventScroll: true });
     void this.loadDetails();
   }
-  /** Fetch selection-specific data; an obsolete response cannot publish. */
+  /** Fetch selection-specific data; an obsolete response cannot publish.
+   * @returns {Promise<void>}
+   */
   async loadDetails() {
     if (this.disposed) return;
     const path = this.view.url.pathname;
@@ -78,7 +82,9 @@ export class PanelController {
     }
     this.render();
   }
-  /** Synchronize the selected panel and its navigation state. */
+  /** Synchronize the selected panel and its navigation state.
+   * @returns {void}
+   */
   render() {
     if (this.disposed) return;
     this.reconcileVehicleSelection();
@@ -98,7 +104,9 @@ export class PanelController {
       this.view.state.player.completed > 0 ||
       this.view.state.active_transports > 0;
   }
-  /** Keep the selection explicit and invalidate quotes for removed vehicles. */
+  /** Keep the selection explicit and invalidate quotes for removed vehicles.
+   * @returns {void}
+   */
   reconcileVehicleSelection() {
     const contractId = this.view.url.pathname.startsWith("/contracts/")
       ? this.view.url.pathname.split("/")[2]
@@ -117,6 +125,8 @@ export class PanelController {
   }
   /** Mark exactly the active navigation destination.
    * @param {boolean} open
+   *
+   * @returns {void}
    */
   updateNavigation(open) {
     document.querySelectorAll(".nav-rail a").forEach((link) => {
@@ -131,7 +141,9 @@ export class PanelController {
       else link.removeAttribute("aria-current");
     });
   }
-  /** Replace changed DOM while preserving a selected control's keyboard focus. */
+  /** Replace changed DOM while preserving a selected control's keyboard focus.
+   * @returns {void}
+   */
   replaceContent() {
     const focused = document.activeElement;
     if (focused instanceof HTMLElement && this.content.contains(focused))
@@ -167,7 +179,9 @@ export class PanelController {
     this.images?.update(this.content.querySelectorAll("img[data-vehicle-model]"));
     this.restoreFocus();
   }
-  /** Restore a surviving control only when a replacement was necessary. */
+  /** Restore a surviving control only when a replacement was necessary.
+   * @returns {void}
+   */
   restoreFocus() {
     const focus = this.contentFocus;
     if (!focus) return;
@@ -185,7 +199,9 @@ export class PanelController {
     if (replacement instanceof HTMLElement && !replacement.hasAttribute("disabled"))
       replacement.focus({ preventScroll: true });
   }
-  /** Stop selection-specific reads and future rendering. */
+  /** Stop selection-specific reads and future rendering.
+   * @returns {void}
+   */
   destroy() {
     this.disposed = true;
     this.pending.cancel();

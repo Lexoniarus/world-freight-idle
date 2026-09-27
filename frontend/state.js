@@ -88,7 +88,7 @@ export class GameState extends EventTarget {
   /** Replace only the lazy market slice.
    * @param {import('./types.js').Contract[]} contracts
    */
-  replaceContracts(contracts, preparation = null) {
+  replaceContracts(contracts, preparation = null, coverage = []) {
     if (this.disposed || !this.data) return;
     const previous = this.data;
     this.marketLoaded = true;
@@ -98,6 +98,7 @@ export class GameState extends EventTarget {
       contracts,
       available_contracts: contracts.length,
       market_preparation: preparation,
+      vehicle_coverage: coverage,
     };
     this.dispatchEvent(
       new CustomEvent("change", {

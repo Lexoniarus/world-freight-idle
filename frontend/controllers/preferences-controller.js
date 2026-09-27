@@ -16,7 +16,9 @@ export class PreferencesController {
     this.desired = null;
     this.disposed = false;
   }
-  /** Bind preference actions and refresh visibility-sensitive state. */
+  /** Bind preference actions and refresh visibility-sensitive state.
+   * @returns {void}
+   */
   start() {
     this.page.addEventListener(
       "click",
@@ -38,7 +40,9 @@ export class PreferencesController {
     );
     void this.refresh();
   }
-  /** Publish only the latest successful preference read. */
+  /** Publish only the latest successful preference read.
+   * @returns {Promise<void>}
+   */
   async refresh() {
     if (this.saving || this.disposed) return;
     const task = this.pending.start();
@@ -60,6 +64,8 @@ export class PreferencesController {
   }
   /** Persist a curated selection through the account API.
    * @param {string} color
+   *
+   * @returns {Promise<void>}
    */
   async save(color) {
     if (this.disposed || !this.panel.view.companyPalette?.includes(color)) return;
@@ -79,7 +85,10 @@ export class PreferencesController {
       this.saving = false;
     }
   }
-  /** Persist one serialized selection, without overwriting a newer preview. */
+  /** Persist one serialized selection, without overwriting a newer preview.
+   * @param {string} color
+   * @returns {Promise<void>}
+   */
   async persist(color) {
     try {
       const result = await this.request("/auth/preferences", {
@@ -101,6 +110,8 @@ export class PreferencesController {
   }
   /** Publish the current confirmed or optimistic color to presentation owners.
    * @param {string} color
+   *
+   * @returns {void}
    */
   publish(color) {
     this.panel.view.user.company_color = color;
@@ -108,7 +119,9 @@ export class PreferencesController {
     this.map?.setCompanyColor(color);
     this.panel.render();
   }
-  /** Abort preference requests and owned DOM listeners. */
+  /** Abort preference requests and owned DOM listeners.
+   * @returns {void}
+   */
   destroy() {
     this.disposed = true;
     this.desired = null;

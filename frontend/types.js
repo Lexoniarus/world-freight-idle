@@ -21,8 +21,8 @@
  * @typedef {{username: string, completed: number}} RankedPlayer
  * @typedef {{energy: EnergyProfile, top_speed_kmh: number, id: string, name: string, capacity_tons: number, price_eur: number, maintenance_eur_per_1000_km: number, manufacturer: string, powertrain: string, operating_cost_eur_per_km: number, unlock_reputation: number, image?: VehicleImage | null}} VehicleModel
  * @typedef {{models: VehicleModel[], delivery_hub: string}} Catalogue
- * @typedef {{vehicles: Vehicle[], contracts: Contract[], transports: Transport[], traffic?: PublicTransport[], trafficAvailable?: boolean}} MapState
- * @typedef {MapState & {player: Player, server_time: number, time_scale: number, idle_vehicles: number, active_transports: number, available_contracts?: number, featured_contracts?: Contract[], market_preparation?: {preparation_id: string, generation: string, status: string, next_retry_at: number | null} | null}} GameSnapshot
+ * @typedef {{marketVehicleId?: string, marketLoaded?: boolean, vehicles: Vehicle[], contracts: Contract[], transports: Transport[], traffic?: PublicTransport[], trafficAvailable?: boolean}} MapState
+ * @typedef {MapState & {player: Player, server_time: number, time_scale: number, idle_vehicles: number, active_transports: number, available_contracts?: number, featured_contracts?: Contract[], vehicle_coverage?: VehicleCoverage[], market_preparation?: {preparation_id: string, generation: string, status: string, next_retry_at: number | null} | null}} GameSnapshot
  * @typedef {{preferenceStatus?: "loading" | "ready" | "error", preferenceSaveError?: boolean, companyPalette?: string[], marketCities?: any[], cityUid?: string, cities?: any[], activeCities?: string[], analytics?: any, analyticsChoices?: any, analyticsLoading?: boolean, analyticsError?: boolean, detailId?: string, marketStale?: boolean, marketLoaded?: boolean, detailContract?: any, url: URL, state: GameSnapshot | null, user: {id?: string, username: string, company_color?: string}, quote: Quote | null, selectedVehicle: string, mutating: boolean, quoting: boolean, readonly busy: boolean, rankings: RankedPlayer[] | null, catalogue: Catalogue | null, panelError: boolean, now?: number}} PanelView
  * @typedef {(path: string, options?: RequestInit) => Promise<any>} RequestJson
  * @typedef {(message: string, kind?: string) => void} Notify
@@ -31,3 +31,10 @@
  * @typedef {{points: number[][], distances: number[], total: number}} PreparedRoute
  */
 export {};
+
+/**
+ * @typedef {{api: import('./api.js').GameApiClient, state: import('./state.js').GameState, panel: import('./controllers/panel-controller.js').PanelController, map: import('./map/world-map.js').WorldMap | null, actions: import('./controllers/game-actions.js').GameActions, sync: import('./controllers/game-sync.js').GameSync, contractMarket: import('./controllers/contract-market-controller.js').ContractMarketController, router: import('./navigation.js').BrowserRouter, scheduler: import('./controllers/refresh-scheduler.js').RefreshScheduler, input: import('./controllers/input-controller.js').InputController, sheet: import('./controllers/mobile-sheet.js').MobileSheet, notifications: import('./controllers/notifications.js').Notifications, redirect: Navigate, city: import('./controllers/city-context-controller.js').CityContextController, layers: import('./controllers/layer-state-controller.js').LayerStateController, analytics: import('./controllers/analytics-controller.js').AnalyticsController, managementInput: import('./controllers/management-input.js').ManagementInput, preferences: import('./controllers/preferences-controller.js').PreferencesController, focus: import('./controllers/map-focus-controller.js').MapFocusController, assets: import('./vehicle-color-assets.js').VehicleColorAssets}} ApplicationDependencies
+ * @typedef {{navigate: Navigate, notify: Notify, now: Clock, loadAsset: (path: string) => Promise<string>, assets: import('./vehicle-color-assets.js').VehicleColorAssets, provider: import('./map/provider.js').BasemapProvider, viewport: () => {width: number, height: number, panelOpen: boolean}, reducedMotion: () => boolean, isHidden: () => boolean}} WorldMapDependencies
+ */
+
+/** @typedef {{vehicle_id: string, city_uid: string, offer_count: number, distance_counts: number[], unmet_bands: string[], unmet_facilities: string[]}} VehicleCoverage */

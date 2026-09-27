@@ -1,3 +1,4 @@
+import { marketVehicle } from "../market-context.js";
 import { renderCostBreakdown } from "../ui/cost-breakdown.js";
 import { selectFilter, searchFilter } from "../ui/filters.js";
 import { renderVehicleImage } from "../ui/vehicle-image.js";
@@ -28,12 +29,15 @@ export function renderContracts(view) {
         : html`${emptyState("Auftrag nicht mehr verfügbar", "Er wurde angenommen oder ist abgelaufen.")}${routeLink("/contracts", "Zur Auftragsbörse", "button primary")}`;
   }
   const params = view.url.searchParams;
-  const contracts = view.cityUid ? filterContracts(view.state.contracts, view.cityUid, params) : [];
+  const selected = marketVehicle(view.state, view.url);
+  const contracts =
+    selected && view.cityUid ? filterContracts(view.state.contracts, view.cityUid, params) : [];
   const city = view.cities?.find((item) => item.city_uid === view.cityUid);
-  const active = view.cityUid && view.activeCities?.includes(view.cityUid);
+  const coverage = view.state.vehicle_coverage?.find((item) => item.vehicle_id === selected?.id);
+  const active = selected && view.cityUid && view.activeCities?.includes(view.cityUid);
   return html`<div class="market-heading">
       <span class="eyebrow">STADTMARKT</span>
-      <h2>${city?.city ?? "Fahrzeug wählen"}</h2>
+      <h2>${selected ? (city?.city ?? "Stadtmarkt") : "Fahrzeug wählen"}</h2>
       <p>
         ${view.marketLoaded === false ? "Auftragszahl noch unbekannt" : contracts.length + (view.marketStale ? " Aufträge · wird aktualisiert" : " verfügbare Aufträge")}
       </p>
@@ -41,6 +45,7 @@ export function renderContracts(view) {
     ${active ? null : html`<p class="inline-notice">Wähle ein einsatzbereites Fahrzeug, um den Stadtmarkt seines Standorts zu öffnen.</p>`}
     ${view.state.market_preparation?.status === "partial" ? html`<p role="status">Straßenverbindungen werden vorbereitet. Bereits geprüfte Aufträge sind verfügbar.</p>` : null}
     ${view.state.market_preparation?.status === "exhausted" ? html`<p role="status">Für weitere Aufträge sind derzeit keine geprüften Straßenverbindungen verfügbar.</p>` : null}
+    ${coverage && (coverage.unmet_bands.length || coverage.unmet_facilities.length) ? html`<p role="status">${coverage.offer_count} fahrbare Aufträge. Noch fehlende Abholstandorte: ${coverage.unmet_facilities.length}; Entfernungsklassen: ${coverage.unmet_bands.map((band) => distanceLabels[band]).join(", ") || "keine"}.</p>` : null}
     <div class="distance-summary">
       ${Object.entries(distanceLabels).map(([code, label]) => html`<span>${label}<strong>${view.marketLoaded === false || view.marketStale ? "–" : contracts.filter((item) => item.distance_band === code).length}</strong></span>`)}
     </div>
@@ -86,6 +91,8 @@ export function filterContracts(contracts, cityUid, params) {
       .includes((params.get(key) ?? "").toLocaleLowerCase("de"));
   return contracts.filter(
     (item) =>
+      Boolean(params.get("vehicle")) &&
+      item.eligible_vehicle_ids?.includes(params.get("vehicle")) &&
       (!cityUid || item.origin.city_uid === cityUid) &&
       (!params.get("band") || item.distance_band === params.get("band")) &&
       (!params.get("class") || item.transport_class === params.get("class")) &&

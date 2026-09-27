@@ -1,5 +1,6 @@
 /** URL-backed presentation controls, isolated from game mutations. */
 export class ManagementInput {
+  /** @param {{page: Document, view: import('../types.js').PanelView, navigate: import('../types.js').Navigate, layers: import('./layer-state-controller.js').LayerStateController, analytics: import('./analytics-controller.js').AnalyticsController, panel: import('./panel-controller.js').PanelController, market: import('./contract-market-controller.js').ContractMarketController}} dependencies */
   constructor({ page, view, navigate, layers, analytics, panel, market }) {
     this.page = page;
     this.view = view;
@@ -10,11 +11,18 @@ export class ManagementInput {
     this.market = market;
     this.lifetime = new AbortController();
   }
+  /** Register owned listeners for this controller.
+   * @returns {void}
+   */
   start() {
     const options = { signal: this.lifetime.signal };
     this.page.addEventListener("change", (event) => this.change(event), options);
     this.page.addEventListener("click", (event) => this.click(event), options);
   }
+  /** Translate management input changes into controller actions.
+   * @param {Event} event
+   * @returns {void}
+   */
   change(event) {
     const target = event.target;
     if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return;
@@ -40,6 +48,10 @@ export class ManagementInput {
     }
     this.navigate(url.pathname + url.search);
   }
+  /** Dispatch a management button action.
+   * @param {MouseEvent} event
+   * @returns {void}
+   */
   click(event) {
     if (!(event.target instanceof Element)) return;
     const action = event.target.closest("[data-action]")?.getAttribute("data-action");
@@ -63,6 +75,9 @@ export class ManagementInput {
         ?.setAttribute("aria-expanded", String(nav.classList.contains("expanded")));
     }
   }
+  /** Release owned resources and reject late updates.
+   * @returns {void}
+   */
   destroy() {
     this.lifetime.abort();
   }

@@ -546,7 +546,7 @@ test("application disposal releases every component exactly once", () => {
 });
 
 test("all feature views render active, empty, unavailable and shop states", () => {
-  const view = createView("/contracts");
+  const view = createView("/contracts?vehicle=truck");
   assert.equal(renderPanel(view).querySelectorAll(".job-card").length, 1);
   view.url = new URL("http://test/contracts?city=missing");
   view.cityUid = "missing";
@@ -713,7 +713,7 @@ test("facility snapshots preserve map locations during catalogue outage and lega
   overlays.update({ vehicles: [owned], contracts: [job], transports: [] });
   assert.deepEqual(overlays.fleetCoordinates(0), [[13, 52]]);
   assert.equal(overlays.hubFeatures().features.length, 2);
-  const view = createView("/contracts?hub=berlin");
+  const view = createView("/contracts?vehicle=truck&hub=berlin");
   view.state.contracts = [job];
   const container = document.createElement("div");
   container.append(renderPanel(view));
