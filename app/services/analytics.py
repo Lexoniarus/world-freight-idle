@@ -2,9 +2,15 @@
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
-from app.domain.analytics import AnalyticsReader
+from app.domain.analytics import (
+    AnalyticsDay,
+    AnalyticsGroup,
+    AnalyticsReader,
+    AnalyticsResult,
+    AnalyticsSummary,
+    AnalyticsTransport,
+)
 from app.domain.analytics_labels import vehicle_labels
 from app.domain.market_profiles import DISTANCE_BANDS, TRANSPORT_CLASSES
 
@@ -32,50 +38,64 @@ def validate_scope(days: str, scope: str, scope_id: str | None) -> None:
         raise ValueError("Ungültiger Statistikzeitraum oder Scope.")
 
 
-def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def summarize(rows: list[AnalyticsTransport]) -> AnalyticsSummary:
     """Compute additive performance and defined ratios."""
-    result = {key: sum(row[key] for row in rows) for key in METRICS}
-    result["completed_transports"] = len(rows)
+    revenue = sum(row.revenue_eur for row in rows)
+    costs = sum(row.operating_cost_eur for row in rows)
+    profit = sum(row.profit_eur for row in rows)
+    distance = sum(row.distance_km for row in rows)
+    tons = sum(row.tons for row in rows)
+    return AnalyticsSummary(
+        revenue,
+        costs,
+        profit,
+        distance,
+        tons,
+        len(rows),
+        profit / len(rows) if rows else None,
+        revenue / distance if distance else None,
+        tons / len(rows) if rows else None,
+    )
+
+
+def dimension_value(row: AnalyticsTransport, dimension: str) -> str | None:
+    """Select a supported historical dimension without dynamic fields."""
     return {
-        **result,
-        "profit_per_transport": result["profit_eur"] / len(rows)
-        if rows
-        else None,
-        "revenue_per_km": result["revenue_eur"] / result["distance_km"]
-        if result["distance_km"]
-        else None,
-        "tons_per_transport": result["tons"] / len(rows) if rows else None,
-    }
+        "city": row.city,
+        "vehicle": row.vehicle_id,
+        "transport_class": row.transport_class,
+        "distance_band": row.distance_band,
+    }[dimension]
 
 
 def breakdown(
-    rows: list[dict[str, Any]],
+    rows: list[AnalyticsTransport],
     dimension: str,
     labels: dict[str, str] | None = None,
-) -> list[dict[str, Any]]:
-    """Group historical identifiers without joining today's vehicle models."""
-    groups: dict[str, list[dict[str, Any]]] = {}
+) -> tuple[AnalyticsGroup, ...]:
+    """Group history without joining today's vehicle models."""
+    groups: dict[str, list[AnalyticsTransport]] = {}
     for row in rows:
-        if row[dimension] is not None:
-            groups.setdefault(row[dimension], []).append(row)
-    return [
-        {
-            "id": key,
-            "label": (
-                group[-1]["city_name"]
-                if dimension == "city"
-                else (labels or {}).get(key, key)
-            ),
-            **summarize(group),
-        }
+        value = dimension_value(row, dimension)
+        if value is not None:
+            groups.setdefault(value, []).append(row)
+    return tuple(
+        AnalyticsGroup(
+            key,
+            group[-1].city_name
+            if dimension == "city"
+            else (labels or {}).get(key, key),
+            summarize(group),
+        )
         for key, group in sorted(groups.items())
-    ]
+    )
 
 
 class AnalyticsService:
     """Compose current status, scoped history, UTC series and breakdowns."""
 
     def __init__(self, reader: AnalyticsReader) -> None:
+        """Inject a consistent scalar reader."""
         self.reader = reader
 
     def analyze(
@@ -84,22 +104,23 @@ class AnalyticsService:
         days: str,
         scope: str,
         scope_id: str | None,
-    ) -> dict[str, Any]:
+    ) -> AnalyticsResult:
         """Read once and aggregate without invoking a write repository."""
         validate_scope(days, scope, scope_id)
         data = self.reader.read(now)
         labels = vehicle_labels(
             data.vehicle_names,
-            tuple(row["vehicle_id"] for row in (*data.history, *data.ongoing)),
+            tuple(row.vehicle_id for row in data.history)
+            + tuple(row.vehicle_id for row in data.ongoing),
         )
         rows = [
             row
             for row in data.history
-            if scope == "company" or row[scope] == scope_id
+            if scope == "company" or dimension_value(row, scope) == scope_id
         ]
         today = datetime.fromtimestamp(now, UTC).date()
         start = (
-            datetime.fromtimestamp(rows[0]["arrives_at"], UTC).date()
+            datetime.fromtimestamp(rows[0].arrives_at, UTC).date()
             if days == "all" and rows
             else today
             if days == "all"
@@ -108,22 +129,22 @@ class AnalyticsService:
         selected = [
             row
             for row in rows
-            if row["arrives_at"]
+            if row.arrives_at
             >= datetime.combine(start, datetime.min.time(), UTC).timestamp()
         ]
-        by_day: dict[str, list[dict[str, Any]]] = {}
+        by_day: dict[str, list[AnalyticsTransport]] = {}
         for row in selected:
             day = (
-                datetime.fromtimestamp(row["arrives_at"], UTC)
-                .date()
-                .isoformat()
+                datetime.fromtimestamp(row.arrives_at, UTC).date().isoformat()
             )
             by_day.setdefault(day, []).append(row)
         series = []
         if rows:
             for offset in range((today - start).days + 1):
                 day = (start + timedelta(days=offset)).isoformat()
-                series.append({"date": day, **summarize(by_day.get(day, []))})
+                series.append(
+                    AnalyticsDay(day, summarize(by_day.get(day, [])))
+                )
         LOGGER.info(
             "Company analytics read",
             extra={
@@ -131,37 +152,28 @@ class AnalyticsService:
                 "data": {"scope": scope, "days": days, "rows": len(selected)},
             },
         )
-        return {
-            "server_time": now,
-            "period": {
-                "days": days,
-                "from": start.isoformat(),
-                "to": today.isoformat(),
-                "timezone": "UTC",
-            },
-            "scope": {"type": scope, "id": scope_id},
-            "status": data.status,
-            "totals": summarize(rows),
-            "period_totals": summarize(selected),
-            "daily": series,
-            "breakdowns": {
-                key: breakdown(
-                    selected, key, labels if key == "vehicle" else None
+        return AnalyticsResult(
+            now,
+            days,
+            start.isoformat(),
+            today.isoformat(),
+            scope,
+            scope_id,
+            data.status,
+            summarize(rows),
+            summarize(selected),
+            tuple(series),
+            tuple(
+                (
+                    key,
+                    breakdown(
+                        selected, key, labels if key == "vehicle" else None
+                    ),
                 )
                 for key in SCOPES[1:]
-            },
-            "ongoing": [
-                {**row, "vehicle_label": labels[row["vehicle_id"]]}
-                for row in data.ongoing
-            ],
-            "coverage": {
-                "recorded_transports": len(data.history),
-                "progress_completed": data.status["completed"],
-                "v2_transports": sum(
-                    row["market_model"] == "nhm_v2" for row in selected
-                ),
-                "unclassified_transports": sum(
-                    row["market_model"] != "nhm_v2" for row in selected
-                ),
-            },
-        }
+            ),
+            tuple((row, labels[row.vehicle_id]) for row in data.ongoing),
+            len(data.history),
+            sum(row.market_model == "nhm_v2" for row in selected),
+            sum(row.market_model != "nhm_v2" for row in selected),
+        )

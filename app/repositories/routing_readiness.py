@@ -64,6 +64,7 @@ class SqliteRoutingReadinessStore:
         reference = RouteReference(
             values.pop("relation_id"), values.pop("revision")
         )
+        values.pop("cache_key")
         return RoutingRelation(reference=reference, **values)
 
     def payload(self, reference: RouteReference) -> RoutePayload | None:
@@ -134,6 +135,12 @@ class SqliteRoutingReadinessStore:
         """Atomically fence the writer and publish metrics with readiness."""
         if (relation.status == "ready") != (payload is not None):
             raise ValueError("Ready relation requires a payload.")
+        reference = relation.reference
+        cache_key = (
+            f"readiness:v1:{reference.relation_id}:{reference.revision}"
+            if payload is not None
+            else None
+        )
         with self.database.transaction(), self.database.connect() as conn:
             lease = conn.execute(
                 "SELECT 1 FROM routing_leases "
@@ -147,7 +154,7 @@ class SqliteRoutingReadinessStore:
                     "INSERT INTO route_cache VALUES (?, ?, ?) "
                     "ON CONFLICT(cache_key) DO UPDATE SET "
                     "payload=excluded.payload, updated_at=excluded.updated_at",
-                    (relation.cache_key, json.dumps(asdict(payload)), now),
+                    (cache_key, json.dumps(asdict(payload)), now),
                 )
             conn.execute(
                 "INSERT INTO routing_relations VALUES "
@@ -164,7 +171,7 @@ class SqliteRoutingReadinessStore:
                     relation.destination_uid,
                     relation.fingerprint,
                     relation.status,
-                    relation.cache_key,
+                    cache_key,
                     relation.failure_category,
                     relation.retry_at,
                     relation.checked_at,
@@ -226,8 +233,11 @@ class SqliteOfferRouteStore:
     def replace(
         self, references: tuple[tuple[str, RouteReference], ...]
     ) -> None:
-        """Replace bindings inside the caller's atomic market transaction."""
-        with self.database.connect() as connection:
+        """Replace bindings atomically, joining the market transaction."""
+        with (
+            self.database.transaction(),
+            self.database.connect() as connection,
+        ):
             connection.execute(
                 "DELETE FROM offer_route_references WHERE user_id=?",
                 (self.user_id,),

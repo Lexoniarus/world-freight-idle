@@ -8,9 +8,15 @@ from collections.abc import Callable, Sequence
 
 from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.game import OwnedVehicle, PlayerState
+from app.domain.market import VehicleCoverageDiagnostic
 from app.domain.market_preparation import PreparationStatus
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
-from app.domain.results import AvailableContract, ContractQuote, GameSnapshot
+from app.domain.results import (
+    AvailableContract,
+    ContractQuote,
+    GameSnapshot,
+    MarketPresentation,
+)
 from app.domain.routes import DispatchRoutePlan
 from app.domain.state_ports import GameUnitOfWork
 from app.domain.transports import ActiveTransport
@@ -271,10 +277,31 @@ class GameService:
         return self.refresh_market(force=True)
 
     def contract_choices(
-        self, offers: Sequence[ContractOffer]
+        self, offers: Sequence[ContractOffer], vehicle_id: str | None = None
     ) -> tuple[AvailableContract, ...]:
         """Expose server-side vehicle choices for already read offers."""
-        return self.market_lifecycle.present(offers)
+        return self.market_lifecycle.present(offers, vehicle_id)
+
+    def market_presentation(
+        self,
+        offers: Sequence[ContractOffer],
+        vehicle_id: str | None = None,
+    ) -> MarketPresentation:
+        """Read authorized offers and diagnostics in one local transaction."""
+        with self.unit_of_work.transaction():
+            contracts = self.contract_choices(offers, vehicle_id)
+            coverage = tuple(
+                item
+                for item in self.vehicle_coverage()
+                if vehicle_id is None or item.vehicle_id == vehicle_id
+            )
+            return MarketPresentation(
+                contracts, coverage, self.preparation_status()
+            )
+
+    def vehicle_coverage(self) -> tuple[VehicleCoverageDiagnostic, ...]:
+        """Delegate actual per-vehicle coverage diagnostics."""
+        return self.market_lifecycle.vehicle_diagnostics()
 
     def get_contract(self, contract_id: str) -> ContractOffer:
         """Return one available offer with historical endpoint values."""

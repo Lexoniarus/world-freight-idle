@@ -1,11 +1,13 @@
 """Private scalar analytics, historical dimensions and UTC boundaries."""
 
+import dataclasses
 import json
 from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.v1.analytics_projection import project_analytics
 from app.api.v1.dependencies import get_current_user, get_game_service
 from app.bootstrap import build_analytics_service
 from app.domain.errors import PersistenceError
@@ -95,12 +97,14 @@ def test_analytics_scalars_do_not_hydrate_routes(game, database, monkeypatch):
     assert all(
         not isinstance(value, (list, dict))
         for row in facts.history
-        for value in row.values()
+        for value in dataclasses.asdict(row).values()
     )
     assert "coordinates" not in str(facts.history)
     assert len(facts.ongoing) == 1
     for days in ("7", "30", "90", "all"):
-        data = AnalyticsService(reader).analyze(NOW, days, "company", None)
+        data = project_analytics(
+            AnalyticsService(reader).analyze(NOW, days, "company", None)
+        )
         assert data["totals"]["profit_eur"] == -40
         assert data["totals"]["tons"] == 9
         assert data["totals"]["distance_km"] == 300
@@ -115,9 +119,11 @@ def test_analytics_scalars_do_not_hydrate_routes(game, database, monkeypatch):
         ("distance_band", "short", 1),
         ("city", "other-owner-city", 0),
     ):
-        data = AnalyticsService(reader).analyze(NOW, "all", scope, scope_id)
+        data = project_analytics(
+            AnalyticsService(reader).analyze(NOW, "all", scope, scope_id)
+        )
         assert data["totals"]["completed_transports"] == count
-    assert summarize([])["revenue_per_km"] is None
+    assert summarize([]).revenue_per_km is None
     with database.connect() as db:
         assert db.total_changes == before
         assert db.execute("SELECT COUNT(*) FROM transports").fetchone()[0] == 3
@@ -165,14 +171,18 @@ def test_analytics_rejects_corrupt_scalar_fields(game, database, change):
 
 def test_analytics_empty_and_utc_boundary(game, database):
     reader = SqliteAnalyticsReader(database, "test-owner")
-    data = AnalyticsService(reader).analyze(NOW, "all", "company", None)
+    data = project_analytics(
+        AnalyticsService(reader).analyze(NOW, "all", "company", None)
+    )
     assert data["daily"] == []
     assert data["totals"]["completed_transports"] == 0
     start = datetime(2026, 9, 19, tzinfo=UTC).timestamp()
     vehicle = game.state_repository.list_vehicles()[0]
     insert_trip(database, vehicle.id, "before", start - 1)
     insert_trip(database, vehicle.id, "boundary", start)
-    data = AnalyticsService(reader).analyze(NOW, "7", "company", None)
+    data = project_analytics(
+        AnalyticsService(reader).analyze(NOW, "7", "company", None)
+    )
     assert data["totals"]["completed_transports"] == 2
     assert data["period_totals"]["completed_transports"] == 1
     assert data["daily"][0]["completed_transports"] == 1
@@ -240,12 +250,16 @@ def test_analytics_is_read_only_and_account_scoped(
             yield db
 
     monkeypatch.setattr(database, "connect", read_only_connection)
-    first = AnalyticsService(
-        SqliteAnalyticsReader(database, "test-owner")
-    ).analyze(NOW, "all", "company", None)
-    second = AnalyticsService(
-        SqliteAnalyticsReader(database, "second")
-    ).analyze(NOW, "all", "vehicle", vehicle.id)
+    first = project_analytics(
+        AnalyticsService(
+            SqliteAnalyticsReader(database, "test-owner")
+        ).analyze(NOW, "all", "company", None)
+    )
+    second = project_analytics(
+        AnalyticsService(SqliteAnalyticsReader(database, "second")).analyze(
+            NOW, "all", "vehicle", vehicle.id
+        )
+    )
     assert first["totals"]["completed_transports"] == 1
     assert second["totals"]["completed_transports"] == 1
     assert first["status"]["cash"] == 175000
@@ -287,8 +301,28 @@ def test_analytics_and_exact_api_require_session(tmp_path, game, runtime):
         assert client.get("/api/v1/map/cities/unknown").status_code == 404
         assert client.get("/api/v1/map/facilities/unknown").status_code == 404
         assert (
-            build_analytics_service(runtime, "test-owner").analyze(
-                NOW, "30", "company", None
+            project_analytics(
+                build_analytics_service(runtime, "test-owner").analyze(
+                    NOW, "30", "company", None
+                )
             )["status"]["vehicles"]
             == 1
         )
+
+
+def test_analytics_rejects_invalid_sql_scalars():
+    from app.repositories.analytics import map_ongoing, validate_scalars
+
+    for value in (True, 1.5, "1", -1, None):
+        with pytest.raises(PersistenceError):
+            validate_scalars({"cash": value}, ("cash",))
+    with pytest.raises(PersistenceError):
+        validate_scalars({}, ("missing",))
+    with pytest.raises(PersistenceError):
+        validate_scalars({"vehicle_id": ""}, (), ("vehicle_id",))
+    with pytest.raises(PersistenceError):
+        validate_scalars({"arrives_at": float("inf")}, (), (), ("arrives_at",))
+    row = {"vehicle_id": "truck", "revenue_eur": 10, "operating_cost_eur": 20}
+    assert map_ongoing(row).profit_eur == -10
+    with pytest.raises(PersistenceError):
+        map_ongoing({**row, "operating_cost_eur": "broken"})

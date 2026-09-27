@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from app.domain.contracts import ContractOffer
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.journeys import JourneyPlan
+from app.domain.market import VehicleCoverageDiagnostic
+from app.domain.market_preparation import PreparationStatus
 from app.domain.pricing import PriceQuote
 from app.domain.routes import DispatchRoutePlan
 from app.domain.routing_readiness import RouteReference
@@ -62,3 +64,12 @@ class AvailableContract:
     offer: ContractOffer
     eligible_vehicle_ids: tuple[str, ...]
     route_reference: RouteReference | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class MarketPresentation:
+    """Expose one consistent authorized offer pool and coverage status."""
+
+    contracts: tuple[AvailableContract, ...]
+    vehicle_coverage: tuple[VehicleCoverageDiagnostic, ...]
+    preparation: PreparationStatus | None

@@ -5,7 +5,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 
 from app.domain.contracts import ContractOffer
-from app.domain.market import MarketVehicle
+from app.domain.market import MarketVehicle, VehicleCoverageDiagnostic
 from app.domain.results import AvailableContract
 from app.domain.state_ports import GameUnitOfWork
 from app.services.market import MarketGenerator
@@ -103,12 +103,16 @@ class MarketLifecycleService:
             )
 
     def present(
-        self, offers: Sequence[ContractOffer]
+        self, offers: Sequence[ContractOffer], vehicle_id: str | None = None
     ) -> tuple[AvailableContract, ...]:
         """Attach transient eligibility and separate route references."""
         fleet = self.generator.candidates.resolve_fleet(
             self.unit_of_work.repository.list_vehicles()
         )
+        if vehicle_id is not None and not any(
+            v.vehicle_id == vehicle_id for v in fleet
+        ):
+            raise ValueError("Eigenes einsatzbereites Fahrzeug erforderlich.")
         result = []
         for offer in offers:
             eligible = self.generator.candidates.eligible_ids(offer, fleet)
@@ -118,5 +122,33 @@ class MarketLifecycleService:
                     continue
                 eligible = self.preparation.eligible(offer, fleet, eligible)
                 reference = self.preparation.references.get(offer.id)
-            result.append(AvailableContract(offer, eligible, reference))
+            if vehicle_id is None or vehicle_id in eligible:
+                result.append(AvailableContract(offer, eligible, reference))
         return tuple(result)
+
+    def vehicle_diagnostics(self) -> tuple[VehicleCoverageDiagnostic, ...]:
+        """Read actual vehicle coverage without scheduling provider work."""
+        with self.unit_of_work.transaction():
+            return self._vehicle_diagnostics_in_transaction()
+
+    def _vehicle_diagnostics_in_transaction(
+        self,
+    ) -> tuple[VehicleCoverageDiagnostic, ...]:
+        """Project consistent cached evidence in the active transaction."""
+        owned = self.unit_of_work.repository.list_vehicles()
+        fleet = self.generator.candidates.resolve_fleet(owned)
+        candidates = self.generator.candidates.build(
+            self.scope.resolve(owned), fleet
+        )
+        ready = (
+            self.preparation.ready_candidates(candidates)
+            if self.preparation is not None
+            else candidates
+        )
+        offers = self.unit_of_work.repository.list_offers()
+        return tuple(
+            self.generator.vehicle_coverage.diagnose(
+                vehicle, candidates, ready, offers
+            )
+            for vehicle in fleet
+        )

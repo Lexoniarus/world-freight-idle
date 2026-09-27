@@ -121,3 +121,15 @@ class CoveragePlan:
 
     selected: tuple[MarketCandidate, ...]
     diagnostics: tuple[CoverageDiagnostic, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class VehicleCoverageDiagnostic:
+    """Describe actual usable offers and structural targets per vehicle."""
+
+    vehicle_id: str
+    city_uid: str
+    offer_count: int
+    distance_counts: tuple[int, int, int]
+    unmet_bands: tuple[str, ...]
+    unmet_facilities: tuple[str, ...]

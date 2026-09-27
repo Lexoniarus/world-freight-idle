@@ -2,12 +2,11 @@
 
 import asyncio
 import logging
-from collections import Counter
 from collections.abc import Callable
 from contextvars import Context
 
 from app.domain.market_preparation import PreparationStore
-from app.services.market_lifecycle import MarketLifecycleService
+from app.services.preparation_batch import MarketPreparationBatchService
 from app.tracing import background_trace
 
 LOGGER = logging.getLogger(__name__)
@@ -19,12 +18,12 @@ class MarketPreparationWorker:
     def __init__(
         self,
         jobs: PreparationStore,
-        lifecycle: Callable[[str], MarketLifecycleService],
+        batches: Callable[[str], MarketPreparationBatchService],
         clock: Callable[[], float],
     ) -> None:
         """Inject scheduling storage and player lifecycle composition."""
         self.jobs = jobs
-        self.lifecycle = lifecycle
+        self.batches = batches
         self.clock = clock
         self._task: asyncio.Task[None] | None = None
 
@@ -48,115 +47,63 @@ class MarketPreparationWorker:
                 pass
 
     async def _run(self) -> None:
-        """Process due batches fairly and isolate failures with backoff."""
+        """Recover the complete iteration, including scheduler failures."""
         while True:
-            user_id = self.jobs.next_player(self.clock())
-            if user_id is None:
-                await asyncio.sleep(1)
-                continue
-            status = self.jobs.status(user_id)
-            assert status is not None
-            with background_trace(status.preparation_id):
-                try:
-                    await self.process(user_id)
-                except Exception:
-                    LOGGER.exception(
-                        "Market preparation batch failed",
-                        extra={
-                            "event": "market.preparation_failed",
-                            "data": {"preparation_id": status.preparation_id},
-                        },
-                    )
-                    self.jobs.finish(
-                        user_id,
-                        status.generation,
-                        "partial",
-                        self.clock() + 60,
-                        self.clock(),
-                    )
+            try:
+                await self._iteration()
+            except Exception:
+                LOGGER.exception(
+                    "Market preparation scheduler failed",
+                    extra={"event": "market.preparation_scheduler_failed"},
+                )
+                await asyncio.sleep(60)
             await asyncio.sleep(0)
 
-    async def process(self, user_id: str) -> None:
-        """Prepare missing coverage and re-read state before publication."""
-        lifecycle = self.lifecycle(user_id)
-        preparation = lifecycle.preparation
-        assert preparation is not None
-        offers = tuple(lifecycle.refresh())
+    async def _iteration(self) -> None:
+        """Run one due job in its own trace and persist retry state."""
+        user_id = self.jobs.next_player(self.clock())
+        if user_id is None:
+            await asyncio.sleep(1)
+            return
         status = self.jobs.status(user_id)
-        assert status is not None
-        owned = lifecycle.unit_of_work.repository.list_vehicles()
-        fleet = lifecycle.generator.candidates.resolve_fleet(owned)
-        cities = lifecycle.scope.resolve(owned)
-        candidates = lifecycle.generator.candidates.build(cities, fleet)
-        states = {
-            pair: preparation.readiness.current(*pair)
-            for pair in dict.fromkeys(
-                (c.trade.origin.facility_uid, c.trade.destination.facility_uid)
-                for c in candidates
-            )
-        }
+        if status is None:
+            return
+        with background_trace(status.preparation_id):
+            try:
+                await self.process(user_id)
+            except Exception:
+                LOGGER.exception(
+                    "Market preparation batch failed",
+                    extra={
+                        "event": "market.preparation_failed",
+                        "data": {"preparation_id": status.preparation_id},
+                    },
+                )
+                self.jobs.finish(
+                    user_id,
+                    status.generation,
+                    "partial",
+                    self.clock() + 60,
+                    self.clock(),
+                )
+
+    async def process(self, user_id: str) -> None:
+        """Execute a typed batch and persist its fenced scheduling result."""
+        result = await self.batches(user_id).process()
         LOGGER.info(
             "Routing coverage preparation progress",
             extra={
                 "event": "market.preparation_progress",
                 "data": {
-                    "preparation_id": status.preparation_id,
-                    "structural_candidates": len(candidates),
-                    "relation_states": dict(
-                        Counter(
-                            relation.status
-                            if relation
-                            else "unchecked_or_stale"
-                            for relation in states.values()
-                        )
-                    ),
+                    "structural_candidates": result.structural_count,
+                    "relation_states": dict(result.relation_states),
                 },
             },
         )
-        usable = tuple(
-            c
-            for c in candidates
-            if (
-                relation := states[
-                    c.trade.origin.facility_uid,
-                    c.trade.destination.facility_uid,
-                ]
-            )
-            is None
-            or relation.status != "deterministic_failure"
-        )
-        plan = lifecycle.generator.coverage.plan(cities, usable, offers)
-        published_pairs = {
-            (o.origin.facility_uid, o.destination.facility_uid) for o in offers
-        }
-        needed = tuple(
-            dict.fromkeys(
-                (
-                    *plan.selected,
-                    *(
-                        c
-                        for c in usable
-                        if (
-                            c.trade.origin.facility_uid,
-                            c.trade.destination.facility_uid,
-                        )
-                        in published_pairs
-                    ),
-                )
-            )
-        )
-        complete, retry_at = await preparation.prepare_batch(needed, fleet)
-        lifecycle.refresh()
-        outcome = "partial"
-        if complete and not plan.selected:
-            unmet = lifecycle.generator.coverage.plan(
-                cities, candidates, offers
-            )
-            outcome = "exhausted" if unmet.selected else "ready"
         self.jobs.finish(
             user_id,
-            status.generation,
-            outcome,
-            retry_at,
+            result.generation,
+            result.status,
+            result.retry_at,
             self.clock(),
         )

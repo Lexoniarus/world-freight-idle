@@ -6,11 +6,16 @@ from app.domain.contracts import ContractOffer
 from app.domain.market import MarketCandidate, MarketVehicle
 from app.domain.market_preparation import (
     PreparationStore,
+    RelationDemandState,
+    VehicleReadyCandidate,
     preparation_generation,
     required_relations,
 )
 from app.domain.readiness_ports import OfferRouteStore
+from app.domain.routing_readiness import RouteReference
+from app.domain.state_ports import TransactionBoundary
 from app.services.routing_readiness import RoutingReadinessService
+from app.services.vehicle_coverage import restrict_candidate
 
 
 class MarketPreparationService:
@@ -23,6 +28,7 @@ class MarketPreparationService:
         references: OfferRouteStore,
         jobs: PreparationStore,
         clock: Callable[[], float],
+        transactions: TransactionBoundary,
     ) -> None:
         """Inject global readiness and player-scoped reference storage."""
         self.user_id = user_id
@@ -30,27 +36,106 @@ class MarketPreparationService:
         self.references = references
         self.jobs = jobs
         self.clock = clock
+        self.transactions = transactions
 
     def prepare_publication(
         self,
         candidates: tuple[MarketCandidate, ...],
         fleet: tuple[MarketVehicle, ...],
     ) -> tuple[MarketCandidate, ...]:
-        """Enqueue demand and expose delivery-ready structural candidates."""
+        """Enqueue demand and expose vehicle-ready structural candidates."""
         pairs = required_relations(candidates)
-        references = {pair: self.readiness.ready(*pair) for pair in pairs}
-        generation = preparation_generation(
-            fleet, candidates, tuple(references.items())
+        states = tuple(self.demand_state(*pair) for pair in pairs)
+        generation = preparation_generation(fleet, candidates, states)
+        with self.transactions.transaction():
+            self.jobs.request(self.user_id, generation, self.clock())
+        return self._ready_candidates(candidates, states)
+
+    def ready_candidates(
+        self,
+        candidates: tuple[MarketCandidate, ...],
+    ) -> tuple[MarketCandidate, ...]:
+        """Expose only candidates with a usable delivery and vehicle start."""
+        states = tuple(
+            self.demand_state(*pair) for pair in required_relations(candidates)
         )
-        self.jobs.request(self.user_id, generation, self.clock())
+        return self._ready_candidates(candidates, states)
+
+    def _ready_candidates(
+        self,
+        candidates: tuple[MarketCandidate, ...],
+        states: tuple[RelationDemandState, ...],
+    ) -> tuple[MarketCandidate, ...]:
+        """Project one consistent local evidence set into ready contexts."""
+        references = {
+            (s.origin_uid, s.destination_uid): s.reference
+            for s in states
+            if s.status == "ready"
+        }
         return tuple(
-            candidate
+            restrict_candidate(context.candidate, context.vehicles)
             for candidate in candidates
-            if references[
-                candidate.trade.origin.facility_uid,
-                candidate.trade.destination.facility_uid,
-            ]
+            if (context := self.ready_context(candidate, references))
             is not None
+        )
+
+    def ready_context(
+        self,
+        candidate: MarketCandidate,
+        references: dict[tuple[str, str], RouteReference | None],
+    ) -> VehicleReadyCandidate | None:
+        """Map delivery and approach evidence to immutable vehicle context."""
+        origin = candidate.trade.origin.facility_uid
+        delivery = references.get(
+            (origin, candidate.trade.destination.facility_uid)
+        )
+        vehicles = tuple(
+            v
+            for v in candidate.vehicles
+            if v.vehicle.facility_uid == origin
+            or references.get((v.vehicle.facility_uid, origin)) is not None
+        )
+        if delivery is None or not vehicles:
+            return None
+        return VehicleReadyCandidate(candidate, delivery, vehicles)
+
+    def preparable_candidates(
+        self,
+        candidates: tuple[MarketCandidate, ...],
+    ) -> tuple[MarketCandidate, ...]:
+        """Skip deterministic delivery or approach failures during planning."""
+        states = {
+            pair: self.readiness.current(*pair)
+            for pair in required_relations(candidates)
+        }
+        result = []
+        for candidate in candidates:
+            origin = candidate.trade.origin.facility_uid
+            relation = states[origin, candidate.trade.destination.facility_uid]
+            if relation and relation.status == "deterministic_failure":
+                continue
+            vehicles = tuple(
+                v
+                for v in candidate.vehicles
+                if v.vehicle.facility_uid == origin
+                or (approach := states[v.vehicle.facility_uid, origin]) is None
+                or approach.status != "deterministic_failure"
+            )
+            if vehicles:
+                result.append(restrict_candidate(candidate, vehicles))
+        return tuple(result)
+
+    def demand_state(
+        self, origin: str, destination: str
+    ) -> RelationDemandState:
+        """Read stable routing facts including stale negative evidence."""
+        relation = self.readiness.current(origin, destination)
+        return RelationDemandState(
+            origin,
+            destination,
+            self.readiness.fingerprint(origin, destination),
+            relation.status if relation else None,
+            relation.reference if relation else None,
         )
 
     def retained(self, offer: ContractOffer) -> bool:
@@ -81,7 +166,12 @@ class MarketPreparationService:
         )
 
     def bind(self, offers: tuple[ContractOffer, ...]) -> None:
-        """Write exact route references within the caller's market UoW."""
+        """Own atomic binding, joining a surrounding market transaction."""
+        with self.transactions.transaction():
+            self._bind_in_transaction(offers)
+
+    def _bind_in_transaction(self, offers: tuple[ContractOffer, ...]) -> None:
+        """Validate and replace references inside the active transaction."""
         bindings = []
         for offer in offers:
             reference = self.readiness.ready(

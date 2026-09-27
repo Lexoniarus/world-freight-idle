@@ -85,3 +85,32 @@ def audit_economy_case(
         price.profit_eur,
         float(margin),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class EconomyMatrixRow:
+    """Describe a compatible scenario or explicit incompatibility."""
+
+    model_id: str
+    scale: str
+    nhm_row_id: int
+    band: str
+    load_min: float
+    load_max: float
+    compatible: bool
+    load_case: str | None = None
+    approach_km: float | None = None
+    starting_fraction: float | None = None
+    result: EconomyAuditResult | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class EconomyAuditSummary:
+    """Summarize reproducible reference margins and actual cashflows."""
+
+    models: int
+    rows: int
+    incompatible_rows: int
+    reference_min_margin: float
+    negative_cashflow_rows: int
+    typical_negative_cashflow_rows: int

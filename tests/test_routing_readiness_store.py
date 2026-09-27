@@ -33,7 +33,6 @@ def ready_relation():
         "B",
         "fingerprint",
         "ready",
-        "routing:v2:test",
         None,
         None,
         10,
@@ -54,20 +53,20 @@ def test_readiness_domain_rejects_incoherent_records():
     for change in (
         {"status": "unknown"},
         {"origin_uid": "other"},
-        {"cache_key": None},
         {"failure_category": "no_path"},
         {"retry_at": 20},
-        {"status": "stale"},
         {"checked_at": float("nan")},
     ):
         with pytest.raises(ValueError):
             replace(relation, **change)
     assert (
-        replace(
-            relation, status="transient_failure", cache_key=None, retry_at=20
-        ).retry_at
+        replace(relation, status="transient_failure", retry_at=20).retry_at
         == 20
     )
+    attempt = RoutingAttempt("A", "locate", "ready", 1, "trace", 1, 2)
+    assert (attempt.candidate_lat, attempt.candidate_lon) == (1, 2)
+    with pytest.raises(ValueError):
+        replace(attempt, candidate_lat=91)
     with pytest.raises(ValueError):
         RoutingAttempt("A", "locate", "ready", 1, "trace", 1, None)
     with pytest.raises(ValueError):
@@ -103,7 +102,6 @@ def test_global_lease_fences_expired_and_competing_writers(tmp_path):
     failure = replace(
         relation,
         status="deterministic_failure",
-        cache_key=None,
         failure_category="no_path",
     )
     assert other.publish(failure, None, "b", 33)

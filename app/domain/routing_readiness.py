@@ -58,7 +58,6 @@ class RoutingRelation:
     destination_uid: str
     fingerprint: str
     status: RelationStatus
-    cache_key: str | None
     failure_category: str | None
     retry_at: float | None
     checked_at: float
@@ -84,10 +83,10 @@ class RoutingRelation:
         }:
             raise ValueError("Unknown relation status.")
         if self.status == "ready":
-            if not self.cache_key or self.failure_category or self.retry_at:
-                raise ValueError("Ready relation needs only a route payload.")
-        elif self.cache_key is not None:
-            raise ValueError("Non-ready relation cannot expose a payload.")
+            if self.failure_category is not None or self.retry_at is not None:
+                raise ValueError(
+                    "Ready relation cannot carry failure or retry metadata."
+                )
 
 
 @dataclass(frozen=True, slots=True)

@@ -49,6 +49,7 @@ from app.services.analytics import AnalyticsService
 from app.services.contract_factory import ContractFactory
 from app.services.cost_profiles import VehicleCostResolver
 from app.services.dispatch_planning import DispatchPlanningService
+from app.services.economy_audit import EconomyAuditService
 from app.services.fleet import FleetService
 from app.services.game import GameService
 from app.services.map_locations import MapLocationService
@@ -60,10 +61,12 @@ from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_startup import MarketStartupService
 from app.services.preferences import PreferenceService
+from app.services.preparation_batch import MarketPreparationBatchService
 from app.services.preparation_worker import MarketPreparationWorker
 from app.services.profile_maintenance import ProfileMaintenanceService
 from app.services.routing_anchors import RoutingAnchorResolver
 from app.services.routing_readiness import RoutingReadinessService
+from app.services.vehicle_coverage import VehicleCoverageService
 
 
 @dataclass
@@ -305,10 +308,12 @@ def build_market_generator(
     catalogue: VehicleCatalogue,
 ) -> MarketGenerator:
     """Inject independent candidate, coverage and materialization services."""
+    coverage = MarketCoverageService(rng)
     return MarketGenerator(
         MarketCandidateService(world, catalogue),
-        MarketCoverageService(rng),
+        coverage,
         ContractFactory(rng),
+        VehicleCoverageService(coverage),
     )
 
 
@@ -350,6 +355,7 @@ def build_market_preparation(
         SqliteOfferRouteStore(runtime.database, user_id),
         runtime.preparation_jobs,
         runtime.clock,
+        runtime.database,
     )
 
 
@@ -357,9 +363,9 @@ def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
     """Assemble owned preparation without initializing player state."""
     assert runtime.preparation_jobs is not None
 
-    def lifecycle(user_id: str) -> MarketLifecycleService:
-        """Bind current player state without changing it during composition."""
-        return MarketLifecycleService(
+    def batch(user_id: str) -> MarketPreparationBatchService:
+        """Compose one player's preparation without changing state."""
+        lifecycle = MarketLifecycleService(
             SqliteGameUnitOfWork(runtime.database, user_id),
             runtime.market,
             runtime.market_scope,
@@ -367,11 +373,36 @@ def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
             build_market_preparation(runtime, user_id),
         )
 
+        preparation = lifecycle.preparation
+        assert preparation is not None
+        return MarketPreparationBatchService(
+            lifecycle.unit_of_work.repository,
+            runtime.market.candidates,
+            runtime.market.coverage,
+            runtime.market_scope,
+            preparation,
+            lifecycle.refresh,
+            runtime.market.vehicle_coverage,
+        )
+
     return MarketPreparationWorker(
-        runtime.preparation_jobs, lifecycle, runtime.clock
+        runtime.preparation_jobs, batch, runtime.clock
     )
 
 
 def build_routing_audit(runtime: GameRuntime) -> SqliteRoutingAudit:
     """Compose local routing diagnostics without provider operations."""
     return SqliteRoutingAudit(runtime.database)
+
+
+def build_economy_audit(root: Path, seed: int) -> EconomyAuditService:
+    """Compose reproducible audits from read-only reference catalogues."""
+    return EconomyAuditService(
+        SqliteVehicleCatalogue(
+            root / "data/world_freight_vehicle_catalog.sqlite3"
+        ),
+        SqliteWorldCatalogue(
+            root / "data/world_freight_company_facility_mvp.sqlite3"
+        ),
+        random.Random(seed),
+    )

@@ -13,6 +13,7 @@ from app.api.v1.game_projection import (
     project_transport,
 )
 from app.api.v1.schemas import DispatchRequest, QuoteRequest
+from app.domain.contracts import ContractOffer
 from app.domain.errors import RoutingError
 from app.services.game import GameService
 
@@ -23,16 +24,26 @@ ROUTING_FAILURE_DETAIL = "Straßenroute konnte nicht berechnet werden."
 
 @router.get("")
 def list_contracts(
+    vehicle_id: str | None = None,
     game: GameService = Depends(get_game_service),
 ) -> dict:
     """Return the active idle-vehicle city markets."""
+    return project_market(game, game.list_contracts(), vehicle_id)
+
+
+def project_market(
+    game: GameService, offers: list[ContractOffer], vehicle_id: str | None
+) -> dict:
+    """Translate authorized offer projections and vehicle coverage to HTTP."""
+    try:
+        result = game.market_presentation(offers, vehicle_id)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     return {
-        "contracts": [
-            project_contract(item)
-            for item in game.contract_choices(game.list_contracts())
-        ],
+        "contracts": [project_contract(item) for item in result.contracts],
+        "vehicle_coverage": [asdict(item) for item in result.vehicle_coverage],
         "preparation": (
-            asdict(status) if (status := game.preparation_status()) else None
+            asdict(result.preparation) if result.preparation else None
         ),
     }
 
@@ -91,15 +102,8 @@ async def accept_contract(
 
 @router.post("/refresh")
 def refresh_contracts(
+    vehicle_id: str | None = None,
     game: GameService = Depends(get_game_service),
 ) -> dict:
     """Regenerate only the current active city markets."""
-    return {
-        "contracts": [
-            project_contract(item)
-            for item in game.contract_choices(game.refresh_contracts())
-        ],
-        "preparation": (
-            asdict(status) if (status := game.preparation_status()) else None
-        ),
-    }
+    return project_market(game, game.refresh_contracts(), vehicle_id)

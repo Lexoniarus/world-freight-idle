@@ -4,6 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.api.v1.analytics_projection import project_analytics
 from app.api.v1.dependencies import get_current_user, get_game_service
 from app.bootstrap import build_analytics_service
 from app.services.analytics import validate_scope
@@ -27,9 +28,12 @@ def get_analytics(
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
     game.reconcile_arrival()
-    return build_analytics_service(request.app.state.game, user["id"]).analyze(
+    result = build_analytics_service(
+        request.app.state.game, user["id"]
+    ).analyze(
         game.now(),
         days,
         scope,
         scope_id,
     )
+    return project_analytics(result)

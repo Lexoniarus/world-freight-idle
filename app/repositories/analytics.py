@@ -3,8 +3,18 @@
 import math
 from typing import Any
 
-from app.domain.analytics import AnalyticsData
+from app.domain.analytics import (
+    AnalyticsData,
+    AnalyticsOngoing,
+    AnalyticsStatus,
+    AnalyticsTransport,
+)
 from app.domain.errors import PersistenceError
+from app.domain.validation import (
+    require_finite,
+    require_identity,
+    require_integer,
+)
 from app.repositories.game_database import SqliteGameDatabase
 
 PROJECTION = """
@@ -34,8 +44,45 @@ ORDER BY arrives_at, transport_id
 """
 
 
-def validate_row(row: dict[str, Any]) -> dict[str, Any]:
+def validate_scalars(
+    row: dict[str, Any],
+    integers: tuple[str, ...],
+    identities: tuple[str, ...] = (),
+    numbers: tuple[str, ...] = (),
+) -> None:
+    """Reject malformed SQL scalars before constructing typed read values."""
+    try:
+        for key in integers:
+            require_integer(row[key], key)
+        for key in identities:
+            require_identity(row[key], key)
+        for key in numbers:
+            require_finite(row[key], key)
+    except (KeyError, ValueError) as error:
+        raise PersistenceError("Statistikskalare sind beschädigt.") from error
+
+
+def map_ongoing(row: dict[str, Any]) -> AnalyticsOngoing:
+    """Map validated booked amounts without historical reconstruction."""
+    validate_scalars(
+        row, ("revenue_eur", "operating_cost_eur"), ("vehicle_id",)
+    )
+    return AnalyticsOngoing(
+        row["vehicle_id"],
+        row["revenue_eur"],
+        row["operating_cost_eur"],
+        row["revenue_eur"] - row["operating_cost_eur"],
+    )
+
+
+def validate_row(row: dict[str, Any]) -> AnalyticsTransport:
     """Validate extracted fields without decoding the JSON document."""
+    validate_scalars(
+        row,
+        ("revenue_eur", "operating_cost_eur"),
+        ("transport_id", "vehicle_id"),
+        ("arrives_at",),
+    )
     if (
         row["kind"] != "transport"
         or row["version"] != 2
@@ -65,9 +112,21 @@ def validate_row(row: dict[str, Any]) -> dict[str, Any]:
         "special",
     } or row["distance_band"] not in {"short", "medium", "long"}:
         raise PersistenceError("Historischer V2-Kontext ist beschädigt.")
-    row["profit_eur"] = row["revenue_eur"] - row["operating_cost_eur"]
-    row["vehicle"] = row["vehicle_id"]
-    return row
+    return AnalyticsTransport(
+        row["transport_id"],
+        row["vehicle_id"],
+        row["arrives_at"],
+        row["revenue_eur"],
+        row["operating_cost_eur"],
+        row["revenue_eur"] - row["operating_cost_eur"],
+        row["distance_km"],
+        row["tons"],
+        row["city"],
+        row["city_name"],
+        row["market_model"],
+        row["transport_class"],
+        row["distance_band"],
+    )
 
 
 class SqliteAnalyticsReader:
@@ -113,7 +172,7 @@ class SqliteAnalyticsReader:
                 )
             )
             ongoing = tuple(
-                dict(row)
+                map_ongoing(dict(row))
                 for row in db.execute(
                     "SELECT vehicle_id, payout_eur AS revenue_eur, "
                     "operating_cost_eur, payout_eur-operating_cost_eur "
@@ -132,4 +191,7 @@ class SqliteAnalyticsReader:
             )
             db.commit()
         status["active_transports"] = len(ongoing)
-        return AnalyticsData(status, history, ongoing, names)
+        validate_scalars(status, tuple(status))
+        return AnalyticsData(
+            AnalyticsStatus(**status), history, ongoing, names
+        )

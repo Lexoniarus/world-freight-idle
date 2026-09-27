@@ -10,7 +10,7 @@ FUNCTION_TESTS = {
     "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.put_leased": "test_anchor_publication_rejects_expired_owner",
     "app.bootstrap.build_market_preparation": "test_preparation_composition_preserves_unconfigured_test_runtime",
     "app.bootstrap.build_preparation_worker": "test_preparation_composition_preserves_unconfigured_test_runtime",
-    "app.bootstrap.build_preparation_worker.lifecycle": "test_preparation_composition_preserves_unconfigured_test_runtime",
+    "app.bootstrap.build_preparation_worker.batch": "test_preparation_composition_preserves_unconfigured_test_runtime",
     "app.domain.routing_readiness.RoutePayload.__post_init__": "test_readiness_domain_rejects_incoherent_records",
     "app.domain.routing_readiness.RoutePayload.to_snapshot": "test_readiness_domain_rejects_incoherent_records",
     "app.domain.routing_readiness.RouteReference.__post_init__": "test_readiness_domain_rejects_incoherent_records",
@@ -791,5 +791,60 @@ FUNCTION_TESTS.update(
         "app.services.dispatch_planning.DispatchPlanningService._route_between": (
             "test_dispatch_routing_uses_anchors_not_display_coordinates"
         ),
+    }
+)
+
+
+FUNCTION_TESTS.update(
+    {
+        "app.api.v1.analytics_projection.project_analytics": "test_analytics_scalars_do_not_hydrate_routes",
+        "app.api.v1.contracts.project_market": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.bootstrap.build_economy_audit": "test_economy_audit_is_typed_and_reproducible",
+        "app.services.analytics.dimension_value": "test_analytics_scalars_do_not_hydrate_routes",
+        "app.services.economy_audit.EconomyAuditService.__init__": "test_economy_audit_is_typed_and_reproducible",
+        "app.services.economy_audit.EconomyAuditService._rows": "test_economy_audit_is_typed_and_reproducible",
+        "app.services.economy_audit.EconomyAuditService.matrix": "test_economy_audit_is_typed_and_reproducible",
+        "app.services.economy_audit.audit_vehicle": "test_economy_audit_is_typed_and_reproducible",
+        "app.services.economy_audit.summarize_economy": "test_economy_audit_is_typed_and_reproducible",
+        "app.services.game.GameService.vehicle_coverage": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market_lifecycle.MarketLifecycleService.vehicle_diagnostics": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market_preparation.MarketPreparationService._bind_in_transaction": "test_reference_replacement_owns_rollback",
+        "app.services.market_preparation.MarketPreparationService._ready_candidates": "test_vehicle_readiness_requires_approach_and_excludes_stale",
+        "app.services.market_preparation.MarketPreparationService.demand_state": "test_exhausted_negative_demand_requeues_after_revision",
+        "app.services.market_preparation.MarketPreparationService.preparable_candidates": "test_worker_completes_vehicle_gaps_and_exhausts_failed_approaches",
+        "app.services.market_preparation.MarketPreparationService.ready_candidates": "test_vehicle_readiness_requires_approach_and_excludes_stale",
+        "app.services.market_preparation.MarketPreparationService.ready_context": "test_vehicle_readiness_requires_approach_and_excludes_stale",
+        "app.services.preparation_batch.MarketPreparationBatchService.__init__": "test_worker_completes_vehicle_gaps_and_exhausts_failed_approaches",
+        "app.services.preparation_batch.MarketPreparationBatchService._ready": "test_worker_completes_vehicle_gaps_and_exhausts_failed_approaches",
+        "app.services.preparation_batch.MarketPreparationBatchService.plan": "test_worker_completes_vehicle_gaps_and_exhausts_failed_approaches",
+        "app.services.preparation_batch.MarketPreparationBatchService.process": "test_departure_during_preparation_cannot_publish_stale_vehicle_coverage",
+        "app.services.preparation_worker.MarketPreparationWorker._iteration": "test_worker_recovers_entire_iteration",
+        "app.services.vehicle_coverage.VehicleCoverageService.diagnose": "test_shared_planned_offers_cover_identical_vehicles_once",
+        "app.services.vehicle_coverage.VehicleCoverageService.extend": "test_vehicle_coverage_fills_small_vehicle_after_city_is_full",
+        "app.services.vehicle_coverage.candidates_for_trade": "test_shared_planned_offers_cover_identical_vehicles_once",
+        "app.services.vehicle_coverage.restrict_candidate": "test_vehicle_coverage_fills_small_vehicle_after_city_is_full",
+        "app.services.vehicle_coverage.vehicle_candidates": "test_shared_planned_offers_cover_identical_vehicles_once",
+        "app.services.vehicle_coverage.vehicle_offers": "test_vehicle_coverage_fills_small_vehicle_after_city_is_full",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.services.preparation_batch.MarketPreparationBatchService._plan_in_transaction": "test_worker_completes_vehicle_gaps_and_exhausts_failed_approaches",
+        "app.services.market_lifecycle.MarketLifecycleService._vehicle_diagnostics_in_transaction": "test_vehicle_projection_api_enforces_owned_idle_selection",
+    }
+)
+
+FUNCTION_TESTS["app.services.game.GameService.market_presentation"] = (
+    "test_vehicle_projection_api_enforces_owned_idle_selection"
+)
+FUNCTION_TESTS["app.domain.market_preparation.required_relations"] = (
+    "test_approaches_precede_delivery_batches_without_starvation"
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.repositories.analytics.validate_scalars": "test_analytics_rejects_invalid_sql_scalars",
+        "app.repositories.analytics.map_ongoing": "test_analytics_rejects_invalid_sql_scalars",
     }
 )

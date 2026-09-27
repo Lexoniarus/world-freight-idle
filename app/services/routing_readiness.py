@@ -88,15 +88,11 @@ class RoutingReadinessService:
         if relation is None:
             return None
         if relation.fingerprint != self.fingerprint(origin, destination):
-            return replace(
-                relation, status="stale", cache_key=None, retry_at=None
-            )
+            return replace(relation, status="stale", retry_at=None)
         if relation.status == "ready" and not self.store.payload(
             relation.reference
         ):
-            return replace(
-                relation, status="stale", cache_key=None, retry_at=None
-            )
+            return replace(relation, status="stale", retry_at=None)
         return relation
 
     def ready(self, origin: str, destination: str) -> RouteReference | None:
@@ -230,7 +226,6 @@ class RoutingReadinessService:
             destination,
             expected_fingerprint,
             "ready",
-            f"readiness:v1:{reference.relation_id}:{reference.revision}",
             None,
             None,
             self.clock(),
@@ -267,7 +262,6 @@ class RoutingReadinessService:
             destination,
             self.fingerprint(origin, destination),
             "transient_failure" if transient else "deterministic_failure",
-            None,
             category,
             self.clock() + 60 if transient else None,
             self.clock(),

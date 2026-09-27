@@ -17,6 +17,7 @@ from app.repositories.routing_readiness import (
     SqliteRoutingReadinessStore,
 )
 from app.services.market_preparation import MarketPreparationService
+from app.services.preparation_batch import MarketPreparationBatchService
 from app.services.preparation_worker import MarketPreparationWorker
 from app.services.routing_readiness import RoutingReadinessService
 from tests.conftest import FakeRouter, FakeRoutingAnchorResolver
@@ -27,6 +28,18 @@ T = TypeVar("T")
 def require_value(value: T | None) -> T:
     assert value is not None
     return value
+
+
+def make_batch(game, preparation):
+    return MarketPreparationBatchService(
+        game.state_repository,
+        game.market.candidates,
+        game.market.coverage,
+        game.market_scope,
+        preparation,
+        game.market_lifecycle.refresh,
+        game.market.vehicle_coverage,
+    )
 
 
 def bind_preparation(game, database):
@@ -51,6 +64,7 @@ def bind_preparation(game, database):
         SqliteOfferRouteStore(database, "test-owner"),
         jobs,
         game.now,
+        database,
     )
     game.market_lifecycle.preparation = preparation
     game.dispatch_planning.preparation = preparation
@@ -74,6 +88,10 @@ async def test_partial_market_never_publishes_unchecked_offers(game, database):
     with pytest.raises(ValueError, match="vorbereitet"):
         readiness.load(origin, destination)
     result = require_value(await readiness.prepare(origin, destination))
+    # Delivery alone cannot publish an offer for an unprepared approach.
+    if owned[0].facility_uid != origin:
+        assert game.refresh_market() == []
+        await readiness.prepare(owned[0].facility_uid, origin)
     assert result.status == "ready"
     readiness.router = AsyncMock()
     assert await readiness.prepare(origin, destination) == result
@@ -84,10 +102,6 @@ async def test_partial_market_never_publishes_unchecked_offers(game, database):
     assert all(o.destination.facility_uid == destination for o in offers)
     offer = offers[0]
     vehicle = owned[0]
-    if vehicle.facility_uid != origin:
-        assert game.contract_choices((offer,))[0].eligible_vehicle_ids == ()
-        readiness.router = FakeRouter()
-        await readiness.prepare(vehicle.facility_uid, origin)
     readiness.router = AsyncMock()
     choices = game.contract_choices((offer,))
     assert vehicle.id in choices[0].eligible_vehicle_ids
@@ -129,11 +143,12 @@ async def test_stale_approach_requeues_completed_player_demand(game, database):
     )
     with database.connect() as conn:
         conn.execute(
-            "DELETE FROM route_cache WHERE cache_key=?",
-            (approach.cache_key,),
+            "DELETE FROM route_cache WHERE cache_key IN "
+            "(SELECT cache_key FROM routing_relations WHERE relation_id=?)",
+            (approach.reference.relation_id,),
         )
     assert readiness.ready(origin, destination) is not None
-    assert preparation.prepare_publication((candidate,), fleet)
+    assert preparation.prepare_publication((candidate,), fleet) == ()
     updated = require_value(preparation.jobs.status("test-owner"))
     assert updated.generation != status.generation
     assert updated.status == "partial"
@@ -218,7 +233,7 @@ async def test_worker_fills_ready_market_and_owns_shutdown(game, database):
     preparation = bind_preparation(game, database)
     game.refresh_market()
     worker = MarketPreparationWorker(
-        preparation.jobs, lambda user: game.market_lifecycle, game.now
+        preparation.jobs, lambda user: make_batch(game, preparation), game.now
     )
     assert preparation.jobs.next_player(game.now()) == "test-owner"
     for _ in range(30):
@@ -294,7 +309,7 @@ def test_preparation_composition_preserves_unconfigured_test_runtime(
     assert bound.user_id == "test-owner"
     worker = build_preparation_worker(runtime)
     assert (
-        require_value(worker.lifecycle("test-owner").preparation).user_id
+        require_value(worker.batches("test-owner").preparation).user_id
         == "test-owner"
     )
 
@@ -343,7 +358,7 @@ async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
         assert await readiness.prepare(*pair) is None
     game.refresh_market()
     worker = MarketPreparationWorker(
-        preparation.jobs, lambda user: game.market_lifecycle, game.now
+        preparation.jobs, lambda user: make_batch(game, preparation), game.now
     )
     with patch.object(worker, "process", side_effect=RuntimeError("batch")):
         await worker.start()
@@ -354,15 +369,15 @@ async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
         is not None
     )
     failed_worker = MarketPreparationWorker(
-        preparation.jobs, lambda user: game.market_lifecycle, game.now
+        preparation.jobs, lambda user: make_batch(game, preparation), game.now
     )
     with patch.object(
         preparation.jobs, "next_player", side_effect=RuntimeError("startup")
     ):
-        with pytest.raises(RuntimeError, match="startup"):
-            await failed_worker.start()
-        with pytest.raises(RuntimeError, match="startup"):
-            await failed_worker.close()
+        await failed_worker.start()
+        assert failed_worker._task is not None
+        assert not failed_worker._task.done()
+        await failed_worker.close()
 
 
 @pytest.mark.asyncio
@@ -433,7 +448,13 @@ async def test_ready_startup_rolls_back_all_players_and_references(
     await preparation.readiness.prepare(
         offer.origin.facility_uid, offer.destination.facility_uid
     )
+    for vehicle in game.state_repository.list_vehicles():
+        if vehicle.facility_uid != offer.origin.facility_uid:
+            await preparation.readiness.prepare(
+                vehicle.facility_uid, offer.origin.facility_uid
+            )
     original = tuple(game.refresh_market())
+    assert original
     references = tuple(preparation.references.get(o.id) for o in original)
     with database.connect() as conn:
         conn.execute("INSERT INTO users VALUES ('z-owner','Second','hash',0)")

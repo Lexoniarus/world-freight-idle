@@ -12,6 +12,7 @@ from app.domain.market import (
 from app.services.contract_factory import ContractFactory
 from app.services.market_candidates import MarketCandidateService
 from app.services.market_coverage import MarketCoverageService
+from app.services.vehicle_coverage import VehicleCoverageService
 
 
 @dataclass(slots=True)
@@ -23,6 +24,7 @@ class MarketGenerator:
     candidates: MarketCandidateService
     coverage: MarketCoverageService
     factory: ContractFactory
+    vehicle_coverage: VehicleCoverageService
 
     def generate(
         self,
@@ -39,6 +41,9 @@ class MarketGenerator:
             else prepared
         )
         plan = self.coverage.plan(cities, candidates, retained)
+        plan = self.vehicle_coverage.extend(
+            plan, candidates, retained, vehicles, candidates
+        )
         created = tuple(
             ContractOffer.from_snapshot(self.factory.build(candidate, now))
             for candidate in plan.selected

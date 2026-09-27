@@ -23,6 +23,7 @@ from app.providers.routing import RoutingError
 
 class FakeGame:
     def __init__(self, game):
+        self.market_lifecycle = game.market_lifecycle
         self.offer = replace(game.state_repository.list_offers()[0], id="c1")
         self.vehicle = game.state_repository.list_vehicles()[0]
         self.route = RouteSnapshot(((1, 1), (2, 2)), 10, 20, "fixture")
@@ -48,12 +49,24 @@ class FakeGame:
             1, 1, PlayerState(1, 0, 0), (self.vehicle,), (self.trip,)
         )
 
-    def contract_choices(self, offers):
+    def contract_choices(self, offers, vehicle_id=None):
         from app.domain.results import AvailableContract
 
         return tuple(
             AvailableContract(offer, ("truck_01",)) for offer in offers
         )
+
+    def market_presentation(self, offers, vehicle_id=None):
+        from app.domain.results import MarketPresentation
+
+        return MarketPresentation(
+            self.contract_choices(offers, vehicle_id),
+            self.vehicle_coverage(),
+            self.preparation_status(),
+        )
+
+    def vehicle_coverage(self):
+        return self.market_lifecycle.vehicle_diagnostics()
 
     def list_contracts(self):
         return [self.offer]
