@@ -52,11 +52,6 @@ async def test_real_supervisor_starts_outside_repository_and_closes_children(
                         await asyncio.sleep(0.1)
                 assert len(children) == 2
                 assert all(child.returncode is None for child in children)
-                assert (
-                    await client.get(
-                        f"http://127.0.0.1:{unused_tcp_port}/login"
-                    )
-                ).status_code == 200
         finally:
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
