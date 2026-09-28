@@ -24,7 +24,8 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
     quote = project_quote(
         await game.quote_contract(contract["id"], "truck_01")
     )
-    game.router.route.assert_awaited_once_with(
+    assert game.router.route.await_count == 2
+    game.router.route.assert_any_await(
         contract["origin"]["lat"],
         contract["origin"]["lon"],
         contract["destination"]["lat"],

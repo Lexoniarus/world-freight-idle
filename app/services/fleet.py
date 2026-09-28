@@ -2,6 +2,7 @@
 
 import logging
 import uuid
+from collections.abc import Callable
 
 from app.domain.errors import CatalogueError, WorldCatalogueError
 from app.domain.game import OwnedVehicle
@@ -23,11 +24,13 @@ class FleetService:
         unit_of_work: GameUnitOfWork,
         catalogue: VehicleCatalogue,
         world: WorldCatalogue,
+        changed: Callable[[], None] | None = None,
     ) -> None:
         self.unit_of_work = unit_of_work
         self.state_repository = unit_of_work.repository
         self.catalogue = catalogue
         self.world = world
+        self.changed = changed
 
     def list_catalogue(self) -> FleetCatalogue:
         """Read immutable purchase choices and the fixed delivery location."""
@@ -66,6 +69,8 @@ class FleetService:
             player.debit(model.price_eur)
             self.state_repository.save_player(player)
             self.state_repository.save_vehicle(vehicle)
+            if self.changed is not None:
+                self.changed()
         LOGGER.info(
             "Vehicle purchased",
             extra={

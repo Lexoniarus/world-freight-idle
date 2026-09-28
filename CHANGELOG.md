@@ -1,5 +1,20 @@
 # Changelog
 
+## Befahrbare Standortverbindungen – 27.09.2026
+
+- Jede Anfahrt und Lieferung benötigt echte Truck-Routen in beiden Richtungen
+  mit passenden Endpunkten. Anker und beide Routen werden atomar freigegeben.
+- Automatische Reparatur mit maximal fünf Kandidaten je Standort innerhalb
+  1.000 Metern, 25 Kombinationen und 120 Sekunden; bereits geprüfte Anker bleiben
+  für einzelne unerreichbare Ziele stabil.
+- Versionierte Nachweise ersetzen alte positive und negative Routingcaches.
+  Wiederprüfung nach 24 Stunden, bei definitiven Fehlern nach einer Stunde,
+  bei vorübergehenden Störungen nach 60 Sekunden.
+- Wolfsburger LKW auf isolierter Spielstandkopie regulär disponiert; Ankunft
+  und nächster Auftragsstart geprüft. Backup vorhanden, echter Spielstand
+  unverändert. Gezielte Prüfungen und noch offene vollständige Suite:
+  [Änderungs- und Abnahmebericht](docs/CONNECTED_ROUTING_REVIEW.md).
+
 ## Fahrzeugenergie und automatische Pausen – 23.09.2026
 
 - Angereicherten Katalog 2.1.0 mit allen 14 Energieprofilen angebunden;

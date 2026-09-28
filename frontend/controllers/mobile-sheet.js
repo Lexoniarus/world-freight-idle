@@ -17,12 +17,16 @@ export class MobileSheet {
       },
     };
   }
-  /** Attach sheet controls once for the application lifetime. */
+  /** Attach sheet controls once for the application lifetime.
+   * @returns {void}
+   */
   start() {
     for (const [event, listener] of Object.entries(this.listeners))
       this.handle.addEventListener(event, listener);
   }
-  /** Advance the three accessible sheet sizes. */
+  /** Advance the three accessible sheet sizes.
+   * @returns {void}
+   */
   cycleHeight() {
     if (this.suppressClick) {
       this.suppressClick = false;
@@ -32,6 +36,8 @@ export class MobileSheet {
   }
   /** Begin a captured pointer gesture.
    * @param {PointerEvent} event
+   *
+   * @returns {void}
    */
   startDrag(event) {
     this.suppressClick = false;
@@ -40,6 +46,8 @@ export class MobileSheet {
   }
   /** Snap a completed gesture without applying its synthetic click twice.
    * @param {PointerEvent} event
+   *
+   * @returns {void}
    */
   finishDrag(event) {
     if (this.dragStart === null) return;
@@ -52,12 +60,25 @@ export class MobileSheet {
   }
   /** Apply a sheet height in dynamic viewport units.
    * @param {number} height
+   *
+   * @returns {void}
    */
   setHeight(height) {
     this.height = height;
     this.panel.style.setProperty("--sheet-height", height + "dvh");
+    const map = document.querySelector("#world-map");
+    if (map instanceof HTMLElement) map.inert = height === 90 && window.innerWidth <= 759;
+    this.panel.dataset.sheet = height === 90 ? "full" : height === 60 ? "half" : "compact";
+    document.querySelector("#game")?.classList.toggle("sheet-full", height === 90);
+    this.handle.setAttribute(
+      "aria-label",
+      "Panelhöhe ändern · " +
+        (height === 90 ? "volle Höhe" : height === 60 ? "halbe Höhe" : "kompakt"),
+    );
   }
-  /** Release pointer and click listeners. */
+  /** Release pointer and click listeners.
+   * @returns {void}
+   */
   destroy() {
     for (const [event, listener] of Object.entries(this.listeners))
       this.handle.removeEventListener(event, listener);

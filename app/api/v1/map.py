@@ -1,21 +1,54 @@
 """Authenticated location projection for the map-first interface."""
 
 import time
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.v1.dependencies import (
     get_current_user,
     get_map_service,
+    get_runtime_reader,
     get_traffic_reader,
 )
 from app.api.v1.location_projection import project_location
+from app.api.v1.runtime import project_traffic_summary
 from app.api.v1.traffic_projection import project_traffic
 from app.domain.read_ports import TrafficReader
+from app.domain.runtime_views import RuntimeReader
 from app.domain.world import FacilityQuery
 from app.services.map_locations import MapLocationService
 
 router = APIRouter(prefix="/map", tags=["map"])
+
+
+@router.get("/facilities/{identifier}")
+def exact_facility(
+    identifier: str,
+    service: MapLocationService = Depends(get_map_service),
+) -> dict:
+    """Resolve a session-bound legacy link using one exact reference."""
+    try:
+        return project_location(service.exact_facility(identifier))
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(404, "Standort nicht gefunden.") from exc
+
+
+@router.get("/cities/{city_uid}")
+def exact_city(
+    city_uid: str,
+    service: MapLocationService = Depends(get_map_service),
+) -> dict:
+    """Return only the requested city identity for authenticated navigation."""
+    try:
+        city = service.exact_city(city_uid)
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(404, "Stadt nicht gefunden.") from exc
+    return {
+        "city_uid": city.city_uid,
+        "city": city.name,
+        "country": city.country.code,
+    }
 
 
 @router.get("/hubs")
@@ -53,10 +86,19 @@ def list_map_facilities(
 
 @router.get("/traffic")
 def list_map_traffic(
+    representation: Literal["full", "summary"] = "full",
     user: dict = Depends(get_current_user),
     reader: TrafficReader = Depends(get_traffic_reader),
+    summaries: RuntimeReader = Depends(get_runtime_reader),
 ) -> dict:
     """Return the minimal live transport projection visible to all players."""
+    if representation == "summary":
+        return {
+            "transports": project_traffic_summary(
+                summaries.traffic(time.time()),
+                user["id"],
+            )
+        }
     return {
         "transports": project_traffic(
             reader.list_active_transports(time.time()), user["id"]

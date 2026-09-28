@@ -15,6 +15,9 @@ freigegebener öffentlicher Produktionsdienst.
 - Registrierung, Anmeldung, getrennte persistente Profile und Lieferungsrangliste.
 - Aufträge auswählen, Fahrzeug disponieren, parallele Transporte verfolgen,
   Offline-Ankünfte abrechnen und die Flotte erweitern.
+- Drei fahrbare Angebote je Streckentyp und ausgewähltem LKW; gemeinsamer
+  Hintergrundvorrat mit mindestens zehn Vorlagen je Bedarfsstadt/Modell/Band.
+  Jede Vorlage ist einmal je Spieler nutzbar. Angebote verfallen nicht zeitlich.
 - 14 DB-Fahrzeugmodelle mit Kaufpreis, Nutzlast, Reputationsfreigabe und
   Kilometerkosten sowie Energieprofilen und Höchstgeschwindigkeit; lokale
   Karten-, Front- und Seitenbilder für alle Modelle.
@@ -66,8 +69,11 @@ git config --local core.hooksPath .githooks
 python main.py
 ```
 
-Danach [Anmeldung öffnen](http://127.0.0.1:8000/login). Mit aktivierter virtueller
-Umgebung genügt überall `python main.py`. Nach Frontendänderungen neu bauen.
+Danach [Anmeldung öffnen](http://127.0.0.1:8000/login). `python main.py` verwendet
+die vorhandene Projekt-`.venv` automatisch, wenn keine virtuelle Umgebung aktiv
+ist. Eine ausdrücklich aktivierte Umgebung wird beibehalten. Der Einstiegspunkt
+kann auch über seinen absoluten Pfad aus einem anderen Arbeitsordner gestartet
+werden. Nach Frontendänderungen neu bauen.
 Für den reinen Python-Spielbetrieb genügt requirements.txt statt requirements-dev.txt.
 
 Der Server bindet standardmäßig an `0.0.0.0:8000`. Im selben WLAN die LAN-IP des
@@ -93,12 +99,19 @@ $env:HOST = "127.0.0.1"
 | GAME_TIME_SCALE | 1 = Echtzeit; Beschleunigung nur für lokale Tests |
 | COOKIE_SECURE | false für lokales HTTP; true bei HTTPS-Betrieb |
 | VALHALLA_URL | Routing gespeicherter Facility-Koordinaten |
-| NOMINATIM_URL | Ausschließlich Offline-Import/Enrichment, kein Spielserver-Lookup |
+| ROUTING_ANCHOR_MAX_SNAP_M | 1000; maximale Entfernung realer Straßenkandidaten vom ursprünglichen Standort |
+| NOMINATIM_URL | Offline-Enrichment und begrenzter Backend-Fallback für Routing-Anker |
 | HTTP_USER_AGENT | Vor öffentlichen Providerabrufen mit passendem Kontakt setzen |
 
 Der Katalog wird nur lesend geöffnet und unabhängig vom Spielstandpfad gefunden.
 Fehlende/defekte Katalogdaten ergeben 503 bei Katalog/Kauf oder erster Startflotte;
 bestehende Fahrzeuge bleiben nutzbar. Spielstände und Backups gehören nicht ins Git.
+
+Anfahrt und Lieferung benötigen geprüfte Hin- und Rückwege mit passenden
+Straßenendpunkten. Erfolgreiche Nachweise gelten maximal 24 Stunden; definitive
+Fehler werden nach einer Stunde, vorübergehende Fehler nach 60 Sekunden erneut
+vorbereitbar. Details und Wolfsburger Kopie-Abnahme:
+[Verbindungsprüfung](docs/CONNECTED_ROUTING_REVIEW.md).
 Nur die beiden Referenz-Katalogdateien werden mitgeliefert. Lizenz-/Datenherkunft:
 [DATA_SOURCES](docs/DATA_SOURCES.md).
 
@@ -110,7 +123,7 @@ Keine automatische Migration und kein öffentlicher Pflege-Endpunkt.
 
 ## Relationale Spielstände und Offline-Übernahme
 
-Der Server verwendet ausschließlich das relationale Schema 1.1.0. Alte KV-
+Der Server verwendet ausschließlich das relationale Schema 1.2.0. Alte KV-
 Datenbanken werden beim Start abgewiesen. Neue leere Datenbanken benötigen
 keine Migration. Für Altbestände den Server stoppen und zuerst prüfen:
 
@@ -125,6 +138,18 @@ Nach erfolgreicher Prüfung kann NEW.db als game.db aktiviert werden; das Backup
 bleibt erhalten. Sessions/Caches werden nicht übernommen, neue Anmeldung ist
 nötig. Die drei lokalen Testkonten wurden am 23.09.2026 so übernommen.
 Details: [Persistenz](docs/RELATIONAL_STATE.md), [Tests](docs/TESTING.md).
+
+Bestehende 1.1.0-Spielstände benötigen für dauerhaft gültige Angebote eine
+gesonderte Übernahme mit Backup und neuer Ausgabe, **vor dem nächsten Start**:
+
+```powershell
+python scripts/upgrade_market_stock.py --source data/game.db --check
+python scripts/upgrade_market_stock.py --source data/game.db --backup data/backups/before-stock.db --output data/stock-test.db
+```
+
+Historische Transporte und gültige Angebotskonditionen bleiben erhalten.
+Die Aktivierung erfolgt erst nach Kopie-Abnahme und erneutem frischem Backup
+bei gestoppten Schreibern: [Betriebsanleitung](docs/RUNTIME_OPERATIONS.md).
 
 ## Entwicklung, Branches und Qualität
 
@@ -218,3 +243,37 @@ Erst nach erfolgreichem Abgleich die neue Datei als `game.db` aktivieren und mit
 unverändert; vorhandene Transporte erhalten keine nachträglichen Pausen oder
 Energieabzüge. Bei unbekannten Modellen bricht die Übernahme ab. Kein automatisches
 Upgrade beim Serverstart. Details: [Persistenz](docs/RELATIONAL_STATE.md).
+
+
+### Tatsächliche Abholanfahrt
+
+Aufträge starten am Fahrzeugstandort und führen über die Abholung zum Lieferziel.
+Anfahrt zählt zu Zeit, Energie und Kosten; Frachterlös nur zur Frachtstrecke.
+Details: [Routenarchitektur](docs/ARCHITECTURE.md) und
+[Funktionsreview](docs/DISPATCH_APPROACH_REVIEW.md).
+
+## Frontend-v2: aktuelle Wirtschaftsregeln
+
+Mengen bevorzugen hohe Auslastung innerhalb der World-Profile. NHM-Mindestfracht
+und tatsächliche Wartung/Energieeinkäufe sind getrennt gespeichert. Der
+Vorbereitungsprozess veröffentlicht offene Märkte bedarfsgesteuert und atomar
+für eigene idle-Städte. Firmenfarben sind accountbezogen persistent; Kartenfahrzeuge
+und Analytics besitzen konsistente Darstellung. Details: [Economy v2](docs/ECONOMY_V2.md).
+
+
+Nach diesem Update den Spielserver neu starten: Der API-Start validiert beide
+Kataloge; der separate Worker veröffentlicht Angebote mit aktuellen Tarif-Snapshots.
+Bereits laufende und abgeschlossene Transporte behalten ihre Konditionen.
+
+
+## Getrennte Runtime und Vorbereitung
+
+`python main.py` startet API und Prewarm in getrennten ueberwachten Prozessen.
+Alternativ `python main.py --role runtime` bzw. `--role prewarm` mit derselben
+Konfiguration. Der API-Start baut keine vollstaendigen Maerkte auf. Spielstand,
+Flotte, Markt, Verkehr und Routengeometrien laden unabhaengig.
+Die Zweiweg-Routingregel bleibt erhalten. Offline-Reparatur erzeugt ausschliesslich
+neue gepruefte Kopien; ein Push aktiviert keine Live-Datenbank.
+[Betrieb und Reparatur](docs/RUNTIME_OPERATIONS.md),
+[Architekturentscheidung](docs/adr/0007-runtime-preparation-and-route-projections.md),
+[Abnahme und Messbedingungen](docs/RUNTIME_ISOLATION_REVIEW.md).

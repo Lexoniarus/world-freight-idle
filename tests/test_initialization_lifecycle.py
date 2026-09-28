@@ -83,6 +83,9 @@ def test_reset_failure_restores_deleted_state(game):
         "game",
         "accounts",
         "auth",
+        "preferences",
+        "world",
+        "catalogue",
         "body",
         "close-first",
     ],
@@ -103,11 +106,13 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
         patches.enter_context(
             patch("app.main.httpx.AsyncClient", side_effect=creation)
         )
-        patches.enter_context(
+        runtime_factory = patches.enter_context(
             patch(
                 "app.main.build_game_runtime",
                 side_effect=error if failure == "game" else None,
-                return_value=SimpleNamespace(database=Mock()),
+                return_value=SimpleNamespace(
+                    database=Mock(), world=Mock(), catalogue=Mock()
+                ),
             )
         )
         patches.enter_context(
@@ -122,6 +127,18 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
                 side_effect=error if failure == "auth" else None,
             )
         )
+        patches.enter_context(
+            patch(
+                "app.main.build_preferences",
+                side_effect=error if failure == "preferences" else None,
+            )
+        )
+        if failure == "world":
+            runtime_factory.return_value.world.read.side_effect = error
+        if failure == "catalogue":
+            runtime_factory.return_value.catalogue.list_models.side_effect = (
+                error
+            )
         if failure == "none":
             async with lifespan(app):
                 assert all(

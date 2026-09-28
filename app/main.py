@@ -9,9 +9,13 @@ import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 
 from app.api.v1.router import build_v1_router
-from app.bootstrap import build_game_runtime
+from app.bootstrap import (
+    build_game_runtime,
+    build_preferences,
+)
 from app.config import Settings
 from app.domain.errors import (
     CatalogueError,
@@ -43,6 +47,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.auth = AuthService(
             AccountRepository(app.state.game.database), PasswordHasher()
         )
+        app.state.preferences = build_preferences(app.state.game)
+        app.state.game.world.read()
+        app.state.game.catalogue.list_models()
         yield
 
 
@@ -61,6 +68,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_exception_handler(UnresolvedVehicleModel, unresolved_vehicle_model)
     app.add_exception_handler(PersistenceError, persistence_error)
     app.add_middleware(TraceIdMiddleware)
+    app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=5)
     app.mount(
         "/static",
         StaticFiles(directory=active_settings.base_dir / "static"),

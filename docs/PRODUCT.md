@@ -16,12 +16,12 @@ World Freight Idle ist ein browserbasiertes Echtzeit-Idle-Transportspiel auf rea
 Der MVP muss einen vollständigen Road-Freight-Loop liefern:
 
 1. Spieler meldet sich an und öffnet die Weltkarte.
-2. Spieler wechselt auf den Auftragsmarkt.
-3. Spieler öffnet einen Auftrag mit **realer Von-Adresse und realer Zu-Adresse**.
-4. Das System liest die bei Auftragserzeugung gespeicherten Facility-Koordinaten.
-5. Das System berechnet eine echte Truck-Route über Valhalla/OpenStreetMap.
-6. Distanz, Routing-Zeit, Kosten, Vergütung und Marge werden angezeigt.
-7. Spieler weist ein passendes Fahrzeug am Startort zu.
+2. Spieler öffnet über ein eigenes idle Fahrzeug dessen Stadtmarkt.
+3. Der Fahrzeugmarkt zeigt ausschließlich für das gewählte idle Fahrzeug geeignete Angebote mit validierter Delivery und erforderlicher vorbereiteter Anfahrt.
+4. Spieler öffnet einen Auftrag mit **realer Von-Adresse und realer Zu-Adresse**.
+5. Spieler wählt vor der Quote ausdrücklich ein geeignetes Fahrzeug in der Abholstadt. Sein tatsächlicher Standort darf von der Abholung abweichen.
+6. Die Quote lädt die vorbereitete Delivery-Route und eine erforderliche vorbereitete Anfahrt; sie berechnet daraus die fahrzeugspezifische Journey.
+7. Gesamtdistanz, Fahrzeit, Kosten, Vergütung und Ergebnis werden angezeigt.
 8. Der Transport startet und wird persistent gespeichert.
 9. Auf der Weltkarte bewegen sich aktive Trucks entlang echter Routengeometrien.
 10. Browser darf geschlossen werden. Beim erneuten Öffnen wird die Position aus Realzeit + Route rekonstruiert.
@@ -143,8 +143,9 @@ Startvorrat ist ein Halt am Ursprung möglich; weitere Halte liegen entlang der
 Route. Diese Positionen behaupten keine realen Tankstellen/Ladestationen.
 
 Fahrzeit vor Beschleunigung ist das Maximum aus Providerzeit und
-Strecke/Höchstgeschwindigkeit. Providerdaten, Kilometerkosten und Erlösformel
-bleiben erhalten. Es gibt keine zusätzlichen Kraftstoffgebühren. Offline-Pausen
+Strecke/Höchstgeschwindigkeit. Providerdaten bleiben erhalten. Neue Quotes
+verwenden Wartung und tatsächliche Energieeinkäufe gemäß Economy v2; der
+alte aggregierte Kilometersatz wird nicht zusätzlich berechnet. Offline-Pausen
 und -Ankunft benötigen keine Hintergrundjobs; beim nächsten Zugriff wird der
 Endfüllstand mit Auszahlung und Settlement atomar gespeichert.
 
@@ -153,8 +154,8 @@ Endfüllstand mit Auszahlung und Settlement atomar gespeichert.
 
 Stadtmärkte eigener idle Fahrzeuge ersetzen Nutzlastklassen und Viewport-Scope.
 V2 bewahrt gültige fahrbare Angebote und ergänzt Facility-/Distanz-Coverage.
-Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Same-City-
-Reposition ist kostenlos; Dispatch und anschließender Markt-Refill besitzen
+Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Die tatsächliche
+Anfahrt wird mitgeplant; Dispatch und anschließender Markt-Refill besitzen
 getrennte Transaktionen. Historische Transporte und gespeicherte Konditionen
 bleiben erhalten. Trailer, Versicherungen und weitere Simulationen sind nicht
 Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
@@ -162,3 +163,154 @@ Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
 den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
 Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
 [Qualitätsbericht](../QUALITY_REPORT.md).
+
+
+## Frontend v2 – operatives Unternehmen auf der Weltkarte
+
+Die Stadt ist der zentrale Dispositionskontext, ihre UUID die Identität.
+Eine bewusst gewählte Stadt bleibt auch ohne aktiven Markt erhalten; Markt v2
+wird weiterhin ausschließlich durch eigene idle Fahrzeuge aktiviert. Flotte
+unterscheidet stationierte, abfahrende und ankommende Fahrzeuge, der Stadtmarkt
+verbindet Cargo, Facility, geeignetes Fahrzeug und fahrzeuggebundene Quote.
+Unternehmen ergänzt private belegte Finanz-/Leistungsstatistik. Importierte
+Fortschrittszähler und laufende erwartete Ergebnisse sind separat bezeichnet.
+Map-first, echte Routengeometrie, OSM, World 4.2.0 und Catalogue 2.2.0 bleiben.
+Keine Änderung an Marktregeln, Preisen, Refill-/Dispatch-Transaktionsgrenzen.
+Gestaltung und Bedienung: [UI DESIGN](UI%20DESIGN.md).
+
+
+## Tatsächliche Anfahrt zur Abholung
+
+Das ausgewählte idle Fahrzeug startet am gespeicherten Standort A, fährt zur
+Abholung B und anschließend zum Lieferziel C. Es muss weiterhin zur Abholstadt
+gehören. A → B verursacht Fahrzeit, Energieverbrauch und Betriebskosten;
+Frachterlös entsteht nur für B → C. Grundbeträge werden einmal pro Auftrag
+berechnet. Abholung und Weiterfahrt sind automatisch und ohne Ladezeit.
+
+Angebotsdetails zeigen Fahrzeugstandort, Abholung und Lieferung, getrennte
+Straßenkilometer sowie Gesamtdauer und Gesamtkosten. Tracking unterscheidet
+„Zur Abholung“ und „Fracht unterwegs“; Tank-/Ladepausen bleiben sichtbar.
+Bei identischem Standort oder exakt gleichen Koordinaten entfällt die Anfahrt.
+Routingfehler verhindern eine Annahme ohne Abbuchung. Historische Fahrten werden
+nicht verändert. Die kostenlose Same-City-Reposition entfällt im Dispatch.
+
+## Frontend-v2: verbindliche Stabilisierung
+
+Neue Aufträge bevorzugen hohe zulässige Auslastung und speichern einen
+NHM-Mindesttarif. Neue Quotes berechnen 80 € Grundkosten, Wartung für A → B → C
+und tatsächlich geplante Energieeinkäufe. Nur B → C erzeugt Frachtvergütung;
+negative Ergebnisse bleiben möglich. Historie bleibt unverändert.
+Der Stadtmarkt zeigt ausschließlich eigene idle-Städte. Firmenfarben sind
+für Front-, Seiten- und Kartendarstellung persistent auswählbar. Analytics
+zeigt aktuelle verständliche Fahrzeugnamen bei unveränderter ID-Gruppierung.
+Verbindliche Formeln: [ECONOMY_V2.md](ECONOMY_V2.md).
+
+## Karten- und Firmenfarbenstabilisierung
+
+Fahrzeuge gruppieren ausschließlich bei tatsächlicher Bildschirmüberlappung
+ihrer dargestellten Assetflächen. Eigentümer und idle/enroute bleiben getrennt;
+Singletons zeigen keinen Count. Gruppen behalten ein reales Fahrzeug samt
+Position und Fahrtrichtung. Firmenfarbe betrifft nur explizite Lackflächen.
+Die Palette ist sichtbar und besitzt Lade-/Fehler-/Retry-Zustände.
+Navigation fokussiert einmalig; anschließendes Pan/Zoom bleibt frei.
+Economy, Markt, Anfahrt und historische Konditionen bleiben unverändert.
+
+
+Ergänzung zum freigegebenen Navigationsmodell: Weltkarte als Überblick ohne
+„Alle Städte“-Scope. Fahrzeug → Transport beziehungsweise idle Fahrzeug →
+Stadtmarkt. Dieser zeigt ausschließlich Angebote, deren serverseitige
+`eligible_vehicle_ids` das ausgewählte eigene idle Fahrzeug enthalten.
+Liste und Kartenmarker verwenden dieselbe Eignungsprojektion. Ohne gültige
+Auswahl erscheint „Fahrzeug wählen“. Bei Abfahrt wird der Kontext geleert;
+Polling wählt kein Ersatzfahrzeug. Der gespeicherte Spielerpool bleibt geteilt;
+ein Offer darf mehrere Fahrzeuge versorgen.
+
+## Truck-Routing-Anker
+
+Facilities behalten ihre dokumentierte oder als Simulation gekennzeichnete
+WorldCatalogue-Koordinate für Karte und historische Anzeige. Lkw-Routing
+verwendet davon getrennte globale Routing-Anker je `facility_uid` und Profil.
+Die strukturelle Candidate-Erzeugung bleibt facility-basiert und routerfrei.
+Die anschließende Market Preparation prüft für jede Lieferung und Anfahrt
+echte Hin- und Rückwege mit vier passenden Straßenendpunkten (Toleranz 10 Meter).
+Erst dann veröffentlicht sie die gewählten Anker und beide Richtungen atomar.
+Bis zu fünf reale Straßenkandidaten je Standort dürfen höchstens 1.000 Meter
+von der ursprünglichen Facility entfernt liegen. Fehlschläge veröffentlichen
+keinen Auftrag. Die Wiederprüfung erfolgt nach Nachfrage; erfolgreiche
+Nachweise verfallen nach 24 Stunden, definitive Fehler nach einer Stunde und
+vorübergehende Providerfehler nach 60 Sekunden.
+Quote und Dispatch laden vorbereitete Routen. Die Fahrzeug-Journey ergänzt
+Geschwindigkeit, Energie und Pausen; Facility-Anzeigekoordinaten bleiben erhalten.
+
+Umsetzung und isolierte Wolfsburger Abnahme:
+[Durchgängig befahrbare Standortverbindungen](CONNECTED_ROUTING_REVIEW.md).
+
+
+## Route-ready Market v2
+
+Structural Candidate → RoutingAnchor / RoutingReadiness → validierte Delivery
+→ Offer mit separater RouteReference → Quote → fahrzeugspezifische Journey.
+Ein partial Market enthält ausschließlich route-ready Offers; nur Coverage fehlt.
+Die Fahrzeug-Eignung verlangt außerdem eine bereite Anfahrt vom tatsächlichen
+Standort, außer bei identischer Facility. Bestehende geprüfte Offers erscheinen
+sofort, während der Backend-Worker fehlende Coverage vorbereitet. Es gibt kein
+Browser-Geocoding und keine Rückkehr zum ungeprüften Quote-Routing.
+
+Status des aktuellen Review-/Vehicle-Ready-Fixes: implementiert; gezielte
+Prüfungen siehe Qualitätsbericht. Vollständige Nutzer-Gesamtabnahme ausstehend.
+Reale Providerprüfungen bleiben eine gesonderte Betriebsabnahme.
+
+
+## Vehicle-Ready-Coverage
+
+Die Stadt-/Facility-/Distanzziele bleiben erhalten. Zusätzlich benötigt jedes
+eigene idle Fahrzeug fahrbare Angebote für seine geeigneten Abholstandorte und
+mindestens drei pro strukturell verfügbarem Distanzband. Geteilte Offers zählen
+für jedes tatsächlich geeignete Fahrzeug. Die Vorbereitung berücksichtigt
+Kapazität und ready Approaches bereits vor Materialisierung; kleinere Fahrzeuge
+werden nicht mit nur für große Fahrzeuge geeigneten Angeboten abgefertigt.
+Bei unerreichbarer Coverage bleiben nur tatsächlich fahrbare Angebote sichtbar,
+mit Diagnose fehlender Standorte/Bänder. `partial` bedeutet fehlende Coverage,
+`exhausted` einen ausgeschöpften nutzbaren Pool; beide erlauben keine ungeprüften
+Angebote. Ein späterer Anchor-/Providerwechsel kann die Vorbereitung reaktivieren.
+Tonnagenverteilung, Tarif, Anfahrt, Energie und historische Transporte bleiben
+unverändert. Ein Generierungsfahrzeug reserviert weiterhin kein Angebot.
+
+
+## Runtime-Trennung und Alttransport-Reparatur (27.09.2026)
+
+Die neue verbindliche Abschlussvoraussetzung ersetzt die fruehere Beschraenkung
+auf gezielte Routingtests: vollstaendiges Quality-Gate mit 100 % app-Statement-
+Coverage sowie komplette Browserregression vor Commit/Push auf feature/frontend-v2.
+Runtime und Vorbereitung laufen getrennt; Spielstand und Flotte erscheinen vor
+Geometrien und Markt. Read-Ziel p95 <= 250 ms, weitere Spielerstarts <= 2 s
+(einmaliger Kaltstart mit Settlement bei 3,39 s am 28.09.2026 akzeptiert),
+Runtime plus Verkehr <= 250 KiB pro Poll. Keine unveraenderten Geometrien im Polling.
+
+Die beiden bestaetigten optionalen Alt-Anfahrtsplaene werden nur offline auf
+einer gesicherten Kopie repariert. Live-Aktivierung und echte iPad-Abnahme bleiben
+separate Betriebsschritte. Implementierung und tatsaechlicher Abnahmestand:
+[Runtime-Review](RUNTIME_ISOLATION_REVIEW.md) und [Qualitaetsbericht](../QUALITY_REPORT.md).
+
+
+## Gemeinsamer Auftragsvorrat (28.09.2026)
+
+Das ausgewählte Fahrzeug erhält genau drei fahrbare Angebote je Streckentyp,
+sofern genügend geprüfter Bestand verfügbar ist. Der gemeinsame Hintergrundvorrat
+hält mindestens zehn Vorlagen je Bedarfsstadt, konkretem Modell und Band; jede
+Vorlage ist einmal je Spieler verwendbar. Die drei sichtbaren gehören zu diesen
+zehn. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen Angebote nutzen.
+
+Ungenutzte Vorlagen und Angebote verfallen nicht zeitlich und bleiben bei Abfahrt
+und Rückkehr erhalten. Ein Verbrauch lässt gespeicherte Reserve sofort nachrücken;
+der Worker füllt nach. Bedarf entsteht im Stand und ab 60 Minuten vor gespeicherter
+Ankunft. Fehlende Hin-/Rückwege, veraltete Prüfnachweise oder unbrauchbare
+Katalogbezüge geben keine Angebote frei. Alle 14 Modelle werden in Bedarfsstädten
+berücksichtigt, tatsächlich wartende Fahrzeuge zuerst.
+
+Die Schemaübernahme nach 1.2.0 ist ein expliziter Offline-Schritt mit Backup und
+neuer Ausgabe. Live-Aktivierung ist nicht Teil von Commit/Push. Verbindliche
+Gesamtabnahme: Quality-Gate mit 100 % app-Statement-Coverage, vollständige
+Browserregression und Leistungsabnahme. Tatsächlicher Stand und Grenzen stehen
+im [Qualitätsbericht](../QUALITY_REPORT.md); Verantwortlichkeiten in
+[ADR 0008](adr/0008-shared-market-stock.md).

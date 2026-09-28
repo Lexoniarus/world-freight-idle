@@ -9,8 +9,9 @@ from typing import ClassVar
 
 from app.domain.contracts import ContractOfferSnapshot
 from app.domain.market import MarketCandidate
-from app.domain.market_calculations import shipment_tons
+from app.domain.market_calculations import biased_load_factor, shipment_tons
 from app.domain.market_terms import OfferMarketContext
+from app.domain.tariffs import freight_tariff
 from app.simulation import STANDARD_RATE
 
 
@@ -38,7 +39,9 @@ class ContractFactory:
         load = candidate.distance_profile
         tons = shipment_tons(
             selected.capacity_tons,
-            self.rng.uniform(load.load_factor_min, load.load_factor_max),
+            biased_load_factor(
+                load.load_factor_min, load.load_factor_max, self.rng.random()
+            ),
         )
         profile = candidate.profile
         context = OfferMarketContext(
@@ -49,6 +52,12 @@ class ContractFactory:
             selected.capacity_tons,
             profile.value_eur_per_t,
             round(tons * profile.value_eur_per_t),
+            freight_tariff(
+                selected.cost_profile,
+                selected.energy,
+                profile.freight_rate_factor_game,
+                candidate.reference_nhm_factor,
+            ),
         )
         origin = option.origin
         destination = option.destination
@@ -82,7 +91,7 @@ class ContractFactory:
             rate_eur_per_km_ton=STANDARD_RATE
             * profile.freight_rate_factor_game,
             created_at=now,
-            expires_at=now + 6 * 3600,
+            expires_at=None,
             mode="truck",
             relationship_simulated=True,
         )

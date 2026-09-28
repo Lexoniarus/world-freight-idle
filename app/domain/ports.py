@@ -8,7 +8,7 @@ from app.domain.world import WorldSnapshot
 
 
 class Geocoder(Protocol):
-    """Offline import/enrichment port; never part of game lookups."""
+    """Backend geocoding port for derived routing and enrichment."""
 
     async def geocode(self, address: str) -> tuple[float, float, str]:
         """Resolve one textual address."""

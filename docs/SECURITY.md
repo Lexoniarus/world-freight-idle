@@ -34,3 +34,11 @@ beschränkt ihn auf diesen Rechner.
 SQLite-Datei und Backups enthalten Passworthashes und Spielerdaten; passende
 Dateirechte und geschützte Backups sind Aufgabe des Betriebs.
 Eine hohe Testabdeckung ersetzt keine unabhängige Sicherheitsprüfung.
+
+
+Firmenfarben verwenden ausschließlich zehn serverseitig erlaubte Hexwerte.
+Preference-Endpunkte übernehmen den Account aus der Sitzung und besitzen
+bestehenden CSRF-/Origin-Schutz. Öffentliche Bewegung enthält die wirksame
+Farbe, weiterhin keine Wirtschafts- oder Energiedetails. SVG-Kolorierung
+verwendet lokale registrierte Quellen und normalisierte Hexwerte; keine
+beliebigen SVGs oder CSS-Werte aus Client-Eingaben.

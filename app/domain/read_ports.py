@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import Literal, Protocol, TypedDict
 
+from app.domain.routes import RouteLeg
+
 
 class RankingEntry(TypedDict):
     """Public progress without private economic or authentication data."""
@@ -37,6 +39,8 @@ class SharedTransport:
     coordinates: tuple[tuple[float, float], ...]
     distance_km: float
     segments: tuple[MovementSegment, ...]
+    route_legs: tuple[RouteLeg, ...] = ()
+    company_color: str | None = None
 
 
 class LeaderboardReader(Protocol):

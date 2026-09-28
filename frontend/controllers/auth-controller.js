@@ -15,7 +15,9 @@ export class AuthController {
     this.disposed = false;
     this.listeners = new AbortController();
   }
-  /** Mount the authentication view and attach its controls. */
+  /** Mount the authentication view and attach its controls.
+   * @returns {void}
+   */
   start() {
     this.root.replaceChildren(renderAuth());
     const options = { signal: this.listeners.signal };
@@ -32,6 +34,8 @@ export class AuthController {
   }
   /** Present login or registration without replacing the form.
    * @param {boolean} registering
+   *
+   * @returns {void}
    */
   setMode(registering) {
     this.registering = registering;
@@ -61,12 +65,16 @@ export class AuthController {
   }
   /** Prevent mode changes and duplicate submissions while authenticating.
    * @param {boolean} busy
+   *
+   * @returns {void}
    */
   setBusy(busy) {
     for (const id of ["submit-auth", "login-tab", "register-tab"])
       requiredElement("#" + id).toggleAttribute("disabled", busy);
   }
-  /** Submit credentials exclusively to the same-origin API. */
+  /** Submit credentials exclusively to the same-origin API.
+   * @returns {Promise<void>}
+   */
   async submitCredentials() {
     this.setBusy(true);
     requiredElement("#auth-status").textContent = "Bitte warten …";
@@ -83,7 +91,9 @@ export class AuthController {
       this.setBusy(false);
     }
   }
-  /** Release handlers and abort an in-flight authentication request. */
+  /** Release handlers and abort an in-flight authentication request.
+   * @returns {void}
+   */
   destroy() {
     this.disposed = true;
     this.listeners.abort();

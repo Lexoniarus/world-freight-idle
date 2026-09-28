@@ -208,8 +208,8 @@ Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abn
 
 Stadtmärkte eigener idle Fahrzeuge ersetzen Nutzlastklassen und Viewport-Scope.
 V2 bewahrt gültige fahrbare Angebote und ergänzt Facility-/Distanz-Coverage.
-Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Same-City-
-Reposition ist kostenlos; Dispatch und anschließender Markt-Refill besitzen
+Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Die tatsächliche
+Anfahrt wird mitgeplant; Dispatch und anschließender Markt-Refill besitzen
 getrennte Transaktionen. Historische Transporte und gespeicherte Konditionen
 bleiben erhalten. Trailer, Versicherungen und weitere Simulationen sind nicht
 Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
@@ -217,3 +217,135 @@ Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
 den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
 Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
 [Qualitätsbericht](../QUALITY_REPORT.md).
+
+
+## Frontend v2 – Abnahmeziel
+
+Stadt und Fahrzeug führen zur verständlichen Transportentscheidung auf der
+fortbestehenden realen Karte. Context-/Management-Drawer, drei mobile Sheet-
+Höhen, City-UID-Links, private Unternehmensstatistik und lokal pro user.id
+überschreibbare Layer-Presets bilden die neue Oberfläche. Ausgewählte Objekte
+bleiben sichtbar, Gruppen bleiben bis zur Fahrzeugliste bedienbar. Bestehende
+Market-v2-Regeln werden nicht im Frontend nachgebaut.
+
+Abnahme umfasst Desktop/Tablet/Mobile, Reduced Motion, Tastatur/Fokus,
+Kamerakontinuität, stabile Bilder, Nah-/Stadt-/Regional-/Europa-Zoom sowie
+vollständige Quality-/E2E-Gates. Historische Finanz-/Leistungswerte stammen nur
+aus belegten Transporten; kein historischer Model-Scope. Die tatsächlichen
+Prüfnachweise und Grenzen stehen im [Qualitätsbericht](../QUALITY_REPORT.md).
+
+
+## Ergänzung: echte Abholanfahrt
+
+Auftragsannahme plant Standort A → Abholung B → Lieferung C. Gesamtdauer,
+Verbrauch und Kosten schließen A → B ein, Frachterlös ausschließlich B → C.
+Kein Teleport beim Dispatch, keine Ladezeit oder zweite Aktion bei B.
+Historische Fahrten, Stadtmarkt-Eignung und relationale Schemaversion bleiben.
+
+## Frontend-v2: Abnahmestand
+
+Umgesetzt sind die getrennte Mengen-/Tarif-/Kostenlogik, atomarer globaler
+Marktstart, aktive Stadtmarktauswahl, Account-Farben, Fahrzeuggruppen und
+lesbare Analyticslabels. Prüfnachweise und verbleibende Datenlücken stehen im
+[Qualitätsbericht](../QUALITY_REPORT.md), fachliche Verträge in
+[ECONOMY_V2.md](ECONOMY_V2.md). Veröffentlichung ist nicht Teil dieser Umsetzung.
+
+Kartenstabilisierung: gemeinsame Fahrzeugrenderpfade, ausschließlich
+überlappungsbasierte Statusgruppen, selektive Lackierung und einmaliger
+Navigationsfokus. Keine Änderung an Tarifen, Kosten oder Marktregeln.
+
+
+Ergänzung zum freigegebenen Navigationsmodell: Weltkarte als Überblick ohne
+„Alle Städte“-Scope. Fahrzeug → Transport beziehungsweise idle Fahrzeug →
+Stadtmarkt. Dieser zeigt ausschließlich Angebote, deren serverseitige
+`eligible_vehicle_ids` das ausgewählte eigene idle Fahrzeug enthalten.
+Liste und Kartenmarker verwenden dieselbe Eignungsprojektion. Ohne gültige
+Auswahl erscheint „Fahrzeug wählen“. Bei Abfahrt wird der Kontext geleert;
+Polling wählt kein Ersatzfahrzeug. Der gespeicherte Spielerpool bleibt geteilt;
+ein Offer darf mehrere Fahrzeuge versorgen.
+
+## Ziel: getrennte Display- und Truck-Routing-Koordinaten
+
+- Kartenmarker und historische Snapshots behalten Facility-Displaywerte.
+- Truck-Routing löst Endpunkte ausschließlich über stabile Facility-UIDs auf.
+- Ein Routing-Anker muss von Valhalla für `truck` korreliert und innerhalb
+  von maximal 1.000 Metern zur ursprünglichen Facility liegen. Locate liefert
+  nur Kandidaten; Freigabe verlangt Hin- und Rückweg mit passenden tatsächlichen
+  Geometrie-Endpunkten (jeweils höchstens 10 Meter zum vorgesehenen Anker).
+- Nominatim ist ausschließlich Backend-Fallback und bleibt gecacht sowie
+  rate-limited.
+- Providerfehler und nicht routbare Facilities werden klassifiziert
+  persistiert; es gibt keine synthetischen Straßenkoordinaten.
+
+
+## Global Routing Readiness
+
+Routing-Readiness-Implementierung: implementiert / vollständige lokale Quality- und E2E-Gates bestanden.
+495 Python-Tests, 100 % Core-Statement-Coverage, 101 Frontendtests und
+30 Playwright-Fälle bestanden. Branch-Push ausdrücklich freigegeben;
+kein PR oder Merge.
+
+
+## Reviewkorrekturen und Vehicle-Ready-Markt (27.09.2026)
+
+Direkte Umsetzung auf dem ausdrücklich vorgegebenen `feature/frontend-v2`,
+Basis `e49e5fa`. Kein ZIP, Push, PR oder Merge. Zehn Reviewkorrekturen sowie
+fahrzeugbezogene Coverage ergänzen den bestehenden globalen Routingpfad.
+Status: implemented / targeted tests passed / full acceptance pending,
+maßgeblich sind die tatsächlich dokumentierten Ergebnisse im Qualitätsbericht.
+Frühere Gesamtabnahmen gelten nicht für diesen Korrekturstand.
+
+
+## Befahrbare Standortverbindungen (27.09.2026)
+
+Auf Basis `5d7ff77` im bestehenden `feature/frontend-v2` umgesetzt: Freigabe
+jeder Lieferung und Anfahrt erst mit echten Hin- und Rückwegen und passenden
+Endpunkten. Automatische Kandidatensuche höchstens 1.000 Meter, fünf Kandidaten
+je Standort, 25 Paare und 120 Sekunden. Gemeinsame Leases und atomare
+Veröffentlichung; versionierte Nachweise mit Wiederprüfung nach 24 Stunden,
+einer Stunde bei definitiven Fehlern beziehungsweise 60 Sekunden bei Störungen.
+
+Wolfsburger LKW auf isolierter Spielstandkopie regulär disponiert; Ankunft und
+Folgeauftrag geprüft. Zehn begrenzte Live-Provideranfragen insgesamt. Backup vorhanden, echter
+Spielstand unverändert. Gezielte Prüfungen siehe
+[Änderungs- und Abnahmebericht](CONNECTED_ROUTING_REVIEW.md).
+Vollständige Suite und Gesamtintegration verbleiben ausdrücklich beim Nutzer.
+
+
+## Runtime-Trennung und Alttransport-Reparatur (27.09.2026)
+
+Die neue verbindliche Abschlussvoraussetzung ersetzt die fruehere Beschraenkung
+auf gezielte Routingtests: vollstaendiges Quality-Gate mit 100 % app-Statement-
+Coverage sowie komplette Browserregression vor Commit/Push auf feature/frontend-v2.
+Runtime und Vorbereitung laufen getrennt; Spielstand und Flotte erscheinen vor
+Geometrien und Markt. Read-Ziel p95 <= 250 ms, weitere Spielerstarts <= 2 s
+(einmaliger Kaltstart mit Settlement bei 3,39 s am 28.09.2026 akzeptiert),
+Runtime plus Verkehr <= 250 KiB pro Poll. Keine unveraenderten Geometrien im Polling.
+
+Die beiden bestaetigten optionalen Alt-Anfahrtsplaene werden nur offline auf
+einer gesicherten Kopie repariert. Live-Aktivierung und echte iPad-Abnahme bleiben
+separate Betriebsschritte. Implementierung und tatsaechlicher Abnahmestand:
+[Runtime-Review](RUNTIME_ISOLATION_REVIEW.md) und [Qualitaetsbericht](../QUALITY_REPORT.md).
+
+
+## Gemeinsamer Auftragsvorrat (28.09.2026)
+
+Das ausgewählte Fahrzeug erhält genau drei fahrbare Angebote je Streckentyp,
+sofern genügend geprüfter Bestand verfügbar ist. Der gemeinsame Hintergrundvorrat
+hält mindestens zehn Vorlagen je Bedarfsstadt, konkretem Modell und Band; jede
+Vorlage ist einmal je Spieler verwendbar. Die drei sichtbaren gehören zu diesen
+zehn. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen Angebote nutzen.
+
+Ungenutzte Vorlagen und Angebote verfallen nicht zeitlich und bleiben bei Abfahrt
+und Rückkehr erhalten. Ein Verbrauch lässt gespeicherte Reserve sofort nachrücken;
+der Worker füllt nach. Bedarf entsteht im Stand und ab 60 Minuten vor gespeicherter
+Ankunft. Fehlende Hin-/Rückwege, veraltete Prüfnachweise oder unbrauchbare
+Katalogbezüge geben keine Angebote frei. Alle 14 Modelle werden in Bedarfsstädten
+berücksichtigt, tatsächlich wartende Fahrzeuge zuerst.
+
+Die Schemaübernahme nach 1.2.0 ist ein expliziter Offline-Schritt mit Backup und
+neuer Ausgabe. Live-Aktivierung ist nicht Teil von Commit/Push. Verbindliche
+Gesamtabnahme: Quality-Gate mit 100 % app-Statement-Coverage, vollständige
+Browserregression und Leistungsabnahme. Tatsächlicher Stand und Grenzen stehen
+im [Qualitätsbericht](../QUALITY_REPORT.md); Verantwortlichkeiten in
+[ADR 0008](adr/0008-shared-market-stock.md).

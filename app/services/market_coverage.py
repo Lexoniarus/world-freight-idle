@@ -72,6 +72,7 @@ class MarketCoverageService:
         cities: tuple[str, ...],
         candidates: tuple[MarketCandidate, ...],
         retained: tuple[ContractOffer, ...],
+        planned: tuple[MarketCandidate, ...] = (),
     ) -> CoveragePlan:
         """Compose independent city plans and compact coverage diagnostics."""
         selected: list[MarketCandidate] = []
@@ -85,8 +86,17 @@ class MarketCoverageService:
             existing = tuple(
                 o for o in retained if o.origin.city.city_uid == city
             )
-            planned, diagnostic = self._plan_city(city, pool, existing)
-            selected.extend(planned)
+            additions, diagnostic = self._plan_city(
+                city,
+                pool,
+                existing,
+                tuple(
+                    c
+                    for c in planned
+                    if c.trade.origin.address.city.city_uid == city
+                ),
+            )
+            selected.extend(additions)
             diagnostics.append(diagnostic)
         return CoveragePlan(tuple(selected), tuple(diagnostics))
 
@@ -95,6 +105,7 @@ class MarketCoverageService:
         city: str,
         pool: tuple[MarketCandidate, ...],
         retained: tuple[ContractOffer, ...],
+        planned: tuple[MarketCandidate, ...] = (),
     ) -> tuple[tuple[MarketCandidate, ...], CoverageDiagnostic]:
         """Apply facility coverage first and then fill available bands."""
         coverage = CityCoverage()
@@ -107,6 +118,8 @@ class MarketCoverageService:
                 offer.destination.city.city_uid,
                 offer.market_context.distance_band,
             )
+        for candidate in planned:
+            coverage.add_candidate(candidate)
         selected: list[MarketCandidate] = []
         origins = sorted({c.trade.origin.facility_uid for c in pool})
         for origin in origins:

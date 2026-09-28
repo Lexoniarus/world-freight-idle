@@ -110,6 +110,19 @@ def test_schema_structure_rejects_missing_columns_and_guards(relational):
         relational.initialize()
 
 
+def test_schema_rejects_version_only_upgrade_with_mandatory_expiry(tmp_path):
+    from app.repositories.game_schema import VERSION
+    from app.repositories.previous_game_schema import SCHEMA
+
+    path = tmp_path / "mislabeled.db"
+    with closing(sqlite3.connect(path)) as connection:
+        connection.executescript(SCHEMA)
+        connection.execute("UPDATE game_schema SET version=?", (VERSION,))
+        connection.commit()
+    with pytest.raises(UnsupportedGameSchema, match="schluessel"):
+        SqliteGameDatabase(path).initialize()
+
+
 def test_relational_entities_roundtrip_isolate_and_protect_history(
     relational, game
 ):
@@ -356,7 +369,8 @@ def test_transport_queries_filter_before_decoding(relational, game):
         assert decode.call_count == 1
         decode.reset_mock()
         assert alice.list_active_transports() == (trip, future)
-        assert decode.call_count == 2
+        # The unchanged due row is already valid.
+        assert decode.call_count == 1
     for invalid in (float("nan"), float("inf"), -1, True):
         with pytest.raises(ValueError):
             alice.list_due_transports(invalid)
@@ -387,3 +401,58 @@ def test_dashboard_does_not_decode_settled_history(game):
         game.dashboard()
         assert decode.call_count == 0
     assert len(game.state_repository.list_transports()) == 100
+
+
+def test_transport_validation_cache_rechecks_changed_rows_and_bounds_memory(
+    game,
+    database,
+):
+    from unittest.mock import patch
+
+    import app.repositories.game_state as mapping
+    from tests.transport_fixtures import add_transport
+
+    trip = add_transport(game)
+    repository = game.state_repository
+    with patch.object(
+        mapping, "load_transport_record", wraps=mapping.load_transport_record
+    ) as decode:
+        assert repository.list_due_transports(3) == (trip,)
+        assert repository.list_due_transports(3) == (trip,)
+        repository.save_transport(trip.settle(3))
+        assert decode.call_count == 1
+        assert repository.list_transports() == (trip.settle(3),)
+        assert decode.call_count == 2
+        with pytest.raises(PersistenceError):
+            repository.save_transport(trip.settle(4))
+    for index in range(65):
+        repository.save_transport(
+            replace(trip.settle(3), id=f"cached-history-{index}")
+        )
+    assert len(repository.list_transports()) == 66
+    assert len(repository._transports) == 64
+    assert trip.id not in repository._transports
+
+    # A fresh active row is validated again after any document/column change.
+    with database.connect() as db:
+        db.execute("DELETE FROM transports")
+    repository.save_transport(trip)
+    assert repository.list_active_transports() == (trip,)
+    with database.connect() as db:
+        row = db.execute("SELECT * FROM transports").fetchone()
+        raw = row["transport_snapshot"]
+        document = json.loads(raw)
+        document["data"]["payout_eur"] += 1
+        db.execute(
+            "UPDATE transports SET transport_snapshot=?",
+            (json.dumps(document),),
+        )
+    with pytest.raises(PersistenceError):
+        repository.list_active_transports()
+    with database.connect() as db:
+        db.execute(
+            "UPDATE transports SET transport_snapshot=?, payout_eur=payout_eur+1",
+            (raw,),
+        )
+    with pytest.raises(PersistenceError):
+        repository.save_transport(trip.settle(3))

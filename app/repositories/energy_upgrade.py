@@ -16,12 +16,14 @@ from app.repositories.game_database import (
     SqliteGameDatabase,
     schema_sql_tokens,
 )
-from app.repositories.game_schema import REQUIRED_TABLES, SCHEMA
+from app.repositories.game_schema import REQUIRED_TABLES
+from app.repositories.game_schema import VERSION as TARGET_VERSION
 from app.repositories.game_state import (
     load_offer_record,
     load_transport_record,
     load_vehicle_record,
 )
+from app.repositories.previous_game_schema import SCHEMA
 from app.repositories.state_snapshots import encode_snapshot
 
 LOGGER = logging.getLogger(__name__)
@@ -99,7 +101,7 @@ class VehicleEnergyUpgradeRepository:
                 "data": {
                     **counts,
                     "source_version": "1.0.0",
-                    "target_version": "1.1.0",
+                    "target_version": TARGET_VERSION,
                 },
             },
         )

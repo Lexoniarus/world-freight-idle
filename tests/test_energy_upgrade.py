@@ -46,6 +46,11 @@ def old_energy_state(game, database, tmp_path):
                 ]
                 for row in db.execute(f"SELECT * FROM {table}"):
                     values = dict(row)
+                    if table == "contract_offers":
+                        doc = json.loads(values["offer_snapshot"])
+                        values["expires_at"] = values["created_at"] + 21600
+                        doc["data"]["expires_at"] = values["expires_at"]
+                        values["offer_snapshot"] = json.dumps(doc)
                     if table == "transports":
                         doc = json.loads(values["transport_snapshot"])
                         doc["version"] = 1
@@ -92,7 +97,7 @@ def test_energy_upgrade_reconciles_accounts_sessions_and_history(
         ) == ("test-token", "test-owner")
         assert (
             connection.execute("SELECT version FROM game_schema").fetchone()[0]
-            == "1.1.0"
+            == "1.2.0"
         )
         document = json.loads(
             connection.execute(

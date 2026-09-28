@@ -8,20 +8,29 @@ from collections.abc import Callable, Sequence
 
 from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.game import OwnedVehicle, PlayerState
-from app.domain.journeys import plan_journey
+from app.domain.market import VehicleCoverageDiagnostic
+from app.domain.market_preparation import PreparationStatus
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
-from app.domain.pricing import calculate_price
-from app.domain.results import AvailableContract, ContractQuote, GameSnapshot
+from app.domain.results import (
+    AvailableContract,
+    ContractQuote,
+    GameSnapshot,
+    MarketPresentation,
+)
+from app.domain.routes import DispatchRoutePlan
 from app.domain.state_ports import GameUnitOfWork
-from app.domain.transports import ActiveTransport, RouteSnapshot
+from app.domain.transports import ActiveTransport
 from app.domain.world_scopes import WorldScope
+from app.services.dispatch_planning import DispatchPlanningService
 from app.services.fleet import (
     create_starter_vehicle,
     resolve_delivery_facility,
 )
 from app.services.market import MarketGenerator
 from app.services.market_lifecycle import MarketLifecycleService
+from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
+from app.services.market_selection import MarketSelectionService
 
 LOGGER = logging.getLogger(__name__)
 
@@ -38,26 +47,42 @@ class GameService:
         catalogue: VehicleCatalogue,
         market_scope: MarketScopeResolver,
         clock: Callable[[], float],
+        dispatch_planning: DispatchPlanningService,
         time_scale: float = 1.0,
+        preparation: MarketPreparationService | None = None,
+        market_selection: MarketSelectionService | None = None,
     ) -> None:
         """Wire player-scoped orchestration to injected service ports."""
         self.unit_of_work = unit_of_work
         self.state_repository = unit_of_work.repository
         self.world = world
         self.router = router
+        self.dispatch_planning = dispatch_planning
         self.market = market
         self.time_scale = max(0.001, time_scale)
         self.catalogue = catalogue
         self.market_scope = market_scope
         self.now = clock
         self.market_lifecycle = MarketLifecycleService(
-            unit_of_work, market, market_scope, lambda: self.now()
+            unit_of_work,
+            market,
+            market_scope,
+            lambda: self.now(),
+            preparation,
+            selection=market_selection,
         )
 
     def ensure_initial_state(self) -> None:
         """Atomically create missing state, including for direct callers."""
+        if (
+            self.state_repository.get_player() is not None
+            and self.state_repository.list_vehicles()
+        ):
+            return
         with self.unit_of_work.transaction():
             self._ensure_initial_state()
+            if self.market_lifecycle.preparation is not None:
+                self.market_lifecycle.preparation.request(changed=True)
 
     def _ensure_initial_state(self) -> None:
         """Initialize player and starter inside the caller's transaction."""
@@ -70,6 +95,15 @@ class GameService:
                 )
             )
 
+    def preparation_status(self) -> PreparationStatus | None:
+        """Expose typed progress for the authenticated player's market."""
+        preparation = self.market_lifecycle.preparation
+        return (
+            preparation.jobs.status(preparation.user_id)
+            if preparation is not None
+            else None
+        )
+
     def refresh_market(self, force: bool = False) -> list[ContractOffer]:
         """Delegate city market lifecycle to its transactional service."""
         return self.market_lifecycle.refresh(force)
@@ -77,23 +111,15 @@ class GameService:
     async def quote_contract(
         self, contract_id: str, vehicle_id: str
     ) -> ContractQuote:
-        """Route snapshot coordinates and calculate simulated economics."""
+        """Load prepared routes and calculate selected-vehicle economics."""
         self.reconcile_arrival()
         contract = self._find_contract(contract_id)
         vehicle = self._find_vehicle(
             self.state_repository.list_vehicles(), vehicle_id
         )
         self._validate_dispatch(vehicle, contract)
-        origin = contract.origin
-        destination = contract.destination
-        if origin.coordinates is None or destination.coordinates is None:
-            raise ValueError("Auftrag enthält keine routbaren Koordinaten.")
-        route = await self.router.route(
-            origin.coordinates.latitude,
-            origin.coordinates.longitude,
-            destination.coordinates.latitude,
-            destination.coordinates.longitude,
-        )
+        assert vehicle.location is not None
+        route = await self.dispatch_planning.route(vehicle.location, contract)
         if self._find_contract(contract_id) != contract:
             raise ValueError("Auftrag wurde während der Kalkulation geändert.")
         vehicle = self.get_vehicle(vehicle_id)
@@ -104,10 +130,13 @@ class GameService:
                 "event": "contract.quote",
                 "data": {
                     "contract_id": contract_id,
-                    "distance_km": route.distance_km,
-                    "duration_seconds": route.duration_seconds,
-                    "origin_facility_uid": origin.facility_uid,
-                    "destination_facility_uid": destination.facility_uid,
+                    "distance_km": route.total_route.distance_km,
+                    "duration_seconds": route.total_route.duration_seconds,
+                    "origin_facility_uid": contract.origin.facility_uid,
+                    "start_facility_uid": route.start.facility_uid,
+                    "destination_facility_uid": (
+                        contract.destination.facility_uid
+                    ),
                 },
             },
         )
@@ -142,7 +171,9 @@ class GameService:
             list(self.state_repository.list_vehicles()), vehicle_id
         )
         self._validate_dispatch(vehicle, contract)
-        quote = self._calculate_quote(contract, quote.route, vehicle)
+        if quote.dispatch_route is None:
+            raise ValueError("Dispatch requires a routed departure plan.")
+        quote = self._calculate_quote(contract, quote.dispatch_route, vehicle)
         player = self._get_player()
         player.debit(quote.economics.operating_cost_eur)
         trip = self._build_trip(
@@ -151,11 +182,13 @@ class GameService:
             quote,
             self.now(),
         )
-        vehicle.reposition_within_city(contract.origin)
         vehicle.start_trip()
         self.state_repository.save_player(player)
         self.state_repository.save_vehicle(vehicle)
         self.state_repository.save_transport(trip)
+        preparation = self.market_lifecycle.preparation
+        if preparation is not None and preparation.stock is not None:
+            preparation.stock.consume(contract_id, self.now())
         self.state_repository.remove_offer(contract_id)
         self.market_lifecycle.prune_in_transaction()
         LOGGER.info(
@@ -177,6 +210,8 @@ class GameService:
 
     def reconcile_arrival(self) -> bool:
         """Settle due active transports once, before refreshing the market."""
+        if not self.state_repository.list_due_transports(self.now()):
+            return False
         with self.unit_of_work.transaction():
             now = self.now()
             arrived = self.state_repository.list_due_transports(now)
@@ -184,6 +219,8 @@ class GameService:
                 return False
             for trip in arrived:
                 self._complete_trip(trip, now)
+            if self.market_lifecycle.preparation is not None:
+                self.market_lifecycle.preparation.request(changed=True)
         self.market_lifecycle.refill_after_commit()
         return True
 
@@ -227,8 +264,8 @@ class GameService:
         """Synchronize and read the complete player-owned state."""
         arrived = self.reconcile_arrival()
         if not arrived:
-            self.refresh_market(force=False)
-        with self.unit_of_work.transaction():
+            self.market_lifecycle.published()
+        with self.unit_of_work.read_transaction():
             return GameSnapshot(
                 self.now(),
                 self.time_scale,
@@ -241,7 +278,7 @@ class GameService:
     def dashboard(self) -> GameSnapshot:
         """Read startup state without generating a contract market."""
         self.reconcile_arrival()
-        with self.unit_of_work.transaction():
+        with self.unit_of_work.read_transaction():
             return GameSnapshot(
                 self.now(),
                 self.time_scale,
@@ -253,18 +290,39 @@ class GameService:
     def list_contracts(self) -> list[ContractOffer]:
         """Reconcile arrivals and return retained/refilled city markets."""
         self.reconcile_arrival()
-        return self.refresh_market()
+        return self.market_lifecycle.published()
 
     def refresh_contracts(self) -> list[ContractOffer]:
         """Explicitly regenerate offers only for current active cities."""
         self.reconcile_arrival()
-        return self.refresh_market(force=True)
+        return self.market_lifecycle.published(refresh=True)
 
     def contract_choices(
-        self, offers: Sequence[ContractOffer]
+        self, offers: Sequence[ContractOffer], vehicle_id: str | None = None
     ) -> tuple[AvailableContract, ...]:
         """Expose server-side vehicle choices for already read offers."""
-        return self.market_lifecycle.present(offers)
+        return self.market_lifecycle.present(offers, vehicle_id)
+
+    def market_presentation(
+        self,
+        offers: Sequence[ContractOffer],
+        vehicle_id: str | None = None,
+    ) -> MarketPresentation:
+        """Read authorized offers and diagnostics in one local transaction."""
+        with self.unit_of_work.read_transaction():
+            contracts = self.contract_choices(offers, vehicle_id)
+            coverage = tuple(
+                item
+                for item in self.vehicle_coverage()
+                if vehicle_id is None or item.vehicle_id == vehicle_id
+            )
+            return MarketPresentation(
+                contracts, coverage, self.preparation_status()
+            )
+
+    def vehicle_coverage(self) -> tuple[VehicleCoverageDiagnostic, ...]:
+        """Delegate actual per-vehicle coverage diagnostics."""
+        return self.market_lifecycle.vehicle_diagnostics()
 
     def get_contract(self, contract_id: str) -> ContractOffer:
         """Return one available offer with historical endpoint values."""
@@ -388,6 +446,8 @@ class GameService:
             departed_at=departed_at,
             arrives_at=departed_at + quote.journey.duration_seconds,
             journey=quote.journey,
+            dispatch_route=quote.dispatch_route,
+            cost_breakdown=quote.economics.cost_breakdown,
             payout_eur=quote.economics.payout_eur,
             operating_cost_eur=quote.economics.operating_cost_eur,
         )
@@ -396,32 +456,11 @@ class GameService:
     def _calculate_quote(
         self,
         contract: ContractOffer,
-        route: RouteSnapshot,
+        route: DispatchRoutePlan,
         vehicle: OwnedVehicle,
     ) -> ContractQuote:
-        """Calculate economics and energy from current purchased values."""
+        """Revalidate vehicle eligibility before delegating quote planning."""
         self._validate_dispatch(vehicle, contract)
-        cost_per_km = vehicle.operating_cost_eur_per_km
-        if cost_per_km is None:
-            raise ValueError("Gespeicherte Fahrzeugkosten fehlen.")
-        journey = plan_journey(
-            route.distance_km,
-            route.duration_seconds,
-            vehicle.top_speed_kmh,
-            vehicle.energy,
-            vehicle.energy_level,
-            self.time_scale,
-        )
-        return ContractQuote(
-            contract,
-            route,
-            calculate_price(
-                contract.tons,
-                route.distance_km,
-                cost_per_km,
-                contract.rate_eur_per_km_ton,
-            ),
-            vehicle.id,
-            cost_per_km,
-            journey,
+        return self.dispatch_planning.quote(
+            contract, route, vehicle, self.time_scale
         )

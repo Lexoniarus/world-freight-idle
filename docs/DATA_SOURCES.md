@@ -42,7 +42,8 @@ Die Referenzdatei wurde nach SQLite-Backup von v3 auf das normalisierte
 Schema v4 in einer neuen Datei überführt. UUIDs werden
 einmalig gespeichert. Originalreferenzen und Bildmetadaten bleiben erhalten;
 Facility-Fotos werden in dieser Phase nicht als UI-Funktion eingeführt.
-Nominatim dient ausschließlich Kandidatensuche beim Offline-Enrichment.
+Nominatim dient Kandidatensuche beim Offline-Enrichment und begrenztem
+Backend-Routing-Anchor-Repair. Keine allgemeinen Spieler-Geocoding-Anfragen.
 Ein Treffer ersetzt weder Identitätsprüfung noch Koordinatennachweis.
 
 Die vier Legacy-Facilities sind mit offiziellen Standort-/Tätigkeitsquellen
@@ -97,3 +98,25 @@ Faktoren, Load Factors und Suitability sind Spielparameter, keine beobachteten
 Handelspreise. Haversine-Schätzungen dienen ausschließlich Marktgewichtung und
 Coverage. Die Auszahlung verwendet die gerouteten Straßenkilometer und die
 bei Generierung gespeicherte Frachtrate. Sie hängt nicht vom Warenwert ab.
+
+## Wirtschaft: Quelle statt Heuristik
+
+Neue Wartung kommt ausschließlich aus dem ausdrücklich benannten Vehicle-
+Katalogfeld. Energiepreise sind Gameplaykonstanten; Käufe stammen aus dem
+gespeicherten Journey-Plan. NHM-Faktoren/Lastgrenzen kommen aus World.
+Die 20-%-Referenzmarge ist eine Tarifentscheidung, keine Gewinngarantie.
+Warenwert bleibt ohne Einfluss auf Vergütung. [Details](ECONOMY_V2.md).
+
+## Fahrzeug-Lackmasken
+
+`assets/paint-inventory.json` erfasst 42 explizite, separat gepflegte Masken
+für die 14 aktuellen Modelle und ihre drei Ansichten. Sie sind additive
+Produktionsassets; die 134 Original-/Referenz-SVGs im bisherigen Inventar
+bleiben bytegleich. Die Laufzeit verwendet keine Helligkeitsheuristik und
+keine Ganzbildtönung. Belegbilder und Vergleichsraster sind lokale Artefakte.
+
+
+Routing-Repair verwendet reale Adressen und OSM-Edge-Korrelationen aus Valhalla
+Locate, keine erfundenen Koordinaten. Geocoding ist gecacht und rate-limited;
+Truck-Locate entscheidet über Akzeptanz. Die WorldCatalogue-Koordinate bleibt
+unverändert. Ein realer Wolfsburg-Routenerfolg ist durch Mocktests nicht belegt.

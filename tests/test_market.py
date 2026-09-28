@@ -297,7 +297,7 @@ def test_materialization_snapshots_profile_terms_and_validates_context(
     offers, _ = market.generate(1000, (owned.location.city.city_uid,), fleet)
     for offer in offers:
         context = offer.market_context
-        assert offer.expires_at == 22600
+        assert offer.expires_at is None
         assert offer.payload_band == ""
         assert offer.rate_eur_per_km_ton == pytest.approx(0.18 * 1.4)
         assert context.cargo_value_eur == round(offer.tons * 500)
@@ -393,6 +393,19 @@ def test_retention_requires_structure_and_actual_vehicle_compatibility(
     )
     assert not market.candidates.structurally_current(
         replace(offer, origin=replace(offer.origin, facility_uid="missing"))
+    )
+    assert not market.candidates.structurally_current(
+        replace(
+            offer, origin=replace(offer.origin, coordinates=Coordinates(0, 0))
+        )
+    )
+    assert not market.candidates.structurally_current(
+        replace(
+            offer,
+            market_context=replace(
+                offer.market_context, transport_class="special"
+            ),
+        )
     )
     assert not market.candidates.structurally_current(
         replace(offer, market_model="nhm_v1", market_context=None)

@@ -16,11 +16,14 @@ test("fixed asset reference: fleet and shop on desktop and mobile", async ({ pag
   for (const [name, viewport] of [["desktop", {width: 1440, height: 900}], ["mobile", {width: 390, height: 844}]]) {
     await page.setViewportSize(viewport);
     for (const [surface, title] of [["fleet", "Flotte"], ["shop", "Fahrzeugshop"]]) {
-      await page.getByRole("link", {name: title, exact: true}).first().click();
-      const images = page.locator("#panel img[data-local-vehicle-asset]");
+      const link = page.getByRole("link", {name: title, exact: true}).filter({visible: true}).first();
+      if (!(await link.count())) await page.getByRole("button", {name: "Mehr", exact: true}).click();
+      await page.getByRole("link", {name: title, exact: true}).filter({visible: true}).first().click();
+      const images = page.locator("#panel img[data-local-vehicle-asset]:visible");
       await expect(images.first()).toBeVisible();
-      await images.first().evaluate(image => image.decode());
-      await images.nth(1).evaluate(image => image.decode());
+      await expect.poll(() => images.first().evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
+      await expect(images.first()).toHaveAttribute("src", /^blob:/);
+      await expect(images.first()).toHaveAttribute("data-vehicle-role", "front");
       await page.evaluate(() => document.fonts.ready);
       await page.screenshot({path: `${folder}/${surface}-${name}.png`, animations: "disabled"});
     }

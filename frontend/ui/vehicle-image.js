@@ -4,19 +4,22 @@ import { truckIllustration } from "./illustrations.js";
 
 /** Render normalized local game views first, then verified catalogue photography.
  * @param {{id?: string, model_id?: string, name: string, capacity_tons: number, image?: import('../types.js').VehicleImage | null}} vehicle
+ * @param {"front" | "side" | "detail" | "shop"} [role]
  * @returns {DocumentFragment}
  */
-export function renderVehicleImage(vehicle) {
+export function renderVehicleImage(vehicle, role = "detail") {
   const modelId = vehicle.model_id ?? vehicle.id;
   const localAssets = getVehicleAssets(modelId);
 
   if (localAssets) {
-    return html`<figure class="vehicle-photo vehicle-game-asset">
+    return html`<figure class="vehicle-photo vehicle-game-asset asset-${role}">
       <div class="vehicle-photo-grid">
         <div class="vehicle-asset-view">
           <div class="vehicle-photo-frame">
             <img
               data-local-vehicle-asset
+              data-vehicle-model="${modelId}"
+              data-vehicle-role="front"
               src="${localAssets.front}"
               alt="${vehicle.name} – Frontansicht"
               width="512"
@@ -31,6 +34,8 @@ export function renderVehicleImage(vehicle) {
           <div class="vehicle-photo-frame">
             <img
               data-local-vehicle-asset
+              data-vehicle-model="${modelId}"
+              data-vehicle-role="side"
               src="${localAssets.side}"
               alt="${vehicle.name} – Seitenansicht"
               width="896"

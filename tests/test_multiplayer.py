@@ -26,7 +26,13 @@ from app.main import create_app
 from app.repositories.accounts import AccountRepository
 from app.services.auth import SESSION_COOKIE, AuthService, PasswordHasher
 from app.services.fleet import FleetService
-from tests.conftest import BERLIN_UID, FakeRouter
+from tests.conftest import (
+    BERLIN_UID,
+)
+from tests.routing_fixtures import (
+    install_fake_routing,
+    prepare_client_market,
+)
 from tests.test_api import make_settings, make_static_files
 from tests.test_game import first_berlin_contract
 from tests.transport_fixtures import add_transport
@@ -263,6 +269,7 @@ def test_auth_api_and_private_game_resources(tmp_path):
     make_static_files(tmp_path)
     app = create_app(make_settings(tmp_path))
     with TestClient(app) as client:
+        install_fake_routing(app.state.game)
         for path in (
             "dashboard",
             "fleet",
@@ -336,6 +343,7 @@ def test_auth_api_and_private_game_resources(tmp_path):
         assert (
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 26000
         )
+        prepare_client_market(client, app.state.game)
         alice_contract = client.get("/api/v1/contracts").json()["contracts"][
             0
         ]["id"]
@@ -353,7 +361,7 @@ def test_auth_api_and_private_game_resources(tmp_path):
         assert (
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 175000
         )
-        app.state.game.router = FakeRouter()
+        prepare_client_market(client, app.state.game)
         contract = client.get("/api/v1/contracts").json()["contracts"][0]
         trip = client.post(
             f"/api/v1/contracts/{contract['id']}/accept",
@@ -374,10 +382,16 @@ def test_auth_api_and_private_game_resources(tmp_path):
 
 def test_launchers_run_main_without_changing_working_directory():
     root = Path(__file__).resolve().parents[1]
-    with patch("uvicorn.run") as run:
+    from unittest.mock import AsyncMock
+
+    with (
+        patch("app.launcher.run_role", new=AsyncMock(return_value=0)) as run,
+        patch("sys.argv", ["main.py"]),
+        pytest.raises(SystemExit) as exited,
+    ):
         runpy.run_path(str(root / "main.py"), run_name="__main__")
-        assert run.call_args.args == ("app.main:app",)
-        assert run.call_args.kwargs["host"] == "0.0.0.0"
+    assert exited.value.code == 0
+    run.assert_awaited_once_with("all")
 
 
 async def test_initialization_does_not_implicitly_import_legacy_trips(

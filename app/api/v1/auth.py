@@ -1,10 +1,12 @@
 """Registration, login and session endpoints."""
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from pydantic import BaseModel
 
 from app.api.v1.dependencies import get_auth_service, get_current_user
 from app.api.v1.schemas import Credentials
 from app.domain.account_ports import AccountIdentity
+from app.domain.company_colors import COMPANY_COLORS
 from app.services.auth import SESSION_COOKIE, SESSION_LIFETIME, AuthService
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -72,9 +74,16 @@ def login(
 
 
 @router.get("/me")
-def current_user(user: dict = Depends(get_current_user)) -> dict:
+def current_user(
+    request: Request, user: dict = Depends(get_current_user)
+) -> dict:
     """Return the authenticated player's public identity."""
-    return user
+    return {
+        **user,
+        "company_color": request.app.state.preferences.read(
+            user["id"]
+        ).company_color,
+    }
 
 
 @router.post("/logout")
@@ -87,3 +96,38 @@ def logout(
     auth.accounts.revoke_session(request.cookies.get(SESSION_COOKIE, ""))
     response.delete_cookie(SESSION_COOKIE)
     return {"ok": True}
+
+
+class ColorPreference(BaseModel):
+    """HTTP input for one curated cosmetic selection."""
+
+    company_color: str
+
+
+@router.get("/preferences")
+def preferences(
+    request: Request, user: dict = Depends(get_current_user)
+) -> dict:
+    """Project the authenticated preference and supported palette."""
+    return {
+        "company_color": request.app.state.preferences.read(
+            user["id"]
+        ).company_color,
+        "palette": COMPANY_COLORS,
+    }
+
+
+@router.put("/preferences")
+def update_preferences(
+    body: ColorPreference,
+    request: Request,
+    user: dict = Depends(get_current_user),
+) -> dict:
+    """Translate a validated account cosmetic change to HTTP."""
+    try:
+        result = request.app.state.preferences.update(
+            user["id"], body.company_color
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return {"company_color": result.company_color}

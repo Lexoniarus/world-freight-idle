@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 
 from app.domain.cargo import FacilityNhmProfile, NhmProduct
+from app.domain.economics import VehicleCostProfile
+from app.domain.energy import EnergyProfile
 from app.domain.market_profiles import (
     VEHICLE_SCALES,
     DistanceLoadProfile,
@@ -38,6 +40,9 @@ class MarketVehicle:
     capacity_tons: float
     scale: VehicleScale
     capabilities: tuple[TransportCapability, ...]
+    cost_profile: VehicleCostProfile
+    energy: EnergyProfile
+    facility_uid: str = ""
 
     def __post_init__(self) -> None:
         """Require explicit identity, scale and usable owned capacity."""
@@ -77,11 +82,15 @@ class MarketCandidate:
     estimated_distance_km: float
     vehicles: tuple[CompatibleVehicle, ...]
     weight: float
+    reference_nhm_factor: float
 
     def __post_init__(self) -> None:
         """Require coherent market facts and a selectable vehicle pool."""
         require_finite(self.estimated_distance_km, "Estimated distance")
         require_finite(self.weight, "Candidate weight")
+        require_finite(
+            self.reference_nhm_factor, "Reference NHM factor", 0.000001
+        )
         if not self.vehicles or self.weight == 0:
             raise ValueError("Candidate requires positive selectable context.")
         if (
@@ -112,3 +121,15 @@ class CoveragePlan:
 
     selected: tuple[MarketCandidate, ...]
     diagnostics: tuple[CoverageDiagnostic, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class VehicleCoverageDiagnostic:
+    """Describe actual usable offers and structural targets per vehicle."""
+
+    vehicle_id: str
+    city_uid: str
+    offer_count: int
+    distance_counts: tuple[int, int, int]
+    unmet_bands: tuple[str, ...]
+    unmet_facilities: tuple[str, ...]

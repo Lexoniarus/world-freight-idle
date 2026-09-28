@@ -2,7 +2,7 @@
 
 from dataclasses import replace
 
-from app.domain.contracts import HistoricalContractSnapshot
+from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.journeys import unmetered_journey
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.services.game import GameService
@@ -17,8 +17,19 @@ def add_transport(
     transport_id: str = "fixture-trip",
 ) -> ActiveTransport:
     """Reserve a real owned vehicle and persist a complete test snapshot."""
-    game.refresh_market()
-    offer = game.state_repository.list_offers()[0]
+    owned = game.state_repository.list_vehicles()
+    fleet = game.market.candidates.resolve_fleet(owned)
+    candidates = game.market.candidates.build(
+        game.market_scope.resolve(owned), fleet
+    )
+    candidate = next(
+        item
+        for item in candidates
+        if item.trade.origin.facility_uid == owned[0].facility_uid
+    )
+    offer = ContractOffer.from_snapshot(
+        game.market.factory.build(candidate, game.now())
+    )
     offer = replace(offer, created_at=0, expires_at=max(arrives_at, 10))
     if tons is not None:
         context = offer.market_context

@@ -10,6 +10,7 @@ import httpx
 
 from app.domain.cache_ports import ProviderCache
 from app.domain.errors import GeocodingError
+from app.providers.request_limiter import retry_after_seconds
 from app.providers.validation import parse_coordinates
 from app.tracing import get_trace_id
 
@@ -46,9 +47,13 @@ class NominatimGeocoder:
             TypeError,
             IndexError,
         ) as exc:
-            raise GeocodingError(
-                "Geocoding-Anbieter nicht verfügbar."
-            ) from exc
+            error = GeocodingError("Geocoding-Anbieter nicht verfügbar.")
+            error.retryable = isinstance(exc, httpx.HTTPError) and (
+                not isinstance(exc, httpx.HTTPStatusError)
+                or exc.response.status_code >= 500
+                or exc.response.status_code in {408, 429}
+            )
+            raise error from exc
 
     async def _resolve_address(self, address: str) -> tuple[float, float, str]:
         """Resolve one postal address, using the persistent cache first."""
@@ -72,6 +77,7 @@ class NominatimGeocoder:
 
         async with self._lock:
             await self._respect_rate_limit()
+            self._last_request_monotonic = time.monotonic()
             LOGGER.info(
                 "Geocoding address",
                 extra={
@@ -93,6 +99,9 @@ class NominatimGeocoder:
                 },
             )
             self._last_request_monotonic = time.monotonic()
+            self._last_request_monotonic += retry_after_seconds(
+                response.headers.get("Retry-After"), time.time()
+            )
             response.raise_for_status()
             data = response.json()
         if not data:

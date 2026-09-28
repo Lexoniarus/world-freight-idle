@@ -63,12 +63,17 @@ test("polls coalesce and a mutation always causes a fresh subsequent read", asyn
     release = resolve;
   });
   const state = new GameState(async (path) => {
-    if (path === "/dashboard") {
+    if (path === "/runtime") {
       reads++;
       await gate;
-      return { server_time: Date.now() / 1000, player: { completed: 0 } };
+      return {
+        server_time: Date.now() / 1000,
+        player: { completed: 0 },
+        vehicles: [],
+        transports: [],
+      };
     }
-    return path === "/fleet" ? { vehicles: [] } : { contracts: [] };
+    return { transports: [] };
   });
   const first = state.refresh();
   assert.equal(first, state.refresh());

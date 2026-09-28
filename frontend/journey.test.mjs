@@ -60,7 +60,7 @@ test("private and public map vehicles stay at the identical stop position", () =
   overlays.update({
     vehicles: [],
     contracts: [],
-    transports: [],
+    transports: [trip],
     traffic: [
       { ...trip, is_own: true, model_id: "iveco_sway_500", player_color: "#123456" },
       {

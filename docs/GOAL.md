@@ -1881,8 +1881,8 @@ Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abn
 
 Stadtmärkte eigener idle Fahrzeuge ersetzen Nutzlastklassen und Viewport-Scope.
 V2 bewahrt gültige fahrbare Angebote und ergänzt Facility-/Distanz-Coverage.
-Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Same-City-
-Reposition ist kostenlos; Dispatch und anschließender Markt-Refill besitzen
+Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Die tatsächliche
+Anfahrt wird mitgeplant; Dispatch und anschließender Markt-Refill besitzen
 getrennte Transaktionen. Historische Transporte und gespeicherte Konditionen
 bleiben erhalten. Trailer, Versicherungen und weitere Simulationen sind nicht
 Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
@@ -1890,3 +1890,67 @@ Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
 den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
 Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
 [Qualitätsbericht](../QUALITY_REPORT.md).
+
+
+## Präzisierung 25.09.2026: tatsächliche Abholung
+
+Die ursprüngliche kostenlose Same-City-Reposition im Dispatch wurde abgelöst:
+Fahrzeuge fahren A → B → C. Abholanfahrt zählt zu Kosten, Energie und Zeit,
+ausschließlich B → C zu Frachterlös. Gespeicherter Standort bleibt bis zur
+Zielankunft A. Marktregeln und historische Transportkonditionen bleiben erhalten.
+
+## Frontend-v2: ergänzender Produktvertrag
+
+Die verbindliche Mengenverteilung bevorzugt hohe Auslastung ohne Änderung
+der Kataloggrenzen. Mindestfracht stabilisiert den Tarif unabhängig von
+Tonnage und späterer Fahrzeugwahl. Tatsächliche Kosten bestehen aus
+Grundkosten, Wartung der Gesamtstrecke und Energieeinkäufen. Historische
+Beträge bleiben unangetastet. Stadtmärkte entstehen nur bei eigenen idle
+Fahrzeugen. Präzise Formeln und Snapshot-Verträge: [ECONOMY_V2.md](ECONOMY_V2.md).
+
+## Truck-Routing-Anker als abgeleitete Infrastruktur
+
+Das langfristige Ziel bleibt eine reale, nachvollziehbare Frachtwelt.
+Facility-Identität und sichtbare WorldCatalogue-Position bleiben Referenzfakten;
+Straßenrouting erhält eine eigene abgeleitete, provider-validierte Position.
+Damit kann die Welt realistisch sichtbar bleiben, ohne unpassende
+Werks-/Terminalpunkte als befahrbare Straßenkoordinaten auszugeben.
+
+
+## Runtime-Trennung und Alttransport-Reparatur (27.09.2026)
+
+Die neue verbindliche Abschlussvoraussetzung ersetzt die fruehere Beschraenkung
+auf gezielte Routingtests: vollstaendiges Quality-Gate mit 100 % app-Statement-
+Coverage sowie komplette Browserregression vor Commit/Push auf feature/frontend-v2.
+Runtime und Vorbereitung laufen getrennt; Spielstand und Flotte erscheinen vor
+Geometrien und Markt. Read-Ziel p95 <= 250 ms, weitere Spielerstarts <= 2 s
+(einmaliger Kaltstart mit Settlement bei 3,39 s am 28.09.2026 akzeptiert),
+Runtime plus Verkehr <= 250 KiB pro Poll. Keine unveraenderten Geometrien im Polling.
+
+Die beiden bestaetigten optionalen Alt-Anfahrtsplaene werden nur offline auf
+einer gesicherten Kopie repariert. Live-Aktivierung und echte iPad-Abnahme bleiben
+separate Betriebsschritte. Implementierung und tatsaechlicher Abnahmestand:
+[Runtime-Review](RUNTIME_ISOLATION_REVIEW.md) und [Qualitaetsbericht](../QUALITY_REPORT.md).
+
+
+## Gemeinsamer Auftragsvorrat (28.09.2026)
+
+Das ausgewählte Fahrzeug erhält genau drei fahrbare Angebote je Streckentyp,
+sofern genügend geprüfter Bestand verfügbar ist. Der gemeinsame Hintergrundvorrat
+hält mindestens zehn Vorlagen je Bedarfsstadt, konkretem Modell und Band; jede
+Vorlage ist einmal je Spieler verwendbar. Die drei sichtbaren gehören zu diesen
+zehn. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen Angebote nutzen.
+
+Ungenutzte Vorlagen und Angebote verfallen nicht zeitlich und bleiben bei Abfahrt
+und Rückkehr erhalten. Ein Verbrauch lässt gespeicherte Reserve sofort nachrücken;
+der Worker füllt nach. Bedarf entsteht im Stand und ab 60 Minuten vor gespeicherter
+Ankunft. Fehlende Hin-/Rückwege, veraltete Prüfnachweise oder unbrauchbare
+Katalogbezüge geben keine Angebote frei. Alle 14 Modelle werden in Bedarfsstädten
+berücksichtigt, tatsächlich wartende Fahrzeuge zuerst.
+
+Die Schemaübernahme nach 1.2.0 ist ein expliziter Offline-Schritt mit Backup und
+neuer Ausgabe. Live-Aktivierung ist nicht Teil von Commit/Push. Verbindliche
+Gesamtabnahme: Quality-Gate mit 100 % app-Statement-Coverage, vollständige
+Browserregression und Leistungsabnahme. Tatsächlicher Stand und Grenzen stehen
+im [Qualitätsbericht](../QUALITY_REPORT.md); Verantwortlichkeiten in
+[ADR 0008](adr/0008-shared-market-stock.md).

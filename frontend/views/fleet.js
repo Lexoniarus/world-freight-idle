@@ -1,57 +1,92 @@
+import { selectFleetGroups } from "../fleet-selection.js";
+export { fleetGroups } from "../fleet-selection.js";
 import { renderEnergyMeter, renderEnergySpecification } from "../ui/vehicle-energy.js";
 import { phaseLabel, transportProgress } from "../journey.js";
-import { matchesFacility } from "../geometry.js";
 import { html } from "../ui/dom.js";
 import { renderVehicleImage } from "../ui/vehicle-image.js";
-import { icon } from "../ui/illustrations.js";
-import { emptyState, fleetTabs, hubFilter, routeLink } from "../ui/components.js";
+import { emptyState, fleetTabs, routeLink } from "../ui/components.js";
+import { cityFilter, selectFilter, searchFilter } from "../ui/filters.js";
 import { number } from "../format.js";
 
-/** Render the player's fleet filtered by public freight hub.
- * @param {import('../types.js').PanelView} view
- * @returns {DocumentFragment}
- */
-export function renderFleet({ state, url, now }) {
-  const hubId = url.searchParams.get("hub");
-  const vehicles = state.vehicles.filter((vehicle) => matchesFacility(vehicle.hub, hubId));
+/** City-first fleet management and individual vehicle inspection. */
+export function renderFleet(view) {
+  const { state, url, now } = view;
+  const id = url.pathname.split("/")[2];
+  if (id) {
+    const vehicle = state.vehicles.find((item) => item.id === id);
+    return vehicle
+      ? html`${routeLink("/fleet", "Zur Flotte", "back-link")}${renderVehicle(
+          vehicle,
+          state.transports.find((trip) => trip.vehicle_id === id),
+          now,
+          true,
+        )}`
+      : emptyState("Fahrzeug nicht gefunden", "Öffne deine Flotte erneut.");
+  }
+  const model = url.searchParams.get("model");
+  const status = url.searchParams.get("status");
+  const groups = selectFleetGroups(state, url, view.cityUid);
   return html`${fleetTabs()}
-    <div class="section-toolbar">
-      <span>${state.idle_vehicles} einsatzbereit · ${state.active_transports} unterwegs</span>
+    <div class="filter-grid">
+      ${cityFilter(view)}
+      ${selectFilter(
+        "status",
+        "Status",
+        [
+          ["idle", "Einsatzbereit"],
+          ["enroute", "Unterwegs"],
+        ],
+        status,
+      )}
+      ${selectFilter("model", "Modell", [...new Map(state.vehicles.map((vehicle) => [vehicle.model_id, vehicle.name])).entries()], model)}
+      ${searchFilter("search", "Fahrzeugname", url)}
     </div>
-    ${hubFilter(url)}
-    <div class="card-list">
-      ${
-        vehicles.length
-          ? vehicles.map((vehicle) =>
-              renderVehicle(
-                vehicle,
-                state.transports.find((trip) => trip.vehicle_id === vehicle.id),
-                now,
-              ),
-            )
-          : emptyState(
-              "Hier steht kein Fahrzeug",
-              "Deine übrige Flotte findest du unter „Alle anzeigen“.",
-            )
-      }
-    </div>`;
+    ${
+      groups.length
+        ? groups.map(
+            (group) =>
+              html`<section class="fleet-city">
+                <h2>${group.city.city}</h2>
+                ${[
+                  ["stationed", "Hier stationiert"],
+                  ["outbound", "Von hier unterwegs"],
+                  ["inbound", "Hierhin unterwegs"],
+                ].map(([role, label]) =>
+                  group[role].length
+                    ? html`<h3 class="group-heading">
+                          ${label}<span>${group[role].length} Fahrzeuge</span>
+                        </h3>
+                        <div class="card-list">
+                          ${group[role].map(({ vehicle, trip }) => renderVehicle(vehicle, trip, now))}
+                        </div>`
+                    : null,
+                )}
+              </section>`,
+          )
+        : emptyState("Keine Fahrzeuge in dieser Auswahl", "Passe Stadt oder Filter an.")
+    }`;
 }
 
-/** Render one vehicle and its current location or transport. */
-function renderVehicle(vehicle, trip, now) {
-  return html`<article class="vehicle-card">
-    <div class="card-kicker">
-      <span class="badge ${trip ? "gold" : "green"}" data-phase-trip="${trip?.id ?? ""}"
-        >${trip ? phaseLabel(transportProgress(trip, now).phase) : "Einsatzbereit"}</span
-      ><span>${number(vehicle.capacity_tons, 2)} t</span>
+function renderVehicle(vehicle, trip, now, detail = false) {
+  const place = vehicle.location_snapshot ?? vehicle.hub;
+  const city = place?.city_uid ?? "";
+  const orders =
+    "/contracts?city=" + encodeURIComponent(city) + "&vehicle=" + encodeURIComponent(vehicle.id);
+  return html`<article class="vehicle-card ${detail ? "vehicle-detail" : "vehicle-row"}">
+    ${renderVehicleImage(vehicle, detail ? "detail" : trip ? "side" : "front")}
+    <div class="vehicle-info">
+      <div class="card-kicker">
+        <span class="badge ${trip ? "gold" : "green"}" data-phase-trip="${trip?.id ?? ""}"
+          >${trip ? phaseLabel(transportProgress(trip, now).phase, transportProgress(trip, now).stage) : "Einsatzbereit"}</span
+        ><span>${number(vehicle.capacity_tons, 2)} t</span>
+      </div>
+      <h3>
+        ${routeLink("/fleet/" + vehicle.id + "?city=" + encodeURIComponent(city), vehicle.name)}
+      </h3>
+      <p>${trip ? trip.origin.city + " → " + trip.destination.city : place?.city}</p>
+      <p class="footnote">${trip ? "Unterwegs · kein stationiertes Fahrzeug" : place?.label}</p>
+      ${renderEnergyMeter(vehicle, trip, now)}${detail ? renderEnergySpecification(vehicle) : null}
+      ${routeLink(trip ? "/transports/" + trip.id : orders, trip ? "Transport verfolgen" : "Stadtmarkt öffnen", "button secondary")}
     </div>
-    ${renderVehicleImage(vehicle)}
-    <h3>${vehicle.name}</h3>
-    ${renderEnergyMeter(vehicle, trip, now)} ${renderEnergySpecification(vehicle)}
-    <p>
-      ${icon("pin", 15)}
-      ${trip ? trip.origin.city + " → " + trip.destination.city : vehicle.hub.label}
-    </p>
-    ${routeLink(trip ? "/transports/" + trip.id : "/contracts?hub=" + (vehicle.facility_uid ?? vehicle.hub_id), trip ? "Transport verfolgen" : "Passende Aufträge finden", "button secondary")}
   </article>`;
 }

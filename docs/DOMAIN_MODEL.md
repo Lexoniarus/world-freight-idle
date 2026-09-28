@@ -112,3 +112,89 @@ gleiche Stadt-UUID; Facility-ID und Snapshot ändern sich gemeinsam, ohne
 Kosten, Zeit oder Energie. Kein generiertes Angebot bindet ein Fahrzeug.
 AvailableContract ergänzt flüchtige eligible_vehicle_ids ausschließlich für
 die HTTP-Auswahl. Historische Konditionen benötigen keinen aktuellen Katalog.
+
+
+## Abfahrtscheckpoint und Routenabschnitte
+
+Dispatch ruft `OwnedVehicle.start_trip` auf und verändert den Standort nicht.
+`reposition_within_city` bleibt eine explizite Entity-Operation für idle Fahrzeuge,
+wird aber bei Auftragsannahme nicht mehr verwendet. Der gespeicherte Standort
+und Energiefüllstand bilden den Checkpoint; laufende Werte kommen aus dem Trip.
+
+`RouteSnapshot` in `domain/routes.py` hält immutable Straßenkilometer,
+Routingsekunden und Geometrie. `DispatchRoutePlan` komponiert tatsächlichen
+Start, Abholung, Ziel, optionale Anfahrt und Frachtstrecke. Er verlangt
+Koordinaten und gemeinsame Start-/Abholstadt. `RouteLeg` projiziert geordnete
+öffentliche Abschnittsgrenzen. `ActiveTransport` schützt die Übereinstimmung
+von gespeichertem Auftrag, Routenplan, Gesamtroute und JourneyPlan.
+
+`plan_dispatch_journey` ist eine deterministische Komposition bestehender
+Energiepläne, keine Reservierung. Abholung folgt aus der halboffenen Grenze
+zwischen Anfahrt und Lieferung. Der Fahrzeugstatus bleibt durchgehend enroute.
+Historische Transporte ohne DispatchRoutePlan bleiben unveränderte Einzelfahrten.
+
+## Unveränderliche Wirtschafts- und Darstellungswerte
+
+`VehicleCostProfile`, `EnergyPurchase`, `CostBreakdown` und `FreightTariff`
+tragen validierte, immutable Werte. `biased_load_factor` transformiert nur
+Grenzen und Draw; `journey_costs` bilanziert nur tatsächliche Käufe/Wartung;
+`freight_tariff` bestimmt Referenzbedingungen; `calculate_price` kombiniert
+gespeicherten Tarif und explizite Kosten. Keine dieser Funktionen besitzt
+SQL, Routing oder RNG. `MarketVehicle` hält den Generierungskontext, ohne
+ein Fahrzeug im Offer zu reservieren. Historische Zusatzwerte sind optional.
+`AccountPreferences` ist getrennt vom Spielzustand. `vehicle_labels`
+disambiguiert aktuelle Namen, ohne historische Modellbehauptungen.
+Details: [ECONOMY_V2.md](ECONOMY_V2.md).
+
+## RoutingAnchor
+
+`RoutingAnchor` ist ein abgeleiteter globaler Wert und kein Bestandteil der
+immutable `Facility`. Er enthält Facility-UID, Profil, validierte
+Anchor-Koordinate, Methode, ursprüngliche Facility-Koordinate, Snap-Distanz,
+Validierungsstatus, Provider, verfügbare Provider-/Graph-Revision und
+`validated_at`.
+
+Nur Status `validated` darf eine Anchor-Koordinate besitzen. Failure-Status
+wie `no_truck_edge`, `snap_too_far`, `geocoding_failed`,
+`provider_unavailable` und `invalid_response` speichern keine erfundene
+Koordinate. Historische `FacilityLocationSnapshot`-Koordinaten werden dadurch
+nicht verändert.
+
+### Historische Display-Koordinaten sind kein Routing-Gate
+
+`DispatchRoutePlan` verlangt weiterhin stabile Facility-Identitäten und bei
+verschiedenen Start-/Pickup-UIDs einen expliziten Approach-Abschnitt. Eine
+fehlende oder zufällig identische historische Display-Koordinate entscheidet
+jedoch nicht mehr über Routbarkeit. Straßenrouting löst die aktuelle
+Facility-Identität ausschließlich über `facility_uid -> RoutingAnchor` auf.
+Historische Snapshot-Koordinaten werden dabei weder ergänzt noch verändert.
+
+
+## Global Routing Readiness
+
+RoutePayload speichert road_distance_km und provider_duration_seconds,
+keine finale Spielerfahrzeit. RouteReference identifiziert eine gerichtete Relation
+und Revision. Candidate-Erzeugung bleibt routerfrei; auch partial Markets bestehen
+ausschließlich aus route-ready Offers. Journey ergänzt Fahrzeugzeit und Energie.
+
+
+## Vehicle-ready Marktkontext und typisierte Auswertungen
+
+`VehicleReadyCandidate` verbindet immutable Candidate, Delivery-Referenz und
+individuell approach-bereite Fahrzeugkontexte. `VehicleCoverageDiagnostic`
+enthält Fahrzeug/Stadt, tatsächliche Angebotszahl, Bandzählungen und fehlende
+Bänder/Facilities. Teilbare Offers bleiben im Spielerpool; keine Reservierung
+für das Generierungsfahrzeug. Die tatsächliche Tonnage muss zum gewählten
+Fahrzeug passen. Coverage-Planung begrenzt den Generierungskontext auf garantiert
+passende Kapazitäten, ohne Profile, Verteilung oder Tarif zu verändern.
+
+`MarketPresentation` bündelt Angebotsprojektionen, Vehicle-Coverage und
+Preparation-Status aus einem konsistenten lokalen Lesekontext. `partial` enthält
+nur geprüfte Offers. Eine stale Anfahrt entfernt die entsprechende Eignung;
+eine stale Delivery verhindert die Offer-Projektion insgesamt.
+
+AnalyticsStatus/Transport/Ongoing/Data und Summary/Group/Day/Result sind immutable
+Schichtverträge. EconomyMatrixRow/EconomyAuditSummary sind immutable Auditresultate.
+SQL-/JSON-Skalarvalidierung liegt im Repository, HTTP-Projektion in der API.
+Historische Klassifizierung, Nullquotienten und vehicle_id-Gruppierung bleiben
+unverändert. RoutingRelation kennt keine Cache-Schlüssel.

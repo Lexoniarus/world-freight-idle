@@ -3,6 +3,7 @@
 from dataclasses import asdict
 from typing import Any
 
+from app.api.v1.dispatch_projection import project_dispatch_route
 from app.api.v1.location_projection import project_location
 from app.domain.cargo import DocumentedCargo, FacilityNhmProfile
 from app.domain.contracts import (
@@ -28,8 +29,10 @@ def project_contract(
 ) -> dict[str, Any]:
     """Expose an offer using the established v1 field names."""
     eligible: tuple[str, ...] | None = None
+    reference = None
     if isinstance(offer, AvailableContract):
         eligible = offer.eligible_vehicle_ids
+        reference = offer.route_reference
         offer = offer.offer
     origin = project_location(offer.origin)
     destination = project_location(offer.destination)
@@ -68,7 +71,10 @@ def project_contract(
         **({"payload_band": offer.payload_band} if offer.payload_band else {}),
         **(asdict(offer.market_context) if offer.market_context else {}),
         **(
-            {"eligible_vehicle_ids": list(eligible)}
+            {
+                "eligible_vehicle_ids": list(eligible),
+                "route_reference": asdict(reference) if reference else None,
+            }
             if eligible is not None
             else {}
         ),
@@ -119,6 +125,9 @@ def project_vehicle(
 def project_quote(quote: ContractQuote) -> dict[str, Any]:
     """Expose the selected vehicle, historical endpoints and real route."""
     return {
+        **project_dispatch_route(
+            quote.dispatch_route, quote.contract.origin, quote.route
+        ),
         "journey": asdict(quote.journey) if quote.journey else None,
         "energy_consumption": (
             quote.journey.energy.consumption_for(quote.route.distance_km)
@@ -148,7 +157,7 @@ def project_quote(quote: ContractQuote) -> dict[str, Any]:
         "provider": quote.route.provider,
         **asdict(quote.economics),
         "vehicle_id": quote.vehicle_id,
-        "operating_cost_eur_per_km": quote.operating_cost_eur_per_km,
+        "maintenance_eur_per_km": quote.maintenance_eur_per_km,
         "origin": project_location(quote.contract.origin),
         "destination": project_location(quote.contract.destination),
         "contract": project_contract(quote.contract),
@@ -161,6 +170,7 @@ def project_transport(
 ) -> dict[str, Any]:
     """Expose tracking without leaking persistence lifecycle columns."""
     return {
+        **project_dispatch_route(trip.dispatch_route, trip.origin, trip.route),
         "journey": asdict(trip.journey),
         "progress": asdict(trip.progress_at(now)) if now is not None else None,
         "id": trip.id,
@@ -182,6 +192,9 @@ def project_transport(
         "payout_eur": trip.payout_eur,
         "operating_cost_eur": trip.operating_cost_eur,
         "profit_eur": trip.payout_eur - trip.operating_cost_eur,
+        "cost_breakdown": asdict(trip.cost_breakdown)
+        if trip.cost_breakdown
+        else None,
     }
 
 

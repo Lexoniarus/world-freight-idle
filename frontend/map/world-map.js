@@ -1,3 +1,4 @@
+import { releaseAll } from "../lifecycle.js";
 import * as maplibregl from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { nearestLongitude, unwrapRoute } from "../geometry.js";
@@ -6,9 +7,16 @@ import { addOverlayLayers } from "./layers.js";
 import { MapCamera } from "./camera.js";
 import { VehicleAnimator } from "./vehicle-animator.js";
 import { VehicleIconRegistry } from "./vehicle-assets.js";
+import { selectedLocations } from "./selection.js";
+import { Opportunities } from "./opportunities.js";
+import { VehicleGroups } from "./vehicle-groups.js";
 
-const OWN_VEHICLE_LAYERS = ["vehicles", "vehicles-fallback"];
-const MULTIPLAYER_VEHICLE_LAYERS = ["multiplayer-vehicles", "multiplayer-vehicles-fallback"];
+const OWN_VEHICLE_LAYERS = ["vehicles", "vehicles-idle", "vehicles-fallback"];
+const MULTIPLAYER_VEHICLE_LAYERS = [
+  "multiplayer-vehicles",
+  "multiplayer-vehicles-idle",
+  "multiplayer-vehicles-fallback",
+];
 const HIT_LAYERS = [
   ...OWN_VEHICLE_LAYERS,
   ...MULTIPLAYER_VEHICLE_LAYERS,
@@ -19,15 +27,20 @@ const HIT_LAYERS = [
 ];
 const FACILITY_HOVER_LAYERS = new Set(["orders", "parked", "hub-points"]);
 
-export class WorldMap {
+export class WorldMap extends EventTarget {
+  /** @param {string | HTMLElement} container
+   * @param {import("../types.js").WorldMapDependencies} dependencies
+   */
   constructor(
     container,
-    { navigate, notify, now, loadAsset, provider, viewport, reducedMotion, isHidden },
+    { navigate, notify, now, loadAsset, assets, provider, viewport, reducedMotion, isHidden },
   ) {
+    super();
     this.navigate = navigate;
     this.notify = notify;
     this.now = now;
     this.reducedMotion = reducedMotion;
+    this.isHidden = isHidden;
     this.overlays = new OverlayData();
     this.selected = "";
     this.visible = {
@@ -37,6 +50,7 @@ export class WorldMap {
       multiplayer: true,
       routes: true,
     };
+    this.facilityProjection = "";
     this.ready = false;
     this.disposed = false;
     this.preview = null;
@@ -59,7 +73,9 @@ export class WorldMap {
       dragRotate: false,
       pitchWithRotate: false,
     });
-    this.vehicleIcons = new VehicleIconRegistry(this.map, loadAsset);
+    this.vehicleIcons = new VehicleIconRegistry(this.map, loadAsset, {
+      coloredSource: assets?.source.bind(assets),
+    });
     this.camera = new MapCamera(this.map, reducedMotion, viewport);
     this.animator = new VehicleAnimator({
       draw: () => this.drawTraffic(),
@@ -68,11 +84,16 @@ export class WorldMap {
       reducedMotion,
     });
     this.map.touchZoomRotate.disableRotation();
+    this.groups = new VehicleGroups(this.map, navigate, reducedMotion);
+    this.opportunities = new Opportunities(this.map, navigate);
     this.map.addControl(new maplibregl.AttributionControl({ compact: false }), "bottom-left");
     this.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
     this.bindMapEvents();
   }
 
+  /** Register map interaction handlers owned by the native map.
+   * @returns {void}
+   */
   bindMapEvents() {
     this.map.on("error", (event) => {
       console.warn("Map rendering:", event.error?.message);
@@ -83,6 +104,21 @@ export class WorldMap {
         );
     });
     this.map.on("load", () => this.initializeOverlays());
+    this.map.on("move", () => {
+      if (this.ready) this.drawTraffic();
+    });
+    this.map.on("moveend", () => {
+      if (this.ready) {
+        this.groups.last = -Infinity;
+        this.drawTraffic();
+        this.opportunities.update(
+          this.overlays.state.contracts,
+          this.visible.orders,
+          this.selected,
+          this.marketVehicleId,
+        );
+      }
+    });
     this.map.on("click", (event) => {
       void this.selectFeature(event).catch(() => {
         if (!this.disposed) this.notify("Kartenobjekt konnte nicht ausgewählt werden.", "map");
@@ -98,6 +134,9 @@ export class WorldMap {
     });
   }
 
+  /** Install overlay layers after the map becomes ready.
+   * @returns {void}
+   */
   initializeOverlays() {
     if (this.disposed) return;
     addOverlayLayers(this.map);
@@ -106,27 +145,69 @@ export class WorldMap {
     this.update(this.overlays.state);
     for (const [name, visible] of Object.entries(this.visible)) this.toggle(name, visible);
     this.setPreview(this.preview);
-    this.select(this.selected);
+    this.select(this.selected, this.selectedContract);
+    this.setPreset(this.preset ?? "world");
     this.animator.start();
+    this.dispatchEvent(new Event("ready"));
   }
 
+  /** Synchronize the map read model and rendered overlays.
+   * @param {import('../types.js').MapState} state
+   * @returns {void}
+   */
   update(state) {
+    this.marketVehicleId = state.marketVehicleId ?? "";
     this.overlays.update(state);
     if (!this.ready || this.disposed) return;
-    this.setSourceData("hubs", this.overlays.hubFeatures());
     this.setSourceData("orders", this.overlays.locationFeatures(state.contracts, "origin_hub_id"));
+    this.setSourceData("parked", { type: "FeatureCollection", features: [] });
+    const routeRevision = state.transports
+      .map((trip) => [trip.id, trip.route_ref, this.overlays.routes.has(trip.id)])
+      .toString();
+    if (this.routeRevision !== routeRevision) {
+      this.routeRevision = routeRevision;
+      this.setSourceData("routes", this.overlays.routeFeatures());
+    }
+    this.updateSelectedRoute();
     this.setSourceData(
-      "parked",
-      this.overlays.locationFeatures(
-        state.vehicles.filter((vehicle) => vehicle.status === "idle"),
-        "hub_id",
-      ),
+      "selected-locations",
+      selectedLocations(this.overlays.state, this.selected, this.selectedContract),
     );
-    this.setSourceData("routes", this.overlays.routeFeatures());
     this.drawTraffic();
-    void this.syncVehicleIcons(state.traffic ?? []);
+    this.opportunities.update(
+      state.contracts,
+      this.visible.orders,
+      this.selected,
+      this.marketVehicleId,
+    );
+    void this.syncVehicleIcons([
+      ...(state.traffic ?? []).map((trip) => ({
+        ...trip,
+        player_color: trip.is_own ? this.overlays.companyColor : trip.player_color,
+      })),
+      ...state.vehicles.map((vehicle) => ({
+        model_id: vehicle.model_id,
+        player_color: this.overlays.companyColor,
+        role: "front",
+      })),
+    ]);
   }
 
+  /** Refresh own vehicle variants using the effective company color.
+   * @param {string} color
+   * @returns {void}
+   */
+  setCompanyColor(color) {
+    this.overlays.companyColor = color;
+    this.groups.last = -Infinity;
+    this.update(this.overlays.state);
+  }
+
+  /** Project facility hover information into the owned popup.
+   * @param {import("maplibre-gl").MapGeoJSONFeature | undefined} feature
+   * @param {import("maplibre-gl").LngLat} lngLat
+   * @returns {void}
+   */
   updateFacilityHover(feature, lngLat) {
     if (!feature || !FACILITY_HOVER_LAYERS.has(feature.layer.id)) {
       this.hoverPopup.remove();
@@ -138,32 +219,127 @@ export class WorldMap {
     const detail = document.createElement("div");
     const city = feature.properties.city || "";
     const trucks = Number(feature.properties.idleTruckCount || 0);
-    const orders = Number(feature.properties.orderCount || 0);
-    detail.textContent = `${city} · ${trucks} Lkw · ${orders} Aufträge`;
+    const orders = feature.properties.orderCount;
+    detail.textContent = `${city} · ${trucks} Lkw · ${orders == null ? "Auftragszahl unbekannt" : orders + " Aufträge"}`;
     content.append(title, detail);
     this.hoverPopup.setLngLat(lngLat).setDOMContent(content).addTo(this.map);
   }
 
+  /** Load current vehicle variants and ignore obsolete completions.
+   * @param {Array<{model_id?: string, player_color: string, role?: string}>} traffic
+   * @returns {Promise<void>}
+   */
   async syncVehicleIcons(traffic) {
     const imageIds = await this.vehicleIcons.ensure(traffic);
     if (this.disposed) return;
-    this.overlays.setVehicleIcons(imageIds);
+    this.overlays.setVehicleIcons(imageIds, this.vehicleIcons.bounds);
     this.drawTraffic();
   }
 
+  /** Render current interpolated vehicle poses and groups.
+   * @returns {void}
+   */
   drawTraffic() {
+    if (this.disposed || !this.ready || this.isHidden()) return;
     const now = this.now();
-    this.setSourceData("vehicles", this.overlays.vehicleFeatures(now));
-    this.setSourceData("multiplayer-vehicles", this.overlays.multiplayerVehicleFeatures(now));
+    const own = this.overlays.vehicleFeatures(now).features;
+    const other = this.overlays.multiplayerVehicleFeatures(now).features;
+    const visible = [
+      ...(this.visible.vehicles
+        ? own.filter((item) => this.preset !== "contracts" || item.properties.idle)
+        : []),
+      ...(this.visible.multiplayer ? other : []),
+    ];
+    const ungrouped = this.groups.update(visible, this.selected);
+    this.updateFacilityProjection(ungrouped);
+    this.setSourceData("vehicles", {
+      type: "FeatureCollection",
+      features: ungrouped.filter((item) => item.properties.isOwn),
+    });
+    this.setSourceData("multiplayer-vehicles", {
+      type: "FeatureCollection",
+      features: ungrouped.filter((item) => !item.properties.isOwn),
+    });
+    this.setSourceData("selection", {
+      type: "FeatureCollection",
+      features: own.filter(
+        (item) =>
+          item.properties.id === this.selected || item.properties.vehicleId === this.selected,
+      ),
+    });
   }
 
+  /** Publish facility visibility only when its rendered occupancy changes.
+   * @param {import("geojson").Feature<import("geojson").Point>[]} features
+   * @returns {void}
+   */
+  updateFacilityProjection(features) {
+    const data = this.overlays.hubFeatures(features);
+    const signature = JSON.stringify(data);
+    if (signature === this.facilityProjection) return;
+    this.facilityProjection = signature;
+    this.setSourceData("hubs", data);
+  }
+
+  /** Apply grouping preference to vehicle presentation.
+   * @param {boolean} value
+   * @returns {void}
+   */
+  setGrouping(value) {
+    this.groups.enabled = value;
+    this.groups.last = -Infinity;
+    if (this.ready) this.drawTraffic();
+  }
+
+  /** Apply a route-specific visual preset.
+   * @param {string} preset
+   * @returns {void}
+   */
+  setPreset(preset) {
+    this.preset = preset;
+    if (!this.ready) return;
+
+    // A visible multiplayer layer must render vehicles fully opaque.
+    // Presets control visibility, not transparency.
+    this.map.setPaintProperty("multiplayer-vehicles-fallback", "circle-opacity", 1);
+    this.map.setPaintProperty("multiplayer-vehicles", "icon-opacity", 1);
+    this.map.setPaintProperty("multiplayer-vehicles-idle", "icon-opacity", 1);
+
+    this.map.setPaintProperty("vehicles", "icon-opacity", preset === "company" ? 0.65 : 1);
+    this.groups.last = -Infinity;
+    this.drawTraffic();
+  }
+
+  /** Update a registered GeoJSON source when available.
+   * @param {string} name
+   * @param {import("geojson").GeoJSON} data
+   * @returns {void}
+   */
   setSourceData(name, data) {
     /** @type {import("maplibre-gl").GeoJSONSource} */ (this.map.getSource(name))?.setData(data);
   }
 
+  /** Translate a map hit into navigation or group interaction.
+   * @param {import("maplibre-gl").MapMouseEvent} event
+   * @returns {Promise<void>}
+   */
   async selectFeature(event) {
     if (!this.ready || this.disposed) return;
-    const feature = this.map.queryRenderedFeatures(event.point, { layers: HIT_LAYERS })[0];
+    const hits = this.map.queryRenderedFeatures(event.point, { layers: HIT_LAYERS });
+    const vehicleHits = [
+      ...new Map(
+        hits
+          .filter((item) =>
+            [...OWN_VEHICLE_LAYERS, ...MULTIPLAYER_VEHICLE_LAYERS].includes(item.layer.id),
+          )
+          .map((item) => [item.properties.key, item]),
+      ).values(),
+    ];
+    if (vehicleHits.length > 1) {
+      this.groups.showList(vehicleHits, event.lngLat);
+      return;
+    }
+    const feature = hits[0];
     if (!feature) return;
     if (feature.properties.cluster) {
       const zoom = await /** @type {import("maplibre-gl").GeoJSONSource} */ (
@@ -177,7 +353,11 @@ export class WorldMap {
         duration: this.reducedMotion() ? 0 : 500,
       });
     } else if (OWN_VEHICLE_LAYERS.includes(feature.layer.id)) {
-      this.navigate("/transports/" + encodeURIComponent(feature.properties.id));
+      this.navigate(
+        feature.properties.idle
+          ? "/fleet/" + encodeURIComponent(feature.properties.vehicleId)
+          : "/transports/" + encodeURIComponent(feature.properties.id),
+      );
     } else if (MULTIPLAYER_VEHICLE_LAYERS.includes(feature.layer.id)) {
       this.notify(
         `${feature.properties.username || "Ein anderer Spieler"} · ${feature.properties.modelName || "Fahrzeug"}`,
@@ -186,20 +366,46 @@ export class WorldMap {
     } else {
       this.navigate(
         (feature.layer.id === "parked" ? "/fleet" : "/contracts") +
-          "?hub=" +
-          encodeURIComponent(feature.properties.id),
+          "?city=" +
+          encodeURIComponent(feature.properties.cityUid ?? ""),
       );
     }
   }
 
+  /** Display or clear the current quote geometry.
+   * @param {import('../types.js').Quote | null} quote
+   * @returns {void}
+   */
   setPreview(quote) {
     this.preview = quote;
+    if (this.ready)
+      this.map.setLayoutProperty(
+        "preview",
+        "visibility",
+        quote || this.visible.preview ? "visible" : "none",
+      );
     if (this.ready && !this.disposed) this.setSourceData("preview", previewFeatures(quote));
   }
 
-  select(id) {
+  /** Synchronize the selected vehicle, transport or offer overlay.
+   * @param {string} id
+   * @param {import('../types.js').Contract | null} [contract]
+   * @returns {void}
+   */
+  select(id, contract = null) {
     this.selected = id;
+    this.selectedContract = contract;
     if (!this.ready || this.disposed) return;
+    this.groups.last = -Infinity;
+    this.drawTraffic();
+    this.updateSelectedRoute();
+    this.opportunities.update(
+      this.overlays.state.contracts,
+      this.visible.orders,
+      id,
+      this.marketVehicleId,
+    );
+    this.setSourceData("selected-locations", selectedLocations(this.overlays.state, id, contract));
     this.map.setPaintProperty("routes", "line-color", [
       "case",
       ["==", ["get", "id"], id],
@@ -209,16 +415,51 @@ export class WorldMap {
     this.map.setPaintProperty("routes", "line-width", ["case", ["==", ["get", "id"], id], 6, 3]);
   }
 
+  /** Render the route associated with the current selection.
+   * @returns {void}
+   */
+  updateSelectedRoute() {
+    const trip = this.overlays.state.transports.find(
+      (item) => item.id === this.selected || item.vehicle_id === this.selected,
+    );
+    this.setSourceData("selected-route", {
+      type: "FeatureCollection",
+      features: this.overlays
+        .routeFeatures()
+        .features.filter((item) => item.properties.id === trip?.id),
+    });
+  }
+
+  /** Delegate a coordinate fit without exposing the renderer internals.
+   * @param {number[][]} points
+   * @returns {void}
+   */
+  fitCoordinates(points) {
+    this.camera.fitCoordinates(points);
+  }
+
+  /** Delegate one route fit to the camera primitives.
+   * @param {import('../types.js').RouteGeometry} route
+   * @returns {void}
+   */
   focusRoute(route) {
     this.camera.fitRoute(unwrapRoute(routeGeometry(route).coordinates));
   }
 
+  /** Delegate a fleet-position fit to the camera primitives.
+   * @returns {void}
+   */
   focusFleet() {
     const points = this.overlays.fleetCoordinates(this.now());
     if (points.length) this.camera.fitCoordinates(points);
     else this.notify("Die Standorte deiner Flotte werden noch geladen.");
   }
 
+  /** Change one overlay visibility and redraw dependent markers.
+   * @param {string} name
+   * @param {boolean} visible
+   * @returns {void}
+   */
   toggle(name, visible) {
     this.visible[name] = visible;
     const layers =
@@ -229,16 +470,37 @@ export class WorldMap {
           : name === "multiplayer"
             ? MULTIPLAYER_VEHICLE_LAYERS
             : [name];
+    const rendered = visible || (name === "preview" && Boolean(this.preview));
     for (const layer of layers)
       if (this.map.getLayer(layer))
-        this.map.setLayoutProperty(layer, "visibility", visible ? "visible" : "none");
+        this.map.setLayoutProperty(layer, "visibility", rendered ? "visible" : "none");
+    if (this.ready) {
+      this.groups.last = -Infinity;
+      this.drawTraffic();
+      this.opportunities.update(
+        this.overlays.state.contracts,
+        this.visible.orders,
+        this.selected,
+        this.marketVehicleId,
+      );
+    }
   }
 
+  /** Release every map resource once, aggregating cleanup failures.
+   * @returns {void}
+   */
   destroy() {
     if (this.disposed) return;
     this.disposed = true;
-    this.animator.destroy();
-    this.hoverPopup.remove();
-    this.map.remove();
+    releaseAll([
+      () => this.animator.destroy(),
+      () => this.groups.destroy(),
+      () => this.opportunities.destroy(),
+      () => {
+        this.hoverPopup.remove();
+      },
+      () => this.vehicleIcons.destroy(),
+      () => this.map.remove(),
+    ]);
   }
 }

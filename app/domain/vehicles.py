@@ -39,6 +39,7 @@ class VehicleModel:
     capacity_tons: float
     price_eur: int
     operating_cost_eur_per_km: float
+    maintenance_eur_per_1000_km: float
     unlock_reputation: int
     energy: EnergyProfile
     top_speed_kmh: float
@@ -49,6 +50,7 @@ class VehicleModel:
 
     def __post_init__(self) -> None:
         """Require a usable speed limit and typed energy specification."""
+        require_finite(self.maintenance_eur_per_1000_km, "Maintenance")
         vehicle_scale_for_segment(self.segment)
         classes = [p.transport_class for p in self.transport_capabilities]
         if not classes or len(set(classes)) != len(classes):

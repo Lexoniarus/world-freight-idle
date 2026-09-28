@@ -8,11 +8,14 @@ import pytest
 
 from app.bootstrap import GameRuntime, build_market_generator
 from app.domain.transports import RouteSnapshot
+from app.domain.world import Facility
 from app.domain.world_scopes import WorldScope
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
+from app.services.cost_profiles import VehicleCostResolver
+from app.services.dispatch_planning import DispatchPlanningService
 from app.services.game import GameService
 from app.services.market_scope import MarketScopeResolver
 
@@ -33,6 +36,24 @@ class FakeRouter:
                 (destination_lon, destination_lat),
             ),
             provider="fake-router",
+        )
+
+
+class FakeRoutingAnchorResolver:
+    max_snap_distance_m = 1000.0
+
+    async def resolve(self, facility: Facility, *, force: bool = False):
+        from app.domain.routing_anchors import RoutingCandidate
+
+        if facility.coordinates is None:
+            return ()
+        return (
+            RoutingCandidate(
+                facility.coordinates,
+                0.0,
+                "fake-anchor",
+                None,
+            ),
         )
 
 
@@ -67,10 +88,18 @@ def game(database, catalogue, world_catalogue) -> GameService:
     market = build_market_generator(
         world_catalogue, random.Random(7), catalogue
     )
+    router = FakeRouter()
+    anchors = FakeRoutingAnchorResolver()
     service = GameService(
         unit_of_work=SqliteGameUnitOfWork(database, "test-owner"),
         world=world_catalogue,
-        router=FakeRouter(),
+        router=router,
+        dispatch_planning=DispatchPlanningService(
+            router,
+            VehicleCostResolver(catalogue),
+            anchors,
+            world_catalogue,
+        ),
         market=market,
         market_scope=MarketScopeResolver(world_catalogue),
         catalogue=catalogue,
@@ -102,6 +131,9 @@ def catalogue(tmp_path):
 def database(tmp_path):
     database = SqliteGameDatabase(tmp_path / "relational.db")
     database.initialize()
+    from app.repositories.preferences import SqlitePreferenceStore
+
+    SqlitePreferenceStore(database)
     with database.connect() as connection:
         connection.execute(
             "INSERT INTO users VALUES ('test-owner', 'TestOwner', 'test', 0)"
@@ -115,6 +147,7 @@ def runtime(game, database):
         database,
         game.world,
         game.router,
+        game.dispatch_planning.anchors,
         game.market,
         game.catalogue,
         game.market_scope,

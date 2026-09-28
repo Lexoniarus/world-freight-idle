@@ -1,5 +1,6 @@
 """Player-scoped relational repository and SQLite unit of work."""
 
+from collections import OrderedDict
 from contextlib import AbstractContextManager
 from dataclasses import asdict, replace
 
@@ -23,6 +24,9 @@ class SqliteGameStateRepository:
         require_identity(user_id, "Player identity")
         self._database = database
         self._user_id = user_id
+        self._transports: OrderedDict[str, tuple[dict, ActiveTransport]] = (
+            OrderedDict()
+        )
 
     def get_player(self) -> PlayerState | None:
         """Read the stored authoritative counters, if initialized."""
@@ -153,7 +157,7 @@ class SqliteGameStateRepository:
                 "SELECT * FROM transports WHERE user_id=? ORDER BY rowid",
                 (self._user_id,),
             ).fetchall()
-        return tuple(load_transport_record(dict(row)) for row in rows)
+        return tuple(self._read_transport(dict(row)) for row in rows)
 
     def list_active_transports(self) -> tuple[ActiveTransport, ...]:
         """Read pending deliveries without decoding settled history."""
@@ -163,7 +167,7 @@ class SqliteGameStateRepository:
                 "WHERE user_id=? AND status='active' ORDER BY rowid",
                 (self._user_id,),
             ).fetchall()
-        return tuple(load_transport_record(dict(row)) for row in rows)
+        return tuple(self._read_transport(dict(row)) for row in rows)
 
     def list_due_transports(self, now: float) -> tuple[ActiveTransport, ...]:
         """Read this owner's active deliveries due at the supplied time."""
@@ -174,7 +178,21 @@ class SqliteGameStateRepository:
                 "AND status='active' AND arrives_at<=? ORDER BY rowid",
                 (self._user_id, now),
             ).fetchall()
-        return tuple(load_transport_record(dict(row)) for row in rows)
+        return tuple(self._read_transport(dict(row)) for row in rows)
+
+    def _read_transport(self, row: dict) -> ActiveTransport:
+        """Reuse immutable validation only for an exactly unchanged row."""
+        identity = row["transport_id"]
+        cached = self._transports.get(identity)
+        if cached is not None and cached[0] == row:
+            self._transports.move_to_end(identity)
+            return cached[1]
+        transport = load_transport_record(row)
+        self._transports[identity] = (row, transport)
+        self._transports.move_to_end(identity)
+        if len(self._transports) > 64:
+            self._transports.popitem(last=False)
+        return transport
 
     def save_transport(self, transport: ActiveTransport) -> None:
         """Insert a dispatch or persist its sole allowed state transition."""
@@ -184,7 +202,7 @@ class SqliteGameStateRepository:
                 (self._user_id, transport.id),
             ).fetchone()
             if prior is not None:
-                previous = load_transport_record(dict(prior))
+                previous = self._read_transport(dict(prior))
                 if (
                     previous.status != "active"
                     or transport.status != "settled"
@@ -215,7 +233,7 @@ class SqliteGameStateRepository:
                     transport.settled_at,
                     transport.operating_cost_eur,
                     transport.payout_eur,
-                    encode_snapshot("transport", asdict(transport)),
+                    encode_snapshot("transport", transport),
                 ),
             )
 
@@ -245,6 +263,10 @@ class SqliteGameUnitOfWork:
     def transaction(self) -> AbstractContextManager[None]:
         """Open or join a synchronous atomic use case."""
         return self._database.transaction()
+
+    def read_transaction(self) -> AbstractContextManager[None]:
+        """Read one consistent owner snapshot without a writer lease."""
+        return self._database.read_transaction()
 
 
 def load_vehicle_record(row: dict) -> OwnedVehicle:

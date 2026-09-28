@@ -35,11 +35,11 @@ function renderOffer(model, deliveryHub, cash, reputation, busy) {
     <div class="card-kicker">
       <span class="badge">Neufahrzeug</span><span>Straßentransport</span>
     </div>
-    ${renderVehicleImage(model)}
+    ${renderVehicleImage(model, "shop")}
     <h3>${model.name}</h3>
     <p>${number(model.capacity_tons, 2)} t Nutzlast · Lieferung nach ${deliveryHub}</p>
     <p>
-      ${number(model.operating_cost_eur_per_km, 2)} € / km ·
+      ${number(model.maintenance_eur_per_1000_km / 1000, 3)} € Wartung / km + Energieeinkäufe ·
       ${model.powertrain === "battery_electric" ? "Elektro" : model.powertrain === "gas" ? "Gas" : "Diesel"}
     </p>
     ${renderEnergySpecification(model)}

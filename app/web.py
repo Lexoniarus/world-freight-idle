@@ -34,6 +34,7 @@ def _application_path(request: Request) -> Path:
     )
 
 
+@router.get("/company", include_in_schema=False)
 @router.get("/", include_in_schema=False)
 def dashboard_page(request: Request) -> FileResponse:
     """Serve the dashboard page."""
@@ -62,6 +63,7 @@ def contract_detail_page(request: Request, contract_id: str) -> FileResponse:
     )
 
 
+@router.get("/fleet/{vehicle_id}", include_in_schema=False)
 @router.get("/fleet", include_in_schema=False)
 def fleet_page(request: Request) -> FileResponse:
     """Serve the fleet page."""

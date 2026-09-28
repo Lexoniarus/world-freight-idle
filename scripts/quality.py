@@ -19,6 +19,10 @@ COMMANDS = (
         "scripts/normalize_world_catalogue.py",
         "scripts/import_legacy_game.py",
         "scripts/upgrade_vehicle_energy.py",
+        "scripts/audit_economy.py",
+        "scripts/audit_routing_readiness.py",
+        "scripts/repair_transport_metadata.py",
+        "scripts/upgrade_market_stock.py",
     ),
     (
         sys.executable,
@@ -34,6 +38,10 @@ COMMANDS = (
         "scripts/normalize_world_catalogue.py",
         "scripts/import_legacy_game.py",
         "scripts/upgrade_vehicle_energy.py",
+        "scripts/audit_economy.py",
+        "scripts/audit_routing_readiness.py",
+        "scripts/repair_transport_metadata.py",
+        "scripts/upgrade_market_stock.py",
     ),
     (
         sys.executable,
@@ -45,6 +53,10 @@ COMMANDS = (
         "scripts/normalize_world_catalogue.py",
         "scripts/import_legacy_game.py",
         "scripts/upgrade_vehicle_energy.py",
+        "scripts/audit_economy.py",
+        "scripts/audit_routing_readiness.py",
+        "scripts/repair_transport_metadata.py",
+        "scripts/upgrade_market_stock.py",
     ),
     (
         "node",

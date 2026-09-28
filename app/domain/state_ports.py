@@ -44,3 +44,13 @@ class GameUnitOfWork(Protocol):
     repository: GameStateRepository
 
     def transaction(self) -> AbstractContextManager[None]: ...
+
+    def read_transaction(self) -> AbstractContextManager[None]: ...
+
+
+class TransactionBoundary(Protocol):
+    """Own a synchronous atomic boundary without exposing storage."""
+
+    def transaction(self) -> AbstractContextManager[None]: ...
+
+    def read_transaction(self) -> AbstractContextManager[None]: ...
