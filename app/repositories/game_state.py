@@ -1,5 +1,6 @@
 """Player-scoped relational repository and SQLite unit of work."""
 
+import math
 from collections import OrderedDict
 from contextlib import AbstractContextManager
 from dataclasses import asdict, replace
@@ -302,26 +303,44 @@ def load_offer_record(row: dict) -> ContractOffer:
     """Require indexed columns to agree with historical contract facts."""
     try:
         offer = load_offer(decode_snapshot("offer", row["offer_snapshot"]))
-        expected = (
+        expected_identity = (
             offer.id,
             offer.origin.facility_uid,
             offer.destination.facility_uid,
-            offer.created_at,
-            offer.expires_at,
             offer.market_model,
         )
-        actual = tuple(
+        actual_identity = tuple(
             row[key]
             for key in (
                 "contract_id",
                 "origin_facility_uid",
                 "destination_facility_uid",
-                "created_at",
-                "expires_at",
                 "market_model",
             )
         )
-        if actual != expected:
+        created_at_matches = math.isclose(
+            row["created_at"],
+            offer.created_at,
+            rel_tol=1e-7,
+            abs_tol=1e-6,
+        )
+        expires_at_matches = (
+            row["expires_at"] is None and offer.expires_at is None
+        ) or (
+            row["expires_at"] is not None
+            and offer.expires_at is not None
+            and math.isclose(
+                row["expires_at"],
+                offer.expires_at,
+                rel_tol=1e-7,
+                abs_tol=1e-6,
+            )
+        )
+        if (
+            actual_identity != expected_identity
+            or not created_at_matches
+            or not expires_at_matches
+        ):
             raise ValueError("Offer columns differ from snapshot")
         return offer
     except (ValueError, TypeError, KeyError) as exc:

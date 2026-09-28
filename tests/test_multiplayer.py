@@ -387,6 +387,8 @@ def test_launchers_run_main_without_changing_working_directory():
     with (
         patch("app.launcher.run_role", new=AsyncMock(return_value=0)) as run,
         patch("sys.argv", ["main.py"]),
+        patch("sys.prefix", "active-venv"),
+        patch("sys.base_prefix", "system-python"),
         pytest.raises(SystemExit) as exited,
     ):
         runpy.run_path(str(root / "main.py"), run_name="__main__")

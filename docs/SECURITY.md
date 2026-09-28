@@ -2,6 +2,12 @@
 
 ## Implementiert
 
+- Supabase Auth im Browser ausschließlich mit Publishable Key; kein Secret Key
+  im Bundle oder in einer API-Antwort.
+- Lokale ES256-JWT-Prüfung in FastAPI gegen gecachte, projektgebundene JWKS mit
+  exaktem Issuer, Audience, Ablauf und UUID-Subject; Tokens werden nie geloggt.
+- Autorisierung verwendet ausschließlich den signierten `sub`. Benutzer-
+  Metadata liefert höchstens einen validierten Anzeigenamen.
 - Gesalzene scrypt-Passworthashes; kein Klartextpasswort in der Datenbank.
 - Kryptografisch zufällige Sitzungen; nur Token-Digests werden gespeichert.
 - Sieben Tage Laufzeit; Logout widerruft die Sitzung, Login rotiert sie.
@@ -21,7 +27,9 @@ vor öffentlichem Betrieb einzurichten. Forwarded-Header ausschließlich von
 vertrauenswürdigen Proxies übernehmen. Ohne korrekte Client-IP teilen Nutzer
 das Proxy-IP-Limit. Bei mehreren Workern Provider-Limiter neu auslegen.
 
-Offen: Passwortänderung/-Recovery, E-Mail-Verifikation, Mehrfaktor-Anmeldung,
+Supabase stellt E-Mail-Verifikation und Recovery als Providerfunktionen bereit;
+deren Templates, Redirect-Allowlist und produktive Zustellbarkeit müssen vor
+Freigabe noch betrieblich abgenommen werden. Offen bleiben Mehrfaktoranmeldung,
 Kontolöschung, Moderation, Account-Sperren, manipulationssicheres Auditjournal,
 verteiltes Rate-Limiting und allgemeine Ressourcen-/Missbrauchslimits.
 MapLibre, Anwendung und Schriften werden lokal gebündelt ausgeliefert.

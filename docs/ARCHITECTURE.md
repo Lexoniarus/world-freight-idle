@@ -427,3 +427,39 @@ Funktionen zusätzlich zu den automatischen Importgrenzen und Manifesttests.
 Veränderte Frachtklasse oder geografisch verschobene Katalogstandorte sperren
 alte Vorlagen/Angebote für die Freigabe und Defizitberechnung. Ihre gespeicherten
 Konditionen und historische Transporte werden dabei nicht umgeschrieben.
+
+## Supabase/PostgreSQL production runtime (28.09.2026)
+
+Produktiv verwendet die Anwendung eine serverseitige PostgreSQL-Verbindung zu
+Supabase. `game`, `world_catalogue` und `vehicle_catalogue` sind getrennte
+Schemas derselben PostgreSQL-Instanz. Browserzugriff auf diese Schemas findet
+nicht statt; der Browser bleibt an `/api/v1` gebunden.
+
+`DATABASE_URL` aktiviert den PostgreSQL-Pfad. Ohne diese Variable bleiben die
+bestehenden SQLite-Adapter ausschließlich für Tests und explizite Offline-
+Werkzeuge verfügbar. Die Produktions-Composition-Root wählt PostgreSQL für
+Spielzustand und beide Referenzkataloge. Der World-/Vehicle-Snapshot wird wie
+zuvor pro Prozess validiert und gecacht.
+
+Die PostgreSQL-Game-UoW hält die bestehende atomare Semantik konservativ durch
+einen transaktionsgebundenen Advisory Lock aufrecht. Provider-Awaits bleiben
+außerhalb von Schreibtransaktionen. Read-Transaktionen verwenden einen
+repeatable-read/read-only Snapshot. Der Connection-Pool gehört dem jeweiligen
+Runtime-/Prewarm-Prozess und wird beim Shutdown geschlossen.
+
+Historische Snapshot-Texte bleiben Text und werden nicht still nach JSONB
+migriert. SQLite-spezifische JSON1-Leseprojektionen werden ausschließlich an
+der PostgreSQL-Adaptergrenze in native PostgreSQL-JSONB-Ausdrücke übersetzt.
+Die Domain-, Service- und HTTP-Verträge ändern sich dadurch nicht.
+
+Supabase Auth ist eine getrennte Providergrenze. `@supabase/supabase-js` besitzt
+im Browser Session und Refresh; FastAPI prüft Bearer-Tokens lokal per ES256/JWKS
+und projiziert den stabilen `sub` über den Account-Port nach `game.users`.
+Weder der Datenbankzugang noch ein Supabase Secret Key gelangen ins Frontend.
+Die vorhandene Cookie-Authentifizierung bleibt nur als Migrationsbrücke für
+bestehende lokale Konten erhalten.
+
+Der immutable World-Snapshot lädt Facility-Provenienz, Geocoding-Evidenz,
+Aliasse und dokumentierte Güter in vier Batch-Projektionen. Damit bleibt die
+SQLite-Domainprojektion erhalten, ohne deren frühere N+1-Leseform über die
+PostgreSQL-Netzwerkgrenze zu tragen.

@@ -216,7 +216,9 @@ async def test_role_selection_parent_eof_and_runtime_cleanup(monkeypatch):
     monkeypatch.setenv("WFI_MANAGED_CHILD", "1")
     with (
         patch("app.launcher.threading.Thread") as thread,
-        patch("app.launcher.run_runtime", new=AsyncMock()) as runtime,
+        patch(
+            "app.launcher.run_runtime", new=AsyncMock(return_value=0)
+        ) as runtime,
         patch("app.launcher.run_prewarm", new=AsyncMock()) as prewarm,
     ):
         assert await launcher.run_role("runtime") == 0
@@ -230,14 +232,28 @@ async def test_role_selection_parent_eof_and_runtime_cleanup(monkeypatch):
         await launcher.run_role("unknown")
     stop = asyncio.Event()
     loop = Mock()
-    with patch("app.launcher.sys.stdin", SimpleNamespace(buffer=Mock())):
+    with (
+        patch(
+            "app.launcher.sys.stdin",
+            SimpleNamespace(fileno=Mock(return_value=7)),
+        ),
+        patch("app.launcher.os.read") as read,
+    ):
         launcher.parent_eof(loop, stop)
+        read.assert_called_once_with(7, 1)
         loop.call_soon_threadsafe.assert_called_once_with(stop.set)
         loop.call_soon_threadsafe.side_effect = RuntimeError("closed")
         launcher.parent_eof(loop, stop)
+    stop.set()
     server = SimpleNamespace(serve=AsyncMock(), should_exit=False)
     with patch("app.launcher.uvicorn.Server", return_value=server):
-        await launcher.run_runtime(stop)
+        assert await launcher.run_runtime(stop) == 0
+    assert server.should_exit
+    server = SimpleNamespace(
+        serve=AsyncMock(side_effect=SystemExit(3)), should_exit=False
+    )
+    with patch("app.launcher.uvicorn.Server", return_value=server):
+        assert await launcher.run_runtime(asyncio.Event()) == 3
     assert server.should_exit
 
     loop = asyncio.get_running_loop()
@@ -282,3 +298,4 @@ async def test_prewarm_resources_close_when_worker_start_fails(failure):
         runtime.preparation_jobs.ensure.assert_called_once_with("owner", 10)
     client.__aexit__.assert_awaited_once()
     worker.close.assert_awaited_once()
+    runtime.database.close.assert_called_once()

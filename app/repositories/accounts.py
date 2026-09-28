@@ -73,6 +73,42 @@ class AccountRepository:
             else None
         )
 
+    def ensure_external_user(
+        self, user_id: str, username: str
+    ) -> AccountIdentity:
+        """Provision one Supabase identity without storing its credentials."""
+        with self._database.connect() as connection:
+            existing = connection.execute(
+                "SELECT id, username FROM users WHERE id = ?",
+                (user_id,),
+            ).fetchone()
+            if existing:
+                return AccountIdentity(
+                    id=existing["id"], username=existing["username"]
+                )
+            fallback = (
+                "Driver_" + hashlib.sha256(user_id.encode()).hexdigest()[:12]
+            )
+            for candidate in dict.fromkeys((username, fallback)):
+                try:
+                    connection.execute(
+                        "INSERT INTO users VALUES (?, ?, ?, ?)",
+                        (user_id, candidate, "supabase-managed", time.time()),
+                    )
+                except sqlite3.IntegrityError:
+                    existing = connection.execute(
+                        "SELECT id, username FROM users WHERE id = ?",
+                        (user_id,),
+                    ).fetchone()
+                    if existing:
+                        return AccountIdentity(
+                            id=existing["id"],
+                            username=existing["username"],
+                        )
+                    continue
+                return AccountIdentity(id=user_id, username=candidate)
+        raise DuplicateAccountError("Spielername bereits vergeben.")
+
     def save_session(self, token: str, user_id: str, lifetime: int) -> None:
         """Persist only a digest of the bearer token and prune expired rows."""
         with (

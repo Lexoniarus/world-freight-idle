@@ -17,6 +17,8 @@ import { OverlayData, previewFeatures } from "./map/overlay-data.js";
 import { GameApplication } from "./application.js";
 import { money, number } from "./format.js";
 import { formatDuration } from "./time.js";
+import { SupabaseBrowserAuth } from "./supabase-auth.js";
+import { AuthController } from "./controllers/auth-controller.js";
 
 const hub = {
   id: "berlin",
@@ -156,6 +158,7 @@ test("API client sends credentials only to API v1 and aborts pending transport",
     },
     () => {},
   );
+  api.setAccessTokenProvider(async () => "verified-session-token");
   assert.deepEqual(
     await api.request("/fleet/purchase", {
       method: "POST",
@@ -167,11 +170,97 @@ test("API client sends credentials only to API v1 and aborts pending transport",
   assert.equal(calls[0].options.credentials, "same-origin");
   assert.equal(calls[0].options.redirect, "error");
   assert.equal(calls[0].options.headers.get("X-Freight-Request"), "1");
+  assert.equal(calls[0].options.headers.get("Authorization"), "Bearer verified-session-token");
   assert.deepEqual(JSON.parse(calls[0].options.body), { model_id: "regional" });
   await assert.rejects(api.request("https://other.test/"), /API-relative/);
   await assert.rejects(api.request("//other.test/"), /API-relative/);
   api.destroy();
   assert.equal(calls[0].options.signal.aborted, true);
+});
+
+test("Supabase browser auth delegates session lifecycle without privileged keys", async () => {
+  const calls = [];
+  const client = {
+    auth: {
+      getSession: async () => ({ data: { session: { access_token: "token" } }, error: null }),
+      signUp: async (credentials) => {
+        calls.push(["register", credentials]);
+        return { data: { session: null }, error: null };
+      },
+      signInWithPassword: async (credentials) => {
+        calls.push(["login", credentials]);
+        return { error: null };
+      },
+      signOut: async () => {
+        calls.push(["logout"]);
+        return { error: null };
+      },
+      stopAutoRefresh: () => calls.push(["destroy"]),
+    },
+  };
+  const factory = (url, key, options) => {
+    calls.push(["create", url, key, options.auth]);
+    return client;
+  };
+  const auth = new SupabaseBrowserAuth(
+    { url: "https://project.supabase.co", publishable_key: "sb_publishable_test" },
+    factory,
+  );
+  assert.equal(await auth.accessToken(), "token");
+  assert.equal(await auth.register("pilot@example.test", "password", "Pilot"), false);
+  await auth.login("pilot@example.test", "password");
+  await auth.logout();
+  auth.destroy();
+  assert.deepEqual(calls.slice(1), [
+    [
+      "register",
+      {
+        email: "pilot@example.test",
+        password: "password",
+        options: { data: { username: "Pilot" } },
+      },
+    ],
+    ["login", { email: "pilot@example.test", password: "password" }],
+    ["logout"],
+    ["destroy"],
+  ]);
+});
+
+test("auth controller uses email for Supabase and keeps username registration metadata", async () => {
+  const calls = [];
+  const redirects = [];
+  const root = document.createElement("div");
+  document.body.replaceChildren(root);
+  const supabaseAuth = {
+    login: async (...values) => calls.push(["login", ...values]),
+    register: async (...values) => {
+      calls.push(["register", ...values]);
+      return false;
+    },
+    destroy: () => calls.push(["destroy"]),
+  };
+  const api = {
+    request: async () => calls.push(["legacy"]),
+    destroy: () => calls.push(["api-destroy"]),
+  };
+  const controller = new AuthController(root, api, (path) => redirects.push(path), supabaseAuth);
+  controller.start();
+  assert.equal(requiredElement("#email-group").hidden, false);
+  assert.equal(requiredElement("#username-group").hidden, true);
+  requiredElement("#email").value = "pilot@example.test";
+  requiredElement("#password").value = "password-1234";
+  await controller.submitCredentials();
+  assert.deepEqual(calls[0], ["login", "pilot@example.test", "password-1234"]);
+  assert.deepEqual(redirects, ["/"]);
+
+  controller.setMode(true);
+  requiredElement("#username").value = "Pilot";
+  await controller.submitCredentials();
+  assert.deepEqual(calls[1], ["register", "pilot@example.test", "password-1234", "Pilot"]);
+  assert.match(requiredElement("#auth-status").textContent, /bestätige/);
+  assert.deepEqual(redirects, ["/"]);
+  controller.destroy();
+  assert.deepEqual(calls.slice(2), [["destroy"], ["api-destroy"]]);
 });
 
 test("API errors distinguish expired sessions, validation errors and non-JSON failures", async () => {

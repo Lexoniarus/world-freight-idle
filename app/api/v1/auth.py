@@ -12,6 +12,24 @@ from app.services.auth import SESSION_COOKIE, SESSION_LIFETIME, AuthService
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
+@router.get("/config")
+def auth_config(request: Request) -> dict:
+    """Expose only browser-safe Supabase Auth configuration."""
+    settings = request.app.state.settings
+    enabled = bool(
+        settings.supabase_url
+        and settings.supabase_publishable_key
+        and settings.supabase_jwks_url
+    )
+    return {
+        "enabled": enabled,
+        "url": settings.supabase_url if enabled else None,
+        "publishable_key": (
+            settings.supabase_publishable_key if enabled else None
+        ),
+    }
+
+
 def check_attempt(request: Request, auth: AuthService) -> None:
     """Throttle by socket peer; never trust arbitrary forwarding headers."""
     peer = request.client.host if request.client else "unknown"

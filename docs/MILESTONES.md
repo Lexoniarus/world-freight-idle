@@ -288,3 +288,27 @@ Gesamtabnahme: Quality-Gate mit 100 % app-Statement-Coverage, vollständige
 Browserregression und Leistungsabnahme. Tatsächlicher Stand und Grenzen stehen
 im [Qualitätsbericht](../QUALITY_REPORT.md); Verantwortlichkeiten in
 [ADR 0008](adr/0008-shared-market-stock.md).
+
+## Supabase/PostgreSQL production runtime (28.09.2026)
+
+Produktiv verwendet die Anwendung eine serverseitige PostgreSQL-Verbindung zu
+Supabase. `game`, `world_catalogue` und `vehicle_catalogue` sind getrennte
+Schemas derselben PostgreSQL-Instanz. Browserzugriff auf diese Schemas findet
+nicht statt; der Browser bleibt an `/api/v1` gebunden.
+
+`DATABASE_URL` aktiviert den PostgreSQL-Pfad. Ohne diese Variable bleiben die
+bestehenden SQLite-Adapter ausschließlich für Tests und explizite Offline-
+Werkzeuge verfügbar. Die Produktions-Composition-Root wählt PostgreSQL für
+Spielzustand und beide Referenzkataloge. Der World-/Vehicle-Snapshot wird wie
+zuvor pro Prozess validiert und gecacht.
+
+Die PostgreSQL-Game-UoW hält die bestehende atomare Semantik konservativ durch
+einen transaktionsgebundenen Advisory Lock aufrecht. Provider-Awaits bleiben
+außerhalb von Schreibtransaktionen. Read-Transaktionen verwenden einen
+repeatable-read/read-only Snapshot. Der Connection-Pool gehört dem jeweiligen
+Runtime-/Prewarm-Prozess und wird beim Shutdown geschlossen.
+
+Historische Snapshot-Texte bleiben Text und werden nicht still nach JSONB
+migriert. SQLite-spezifische JSON1-Leseprojektionen werden ausschließlich an
+der PostgreSQL-Adaptergrenze in native PostgreSQL-JSONB-Ausdrücke übersetzt.
+Die Domain-, Service- und HTTP-Verträge ändern sich dadurch nicht.

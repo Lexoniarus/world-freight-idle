@@ -33,16 +33,30 @@ export function renderAuth() {
           ><button id="register-tab" aria-pressed="false">Konto erstellen</button>
         </div>
         <form id="auth-form">
-          <label for="username">Spielername</label
-          ><input
-            id="username"
-            name="username"
-            autocomplete="username"
-            placeholder="Dein Spielername"
-            minlength="3"
-            maxlength="24"
-            required
-          />
+          <div id="email-group" hidden>
+            <label for="email">E-Mail</label
+            ><input
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              placeholder="name@beispiel.de"
+              required
+              disabled
+            />
+          </div>
+          <div id="username-group">
+            <label for="username">Spielername</label
+            ><input
+              id="username"
+              name="username"
+              autocomplete="username"
+              placeholder="Dein Spielername"
+              minlength="3"
+              maxlength="24"
+              required
+            />
+          </div>
           <label for="password">Passwort</label
           ><input
             id="password"

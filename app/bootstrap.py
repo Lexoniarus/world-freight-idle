@@ -35,6 +35,11 @@ from app.repositories.market_preparation import SqlitePreparationStore
 from app.repositories.market_startup import SqliteMarketStartupStore
 from app.repositories.market_stock import SqliteMarketStockStore
 from app.repositories.market_stock_upgrade import MarketStockUpgradeRepository
+from app.repositories.postgres_catalogues import (
+    PostgresVehicleCatalogue,
+    PostgresWorldCatalogue,
+)
+from app.repositories.postgres_database import PostgresGameDatabase
 from app.repositories.preferences import SqlitePreferenceStore
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.relational_traffic import SqliteTrafficReader
@@ -142,13 +147,24 @@ def build_routing_anchor_resolver(
     )
 
 
+def build_game_database(settings: Settings) -> SqliteGameDatabase:
+    """Select PostgreSQL for production and SQLite for local fixtures."""
+    if settings.database_url:
+        return PostgresGameDatabase(
+            settings.database_url,
+            settings.game_database_schema,
+            settings.database_pool_size,
+        )
+    return SqliteGameDatabase(settings.db_path)
+
+
 def build_game_runtime(
     settings: Settings,
     routing_client: httpx.AsyncClient,
     rng_seed: int | None = None,
 ) -> GameRuntime:
     """Initialize only relational storage and shared application resources."""
-    database = SqliteGameDatabase(settings.db_path)
+    database = build_game_database(settings)
     database.initialize()
     cache = SqliteProviderCache(database)
     evidence = SqliteRoutingReadinessStore(database)
@@ -232,7 +248,11 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
 
 
 def build_vehicle_catalogue(settings: Settings) -> SqliteVehicleCatalogue:
-    """Resolve the bundled catalogue independently of the player database."""
+    """Resolve production PostgreSQL or an explicit local fixture."""
+    if settings.database_url:
+        return PostgresVehicleCatalogue(
+            settings.database_url, settings.vehicle_database_schema
+        )
     return SqliteVehicleCatalogue(
         settings.vehicle_catalogue_path
         or settings.base_dir / "data" / "world_freight_vehicle_catalog.sqlite3"
@@ -316,12 +336,18 @@ def build_profile_maintenance_service(
 
 def build_world_catalogue(settings: Settings) -> CachedWorldCatalogue:
     """Resolve one lazily cached immutable runtime world revision."""
-    source = SqliteWorldCatalogue(
-        settings.world_catalogue_path
-        or settings.base_dir
-        / "data"
-        / "world_freight_company_facility_mvp.sqlite3"
-    )
+    source: WorldCatalogue
+    if settings.database_url:
+        source = PostgresWorldCatalogue(
+            settings.database_url, settings.world_database_schema
+        )
+    else:
+        source = SqliteWorldCatalogue(
+            settings.world_catalogue_path
+            or settings.base_dir
+            / "data"
+            / "world_freight_company_facility_mvp.sqlite3"
+        )
     return CachedWorldCatalogue(source)
 
 
@@ -454,7 +480,7 @@ def build_routing_audit(runtime: GameRuntime) -> SqliteRoutingAudit:
 
 
 def build_economy_audit(root: Path, seed: int) -> EconomyAuditService:
-    """Compose reproducible audits from read-only reference catalogues."""
+    """Compose reproducible audits from explicit offline catalogues."""
     return EconomyAuditService(
         SqliteVehicleCatalogue(
             root / "data/world_freight_vehicle_catalog.sqlite3"

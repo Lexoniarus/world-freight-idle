@@ -23,6 +23,9 @@ class SqliteGameDatabase:
             "game_transaction", default=None
         )
 
+    def close(self) -> None:
+        """Release shared resources; SQLite keeps no persistent handle."""
+
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
         """Reuse the transaction connection or reliably close a fresh one."""

@@ -2,10 +2,16 @@ services:
   game:
     build: .
     ports:
-      - "8000:8000"
+      - "${PORT:-8000}:8000"
     environment:
-      VEHICLE_CATALOGUE_PATH: "/app/catalogue/world_freight_vehicle_catalog.sqlite3"
-      WORLD_CATALOGUE_PATH: "/app/catalogue/world_freight_company_facility_mvp.sqlite3"
+      DATABASE_URL: "${DATABASE_URL:?Set DATABASE_URL}"
+      GAME_DATABASE_SCHEMA: "game"
+      WORLD_DATABASE_SCHEMA: "world_catalogue"
+      VEHICLE_DATABASE_SCHEMA: "vehicle_catalogue"
+      DATABASE_POOL_SIZE: "5"
+      SUPABASE_URL: "${SUPABASE_URL:?Set SUPABASE_URL}"
+      SUPABASE_PUBLISHABLE_KEY: "${SUPABASE_PUBLISHABLE_KEY:?Set SUPABASE_PUBLISHABLE_KEY}"
+      SUPABASE_JWKS_URL: "${SUPABASE_JWKS_URL:?Set SUPABASE_JWKS_URL}"
       GAME_TIME_SCALE: "1"
       LOG_LEVEL: "INFO"
       VALHALLA_URL: "https://valhalla1.openstreetmap.de"
@@ -13,5 +19,3 @@ services:
       HTTP_USER_AGENT: "WorldFreightIdleMVP/0.4 (local-development)"
     volumes:
       - ./data:/app/data
-      - ./data/world_freight_vehicle_catalog.sqlite3:/app/catalogue/world_freight_vehicle_catalog.sqlite3:ro
-      - ./data/world_freight_company_facility_mvp.sqlite3:/app/catalogue/world_freight_company_facility_mvp.sqlite3:ro

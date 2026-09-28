@@ -59,8 +59,9 @@ Formatierung: `npm run format`. Die Python-Grenze von 79 Zeichen bleibt
 unverändert; Prettier verwendet für JavaScript/CSS eine Zielbreite von 100.
 
 Katalogregeln: technische Referenzdaten und Spielstände bleiben getrennt.
-Katalog-Repositories öffnen SQLite nur lesend; Kauf-/Freigaberegeln liegen im
-Service. Gekaufte Werte sind Snapshots. JSDoc beschreibt auch injizierte
+Produktive Katalog-Repositories lesen PostgreSQL/Supabase ausschließlich;
+lokale SQLite-Adapter bleiben für Tests und explizite Offline-Werkzeuge.
+Kauf-/Freigaberegeln liegen im Service. Gekaufte Werte sind Snapshots. JSDoc beschreibt auch injizierte
 Abhängigkeiten und neue Modell-/Quote-Projektionen; dynamisches API-JSON
 entbindet öffentliche Komponenten nicht von ihren Parameterverträgen.
 

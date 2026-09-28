@@ -72,7 +72,11 @@ class AuthService:
     def authenticate(self, username: str, password: str) -> AccountIdentity:
         """Use one generic failure message for invalid credentials."""
         user = self.accounts.find_user(username)
-        encoded = user["password_hash"] if user else self._dummy_hash
+        encoded = (
+            user["password_hash"]
+            if user and user["password_hash"] != "supabase-managed"
+            else self._dummy_hash
+        )
         valid = self.hasher.verify_password(password, encoded)
         if not valid or user is None:
             LOGGER.info("Login rejected", extra={"event": "auth.failure"})

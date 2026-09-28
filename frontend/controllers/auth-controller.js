@@ -6,11 +6,13 @@ import { icon } from "../ui/illustrations.js";
 export class AuthController {
   /** @param {HTMLElement} root
    * @param {import("../api.js").GameApiClient} api
-   * @param {import('../types.js').Navigate} redirect */
-  constructor(root, api, redirect) {
+   * @param {import('../types.js').Navigate} redirect
+   * @param {import('../supabase-auth.js').SupabaseBrowserAuth | null} [supabaseAuth] */
+  constructor(root, api, redirect, supabaseAuth = null) {
     this.root = root;
     this.api = api;
     this.redirect = redirect;
+    this.supabaseAuth = supabaseAuth;
     this.registering = false;
     this.disposed = false;
     this.listeners = new AbortController();
@@ -31,6 +33,7 @@ export class AuthController {
       },
       options,
     );
+    this.setMode(false);
   }
   /** Present login or registration without replacing the form.
    * @param {boolean} registering
@@ -57,6 +60,14 @@ export class AuthController {
       "autocomplete",
       registering ? "new-password" : "current-password",
     );
+    const emailGroup = requiredElement("#email-group");
+    const email = /** @type {HTMLInputElement} */ (requiredElement("#email"));
+    const usernameGroup = requiredElement("#username-group");
+    const username = /** @type {HTMLInputElement} */ (requiredElement("#username"));
+    emailGroup.hidden = !this.supabaseAuth;
+    email.disabled = !this.supabaseAuth;
+    usernameGroup.hidden = Boolean(this.supabaseAuth && !registering);
+    username.disabled = Boolean(this.supabaseAuth && !registering);
     requiredElement("#submit-auth").replaceChildren(
       registering ? "Konto erstellen & losfahren " : "Anmelden ",
       icon("arrow", 18),
@@ -80,10 +91,29 @@ export class AuthController {
     requiredElement("#auth-status").textContent = "Bitte warten …";
     const form = /** @type {HTMLFormElement} */ (requiredElement("#auth-form"));
     try {
-      await this.api.request(this.registering ? "/auth/register" : "/auth/login", {
-        method: "POST",
-        body: JSON.stringify(Object.fromEntries(new FormData(form))),
-      });
+      const fields = Object.fromEntries(new FormData(form));
+      if (this.supabaseAuth) {
+        if (this.registering) {
+          const ready = await this.supabaseAuth.register(
+            String(fields.email),
+            String(fields.password),
+            String(fields.username),
+          );
+          if (!ready) {
+            requiredElement("#auth-status").textContent =
+              "Bitte bestätige deine E-Mail-Adresse und melde dich danach an.";
+            this.setBusy(false);
+            return;
+          }
+        } else {
+          await this.supabaseAuth.login(String(fields.email), String(fields.password));
+        }
+      } else {
+        await this.api.request(this.registering ? "/auth/register" : "/auth/login", {
+          method: "POST",
+          body: JSON.stringify(fields),
+        });
+      }
       if (!this.disposed) this.redirect("/");
     } catch (error) {
       if (this.disposed) return;
@@ -97,6 +127,7 @@ export class AuthController {
   destroy() {
     this.disposed = true;
     this.listeners.abort();
+    this.supabaseAuth?.destroy();
     this.api.destroy();
   }
 }

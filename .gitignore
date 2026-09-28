@@ -13,7 +13,7 @@ __pycache__/
 coverage.xml
 htmlcov/
 
-# Runtime databases, backups and exports (only the two reference catalogues are exceptions)
+# Runtime/reference databases, backups and exports stay outside Git
 data/*
 *.db
 *.db-*
@@ -21,7 +21,6 @@ data/*
 *.sqlite-*
 *.sqlite3
 *.sqlite3-*
-!data/world_freight_vehicle_catalog.sqlite3
 backups/
 *.bak
 *.dump
@@ -52,5 +51,3 @@ Thumbs.db
 Desktop.ini
 *.swp
 *.swo
-
-!data/world_freight_company_facility_mvp.sqlite3

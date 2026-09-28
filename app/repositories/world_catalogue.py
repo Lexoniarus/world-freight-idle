@@ -221,7 +221,7 @@ def read_cargo(
             s.retrieved_at
         FROM facility_nhm_profiles p
         JOIN nhm_codes n USING(nhm_row_id)
-        LEFT JOIN sources s USING(source_id)
+        LEFT JOIN sources s ON s.source_id=p.source_id
         ORDER BY p.facility_id, p.profile_id
     """)
     for row in rows:
@@ -255,29 +255,22 @@ def read_cargo(
 
 
 def read_facility(
-    connection: sqlite3.Connection,
     row: sqlite3.Row,
     companies: dict[int, Company],
     cities: dict[str, City],
     cargo: tuple[FacilityNhmProfile, ...],
     version: str,
+    sources: tuple[SourceReference, ...],
+    geocoding_evidence: tuple[sqlite3.Row, ...],
+    aliases: tuple[str, ...],
+    handled_goods: tuple[DocumentedGood, ...],
 ) -> Facility:
     """Join all endpoint facts into a self-contained immutable reference."""
     uid = validate_uid(row["facility_uid"])
-    sources = tuple(
-        source_reference(source)
-        for source in connection.execute(
-            "SELECT * FROM facility_sources WHERE facility_id=?",
-            (row["facility_id"],),
-        )
-    )
     if not sources:
         raise ValueError("Facility without provenance")
     evidence = []
-    for entry in connection.execute(
-        "SELECT * FROM facility_geocoding_evidence WHERE facility_id=?",
-        (row["facility_id"],),
-    ):
+    for entry in geocoding_evidence:
         if (
             entry["latitude"] == row["latitude"]
             and entry["longitude"] == row["longitude"]
@@ -309,13 +302,6 @@ def read_facility(
                     entry["provider"],
                 )
             )
-    aliases = tuple(
-        alias[0]
-        for alias in connection.execute(
-            "SELECT alias FROM facility_aliases WHERE facility_uid=?",
-            (uid,),
-        )
-    )
     return Facility(
         uid,
         companies.get(row["company_id"]),
@@ -338,31 +324,7 @@ def read_facility(
         cargo,
         version,
         aliases,
-        read_handled_goods(connection, row["facility_id"]),
-    )
-
-
-def read_handled_goods(
-    connection: sqlite3.Connection,
-    facility_id: int,
-) -> tuple[DocumentedGood, ...]:
-    """Keep exact documented goods separate from simulated behavior."""
-    return tuple(
-        DocumentedGood(
-            row["goods_description"],
-            row["nst_code"],
-            source_reference(row),
-        )
-        for row in connection.execute(
-            """SELECT g.goods_description,c.nst_code,
-                s.base_url AS source_url,g.evidence_type AS source_role,
-                s.retrieved_at AS verified_at
-            FROM facility_handled_goods g
-            LEFT JOIN cargo_types c USING(cargo_type_id)
-            JOIN sources s USING(source_id) WHERE g.facility_id=?
-            ORDER BY g.handled_goods_id""",
-            (facility_id,),
-        )
+        handled_goods,
     )
 
 
@@ -373,14 +335,55 @@ def read_world_snapshot(connection: sqlite3.Connection) -> WorldSnapshot:
     cities = read_cities(connection, countries)
     companies = read_companies(connection, countries)
     cargo = read_cargo(connection)
+    facility_sources: dict[int, list[SourceReference]] = {}
+    for source in connection.execute(
+        "SELECT * FROM facility_sources ORDER BY facility_id"
+    ):
+        facility_sources.setdefault(int(source["facility_id"]), []).append(
+            source_reference(source)
+        )
+    geocoding_evidence: dict[int, list[sqlite3.Row]] = {}
+    for evidence in connection.execute(
+        "SELECT * FROM facility_geocoding_evidence ORDER BY facility_id"
+    ):
+        geocoding_evidence.setdefault(int(evidence["facility_id"]), []).append(
+            evidence
+        )
+    facility_aliases: dict[str, list[str]] = {}
+    for alias in connection.execute(
+        "SELECT facility_uid,alias FROM facility_aliases ORDER BY facility_uid"
+    ):
+        facility_aliases.setdefault(alias["facility_uid"], []).append(
+            alias["alias"]
+        )
+    handled_goods: dict[int, list[DocumentedGood]] = {}
+    for good in connection.execute("""
+        SELECT g.facility_id,g.goods_description,c.nst_code,
+            s.base_url AS source_url,g.evidence_type AS source_role,
+            s.retrieved_at AS verified_at
+        FROM facility_handled_goods g
+        LEFT JOIN cargo_types c USING(cargo_type_id)
+        JOIN sources s ON s.source_id=g.source_id
+        ORDER BY g.facility_id,g.handled_goods_id
+    """):
+        handled_goods.setdefault(int(good["facility_id"]), []).append(
+            DocumentedGood(
+                good["goods_description"],
+                good["nst_code"],
+                source_reference(good),
+            )
+        )
     facilities = tuple(
         read_facility(
-            connection,
             row,
             companies,
             cities,
             tuple(cargo.get(row["facility_id"], [])),
             version,
+            tuple(facility_sources.get(row["facility_id"], ())),
+            tuple(geocoding_evidence.get(row["facility_id"], ())),
+            tuple(facility_aliases.get(row["facility_uid"], ())),
+            tuple(handled_goods.get(row["facility_id"], ())),
         )
         for row in connection.execute("""
         SELECT f.*,t.code AS type_code FROM facilities f
