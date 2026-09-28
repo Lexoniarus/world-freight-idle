@@ -33,6 +33,8 @@ from app.repositories.leaderboard import SqliteLeaderboardReader
 from app.repositories.legacy_game_import import LegacyGameImporter
 from app.repositories.market_preparation import SqlitePreparationStore
 from app.repositories.market_startup import SqliteMarketStartupStore
+from app.repositories.market_stock import SqliteMarketStockStore
+from app.repositories.market_stock_upgrade import MarketStockUpgradeRepository
 from app.repositories.preferences import SqlitePreferenceStore
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.relational_traffic import SqliteTrafficReader
@@ -42,6 +44,8 @@ from app.repositories.routing_readiness import (
     SqliteOfferRouteStore,
     SqliteRoutingReadinessStore,
 )
+from app.repositories.runtime_views import SqliteRuntimeReader
+from app.repositories.transport_repair import TransportRepairRepository
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.repositories.world_geography import WorldGeographyRepository
@@ -56,16 +60,23 @@ from app.services.map_locations import MapLocationService
 from app.services.market import MarketGenerator
 from app.services.market_candidates import MarketCandidateService
 from app.services.market_coverage import MarketCoverageService
+from app.services.market_demand import MarketDemandResolver
 from app.services.market_lifecycle import MarketLifecycleService
 from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
+from app.services.market_selection import MarketSelectionService
 from app.services.market_startup import MarketStartupService
+from app.services.market_templates import MarketTemplateService
 from app.services.preferences import PreferenceService
-from app.services.preparation_batch import MarketPreparationBatchService
+from app.services.preparation_lease import PreparationLease
 from app.services.preparation_worker import MarketPreparationWorker
 from app.services.profile_maintenance import ProfileMaintenanceService
 from app.services.routing_anchors import RoutingAnchorResolver
 from app.services.routing_readiness import RoutingReadinessService
+from app.services.runtime_views import RuntimeViewService
+from app.services.stock_planning import StockPlanningService
+from app.services.stock_preparation import StockPreparationBatch
+from app.services.stock_publication import StockPublicationService
 from app.services.vehicle_coverage import VehicleCoverageService
 
 
@@ -142,6 +153,7 @@ def build_game_runtime(
     cache = SqliteProviderCache(database)
     evidence = SqliteRoutingReadinessStore(database)
     jobs = SqlitePreparationStore(database)
+    SqliteMarketStockStore.initialize(database)
     limiter = ProviderRequestLimiter(
         settings.valhalla_concurrency, settings.valhalla_minimum_interval
     )
@@ -196,6 +208,9 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
     preparation = build_market_preparation(runtime, user_id)
     game = GameService(
         preparation=preparation,
+        market_selection=(
+            MarketSelectionService(preparation.policy) if preparation else None
+        ),
         unit_of_work=SqliteGameUnitOfWork(runtime.database, user_id),
         world=runtime.world,
         router=runtime.router,
@@ -226,8 +241,12 @@ def build_vehicle_catalogue(settings: Settings) -> SqliteVehicleCatalogue:
 
 def build_fleet_service(game: GameService, settings: Settings) -> FleetService:
     """Assemble purchasing against the authenticated player's unit of work."""
+    preparation = game.market_lifecycle.preparation
     return FleetService(
-        game.unit_of_work, build_vehicle_catalogue(settings), game.world
+        game.unit_of_work,
+        build_vehicle_catalogue(settings),
+        game.world,
+        partial(preparation.request, changed=True) if preparation else None,
     )
 
 
@@ -241,6 +260,34 @@ def build_traffic_reader(
 ) -> TrafficReader:
     """Build the relational cross-player traffic projection."""
     return SqliteTrafficReader(runtime.database)
+
+
+def build_runtime_reader(runtime: GameRuntime) -> SqliteRuntimeReader:
+    """Compose lightweight reads separately from provider-owned resources."""
+    return SqliteRuntimeReader(runtime.database)
+
+
+def build_transport_repair(source: Path) -> TransportRepairRepository:
+    """Wire explicit offline repair without opening the active game file."""
+    return TransportRepairRepository(source)
+
+
+def build_market_stock_upgrade(
+    source: Path, now: float
+) -> MarketStockUpgradeRepository:
+    """Wire explicit offline schema adoption without opening active storage."""
+    return MarketStockUpgradeRepository(source, now)
+
+
+def build_runtime_view(
+    runtime: GameRuntime, user_id: str
+) -> RuntimeViewService:
+    """Bind compact runtime reads to authenticated game mutations."""
+    return RuntimeViewService(
+        build_player_service(runtime, user_id),
+        build_runtime_reader(runtime),
+        user_id,
+    )
 
 
 def build_leaderboard_reader(runtime: GameRuntime) -> LeaderboardReader:
@@ -327,12 +374,18 @@ def build_market_startup(runtime: GameRuntime) -> MarketStartupService:
 
     def lifecycle(user_id: str) -> MarketLifecycleService:
         """Bind market-only operations without initializing or settling."""
+        preparation = build_market_preparation(runtime, user_id)
         return MarketLifecycleService(
             SqliteGameUnitOfWork(runtime.database, user_id),
             runtime.market,
             runtime.market_scope,
             runtime.clock,
-            build_market_preparation(runtime, user_id),
+            preparation,
+            selection=(
+                MarketSelectionService(preparation.policy)
+                if preparation
+                else None
+            ),
         )
 
     return MarketStartupService(
@@ -361,37 +414,37 @@ def build_market_preparation(
         runtime.preparation_jobs,
         runtime.clock,
         runtime.database,
+        SqliteMarketStockStore(runtime.database, user_id),
     )
 
 
 def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
     """Assemble owned preparation without initializing player state."""
     assert runtime.preparation_jobs is not None
+    assert runtime.readiness is not None
+    lease = PreparationLease(runtime.readiness.store, runtime.clock)
+    runtime.readiness.worker_owner = lease.owner
 
-    def batch(user_id: str) -> MarketPreparationBatchService:
+    def batch(user_id: str) -> StockPreparationBatch:
         """Compose one player's preparation without changing state."""
-        lifecycle = MarketLifecycleService(
-            SqliteGameUnitOfWork(runtime.database, user_id),
-            runtime.market,
-            runtime.market_scope,
-            runtime.clock,
-            build_market_preparation(runtime, user_id),
-        )
-
-        preparation = lifecycle.preparation
+        preparation = build_market_preparation(runtime, user_id)
         assert preparation is not None
-        return MarketPreparationBatchService(
-            lifecycle.unit_of_work.repository,
-            runtime.market.candidates,
-            runtime.market.coverage,
-            runtime.market_scope,
-            preparation,
-            lifecycle.refresh,
-            runtime.market.vehicle_coverage,
+        return StockPreparationBatch(
+            StockPublicationService(
+                SqliteGameUnitOfWork(runtime.database, user_id),
+                runtime.market,
+                preparation,
+                MarketDemandResolver(runtime.market.candidates),
+                lease.owned,
+            ),
+            StockPlanningService(preparation.policy),
+            MarketTemplateService(
+                runtime.market.factory, preparation.policy, runtime.clock
+            ),
         )
 
     return MarketPreparationWorker(
-        runtime.preparation_jobs, batch, runtime.clock
+        runtime.preparation_jobs, batch, runtime.clock, lease
     )
 
 

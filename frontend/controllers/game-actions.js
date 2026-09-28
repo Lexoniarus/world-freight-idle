@@ -3,7 +3,7 @@ import { requiredElement } from "../ui/dom.js";
 
 /** Execute game use cases; views only emit action names and resource IDs. */
 export class GameActions {
-  /** @param {{focus?: import("./map-focus-controller.js").MapFocusController, request: import('../types.js').RequestJson, state: import("../state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../map/world-map.js").WorldMap | null, contractMarket: import("./contract-market-controller.js").ContractMarketController, notify: import('../types.js').Notify, navigate: import('../types.js').Navigate, refresh: () => Promise<void>, logout: () => Promise<void>}} dependencies */
+  /** @param {{focus?: import("./map-focus-controller.js").MapFocusController, request: import('../types.js').RequestJson, state: import("../state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../types.js").GameMap | null, contractMarket: import("./contract-market-controller.js").ContractMarketController, notify: import('../types.js').Notify, navigate: import('../types.js').Navigate, refresh: () => Promise<void>, logout: () => Promise<void>}} dependencies */
   constructor({
     request,
     state,
@@ -56,11 +56,15 @@ export class GameActions {
   /** Show the route for an active transport if it still exists.
    * @param {string} id
    *
-   * @returns {void}
+   * @returns {Promise<void>}
    */
-  focusTransport(id) {
-    const trip = this.state.data?.transports.find((item) => item.id === id);
-    if (trip) this.map?.focusRoute(trip.route_geojson);
+  async focusTransport(id) {
+    try {
+      const trip = await this.state.loadTransportRoute(id);
+      if (trip && !this.disposed) this.map?.focusRoute(trip.route_geojson);
+    } catch (error) {
+      if (!this.disposed && error.name !== "AbortError") this.notify(error.message);
+    }
   }
   /** Cancel the old selection's quote without blocking the new selection.
    * @returns {void}

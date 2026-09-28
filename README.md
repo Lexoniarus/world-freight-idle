@@ -15,6 +15,9 @@ freigegebener öffentlicher Produktionsdienst.
 - Registrierung, Anmeldung, getrennte persistente Profile und Lieferungsrangliste.
 - Aufträge auswählen, Fahrzeug disponieren, parallele Transporte verfolgen,
   Offline-Ankünfte abrechnen und die Flotte erweitern.
+- Drei fahrbare Angebote je Streckentyp und ausgewähltem LKW; gemeinsamer
+  Hintergrundvorrat mit mindestens zehn Vorlagen je Bedarfsstadt/Modell/Band.
+  Jede Vorlage ist einmal je Spieler nutzbar. Angebote verfallen nicht zeitlich.
 - 14 DB-Fahrzeugmodelle mit Kaufpreis, Nutzlast, Reputationsfreigabe und
   Kilometerkosten sowie Energieprofilen und Höchstgeschwindigkeit; lokale
   Karten-, Front- und Seitenbilder für alle Modelle.
@@ -66,8 +69,11 @@ git config --local core.hooksPath .githooks
 python main.py
 ```
 
-Danach [Anmeldung öffnen](http://127.0.0.1:8000/login). Mit aktivierter virtueller
-Umgebung genügt überall `python main.py`. Nach Frontendänderungen neu bauen.
+Danach [Anmeldung öffnen](http://127.0.0.1:8000/login). `python main.py` verwendet
+die vorhandene Projekt-`.venv` automatisch, wenn keine virtuelle Umgebung aktiv
+ist. Eine ausdrücklich aktivierte Umgebung wird beibehalten. Der Einstiegspunkt
+kann auch über seinen absoluten Pfad aus einem anderen Arbeitsordner gestartet
+werden. Nach Frontendänderungen neu bauen.
 Für den reinen Python-Spielbetrieb genügt requirements.txt statt requirements-dev.txt.
 
 Der Server bindet standardmäßig an `0.0.0.0:8000`. Im selben WLAN die LAN-IP des
@@ -117,7 +123,7 @@ Keine automatische Migration und kein öffentlicher Pflege-Endpunkt.
 
 ## Relationale Spielstände und Offline-Übernahme
 
-Der Server verwendet ausschließlich das relationale Schema 1.1.0. Alte KV-
+Der Server verwendet ausschließlich das relationale Schema 1.2.0. Alte KV-
 Datenbanken werden beim Start abgewiesen. Neue leere Datenbanken benötigen
 keine Migration. Für Altbestände den Server stoppen und zuerst prüfen:
 
@@ -132,6 +138,18 @@ Nach erfolgreicher Prüfung kann NEW.db als game.db aktiviert werden; das Backup
 bleibt erhalten. Sessions/Caches werden nicht übernommen, neue Anmeldung ist
 nötig. Die drei lokalen Testkonten wurden am 23.09.2026 so übernommen.
 Details: [Persistenz](docs/RELATIONAL_STATE.md), [Tests](docs/TESTING.md).
+
+Bestehende 1.1.0-Spielstände benötigen für dauerhaft gültige Angebote eine
+gesonderte Übernahme mit Backup und neuer Ausgabe, **vor dem nächsten Start**:
+
+```powershell
+python scripts/upgrade_market_stock.py --source data/game.db --check
+python scripts/upgrade_market_stock.py --source data/game.db --backup data/backups/before-stock.db --output data/stock-test.db
+```
+
+Historische Transporte und gültige Angebotskonditionen bleiben erhalten.
+Die Aktivierung erfolgt erst nach Kopie-Abnahme und erneutem frischem Backup
+bei gestoppten Schreibern: [Betriebsanleitung](docs/RUNTIME_OPERATIONS.md).
 
 ## Entwicklung, Branches und Qualität
 
@@ -237,12 +255,25 @@ Details: [Routenarchitektur](docs/ARCHITECTURE.md) und
 ## Frontend-v2: aktuelle Wirtschaftsregeln
 
 Mengen bevorzugen hohe Auslastung innerhalb der World-Profile. NHM-Mindestfracht
-und tatsächliche Wartung/Energieeinkäufe sind getrennt gespeichert. Beim
-Start werden offene Märkte aller Profile atomar für eigene idle-Städte neu
-aufgebaut. Firmenfarben sind accountbezogen persistent; Kartenfahrzeuge
+und tatsächliche Wartung/Energieeinkäufe sind getrennt gespeichert. Der
+Vorbereitungsprozess veröffentlicht offene Märkte bedarfsgesteuert und atomar
+für eigene idle-Städte. Firmenfarben sind accountbezogen persistent; Kartenfahrzeuge
 und Analytics besitzen konsistente Darstellung. Details: [Economy v2](docs/ECONOMY_V2.md).
 
 
-Nach diesem Update den Spielserver neu starten: Der Start validiert beide
-Kataloge und ersetzt offene Angebote atomar mit neuen Tarif-Snapshots.
+Nach diesem Update den Spielserver neu starten: Der API-Start validiert beide
+Kataloge; der separate Worker veröffentlicht Angebote mit aktuellen Tarif-Snapshots.
 Bereits laufende und abgeschlossene Transporte behalten ihre Konditionen.
+
+
+## Getrennte Runtime und Vorbereitung
+
+`python main.py` startet API und Prewarm in getrennten ueberwachten Prozessen.
+Alternativ `python main.py --role runtime` bzw. `--role prewarm` mit derselben
+Konfiguration. Der API-Start baut keine vollstaendigen Maerkte auf. Spielstand,
+Flotte, Markt, Verkehr und Routengeometrien laden unabhaengig.
+Die Zweiweg-Routingregel bleibt erhalten. Offline-Reparatur erzeugt ausschliesslich
+neue gepruefte Kopien; ein Push aktiviert keine Live-Datenbank.
+[Betrieb und Reparatur](docs/RUNTIME_OPERATIONS.md),
+[Architekturentscheidung](docs/adr/0007-runtime-preparation-and-route-projections.md),
+[Abnahme und Messbedingungen](docs/RUNTIME_ISOLATION_REVIEW.md).

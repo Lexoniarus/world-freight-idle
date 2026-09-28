@@ -1,6 +1,6 @@
 /** Delegate shell interactions without owning game rules or rendering. */
 export class InputController {
-  /** @param {{page: Document, navigate: import('../types.js').Navigate, actions: import("./game-actions.js").GameActions, panel: import("./panel-controller.js").PanelController, map: import("../map/world-map.js").WorldMap | null}} dependencies */
+  /** @param {{page: Document, navigate: import('../types.js').Navigate, actions: import("./game-actions.js").GameActions, panel: import("./panel-controller.js").PanelController, map: import("../types.js").GameMap | null}} dependencies */
   constructor({ page, navigate, actions, panel, map }) {
     this.page = page;
     this.navigate = navigate;

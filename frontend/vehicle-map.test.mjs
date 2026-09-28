@@ -243,7 +243,7 @@ test("unsupported public vehicle models keep the player-colored fallback", () =>
         model_name: "Unsupported vehicle",
         username: "Alice",
         player_color: "#123456",
-        is_own: true,
+        is_own: false,
         journey: {
           distance_km: 100,
           segments: [{ phase: "driving", starts_at: 0, ends_at: 10, start_km: 0, end_km: 100 }],
@@ -260,7 +260,7 @@ test("unsupported public vehicle models keep the player-colored fallback", () =>
       },
     ],
   });
-  const feature = overlays.vehicleFeatures(5).features[0];
+  const feature = overlays.multiplayerVehicleFeatures(5).features[0];
   assert.equal(feature.properties.hasIcon, false);
   assert.equal(feature.properties.playerColor, "#123456");
 });
@@ -270,27 +270,30 @@ test("game snapshots expose shared traffic failures instead of silently hiding t
   const requests = [];
   const state = new GameState(async (path) => {
     requests.push(path);
-    if (path === "/dashboard")
+    if (path === "/runtime")
       return {
         server_time: Date.now() / 1000,
         player: { cash: 1, completed: 0, reputation: 0 },
         transports: [],
+        vehicles: [],
       };
     if (path === "/fleet") return { vehicles: [] };
     if (path === "/contracts") return { contracts: [] };
-    if (path === "/map/traffic") {
+    if (path === "/map/traffic?representation=summary") {
       if (trafficFails) throw new Error("map offline");
       return { transports: [{ id: "public-trip" }] };
     }
     throw new Error(`unexpected ${path}`);
   });
   await state.refresh();
-  assert.deepEqual(state.data.traffic, [{ id: "public-trip" }]);
+  await state.refreshTraffic();
+  assert.equal(state.data.traffic[0].id, "public-trip");
   assert.equal(state.data.trafficAvailable, true);
-  assert.equal(requests.includes("/map/traffic"), true);
+  assert.equal(requests.includes("/map/traffic?representation=summary"), true);
   trafficFails = true;
   await state.refresh();
-  assert.deepEqual(state.data.traffic, [{ id: "public-trip" }]);
+  await state.refreshTraffic();
+  assert.equal(state.data.traffic[0].id, "public-trip");
   assert.equal(state.data.trafficAvailable, false);
   state.destroy();
 });

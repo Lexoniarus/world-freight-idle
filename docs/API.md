@@ -379,8 +379,10 @@ vorbereiteten Approach. Rohdiagnosen bleiben im Backend/Audit.
 `GET /api/v1/contracts` und `POST /api/v1/contracts/refresh` akzeptieren optional
 `vehicle_id`. Ein angegebenes Fahrzeug muss dem Account gehören und idle sein;
 ungültige Auswahl ergibt HTTP 400. Ohne Parameter bleibt der gemeinsame Spielerpool
-als kompatible API-Basis verfügbar. Mit Parameter enthält `contracts` ausschließlich
-Offers mit dieser ID in `eligible_vehicle_ids`. Die UI verwendet denselben
+als Vereinigung der fahrzeugbezogenen Auswahlen verfügbar. Mit Parameter enthält
+`contracts` höchstens drei fahrbare Offers je `short`/`medium`/`long`, jeweils mit
+dieser ID in `eligible_vehicle_ids`. Bei ausreichender Vorbereitung sind es genau
+drei. Die UI verwendet denselben
 serverseitigen Eignungswert, ohne eigene Klassen-/Scale-/Routingprüfung.
 
 Zusätzlich enthält die Antwort `vehicle_coverage` mit `vehicle_id`, `city_uid`,
@@ -388,3 +390,46 @@ Zusätzlich enthält die Antwort `vehicle_coverage` mit `vehicle_id`, `city_uid`
 `unmet_facilities`. `preparation` behält Generation, Status und Retry-Zeitpunkt.
 Die bestehende Analytics-JSON-Struktur bleibt unverändert; ein eigener
 API-Projektor übersetzt die typisierten Service-Ergebnisse.
+
+Neue und übernommene dauerhaft gültige Offers liefern `expires_at: null`.
+Historische Transport-Snapshots behalten ihre ursprünglichen Ablaufwerte.
+Refresh erhält IDs, Mengen, Konditionen und Reihenfolge bestehender Angebote;
+er meldet Bedarf und liefert sofort den gespeicherten vorbereiteten Stand.
+Nach Annahme rückt gespeicherte Reserve ohne Routing oder Kandidatenbildung nach.
+`vehicle_coverage` beschreibt den vorbereiteten Bestand, nicht die auf drei
+begrenzte sichtbare Auswahl. Fehlende oder veraltete Hin-/Rückwegnachweise geben
+auch dauerhaft gespeicherte Angebote nicht frei. Globale Vorlagen und fremde
+Verbrauchsnachweise sind kein öffentlicher API-Vertrag.
+
+
+## Kompakter Runtime-Vertrag (additiv)
+
+- `GET /api/v1/runtime`: authentifiziert; `server_time`, `time_scale`, `player`,
+  dargestellte `vehicles`, kompakte aktive `transports`, `idle_vehicles`,
+  `active_transports`, `market_preparation`. Transportdaten enthalten die
+  bisherigen skalaren Wirtschafts-/Journey-Fakten und `route_ref`, jedoch
+  weder `route_geojson` noch koordinatenhaltige `route_legs`.
+- `GET /api/v1/map/traffic?representation=summary`: etablierte oeffentliche
+  Bewegungsdaten mit `route_ref`, ohne Geometrie, Wirtschaft oder Energie.
+  Der Default `representation=full` bleibt kompatibel. Andere Werte: 422.
+- `GET /api/v1/map/routes/{route_ref}`: authentifiziert; Referenzversion 1
+  identifiziert Besitzer und Transport. Eigene historische Route oder aktuell
+  sichtbarer fremder Verkehr; sonst 404. Keine Kenntnis einer Referenz umgeht
+  die Besitz-/Sichtbarkeitspruefung, auch nicht bei `If-None-Match`.
+
+Geometrieantwort: `{coordinates: [[lon,lat],...], legs: [...]}`. Jeder Abschnitt
+enthaelt `purpose`, `start_index` (inklusive), `end_index` (exklusive),
+`start_km`, `end_km`, `routing_duration_seconds`. Ein gemeinsamer Knoten darf
+von beiden Abschnitten referenziert werden; das Koordinatenarray erscheint nur
+einmal. Historische Fahrten ohne Plan liefern leere `legs`. Koordinaten stammen
+unveraendert aus dem gespeicherten Gesamtsnapshot.
+
+ETag ist eine schwache Referenzversion; `Cache-Control: private, no-cache`,
+passender `If-None-Match` ergibt 304 nach Authentifizierung/Sichtbarkeitspruefung.
+Gzip wird bei entsprechender Anfrage ab 1024 Byte angeboten.
+
+Marktrefresh liefert sofort die derzeit gueltigen Angebote und persistierten
+Vorbereitungsdiagnosen. Er wartet nicht auf neue Routen. Nicht lesbare Speicherung
+liefert den bisherigen 503-Vertrag; die UI unterscheidet ihn von Netzwerkfehlern
+und bietet einen erneuten Read an. Finanzielle Aktionen werden nicht automatisch
+wiederholt. Bestehende Endpunkte behalten ihre Antwortvertraege.

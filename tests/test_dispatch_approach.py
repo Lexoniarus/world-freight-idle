@@ -106,6 +106,36 @@ def test_dispatch_route_invariants_and_historical_mapping(route_plan):
     assert len(replace(plan, delivery=snapped).total_route.coordinates) == 4
 
 
+def test_dispatch_route_matches_all_saved_facts_without_revalidation(
+    route_plan,
+):
+    total = route_plan.total_route
+    direct = replace(route_plan, start=route_plan.pickup, approach=None)
+    with patch.object(
+        RouteSnapshot, "__post_init__", side_effect=AssertionError
+    ):
+        assert route_plan.matches_route(total)
+        assert direct.matches_route(route_plan.delivery)
+        assert direct.total_coordinates == route_plan.delivery.coordinates
+    for change in (
+        {"distance_km": total.distance_km + 1},
+        {"duration_seconds": total.duration_seconds + 1},
+        {"provider": "different"},
+        {"coordinates": ((10, 50), (11.01, 50), (12, 50))},
+    ):
+        assert not route_plan.matches_route(replace(total, **change))
+    assert not direct.matches_route(total)
+    snapped = replace(
+        route_plan,
+        delivery=replace(
+            route_plan.delivery, coordinates=((11.001, 50), (12, 50))
+        ),
+    )
+    assert len(snapped.total_coordinates) == 4
+    assert snapped.matches_route(snapped.total_route)
+    assert not snapped.matches_route(total)
+
+
 def test_dispatch_journey_preserves_leg_speeds_energy_and_boundary(route_plan):
     energy = EnergyProfile("diesel", "l", 100, 20, 10, 0.1)
     # Approach provider speed 25 km/h; delivery limited to 50 km/h.

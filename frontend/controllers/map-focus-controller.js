@@ -2,7 +2,7 @@ import { focusCoordinates } from "../map/focus-targets.js";
 
 /** Consume each navigation focus intent once, after its data and map are ready. */
 export class MapFocusController {
-  /** @param {{state: import('../state.js').GameState, view: import('../types.js').PanelView, map: import('../map/world-map.js').WorldMap | null}} dependencies */
+  /** @param {{state: import('../state.js').GameState, view: import('../types.js').PanelView, map: import('../types.js').GameMap | null}} dependencies */
   constructor({ state, view, map }) {
     this.state = state;
     this.view = view;
@@ -11,6 +11,7 @@ export class MapFocusController {
     this.generation = 0;
     this.key = "";
     this.appliedKey = "";
+    this.requestedRoute = "";
     this.changed = () => this.flush();
   }
   /** Register owned listeners for this controller.
@@ -18,7 +19,7 @@ export class MapFocusController {
    */
   start() {
     this.state.addEventListener("change", this.changed);
-    this.map?.map.on("load", this.changed);
+    this.map?.addEventListener("ready", this.changed);
   }
   /** Invalidate delayed work before asynchronous navigation resolution.
    * @returns {void}
@@ -39,6 +40,7 @@ export class MapFocusController {
         .join("&");
     if (key === this.appliedKey) return;
     this.key = key;
+    this.requestedRoute = "";
     this.pending = { url: new URL(url), generation: this.generation };
     this.flush();
   }
@@ -55,10 +57,23 @@ export class MapFocusController {
       this.view.cityUid ?? "",
       this.view.cities ?? [],
     );
-    if (points === null) return;
+    if (points === null) {
+      const [, section, id] = this.pending.url.pathname.split("/");
+      const trip = this.state.data.transports.find((item) =>
+        section === "fleet" ? item.vehicle_id === id : section === "transports" && item.id === id,
+      );
+      if (trip?.route_ref && this.requestedRoute !== trip.route_ref) {
+        this.requestedRoute = trip.route_ref;
+        void this.state.loadTransportRoute(trip.id).catch((error) => {
+          if (error.name !== "AbortError")
+            console.warn("Selected route unavailable:", error.message);
+        });
+      }
+      return;
+    }
     this.appliedKey = this.key;
     this.pending = null;
-    if (points.length) this.map.camera.fitCoordinates(points);
+    if (points.length) this.map.fitCoordinates(points);
   }
   /** A current user-requested quote supersedes the endpoint framing.
    * @param {import('../types.js').Quote} quote
@@ -74,6 +89,6 @@ export class MapFocusController {
   destroy() {
     this.cancel();
     this.state.removeEventListener("change", this.changed);
-    this.map?.map.off("load", this.changed);
+    this.map?.removeEventListener("ready", this.changed);
   }
 }

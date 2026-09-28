@@ -2,7 +2,7 @@ import { layerPresets, presetFor } from "../layer-presets.js";
 
 /** Account-ID-scoped presentation preferences; temporary focus is not persisted. */
 export class LayerStateController {
-  /** @param {{userId: string, map: import('../map/world-map.js').WorldMap | null, storage?: Storage}} dependencies */
+  /** @param {{userId: string, map: import('../types.js').GameMap | null, storage?: Storage}} dependencies */
   constructor({ userId, map, storage = localStorage }) {
     this.map = map;
     this.storage = storage;

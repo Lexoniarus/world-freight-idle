@@ -191,8 +191,9 @@ test("focus consumes navigation once; polling and obsolete detail responses cann
   const calls = [];
   const map = {
     ready: false,
-    map: { on() {}, off() {} },
-    camera: { fitCoordinates: (p) => calls.push(p) },
+    addEventListener() {},
+    removeEventListener() {},
+    fitCoordinates: (p) => calls.push(p),
     focusRoute: (r) => calls.push(r),
   };
   const focus = new MapFocusController({ state, map, view: { cityUid: "", cities: [] } });
@@ -262,7 +263,7 @@ test("grouping follows actual rendered overlap at every zoom, not a fixed radius
   assert.equal(vehicleIconScale(20), 1.15);
 });
 
-test("vehicle context opens every city offer with authoritative suitability", async () => {
+test("vehicle context shows only offers with authoritative suitability", async () => {
   const { renderContracts } = await import("./views/contracts.js");
   const { CityContextController } = await import("./controllers/city-context-controller.js");
   const { marketVehicle } = await import("./market-context.js");
@@ -320,9 +321,12 @@ test("vehicle context opens every city offer with authoritative suitability", as
   ];
   const fragment = renderContracts(view);
   const cards = [...fragment.querySelectorAll(".job-card")];
-  assert.equal(cards.length, 2);
+  assert.equal(cards.length, 1);
   assert.match(cards[0].textContent, /Reference truck · geeignet/);
-  assert.match(cards[1].textContent, /Reference truck · nicht geeignet/);
+  assert.equal(
+    cards.some((card) => card.getAttribute("href").includes("away")),
+    false,
+  );
   assert.equal(fragment.querySelector('[data-filter="city"]'), null);
   assert.equal(fragment.querySelector('[data-filter="vehicle"]').value, "v");
   idle.status = "enroute";

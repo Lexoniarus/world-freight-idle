@@ -91,7 +91,7 @@ class ContractFactory:
             rate_eur_per_km_ton=STANDARD_RATE
             * profile.freight_rate_factor_game,
             created_at=now,
-            expires_at=now + 6 * 3600,
+            expires_at=None,
             mode="truck",
             relationship_simulated=True,
         )

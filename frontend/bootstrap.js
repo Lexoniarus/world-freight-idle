@@ -20,7 +20,7 @@ import { InputController } from "./controllers/input-controller.js";
 import { MobileSheet } from "./controllers/mobile-sheet.js";
 import { Notifications } from "./controllers/notifications.js";
 import { RefreshScheduler } from "./controllers/refresh-scheduler.js";
-import { WorldMap } from "./map/world-map.js";
+import { DeferredMap } from "./map/deferred-map.js";
 import { createBasemap } from "./map/provider.js";
 import { renderShell } from "./views/shell.js";
 import { html, requiredElement } from "./ui/dom.js";
@@ -74,6 +74,9 @@ export async function bootstrap() {
  */
 function createGameApplication(api, user, redirect) {
   const state = new GameState(api.request);
+  // Start the coalesced runtime read while lightweight controllers are wired.
+  // GameSync joins this request during start and owns its visible error state.
+  void state.refresh().catch(() => {});
   /** @type {import("./types.js").PanelView} */
   const view = {
     url: new URL(location.href),
@@ -101,7 +104,10 @@ function createGameApplication(api, user, redirect) {
   let application;
   const router = new BrowserRouter(window, (url) => application.navigateTo(url));
   const navigate = (path) => router.navigate(path);
-  const map = createWorldMap(navigate, notify, () => state.now(), api.requestAsset, assets);
+  const map = new DeferredMap({
+    create: () => createWorldMap(navigate, notify, () => state.now(), api.requestAsset, assets),
+    notify,
+  });
   map?.setCompanyColor(user.company_color);
   const preferences = new PreferencesController({ request: api.request, panel, map, notify });
   const city = new CityContextController({ state, view, request: api.request, notify });
@@ -174,29 +180,22 @@ function createGameApplication(api, user, redirect) {
 }
 
 /** Keep game controls usable when the browser cannot initialize WebGL. */
-function createWorldMap(navigate, notify, now, loadAsset, assets) {
+async function createWorldMap(navigate, notify, now, loadAsset, assets) {
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  try {
-    return new WorldMap("world-map", {
-      navigate,
-      notify,
-      now,
-      loadAsset,
-      assets,
-      provider: createBasemap(),
-      reducedMotion: () => reducedMotion.matches,
-      isHidden: () => document.hidden,
-      viewport: () => ({
-        width: innerWidth,
-        height: innerHeight,
-        panelOpen: !requiredElement("#panel").hidden,
-      }),
-    });
-  } catch {
-    notify(
-      "Die Karte benötigt WebGL. Du kannst Aufträge und Flotte weiterhin über die Navigation verwalten.",
-      "map",
-    );
-    return null;
-  }
+  const { WorldMap } = await import("./map/world-map.js");
+  return new WorldMap("world-map", {
+    navigate,
+    notify,
+    now,
+    loadAsset,
+    assets,
+    provider: createBasemap(),
+    reducedMotion: () => reducedMotion.matches,
+    isHidden: () => document.hidden,
+    viewport: () => ({
+      width: innerWidth,
+      height: innerHeight,
+      panelOpen: !requiredElement("#panel").hidden,
+    }),
+  });
 }

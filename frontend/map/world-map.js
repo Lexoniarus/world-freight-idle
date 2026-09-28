@@ -27,7 +27,7 @@ const HIT_LAYERS = [
 ];
 const FACILITY_HOVER_LAYERS = new Set(["orders", "parked", "hub-points"]);
 
-export class WorldMap {
+export class WorldMap extends EventTarget {
   /** @param {string | HTMLElement} container
    * @param {import("../types.js").WorldMapDependencies} dependencies
    */
@@ -35,6 +35,7 @@ export class WorldMap {
     container,
     { navigate, notify, now, loadAsset, assets, provider, viewport, reducedMotion, isHidden },
   ) {
+    super();
     this.navigate = navigate;
     this.notify = notify;
     this.now = now;
@@ -147,6 +148,7 @@ export class WorldMap {
     this.select(this.selected, this.selectedContract);
     this.setPreset(this.preset ?? "world");
     this.animator.start();
+    this.dispatchEvent(new Event("ready"));
   }
 
   /** Synchronize the map read model and rendered overlays.
@@ -159,7 +161,13 @@ export class WorldMap {
     if (!this.ready || this.disposed) return;
     this.setSourceData("orders", this.overlays.locationFeatures(state.contracts, "origin_hub_id"));
     this.setSourceData("parked", { type: "FeatureCollection", features: [] });
-    this.setSourceData("routes", this.overlays.routeFeatures());
+    const routeRevision = state.transports
+      .map((trip) => [trip.id, trip.route_ref, this.overlays.routes.has(trip.id)])
+      .toString();
+    if (this.routeRevision !== routeRevision) {
+      this.routeRevision = routeRevision;
+      this.setSourceData("routes", this.overlays.routeFeatures());
+    }
     this.updateSelectedRoute();
     this.setSourceData(
       "selected-locations",
@@ -420,6 +428,14 @@ export class WorldMap {
         .routeFeatures()
         .features.filter((item) => item.properties.id === trip?.id),
     });
+  }
+
+  /** Delegate a coordinate fit without exposing the renderer internals.
+   * @param {number[][]} points
+   * @returns {void}
+   */
+  fitCoordinates(points) {
+    this.camera.fitCoordinates(points);
   }
 
   /** Delegate one route fit to the camera primitives.

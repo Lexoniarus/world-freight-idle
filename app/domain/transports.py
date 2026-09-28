@@ -60,7 +60,7 @@ class ActiveTransport:
         if self.dispatch_route is not None and (
             self.dispatch_route.pickup != self.origin
             or self.dispatch_route.destination != self.destination
-            or self.dispatch_route.total_route != self.route
+            or not self.dispatch_route.matches_route(self.route)
         ):
             raise ValueError("Dispatch route differs from transport facts.")
         if not isinstance(self.journey, JourneyPlan):

@@ -313,10 +313,11 @@ def test_preparation_composition_preserves_unconfigured_test_runtime(
     bound = require_value(build_market_preparation(runtime, "test-owner"))
     assert bound.user_id == "test-owner"
     worker = build_preparation_worker(runtime)
-    assert (
-        require_value(worker.batches("test-owner").preparation).user_id
-        == "test-owner"
-    )
+    from app.services.stock_preparation import StockPreparationBatch
+
+    batch = worker.batches("test-owner")
+    assert isinstance(batch, StockPreparationBatch)
+    assert batch.publication.preparation.user_id == "test-owner"
 
 
 @pytest.mark.asyncio
@@ -487,7 +488,7 @@ async def test_ready_startup_rolls_back_all_players_and_references(
         tuple(preparation.references.get(o.id) for o in original) == references
     )
     startup.rebuild()
-    assert game.state_repository.list_offers() != original
+    assert game.state_repository.list_offers() == original
     assert all(
         preparation.retained(o) for o in game.state_repository.list_offers()
     )

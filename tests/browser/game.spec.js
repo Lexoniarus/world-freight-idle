@@ -10,6 +10,7 @@ let counter = 0;
 let peerCounter = 0;
 
 test.beforeEach(async ({ context, page }) => {
+  await page.request.post("/__tests__/preparation-scope");
   // Model independent clients behind the trusted local test proxy. Keep the
   // production IP throttle active within each test instead of sharing its
   // attempt budget across the entire browser suite.
@@ -30,7 +31,7 @@ test.beforeEach(async ({ context, page }) => {
   page.on("pageerror", (error) => { throw error; });
 });
 
-async function register(page) {
+async function register(page, {waitForMap = true} = {}) {
   const username = "driver_" + Date.now().toString(36) + (++counter);
   await page.goto("/login");
   await expect(page).toHaveTitle(/World Freight/);
@@ -40,7 +41,7 @@ async function register(page) {
   await page.getByRole("button", { name: "Konto erstellen & losfahren" }).click();
   await expect(page.locator("#cash")).toContainText("175.000");
   await expect(page.locator(".maplibregl-canvas")).toBeVisible();
-  await expect(page.locator("#world-map")).toHaveAttribute("aria-busy", "false");
+  if (waitForMap) await expect(page.locator("#world-map")).toHaveAttribute("aria-busy", "false");
   return username;
 }
 
@@ -79,10 +80,54 @@ async function openVehicleMarket(page, vehicleId = "truck_01") {
   await page.getByRole("link", { name: "Stadtmarkt öffnen" }).click();
 }
 
+test("fleet controls work while the map renderer module is delayed", async ({ page }) => {
+  await register(page);
+  let release;
+  const blocked = new Promise(resolve => { release = resolve; });
+  await page.route("**/world-map-*.js", async route => {
+    await blocked;
+    await route.continue();
+  });
+  try {
+    await page.goto("/fleet", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("#panel .vehicle-card").first()).toBeVisible();
+    await expect(page.locator(".maplibregl-canvas")).toHaveCount(0);
+    await page.getByLabel("Fahrzeugname").fill("missing-model");
+    await expect(page.locator("#panel .vehicle-card")).toHaveCount(0);
+  } finally {
+    release();
+  }
+  await expect(page.locator("#world-map")).toHaveAttribute("aria-busy", "false");
+});
+
+test("selected vehicle keeps three offers per band across refresh", async ({ page }) => {
+  await register(page);
+  const path = "/api/v1/contracts?vehicle_id=truck_01";
+  let contracts = [];
+  await expect.poll(async () => {
+    const response = await page.request.get(path);
+    expect(response.ok()).toBe(true);
+    contracts = (await response.json()).contracts;
+    return contracts.length;
+  }, { timeout: 60000 }).toBe(9);
+  for (const band of ["short", "medium", "long"]) {
+    expect(contracts.filter(offer => offer.distance_band === band)).toHaveLength(3);
+  }
+  expect(contracts.every(offer => offer.expires_at === null)).toBe(true);
+  const ids = contracts.map(offer => offer.id);
+  const response = await page.request.post("/api/v1/contracts/refresh?vehicle_id=truck_01", {
+    headers: { "X-Freight-Request": "1" },
+  });
+  expect(response.ok()).toBe(true);
+  expect((await response.json()).contracts.map(offer => offer.id)).toEqual(ids);
+  await page.goto("/contracts?vehicle=truck_01");
+  await expect(page.locator("#panel .job-card")).toHaveCount(9);
+});
+
 test("desktop: registration, map, quote, dispatch, purchase, arrival, logout and login", async ({ page }) => {
   test.setTimeout(90000);
   const errors = [];
-  page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
+  page.on("console", (message) => { if (message.type() === "error") errors.push(message.text() + " (" + message.location().url + ")"); });
   const username = await register(page);
   await expect(page.locator("#map-notice")).toBeHidden();
   await page.screenshot({ animations: "disabled", path: screenshot("desktop") });
@@ -161,7 +206,7 @@ test("stale quote cannot overwrite a new panel; failures and session expiry are 
   await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
   await expect(page.locator("#toasts")).toContainText("Routing ist offline");
   await expect(page.getByRole("button", { name: "Transport starten" })).toBeDisabled();
-  await page.route("**/api/v1/dashboard", (route) => route.fulfill({ status: 401, contentType: "application/json", body: '{"detail":"Bitte anmelden."}' }));
+  await page.route("**/api/v1/runtime", (route) => route.fulfill({ status: 401, contentType: "application/json", body: '{"detail":"Bitte anmelden."}' }));
   await page.reload();
   await expect(page).toHaveURL(/login/);
 });
@@ -200,7 +245,7 @@ test("parallel trips persist across navigation and map controls work without reb
 
 test("missing fleet coordinates and tile outages preserve the playable lists", async ({ page, context }) => {
   await context.route("https://tile.openstreetmap.org/**", (route) => route.abort());
-  await page.route("**/api/v1/fleet", async (route) => {
+  await page.route("**/api/v1/runtime", async (route) => {
     const response = await route.fetch();
     const data = await response.json();
     for (const vehicle of data.vehicles) {
@@ -215,7 +260,7 @@ test("missing fleet coordinates and tile outages preserve the playable lists", a
     }
     await route.fulfill({ json: data });
   });
-  await register(page);
+  await register(page, {waitForMap: false});
   await expect(page.locator("#map-notice")).toBeVisible();
   await page.getByRole("link", { name: "Flotte", exact: true }).click();
   await expect(page.getByRole("link", { name: "IVECO S-Way 500 XC13", exact: true })).toBeVisible();
@@ -332,7 +377,7 @@ test("starter game assets survive polling and changed transport panel content", 
   await expect(figure).toHaveClass(/vehicle-game-asset/);
   await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
   await expect(figure.locator("img").first()).toHaveAttribute("src", /^blob:/);
-  await page.waitForResponse(response => response.url().endsWith("/api/v1/fleet"), { timeout: 15000 });
+  await page.waitForResponse(response => response.url().endsWith("/api/v1/runtime"), { timeout: 15000 });
   await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
   const headers = { "X-Freight-Request": "1" };
   const contracts = await readyContracts(page);
@@ -364,9 +409,14 @@ test("facility identities, lazy market scope and catalogue outages preserve the 
   expect(allResult.unavailable_count).toBe(0);
   expect(allResult.facilities).toHaveLength(559);
 
-  const localJobs = await readyContracts(page);
+  let localJobs;
+  await expect.poll(async () => {
+    localJobs = (await (await page.request.get("/api/v1/contracts?vehicle_id=truck_01")).json()).contracts;
+    return localJobs.length;
+  }, {timeout: 60000}).toBe(9);
   expect(new Set(localJobs.map(job => job.origin.city_uid))).toEqual(new Set([berlin.city_uid]));
-  expect(new Set(localJobs.map(job => job.origin_facility_uid)).size).toBeGreaterThan(1);
+  const facilityIds = new Set(allResult.facilities.map(facility => facility.facility_uid));
+  expect(localJobs.every(job => facilityIds.has(job.origin_facility_uid) && facilityIds.has(job.destination_facility_uid))).toBe(true);
   expect(localJobs.every(job => job.market_model === "nhm_v2")).toBeTruthy();
   expect(localJobs.every(job => ["documented", "derived"].includes(job.cargo_basis))).toBeTruthy();
   expect(localJobs.every(job => job.cargo_evidence)).toBeTruthy();
@@ -383,7 +433,7 @@ test("facility identities, lazy market scope and catalogue outages preserve the 
   expect(await originalCanvas.evaluate(element => element.isConnected)).toBeTruthy();
 
   await page.getByRole("link", { name: "Flotte", exact: true }).click();
-  await page.route("**/api/v1/contracts", route => route.fulfill({
+  await page.route(/\/api\/v1\/contracts(?:\?.*)?$/, route => route.fulfill({
     status: 503,
     json: { detail: "Weltkatalog derzeit nicht verfügbar." },
   }));
@@ -397,11 +447,12 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
   test(`${device}: energy pauses retain images, offline arrival retains energy`, async ({page}) => {
     await page.setViewportSize(viewport);
     const username = await register(page);
+    await readyContracts(page);
     const prepared = await page.request.post("/__tests__/energy-fixture", {headers:{"X-Freight-Request":"1"}});
     expect(prepared.ok()).toBeTruthy();
     await page.reload();
     const fleetBefore = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
-    const offers = await readyContracts(page);
+    const offers = await readyContracts(page, [fleetBefore[0].id], offer => offer.origin_facility_uid === fleetBefore[0].facility_uid);
     const direct = offers.find(offer => offer.origin_facility_uid === fleetBefore[0].facility_uid);
     await page.goto("/contracts/" + direct.id);
     await page.getByLabel("Fahrzeug disponieren").selectOption(fleetBefore[0].id);
@@ -491,7 +542,8 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["tablet
     await expect(page.getByRole("button", {name:"Transport starten"})).toBeEnabled();
     await page.getByRole("button", {name:"Transport starten"}).click();
     await expect(page.locator(".asset-side")).toBeVisible();
-    await expect(page.locator("#reputation")).toHaveText("1", {timeout:45000});
+    // The 35.6 s fixture journey can finish just after the 10 s runtime poll.
+    await expect(page.locator("#reputation")).toHaveText("1", {timeout:55000});
     await page.getByRole("link", {name:"Unternehmen",exact:true}).click();
     await expect(page.locator("#panel")).toHaveAttribute("data-mode","management");
     await expect(page.getByRole("heading", {name:"Finanzen",exact:true})).toBeVisible();
@@ -580,8 +632,11 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     await page.setViewportSize(viewport);
     await page.emulateMedia({reducedMotion:"reduce"});
     await register(page);
+    await readyContracts(page);
+    const prepared = await page.request.post("/__tests__/approach-fixture");
+    expect(prepared.ok()).toBe(true);
     const start = (await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
-    const offers = await readyContracts(page);
+    const offers = await readyContracts(page, [start.id], item => item.origin_facility_uid !== start.facility_uid);
     const offer = offers.find(item => item.origin_facility_uid !== start.facility_uid && item.eligible_vehicle_ids.includes(start.id));
     expect(offer).toBeTruthy();
     await page.goto("/contracts/" + offer.id);
@@ -738,10 +793,10 @@ test("vehicle market shows only eligible offers and switches shared city vehicle
   const onlyFirst = { ...offers[0], id: "only-first", eligible_vehicle_ids: [vehicle.id] };
   const onlySecond = { ...offers[0], id: "only-second", eligible_vehicle_ids: [second.id] };
   const neither = { ...offers[0], id: "neither", eligible_vehicle_ids: [] };
-  await page.route("**/api/v1/fleet", (route) =>
-    route.fulfill({ json: { ...fleet, vehicles: [vehicle, second] } }),
+  await page.route("**/api/v1/runtime", async (route) =>
+    route.fulfill({ json: { ...(await (await route.fetch()).json()), vehicles: [vehicle, second] } }),
   );
-  await page.route("**/api/v1/contracts", (route) =>
+  await page.route(/\/api\/v1\/contracts(?:\?.*)?$/, (route) =>
     route.fulfill({
       json: {
         contracts: [shared, onlyFirst, onlySecond, neither],
@@ -773,4 +828,30 @@ test("vehicle market shows only eligible offers and switches shared city vehicle
   await page.getByRole("link", { name: "Weltkarte", exact: true }).click();
   await expect(page).not.toHaveURL(/city=|vehicle=/);
   await expect(page.locator("#panel")).toBeHidden();
+});
+
+
+test("runtime remains usable during blocked traffic and distinguishes storage from network failures", async ({page}) => {
+  let release;
+  const blocked = new Promise(resolve => { release = resolve; });
+  await page.route("**/api/v1/map/traffic?representation=summary", async route => {
+    await blocked;
+    await route.fulfill({json:{transports:[]}}).catch(() => {});
+  });
+  await register(page);
+  await page.getByRole("link", {name:"Flotte",exact:true}).click();
+  await expect(page.locator("#panel-content")).toContainText("IVECO");
+  release();
+  await page.unroute("**/api/v1/map/traffic?representation=summary");
+  await page.route("**/api/v1/runtime", route => route.fulfill({status:503,json:{detail:"Spielstand derzeit nicht verfuegbar."}}));
+  await page.reload();
+  await expect(page.locator("#sync-notice")).toContainText("Der Server konnte deinen Spielstand nicht laden");
+  await page.unroute("**/api/v1/runtime");
+  await page.route("**/api/v1/runtime", route => route.abort("failed"));
+  await page.getByRole("button", {name:"Erneut versuchen",exact:true}).click();
+  await expect(page.locator("#sync-notice")).toContainText("Verbindung zum Server nicht herstellbar");
+  await page.unroute("**/api/v1/runtime");
+  await page.getByRole("button", {name:"Erneut versuchen",exact:true}).click();
+  await expect(page.locator("#sync-notice")).toBeHidden();
+  await expect(page.locator("#cash")).toContainText("175.000");
 });

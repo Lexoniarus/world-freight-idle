@@ -1,7 +1,10 @@
 """Global routing infrastructure on the existing relational runtime."""
 
 import json
+from collections import OrderedDict
+from contextlib import AbstractContextManager
 from dataclasses import asdict
+from hashlib import sha256
 
 from app.domain.routing_anchors import VALIDATION_VERSION, RoutingAnchor
 from app.domain.routing_connections import (
@@ -62,9 +65,14 @@ class SqliteRoutingReadinessStore:
     def __init__(self, database: SqliteGameDatabase) -> None:
         """Create additive infrastructure without changing game columns."""
         self.database = database
+        self._validated_payloads: OrderedDict[str, bool] = OrderedDict()
         self.anchors = SqliteRoutingAnchorRepository(database)
         with database.connect() as connection:
             connection.executescript(SCHEMA)
+
+    def read_transaction(self) -> AbstractContextManager[None]:
+        """Share one consistent connection for a bounded evidence read."""
+        return self.database.read_transaction()
 
     def get(self, relation_id: str) -> RoutingRelation | None:
         """Read the currently published revision of a directed relation."""
@@ -84,6 +92,26 @@ class SqliteRoutingReadinessStore:
 
     def payload(self, reference: RouteReference) -> RoutePayload | None:
         """Reject missing, stale or malformed cached route documents."""
+        document = self._payload_document(reference)
+        return decode_route_payload(document) if document is not None else None
+
+    def payload_available(self, reference: RouteReference) -> bool:
+        """Validate each immutable payload once, detecting any byte change."""
+        document = self._payload_document(reference)
+        if document is None:
+            return False
+        digest = sha256(document.encode()).hexdigest()
+        if digest not in self._validated_payloads:
+            self._validated_payloads[digest] = (
+                decode_route_payload(document) is not None
+            )
+            if len(self._validated_payloads) > 2048:
+                self._validated_payloads.popitem(last=False)
+        self._validated_payloads.move_to_end(digest)
+        return self._validated_payloads[digest]
+
+    def _payload_document(self, reference: RouteReference) -> str | None:
+        """Read the exact revision without constructing geometry objects."""
         with self.database.connect() as connection:
             row = connection.execute(
                 "SELECT c.payload FROM routing_relations r "
@@ -91,16 +119,7 @@ class SqliteRoutingReadinessStore:
                 "WHERE r.relation_id=? AND r.revision=? AND r.status='ready'",
                 (reference.relation_id, reference.revision),
             ).fetchone()
-        if row is None:
-            return None
-        try:
-            values = json.loads(row[0])
-            values["coordinates"] = tuple(
-                tuple(point) for point in values["coordinates"]
-            )
-            return RoutePayload(**values)
-        except (ValueError, KeyError, TypeError):
-            return None
+        return row[0] if row else None
 
     def acquire(
         self, subject: str, owner: str, now: float, expires_at: float
@@ -146,6 +165,7 @@ class SqliteRoutingReadinessStore:
         payload: RoutePayload | None,
         owner: str,
         now: float,
+        worker_owner: str | None = None,
     ) -> bool:
         """Atomically fence the writer and publish metrics with readiness."""
         if (relation.status == "ready") != (payload is not None):
@@ -157,6 +177,10 @@ class SqliteRoutingReadinessStore:
             else None
         )
         with self.database.transaction(), self.database.connect() as conn:
+            if worker_owner is not None and not self.holds(
+                "worker:market-preparation", worker_owner, now
+            ):
+                return False
             lease = conn.execute(
                 "SELECT 1 FROM routing_leases "
                 "WHERE subject=? AND owner=? AND expires_at>?",
@@ -169,7 +193,20 @@ class SqliteRoutingReadinessStore:
                     "INSERT INTO route_cache VALUES (?, ?, ?) "
                     "ON CONFLICT(cache_key) DO UPDATE SET "
                     "payload=excluded.payload, updated_at=excluded.updated_at",
-                    (cache_key, json.dumps(asdict(payload)), now),
+                    (
+                        cache_key,
+                        json.dumps(
+                            {
+                                "coordinates": payload.coordinates,
+                                "road_distance_km": payload.road_distance_km,
+                                "provider_duration_seconds": (
+                                    payload.provider_duration_seconds
+                                ),
+                                "provider": payload.provider,
+                            }
+                        ),
+                        now,
+                    ),
                 )
             conn.execute(
                 "INSERT INTO routing_relations VALUES "
@@ -231,11 +268,16 @@ class SqliteRoutingReadinessStore:
         now: float,
         provider: str,
         provider_revision: str | None,
+        worker_owner: str | None = None,
     ) -> bool:
         """Atomically fence anchors, both geometries and their shared proof."""
         anchors = self.anchors
         start, end = forward.origin_uid, forward.destination_uid
         with self.database.transaction(), self.database.connect() as conn:
+            if worker_owner is not None and not self.holds(
+                "worker:market-preparation", worker_owner, now
+            ):
+                return False
             for subject in connection_leases(start, end):
                 if (
                     conn.execute(
@@ -308,6 +350,18 @@ class SqliteRoutingReadinessStore:
                 tuple(asdict(attempt).values()),
             )
 
+    def holds(self, subject: str, owner: str, now: float) -> bool:
+        """Check ownership in the caller's publication transaction."""
+        with self.database.connect() as conn:
+            return (
+                conn.execute(
+                    "SELECT 1 FROM routing_leases WHERE subject=? "
+                    "AND owner=? AND expires_at>?",
+                    (subject, owner, now),
+                ).fetchone()
+                is not None
+            )
+
     def provider_revision(self, provider: str) -> str | None:
         """Read the latest actually observed graph revision for a provider."""
         with self.database.connect() as connection:
@@ -327,6 +381,18 @@ class SqliteRoutingReadinessStore:
                 "revision=excluded.revision",
                 (provider, revision),
             )
+
+
+def decode_route_payload(document: str) -> RoutePayload | None:
+    """Validate canonical provider geometry independently of availability."""
+    try:
+        values = json.loads(document)
+        values["coordinates"] = tuple(
+            tuple(point) for point in values["coordinates"]
+        )
+        return RoutePayload(**values)
+    except (ValueError, KeyError, TypeError):
+        return None
 
 
 class SqliteOfferRouteStore:
@@ -355,6 +421,17 @@ class SqliteOfferRouteStore:
             self.database.transaction(),
             self.database.connect() as connection,
         ):
+            current = tuple(
+                (row[0], RouteReference(row[1], row[2]))
+                for row in connection.execute(
+                    "SELECT contract_id, relation_id, revision "
+                    "FROM offer_route_references WHERE user_id=? "
+                    "ORDER BY contract_id",
+                    (self.user_id,),
+                )
+            )
+            if current == tuple(sorted(references, key=lambda item: item[0])):
+                return
             connection.execute(
                 "DELETE FROM offer_route_references WHERE user_id=?",
                 (self.user_id,),

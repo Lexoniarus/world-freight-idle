@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from hashlib import sha256
 from typing import Protocol
 
-from app.domain.market import CompatibleVehicle, MarketCandidate, MarketVehicle
+from app.domain.market import (
+    CompatibleVehicle,
+    MarketCandidate,
+    MarketVehicle,
+    VehicleCoverageDiagnostic,
+)
 from app.domain.routing_readiness import RelationStatus, RouteReference
 
 
@@ -33,6 +38,21 @@ class PreparationStore(Protocol):
     """Persist fair, resumable player demand on the relational runtime."""
 
     def request(self, user_id: str, generation: str, now: float) -> None: ...
+
+    def ensure(self, user_id: str, now: float) -> None: ...
+
+    def invalidate(self, user_id: str, now: float) -> None: ...
+
+    def diagnostics(
+        self, user_id: str
+    ) -> tuple[VehicleCoverageDiagnostic, ...]: ...
+
+    def publish_diagnostics(
+        self,
+        user_id: str,
+        generation: str,
+        values: tuple[VehicleCoverageDiagnostic, ...],
+    ) -> None: ...
 
     def status(self, user_id: str) -> PreparationStatus | None: ...
 

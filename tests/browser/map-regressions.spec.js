@@ -104,7 +104,8 @@ test('real camera consumes delayed navigation, ignores polling and frames the cu
   const trip={id:'t',vehicle_id:'v',origin,destination,start:{lon:12,lat:51},departed_at:0,arrives_at:100,journey:{distance_km:100,segments:[{phase:'driving',starts_at:0,ends_at:100,start_km:0,end_km:100}]},route_geojson:{type:'LineString',coordinates:[[12,51],[13,52],[15,53]]}};
   state.data={vehicles:[{id:'v',name:'DAF',status:'enroute',hub:origin}],transports:[trip],contracts:[{id:'c',origin,destination}]};
   const camera=new MapCamera(map,()=>true,()=>({width:1440,height:900,panelOpen:true}));
-  const controller=new MapFocusController({state,view:{cities:[origin],cityUid:''},map:{ready:true,map,camera,focusRoute:route=>camera.fitRoute(route.coordinates)}});controller.start();
+  const mapPort=Object.assign(new EventTarget(),{ready:true,fitCoordinates:points=>camera.fitCoordinates(points),focusRoute:route=>camera.fitRoute(route.coordinates)});
+  const controller=new MapFocusController({state,view:{cities:[origin],cityUid:''},map:mapPort});controller.start();
   controller.select(new URL('http://test/fleet/v'));const vehicleZoom=map.getZoom();
   map.jumpTo({center:[2,40],zoom:7});for(let i=0;i<5;i++)state.dispatchEvent(new Event('change'));const free=map.getCenter().toArray();
   controller.cancel();controller.select(new URL('http://test/transports/t'));const tripZoom=map.getZoom();

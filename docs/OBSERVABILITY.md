@@ -51,9 +51,10 @@ Ein Fehler aus dem Browser soll über API → Service → Provider in Logs korre
 
 ## Frontend-v2: Marktstart und Preferences
 
-`market.startup` bestätigt den vollständigen Neuaufbau.
-`market.startup_failed` protokolliert den betroffenen Account und Fehler
-strukturiert; die äußere Transaktion rollt zurück. `account.color_updated`
+`market.startup` und `market.startup_failed` gehören zum früheren expliziten
+globalen Rebuild; sie sind keine erwarteten API-Startsignale mehr. Beim normalen
+Start gelten die unten beschriebenen getrennten Prozess-/Workerereignisse.
+`account.color_updated`
 protokolliert die Farbänderung ohne Zugangsdaten. Bestehende Dispatch-/
 Refill-Events unterscheiden erfolgreichen Start und späteren Refill-Fehler.
 
@@ -85,3 +86,30 @@ Speicherung. Danach folgt cancellable Backoff von 60 Sekunden. Batchfehler bleib
 `market.preparation_failed` im eigenen preparation_id-Ausführungskontext.
 `market.preparation_progress` beschreibt typisierte aktuelle Batchdiagnosen.
 Keine Übernahme eines langlebigen HTTP-Trace-Kontexts.
+
+
+## Runtime-Isolation
+
+`process.prewarm_start_failed` und `process.prewarm_restart` melden unabhaengige
+Workerfehler und den naechsten Backoff. `market.preparation_progress` bleibt pro
+Bedarf tracebar; Generationen und Retry-Fristen sind persistent. API-Reads warten
+nicht auf diese Arbeit. `state.transport_repaired` berichtet ausschliesslich
+Anzahlen, `state.transport_repair_rolled_back` eine verworfene Offline-Ausgabe.
+Keine Rohdokumente oder Sitzungen in Logs. Private Performanceberichte entstehen
+mit `python -m tests.runtime_benchmark`; Betrieb und Reparaturaktivierung siehe
+[RUNTIME_OPERATIONS.md](RUNTIME_OPERATIONS.md).
+
+## Gemeinsamer Vorrat
+
+`market.stock_published` protokolliert die Anzahl neuer gemeinsamer Vorlagen,
+persönlicher Angebote und die geprüfte Bedarfsversion im vorhandenen Worker-Trace.
+Verbrauch bleibt über das atomare `trip.dispatch`-Ereignis nachvollziehbar.
+`state.market_stock_upgraded` nennt nur übernommene/abgelaufene Angebotszahlen
+und die Anzahl unveränderter Transporte. Vorlageninhalte, Konten und
+Transportdokumente gehören nicht in Wartungslogs.
+
+Der aktuelle Performancebericht enthält zusätzlich `templates_before` und
+`templates_after`, p95 und Maximum je Ressource. So ist die Messung unter
+fortschreitender Vorbereitung von einer Probe ohne Workerarbeit unterscheidbar.
+Die dauerhafte Bestandsgröße wächst mit besuchten Städten und Verwendung;
+sie ist keine automatische Lösch- oder Ablaufregel.

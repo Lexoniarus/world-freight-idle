@@ -1,8 +1,14 @@
 """Explicit ready-route setup for authenticated API integration tests."""
 
+from functools import partial
+
 from fastapi.testclient import TestClient
 
-from app.bootstrap import GameRuntime, build_player_service
+from app.bootstrap import (
+    GameRuntime,
+    build_player_service,
+    build_preparation_worker,
+)
 from tests.conftest import FakeRouter, FakeRoutingAnchorResolver
 
 
@@ -23,22 +29,15 @@ def prepare_client_market(client: TestClient, runtime: GameRuntime) -> None:
 
 
 async def prepare_player_market(runtime: GameRuntime, user_id: str) -> None:
-    """Publish one delivery from the owned vehicle's actual facility."""
+    """Publish a usable offer through the actual leased stock worker."""
     game = build_player_service(runtime, user_id)
-    owned = game.state_repository.list_vehicles()
-    fleet = game.market.candidates.resolve_fleet(owned)
-    candidates = game.market.candidates.build(
-        game.market_scope.resolve(owned), fleet
-    )
-    candidate = next(
-        item
-        for item in candidates
-        if item.trade.origin.facility_uid == owned[0].facility_uid
-    )
-    assert runtime.readiness is not None
-    relation = await runtime.readiness.prepare(
-        candidate.trade.origin.facility_uid,
-        candidate.trade.destination.facility_uid,
-    )
-    assert relation is not None and relation.status == "ready"
-    assert game.refresh_market()
+    worker = build_preparation_worker(runtime)
+    assert worker.lease is not None
+    try:
+        for _ in range(4):
+            assert await worker.lease.run(partial(worker.process, user_id))
+            if game.contract_choices(game.list_contracts()):
+                return
+        raise AssertionError("Fixture worker did not publish a ready offer.")
+    finally:
+        await worker.close()

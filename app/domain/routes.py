@@ -66,11 +66,11 @@ class DispatchRoutePlan:
             raise ValueError("Distinct pickup requires an approach route.")
 
     @property
-    def total_route(self) -> RouteSnapshot:
-        """Compose total measurements for existing route consumers."""
+    def total_coordinates(self) -> tuple[tuple[float, float], ...]:
+        """Join validated immutable legs, retaining distinct endpoints."""
         if self.approach is None:
-            return self.delivery
-        coordinates = (
+            return self.delivery.coordinates
+        return (
             self.approach.coordinates
             + self.delivery.coordinates[
                 int(
@@ -79,8 +79,27 @@ class DispatchRoutePlan:
                 ) :
             ]
         )
+
+    def matches_route(self, route: RouteSnapshot) -> bool:
+        """Compare saved facts without revalidating immutable geometry."""
+        if self.approach is None:
+            return self.delivery == route
+        return (
+            route.distance_km
+            == self.approach.distance_km + self.delivery.distance_km
+            and route.duration_seconds
+            == self.approach.duration_seconds + self.delivery.duration_seconds
+            and route.provider == self.delivery.provider
+            and route.coordinates == self.total_coordinates
+        )
+
+    @property
+    def total_route(self) -> RouteSnapshot:
+        """Compose total measurements for existing route consumers."""
+        if self.approach is None:
+            return self.delivery
         return RouteSnapshot(
-            coordinates,
+            self.total_coordinates,
             self.approach.distance_km + self.delivery.distance_km,
             self.approach.duration_seconds + self.delivery.duration_seconds,
             self.delivery.provider,

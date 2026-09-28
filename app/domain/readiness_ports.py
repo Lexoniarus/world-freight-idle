@@ -1,5 +1,6 @@
 """Infrastructure ports for globally shared routing readiness."""
 
+from contextlib import AbstractContextManager
 from typing import Protocol
 
 from app.domain.routing_anchors import RoutingAnchor
@@ -15,9 +16,13 @@ from app.domain.routing_readiness import (
 class RoutingReadinessStore(Protocol):
     """Persist global evidence and fence concurrent provider work."""
 
+    def read_transaction(self) -> AbstractContextManager[None]: ...
+
     def get(self, relation_id: str) -> RoutingRelation | None: ...
 
     def payload(self, reference: RouteReference) -> RoutePayload | None: ...
+
+    def payload_available(self, reference: RouteReference) -> bool: ...
 
     def acquire(
         self, subject: str, owner: str, now: float, expires_at: float
@@ -29,12 +34,15 @@ class RoutingReadinessStore(Protocol):
 
     def release(self, subject: str, owner: str) -> None: ...
 
+    def holds(self, subject: str, owner: str, now: float) -> bool: ...
+
     def publish(
         self,
         relation: RoutingRelation,
         payload: RoutePayload | None,
         owner: str,
         now: float,
+        worker_owner: str | None = None,
     ) -> bool: ...
 
     def connected(
@@ -53,6 +61,7 @@ class RoutingReadinessStore(Protocol):
         now: float,
         provider: str,
         provider_revision: str | None,
+        worker_owner: str | None = None,
     ) -> bool: ...
 
     def append_attempt(self, attempt: RoutingAttempt) -> None: ...

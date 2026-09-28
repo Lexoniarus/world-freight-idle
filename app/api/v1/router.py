@@ -10,6 +10,7 @@ from app.api.v1 import (
     fleet,
     leaderboard,
     map,
+    runtime,
     system,
     transports,
 )
@@ -27,6 +28,7 @@ def build_v1_router() -> APIRouter:
     router.include_router(leaderboard.router)
     router.include_router(map.router)
     router.include_router(dashboard.router)
+    router.include_router(runtime.router)
     router.include_router(contracts.router)
     router.include_router(fleet.router)
     router.include_router(transports.router)

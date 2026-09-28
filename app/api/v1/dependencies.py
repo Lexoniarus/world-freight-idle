@@ -7,16 +7,20 @@ from app.bootstrap import (
     build_leaderboard_reader,
     build_map_service,
     build_player_service,
+    build_runtime_reader,
+    build_runtime_view,
     build_traffic_reader,
     build_vehicle_catalogue,
 )
 from app.domain.errors import CatalogueError
 from app.domain.ports import VehicleCatalogue
 from app.domain.read_ports import LeaderboardReader, TrafficReader
+from app.domain.runtime_views import RuntimeReader
 from app.services.auth import SESSION_COOKIE, AuthService
 from app.services.fleet import FleetService
 from app.services.game import GameService
 from app.services.map_locations import MapLocationService
+from app.services.runtime_views import RuntimeViewService
 
 
 def get_auth_service(request: Request) -> AuthService:
@@ -78,6 +82,19 @@ def get_map_service(
 def get_traffic_reader(request: Request) -> TrafficReader:
     """Resolve the shared read-only multiplayer traffic projection."""
     return build_traffic_reader(request.app.state.game)
+
+
+def get_runtime_reader(request: Request) -> RuntimeReader:
+    """Resolve independent scalar and geometry read resources."""
+    return build_runtime_reader(request.app.state.game)
+
+
+def get_runtime_view(
+    request: Request,
+    user: dict = Depends(get_current_user),
+) -> RuntimeViewService:
+    """Bind summary reads to the authenticated owner only."""
+    return build_runtime_view(request.app.state.game, user["id"])
 
 
 def get_vehicle_catalogue(request: Request) -> VehicleCatalogue:

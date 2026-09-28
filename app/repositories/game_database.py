@@ -31,10 +31,11 @@ class SqliteGameDatabase:
         try:
             if connection is None:
                 connection = sqlite3.connect(
-                    self.path, timeout=15, isolation_level=None
+                    self.path, timeout=0.5, isolation_level=None
                 )
                 connection.row_factory = sqlite3.Row
                 connection.execute("PRAGMA foreign_keys=ON")
+                connection.execute("PRAGMA synchronous=FULL")
             yield connection
         except sqlite3.Error as exc:
             LOGGER.error(
@@ -45,6 +46,22 @@ class SqliteGameDatabase:
         finally:
             if owned and connection is not None:
                 connection.close()
+
+    @contextmanager
+    def read_transaction(self) -> Iterator[None]:
+        """Read a consistent snapshot without reserving the SQLite writer."""
+        if self._active.get() is not None:
+            yield
+            return
+        with self.connect() as connection:
+            connection.execute("PRAGMA query_only=ON")
+            connection.execute("BEGIN")
+            token = self._active.set(connection)
+            try:
+                yield
+            finally:
+                connection.rollback()
+                self._active.reset(token)
 
     @contextmanager
     def transaction(self) -> Iterator[None]:
@@ -68,6 +85,8 @@ class SqliteGameDatabase:
         """Create a fresh schema or require the exact supported revision."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as connection:
+            # Serialize the empty-file check with creation across both roles.
+            connection.execute("BEGIN IMMEDIATE")
             tables = {
                 row[0]
                 for row in connection.execute(
@@ -75,8 +94,12 @@ class SqliteGameDatabase:
                 )
             }
             if not tables:
-                connection.executescript("BEGIN IMMEDIATE;" + SCHEMA)
-                connection.commit()
+                statement = ""
+                for line in SCHEMA.splitlines(keepends=True):
+                    statement += line
+                    if sqlite3.complete_statement(statement):
+                        connection.execute(statement)
+                        statement = ""
             elif not REQUIRED_TABLES.issubset(tables) or "kv" in tables:
                 raise UnsupportedGameSchema(
                     "Spielstandschema benötigt einen expliziten Import."
@@ -94,6 +117,8 @@ class SqliteGameDatabase:
                     extra={"event": "state.schema_rejected"},
                 )
                 raise
+            connection.commit()
+            connection.execute("PRAGMA journal_mode=WAL")
         LOGGER.info(
             "Game schema validated",
             extra={
@@ -164,17 +189,15 @@ class SqliteGameDatabase:
     def _validate_keys(
         self, connection: sqlite3.Connection, reference: sqlite3.Connection
     ) -> None:
-        """Require the supported owner identities and foreign-key links."""
+        """Require column contracts, owner identities and foreign-key links."""
         for table in sorted(REQUIRED_TABLES):
             expected_keys = [
-                (row[1], row[5])
+                tuple(row[1:])
                 for row in reference.execute(f"PRAGMA table_info({table})")
-                if row[5]
             ]
             actual_keys = [
-                (row[1], row[5])
+                tuple(row[1:])
                 for row in connection.execute(f"PRAGMA table_info({table})")
-                if row[5]
             ]
             expected_links = list(
                 reference.execute(f"PRAGMA foreign_key_list({table})")

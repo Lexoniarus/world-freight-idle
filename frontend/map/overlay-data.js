@@ -22,6 +22,25 @@ export class OverlayData {
 
   update(state) {
     this.state = { ...state, traffic: state.traffic ?? [] };
+    const publicOwn = new Map(
+      this.state.traffic.filter((trip) => trip.is_own).map((trip) => [trip.id, trip]),
+    );
+    this.state.traffic = [
+      ...this.state.traffic.filter((trip) => !trip.is_own),
+      ...state.transports.map((trip) => {
+        const vehicle = state.vehicles.find((item) => item.id === trip.vehicle_id);
+        const published = publicOwn.get(trip.id);
+        return {
+          ...published,
+          ...trip,
+          model_id: vehicle?.model_id ?? published?.model_id,
+          model_name: vehicle?.name ?? published?.model_name,
+          is_own: true,
+          username: published?.username ?? "",
+          player_color: this.companyColor ?? published?.player_color,
+        };
+      }),
+    ];
     const snapshots = [
       ...state.transports.flatMap((trip) => [
         trip.start,
@@ -45,14 +64,18 @@ export class OverlayData {
     const active = new Set(state.transports.map((trip) => trip.id));
     for (const id of this.routes.keys()) if (!active.has(id)) this.routes.delete(id);
     for (const trip of state.transports)
-      if (!this.routes.has(trip.id)) this.routes.set(trip.id, prepareTransportRoute(trip));
+      if (!this.routes.has(trip.id) && routeGeometry(trip.route_geojson).coordinates.length >= 2)
+        this.routes.set(trip.id, prepareTransportRoute(trip));
 
     const activeTraffic = new Set(this.state.traffic.map((trip) => trip.id));
     for (const id of this.trafficRoutes.keys())
       if (!activeTraffic.has(id)) this.trafficRoutes.delete(id);
     for (const trip of this.state.traffic)
-      if (!this.trafficRoutes.has(trip.id))
-        this.trafficRoutes.set(trip.id, prepareTransportRoute(trip));
+      if (
+        !this.trafficRoutes.has(trip.id) &&
+        routeGeometry(trip.route_geojson).coordinates.length >= 2
+      )
+        this.trafficRoutes.set(trip.id, this.routes.get(trip.id) ?? prepareTransportRoute(trip));
   }
 
   /** Suppress facilities only beneath rendered own idle representatives. */

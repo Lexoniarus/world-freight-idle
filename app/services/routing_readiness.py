@@ -2,8 +2,10 @@
 
 import asyncio
 import uuid
-from collections.abc import Callable
-from dataclasses import replace
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass, field, replace
 from hashlib import sha256
 
 from app.domain.errors import RoutingError
@@ -27,9 +29,20 @@ from app.domain.routing_readiness import (
     RoutingRelation,
     relation_identity,
 )
+from app.domain.world import WorldSnapshot
 from app.domain.world_scopes import WorldScope
 from app.services.routing_connections import RoutingConnectionValidator
 from app.tracing import get_trace_id
+
+
+@dataclass
+class ReadinessView:
+    """Keep evidence memoization scoped to one synchronous read operation."""
+
+    relations: dict[tuple[str, str], RoutingRelation | None] = field(
+        default_factory=dict
+    )
+    fingerprints: dict[tuple[str, str], str] = field(default_factory=dict)
 
 
 class RoutingReadinessService:
@@ -61,6 +74,25 @@ class RoutingReadinessService:
         self.timeout = min(timeout_seconds, 120)
         self.provider_revision = provider_revision
         self.connections = connections or RoutingConnectionValidator()
+        self.worker_owner: str | None = None
+        self._view: ContextVar[ReadinessView | None] = ContextVar(
+            "readiness_view", default=None
+        )
+        self._world_snapshot: WorldSnapshot | None = None
+        self._locations: dict = {}
+
+    @contextmanager
+    def reading(self) -> Iterator[None]:
+        """Reuse synchronous evidence without leaking it across requests."""
+        if self._view.get() is not None:
+            yield
+            return
+        token = self._view.set(ReadinessView())
+        try:
+            with self.store.read_transaction():
+                yield
+        finally:
+            self._view.reset(token)
 
     def fingerprint(
         self,
@@ -70,7 +102,14 @@ class RoutingReadinessService:
         | None = None,
     ) -> str:
         """Bind evidence to policy, graph, locations and road access."""
-        scope = WorldScope(self.world.read())
+        view = self._view.get()
+        key = (origin, destination)
+        if view is not None and anchors is None and key in view.fingerprints:
+            return view.fingerprints[key]
+        snapshot = self.world.read()
+        if snapshot is not self._world_snapshot:
+            self._world_snapshot = snapshot
+            self._locations = {f.facility_uid: f for f in snapshot.facilities}
         selected = (
             anchors
             if anchors is not None
@@ -87,17 +126,33 @@ class RoutingReadinessService:
             tuple(
                 (
                     uid,
-                    scope.facility(uid).address.display_text(),
-                    scope.facility(uid).coordinates,
+                    self._locations[uid].address.display_text(),
+                    self._locations[uid].coordinates,
                     anchor_identity(anchor),
                 )
                 for uid, anchor in zip((origin, destination), selected)
             ),
         )
-        return sha256(repr(facts).encode()).hexdigest()
+        fingerprint = sha256(repr(facts).encode()).hexdigest()
+        if view is not None and anchors is None:
+            view.fingerprints[key] = fingerprint
+        return fingerprint
 
     def current(self, origin: str, destination: str) -> RoutingRelation | None:
         """Reject expired, legacy or one-sided evidence without HTTP."""
+        view = self._view.get()
+        key = (origin, destination)
+        if view is not None and key in view.relations:
+            return view.relations[key]
+        result = self._current(origin, destination)
+        if view is not None:
+            view.relations[key] = result
+        return result
+
+    def _current(
+        self, origin: str, destination: str
+    ) -> RoutingRelation | None:
+        """Validate fresh persisted evidence for one synchronous read view."""
         relation = self.store.get(relation_identity(origin, destination))
         if relation is None:
             return None
@@ -114,8 +169,8 @@ class RoutingReadinessService:
                 or not self.store.connected(
                     relation.reference, reverse.reference
                 )
-                or self.store.payload(relation.reference) is None
-                or self.store.payload(reverse.reference) is None
+                or not self.store.payload_available(relation.reference)
+                or not self.store.payload_available(reverse.reference)
             )
         elif relation.status == "deterministic_failure":
             stale = stale or now - relation.checked_at >= NEGATIVE_TTL
@@ -256,6 +311,7 @@ class RoutingReadinessService:
             now,
             self.provider_identity,
             revision,
+            worker_owner=self.worker_owner,
         ):
             return forward
         return None
@@ -295,6 +351,8 @@ class RoutingReadinessService:
                 provider_message=error.provider_message,
             )
         )
-        if self.store.publish(relation, None, owner, self.clock()):
+        if self.store.publish(
+            relation, None, owner, self.clock(), worker_owner=self.worker_owner
+        ):
             return relation
         return None

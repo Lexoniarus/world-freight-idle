@@ -1,4 +1,239 @@
-# Qualitätsbericht: befahrbare Standortverbindungen
+# Qualitätsbericht: gemeinsamer Vorrat und schnelle Runtime
+
+Stand: 28.09.2026. Branch `feature/frontend-v2`, Basis `d11034f`.
+Die folgenden Abschnitte vor der Trennlinie gelten für den aktuellen Gesamtstand.
+Ältere Berichte dokumentieren historische Zwischenstände.
+
+## Verhalten und Verantwortlichkeiten
+
+Die Markt-API liefert für das gewählte Fahrzeug höchstens drei tatsächlich
+verfügbare Angebote je Entfernungsklasse. Persönliche IDs und Konditionen bleiben
+stabil; ein Refresh würfelt nichts neu aus. Der gemeinsame Vorrat ist nach Stadt,
+konkretem Modell und Streckentyp organisiert. Der Worker versorgt wartende LKW,
+bevorstehende Ankünfte ab 60 Minuten, Reserven von mindestens zehn und die übrigen
+Katalogmodelle in dieser Reihenfolge. Eine Vorlage ist einmal je Spieler nutzbar;
+andere Spieler behalten ihre Verwendungsmöglichkeit. Verbrauch, Geld und Transport
+sind eine gemeinsame Transaktion. Vorbereitete persönliche Reserve rückt ohne
+Provideraufruf nach. Ungenutzte Angebote bleiben nach Abfahrt und Zeitablauf erhalten.
+
+Unbegrenzte Angebotslaufzeit verlängert keine Straßenfreigabe: Anfahrt und Lieferung
+benötigen weiterhin beide bestätigten Richtungen und aktuelle Nachweise. Alte
+Straßen- oder Kataloggrundlagen sperren ein Angebot, ohne dessen Konditionen oder
+historische Transporte zu ändern. Persistierte Bedarfsversionen, Checkpoints,
+Leases und erneute Zustandsabgleiche schützen Veröffentlichungen.
+
+Die API und der Worker laufen getrennt. Der Browser lädt den Spielstand unabhängig
+von Markt, Verkehr, Routengeometrien und jetzt auch dem Kartenrenderer. Eine eigene
+Komponente lädt die Karte nach dem ersten Runtime-Render und besitzt ihren gesamten
+Lebenszyklus. Farbbilder außerhalb des sichtbaren Panels werden erst bei Bedarf
+vorbereitet. Beim Settlement werden validierte unveränderliche Teilstrecken direkt
+mit Gesamtfakten verglichen, statt bei jedem Statuswechsel alle Punkte neu zu prüfen.
+Eingelesene und neu erzeugte Routensnapshots werden weiterhin vollständig validiert.
+
+Manuelles OOP-/Verantwortlichkeitsreview:
+[MARKET_STOCK_REVIEW](docs/MARKET_STOCK_REVIEW.md),
+[ADR 0008](docs/adr/0008-shared-market-stock.md) und
+[Runtime-Grenzen](docs/adr/0007-runtime-preparation-and-route-projections.md).
+
+## Vollständige Abnahme
+
+Der abschließende vollständige Lauf von `python scripts/quality.py` ist mit
+Exitcode 0 bestanden: **589 Python-Tests**, **100,00 % app-Statement-Coverage**
+(7.183 von 7.183 Statements), **117 Frontend-Verhaltenstests** sowie Ruff,
+Formatierung, mypy, Pyright, ESLint, Stylelint, Prettier, checkJs, Produktionsbuild
+und compileall. Die Python-Suite benötigte 31 Minuten 20 Sekunden. Die zwei
+Deprecation-Warnungen aus Starlette/httpx und anyio betreffen bestehende
+Testabhängigkeiten; keine Tests wurden übersprungen oder als erwarteter Fehler
+markiert. Architektur- und Manifestprüfungen sind Teil dieses Gesamtlaufs.
+Frühere beziehungsweise unterbrochene Läufe gelten nicht als Abnahme.
+
+`npm run test:e2e`: **33 bestanden**, 11,9 Minuten. Desktop, Mobil und Tablet;
+Vorratsauswahl, stabiler Refresh, verzögertes Kartenmodul, Anfahrt/Abholung,
+Abrechnung nach erneutem Login, mehrere Spieler, Fahrzeugwechsel, Fehleranzeigen
+und Kartenregressionen. Zuvor wurden alle neun korrigierten Browserfälle gezielt
+erneut bestanden. Browser plugin not available; vorhandene Playwright-Konfiguration
+mit Edge auf `http://127.0.0.1:8011` und isolierter Datenbank verwendet.
+
+Die gerenderten Prüfungen bestätigen Seitentitel/URL, nicht leere Inhalte,
+fehlende Fehler-Overlays, bedienbare Auswahl/Navigationsaktionen und unveränderte
+Spielzustände nach Wiederholung. Desktop- und Mobilaufnahmen wurden zusätzlich
+visuell geprüft. Absichtlich abgebrochene HTTP-Verbindungen lösen unter Windows
+gelegentlich `WinError 10054` im asyncio-Socket-Cleanup aus; die zugehörigen
+Fehler-/Wiederholungsprüfungen bestehen. Dieser Logeintrag wird nicht unterdrückt.
+
+## Leistungsabnahme des aktuellen Stands
+
+Repräsentative isolierte Kopie: drei Spieler, 35 Fahrzeuge, historische reale
+Geometrien; Windows 11, Intel Core i5-1235U, 12 logische CPUs, etwa 8 GiB RAM,
+Python 3.11.9, Edge/Playwright. Separate API und laufender Fixture-Worker;
+keine parallel laufenden Builds oder Testsuiten. Provider und Basiskarten verwenden
+lokale Fixtures. Browserprofile starten vor den HTTP-Reihen kalt; das erste Profil
+schließt 17 fällige Fahrten durch reguläres Settlement ab.
+
+| Prüfung | Ergebnis |
+| --- | --- |
+| Erste bedienbare Flotte, drei Browserkontexte | 3.391 / 590 / 572 ms |
+| Runtime, 300 Reads | p95 83,72 ms; Maximum 256,67 ms |
+| Öffentlicher Verkehr, 300 Reads | p95 73,37 ms; Maximum 128,71 ms |
+| Markt, 300 Reads | p95 82,44 ms; Maximum 266,80 ms |
+| Health, 300 Reads | p95 11,48 ms; Maximum 41,01 ms |
+| Runtime plus Verkehr, JSON vor Kompression | höchstens 92.931 Byte, etwa 91 KiB |
+| Wiederholte unveränderte Geometriedownloads | 0 |
+| Browserfehler | 0 |
+| Gemeinsame Vorlagen während der Probe | 0 → 12; Workerfortschritt bestätigt |
+| Quellenprüfsumme | unverändert |
+
+Der Grenzwert von 250 ms gilt wie vereinbart für p95; einzelne höhere Latenzen
+sind in der Tabelle sichtbar. Am 28.09.2026 hat der Nutzer den einmaligen
+Kaltstart mit 3,39 Sekunden ausdrücklich akzeptiert. Das ursprüngliche
+Zwei-Sekunden-Ziel wird für diesen Start mit fälligem Settlement nicht als
+erfüllt behauptet. Weitere Spielerstarts, laufende Reads, Datenmenge und
+Geometrie-Wiederverwendung erfüllen ihre unveränderten Grenzwerte. Das
+Benchmark-Werkzeug protokolliert den ersten Kaltstart separat und prüft die
+weiteren Spielerstarts weiterhin gegen zwei Sekunden.
+
+Zeitspuren und Profiling begründeten die Optimierungen an Routenvalidierung,
+Karteninitialisierung und Farbkomposition. Eine frühere Messung erzielte 1,33 s;
+die aktuelle isolierte Wiederholung ist maßgeblich. Ein zusätzlicher Lauf mit
+gleichzeitiger Typprüfung verfehlte die Startgrenze und gilt wegen dieser
+abweichenden Messbedingungen nicht als Abnahme. Der aktuelle Messlauf scheiterte
+noch an der ursprünglichen Startup-Assertion; nur diese Abweichung wurde danach
+ausdrücklich akzeptiert. Alle übrigen Leistungsassertionen waren erfolgreich.
+Desktop (1440×900), Mobil (390×844) und Tablet (1024×768) wurden visuell geprüft.
+Die Messung belegt weder externe Providerlatenz noch Leistung auf einem echten iPad.
+Rohmessung: privates Verzeichnis `benchmark-stock-isolated-final` außerhalb
+des Repositorys.
+
+## Einführung und Betriebsgrenze
+
+Die explizite Offline-Übernahme einer isolierten 1.1.0-Kopie nach 1.2.0 hat 42 zum
+Stichtag gültige Altangebote mit denselben IDs/Konditionen übernommen und nur den
+Ablauf auf null gesetzt. 165 historische Transporte und alle übrigen Tabellen
+wurden vollständig abgeglichen. Quelle und Backup bleiben unverändert; Altangebote
+wurden nicht nachträglich gemeinsamen Vorlagen zugeordnet.
+
+**Der aktive Spielstand wurde nicht auf 1.2.0 umgestellt.** Vor dem nächsten Start
+mit diesem Code ist die dokumentierte Übernahme mit gestoppten Schreibern und
+frischem Backup erforderlich. Eine alte Testkopie darf aktuelle Fortschritte nicht
+ersetzen. Die bereits gesondert freigegebene Bina-Reparatur bleibt ein früherer
+Betriebsschritt. Anleitung: [RUNTIME_OPERATIONS](docs/RUNTIME_OPERATIONS.md).
+Spielstände, Archive, Sitzungen, Screenshots und Rohlogs bleiben außerhalb von Git.
+Echte iPad-Abnahme und Integration nach `main` bleiben gesondert.
+
+---
+
+# Qualitätsbericht: Runtime, Vorbereitung und Alttransporte
+
+Stand: 27.09.2026. Branch `feature/frontend-v2`, Basis `d11034f`.
+Die frühere Beschränkung auf gezielte Tests wurde durch die ausdrückliche
+Beauftragung der vollständigen Abnahme ersetzt. Die folgenden historischen
+Berichte beschreiben jeweils ihren damaligen Stand.
+
+## Änderung und Verantwortlichkeiten
+
+Der Standardeinstieg betreibt API und Vorbereitung in getrennten überwachten
+Prozessen. Persistierter Bedarf, globale Worker-Lease und Publikationsprüfungen
+schützen Markt, Flotte und Routingnachweise vor konkurrierenden Änderungen.
+SQLite verwendet WAL, FULL-Synchronisierung und 500 ms Lock-Wartezeit.
+Die bestehende Prüfung beider Fahrtrichtungen bleibt verbindlich.
+
+Der gemeldete stille Windows-Start wurde mit nativen Konsolenhandles
+reproduziert: `CREATE_NO_WINDOW` verursachte `Bad file descriptor` bei der
+Kindprozessausgabe. Beide Rollen erben jetzt die vorhandene Konsole; ein
+`process.start`-Event und die API-Startmeldungen bleiben sichtbar. Auf einer
+frischen Kopie des Spielstands erschien die Serverbereitschaft nach etwa zwei
+Sekunden; Health und Login antworteten mit HTTP 200, Ctrl+C beendete die API
+geordnet. Absolute Kindprozesspfade und die automatische Auswahl einer
+vorhandenen Projekt-`.venv` sichern weitere Startvarianten ab.
+
+Kompakte Runtime- und Verkehrsantworten enthalten keine Routenarrays.
+Authentifizierte Geometrieabrufe, ETag/Gzip und ein accountgebundener Cache
+entkoppeln das Spiel von der Karte. Eigene Transporte stammen aus dem aktuellen
+Runtime-Snapshot; verspäteter öffentlicher Verkehr kann abgeschlossene Fahrten
+nicht erneut darstellen. Fehlende Geometrie erzeugt keine Fahrzeugbewegung.
+
+Das Offline-Werkzeug repariert ausschließlich das bestätigte Alttransportmuster
+in einer neuen Datenbank nach Backup, Archivprüfung und vollständigem Abgleich.
+Auf der isolierten Kopie wurden genau ein aktiver und ein abgeschlossener Fall
+repariert. Beim betroffenen Profil schloss normales Settlement 17 fällige
+Fahrten genau einmal ab. Nach ausdrücklicher Freigabe wurde anschließend der
+Live-Stand bei gestoppten Prozessen frisch gesichert und repariert: inzwischen
+174 Transporte, weiterhin genau ein aktiver und ein abgeschlossener Schadensfall.
+Alle anderen Werte wurden vollständig abgeglichen. Die geprüfte Ausgabe wurde
+als `data/game.db` aktiviert; Original samt Sidecars, SQLite-Backup,
+Prüfsummenarchiv und Aktivierungsnachweis bleiben privat unter `data/`.
+Der Hintergrund-Neustart wurde von der automatischen Ausführungsprüfung
+blockiert; der Nutzer startete regulär über `python main.py`. Danach antwortete
+Health mit HTTP 200. Binas 17 fällige Transporte wurden normal abgeschlossen;
+alle Fahrzeuge blieben erhalten. Zwei anschließende neue Dispatches belegen
+den wieder spielbaren Bestand. Der Kontostand wurde im konsistenten Read genau
+gegen die 17 Auszahlungen und die Kosten der neuen Dispatches abgeglichen.
+
+Manuelles Review gegen AGENTS und CODING_STANDARDS:
+[Verantwortlichkeiten und Nachweise](docs/RUNTIME_ISOLATION_REVIEW.md),
+[Architekturentscheidung](docs/adr/0007-runtime-preparation-and-route-projections.md),
+[Betrieb und Live-Aktivierung](docs/RUNTIME_OPERATIONS.md).
+
+## Vollständige Prüfungen
+
+Vorlauf nach der Kaltstartoptimierung, vor der Windows-Startkorrektur:
+`python scripts/quality.py` vollständig bestanden: 560 Python-Tests,
+100,00 % app-Statement-Coverage (6.585 Statements, keine fehlenden Statements),
+113 Frontend-Verhaltenstests. Ruff, Formatierung, mypy (151 Dateien), Pyright,
+ESLint, Stylelint, Prettier, checkJs, Produktionsbuild und compileall bestanden.
+Architektur- und Function-Manifest-Prüfungen sind Teil der Python-Suite.
+Zwei bestehende Deprecation-Warnungen stammen aus Starlette/httpx/AnyIO;
+sie sind keine Testfehler und wurden nicht unterdrückt.
+
+`npm run test:e2e` auf dem endgültigen Produktionsbuild: 31/31 bestanden
+(9,8 Minuten). Desktop, Mobil- und Tabletansichten sowie verspätete Antworten,
+Netzwerk-/Speicherfehler, Sessionwechsel, Anfahrt, Dispatch und Ankunft geprüft.
+Nach der Windows-Startkorrektur werden die vollständigen Gates erneut geprüft.
+
+## Leistungsabnahme
+
+Messung auf neuen privaten Kopien mit drei Profilen und 35 Fahrzeugen;
+Intel Core i5-1235U, 12 logische CPUs, etwa 8 GiB RAM, Windows 11,
+Python 3.11.9. API und Fixture-Worker laufen als getrennte Prozesse.
+Der Messbefehl und die vollständigen Bedingungen stehen im Reviewbericht.
+
+Ein erster Lauf parallel zu beiden Gesamtsuiten erreichte bei jeweils 300
+Reads p95 von 186 ms (Runtime), 158 ms (Verkehr), 137 ms (Markt) und 24 ms
+(Health). Runtime plus Verkehr: höchstens 147.901 Byte JSON; keine wiederholten
+Geometriedownloads und keine Browserfehler. Der Browserstart verfehlte unter
+dieser zusätzlichen Last mit 2,84 Sekunden das Zwei-Sekunden-Ziel.
+Die anschließende kalte Dreiprofilprobe identifizierte beim betroffenen Profil
+3,16 Sekunden mit 17 fälligen Ankünften. Wiederverwendung der exakt unveränderten,
+bereits validierten Transportzeilen und ein früherer Runtime-Abruf beheben diesen
+Engpass; keine Validierung, Settlementprüfung oder Geometrie wurde ausgelassen.
+
+Der abschließende Lauf ohne parallele Tests besteht sämtliche Zielwerte:
+
+| Prüfung | Ergebnis |
+| --- | --- |
+| Erste sichtbare Flotte, drei kalte Browserkontexte | 1.731 / 934 / 1.321 ms |
+| Runtime, 300 Reads | p95 84,95 ms |
+| Öffentlicher Verkehr, 300 Reads | p95 68,63 ms |
+| Markt, 300 Reads | p95 91,67 ms |
+| Health, 300 Reads während Vorbereitung | p95 10,84 ms |
+| Runtime plus Verkehr, unkomprimiertes JSON | maximal 110.169 Byte (unter 108 KiB) |
+| Unveränderte Geometrie erneut geladen | 0 bei zwei Pollingintervallen je Profil |
+| Browserfehler / veränderte Quelldatenbank | 0 / nein |
+
+Die Browserproben erfolgen vor den HTTP-Messreihen, einschließlich fälligem
+Settlement. Desktop-, Mobil- und Tablet-Screenshots wurden visuell geprüft;
+Flotte, Bedienelemente und korrekte historische Routen bleiben darstellbar.
+Provider und Basiskarten verwenden deterministische lokale Fixtures; die
+Messung behauptet keine externe Netzlatenz oder reale iPad-Leistung.
+
+Echte iPad-Geräteabnahme und Live-Aktivierung sind gesonderte Betriebsschritte.
+Desktop-, Mobil- und Tabletansichten werden im lokalen Browser geprüft.
+Spielstände, Archive, Sitzungen, Screenshots und Rohmessungen bleiben außerhalb
+von Git. Integration nach `main` erfolgt ausschließlich über das Reviewverfahren.
+
+---
+
+# Historischer Qualitätsbericht: befahrbare Standortverbindungen
 
 Stand: 27.09.2026. **Implementiert; gezielte Prüfungen bestanden; vollständige
 Suite und Gesamtintegration verbleiben beim Nutzer.** Basis `5d7ff77`,

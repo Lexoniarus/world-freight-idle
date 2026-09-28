@@ -21,7 +21,7 @@ test("fixed asset reference: fleet and shop on desktop and mobile", async ({ pag
       await page.getByRole("link", {name: title, exact: true}).filter({visible: true}).first().click();
       const images = page.locator("#panel img[data-local-vehicle-asset]:visible");
       await expect(images.first()).toBeVisible();
-      await images.first().evaluate(image => image.decode());
+      await expect.poll(() => images.first().evaluate(image => image.complete && image.naturalWidth > 0)).toBe(true);
       await expect(images.first()).toHaveAttribute("src", /^blob:/);
       await expect(images.first()).toHaveAttribute("data-vehicle-role", "front");
       await page.evaluate(() => document.fonts.ready);

@@ -83,12 +83,12 @@ async def test_audit_report_is_local_and_prewarm_counts_every_request(
     assert report["provider_requests"] == 2
     assert len(observed) == 2
     assert "budget exhausted" in captured.err
-    args.request_limit = 1
+    args.request_limit = 4
     await cli.run(args)
     resumed = json.loads(capsys.readouterr().out)
-    assert resumed["provider_requests"] == 1
+    assert resumed["provider_requests"] == 4
     assert resumed["current_relations"]["ready"] == 1
-    assert observed.count("/route") == 1
+    assert observed.count("/route") == 2
     monkeypatch.setenv("VALHALLA_URL", "https://valhalla1.openstreetmap.de")
     with pytest.raises(ValueError, match="allow-public"):
         await cli.run(args)

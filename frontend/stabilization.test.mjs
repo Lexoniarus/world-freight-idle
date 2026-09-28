@@ -73,6 +73,64 @@ test("late asset loads cannot repaint disposed image bindings", async () => {
   service.destroy();
 });
 
+test("panel color work waits for visibility and ignores removed observer entries", async () => {
+  let reads = 0,
+    callback,
+    disconnected = false;
+  const observed = new Set();
+  const service = new TestColorAssets(async () => {
+    reads++;
+    return source;
+  });
+  const controller = new VehicleImageController(service, (notify) => {
+    callback = notify;
+    return {
+      observe: (image) => observed.add(image),
+      unobserve: (image) => observed.delete(image),
+      disconnect() {
+        disconnected = true;
+      },
+    };
+  });
+  const images = Array.from({ length: 3 }, () => {
+    const image = document.createElement("img");
+    Object.assign(image.dataset, {
+      vehicleModel: model,
+      vehicleRole: "front",
+      vehicleColor: "#e45756",
+    });
+    return image;
+  });
+  controller.update(images);
+  callback([{ target: images[0], isIntersecting: false }]);
+  assert.equal(reads, 0);
+  assert.equal(observed.size, 3);
+  callback([{ target: images[0], isIntersecting: true }]);
+  callback([{ target: images[0], isIntersecting: true }]);
+  await tick();
+  assert.equal(reads, 2);
+  assert.match(images[0].src, /^blob:/);
+  assert.equal(images[1].getAttribute("src"), null);
+  assert.equal(observed.size, 2);
+  // A replacement already referencing the cached blob must acquire its lease
+  // before releasing the previous DOM node, even before visibility arrives.
+  const replacement = images[0].cloneNode();
+  controller.update([replacement]);
+  await tick();
+  assert.equal(service.variants.size, 1);
+  assert.equal(replacement.src, images[0].src);
+  assert.match(await (await fetch(replacement.src)).text(), /vehicle-color/);
+  callback([{ target: images[1], isIntersecting: true }]);
+  assert.equal(service.variants.size, 1);
+  controller.destroy();
+  controller.update(images);
+  callback([{ target: images[2], isIntersecting: true }]);
+  assert.equal(disconnected, true);
+  assert.equal(controller.bindings.size, 0);
+  assert.equal(service.variants.size, 0);
+  service.destroy();
+});
+
 test("colored panel polling preserves actual image nodes", async () => {
   const service = new TestColorAssets(async () => source);
   const controller = new VehicleImageController(service);

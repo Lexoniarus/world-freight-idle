@@ -13,6 +13,10 @@ export class ContractMarketController {
     this.started = false;
     this.disposed = false;
     this.ordersVisible = () => false;
+    /** @type {{key: string, promise: Promise<void>} | null} */
+    this.listRead = null;
+    /** @type {{id: string, promise: Promise<void>} | null} */
+    this.detailRead = null;
   }
 
   /** Register owned listeners for this controller.
@@ -31,13 +35,15 @@ export class ContractMarketController {
     const detailId = path.startsWith("/contracts/") ? path.split("/")[2] : "";
     const tasks = [];
     if (path === "/contracts" || this.ordersVisible()) tasks.push(this.loadList(false));
-    else this.pending.cancel();
     if (detailId) tasks.push(this.loadDetail(detailId));
-    else this.detailPending.cancel();
+    else if (this.detailRead) {
+      this.detailPending.cancel();
+      this.detailRead = null;
+    }
     await Promise.all(tasks);
   }
 
-  /** Replace the market for an explicit user refresh.
+  /** Request preparation and read the preserved market on explicit refresh.
    * @returns {Promise<void>}
    */
   async forceRefresh() {
@@ -46,13 +52,33 @@ export class ContractMarketController {
     await this.loadList(true);
   }
 
-  /** Load and publish the current shared offer pool.
+  /** Load and publish the authoritative selection for the current vehicle.
    * @param {boolean} force
    * @returns {Promise<void>}
    */
   async loadList(force) {
+    const url = this.currentUrl();
+    const key = url.pathname === "/contracts" ? (url.searchParams.get("vehicle") ?? "") : "";
+    if (!force && this.listRead?.key === key) return this.listRead.promise;
+    const read = { key, promise: this.readList(force, key) };
+    this.listRead = read;
+    try {
+      await read.promise;
+    } finally {
+      if (this.listRead === read) this.listRead = null;
+    }
+  }
+
+  /** Execute one list revision; only explicit replacement aborts it.
+   * @param {boolean} force
+   * @param {string} vehicleId
+   * @returns {Promise<void>}
+   */
+  async readList(force, vehicleId) {
     const request = this.pending.start();
-    const path = force ? "/contracts/refresh" : "/contracts";
+    const path =
+      (force ? "/contracts/refresh" : "/contracts") +
+      (vehicleId ? "?vehicle_id=" + encodeURIComponent(vehicleId) : "");
     try {
       const result = await this.request(path, {
         method: force ? "POST" : "GET",
@@ -73,6 +99,21 @@ export class ContractMarketController {
    * @returns {Promise<void>}
    */
   async loadDetail(id) {
+    if (this.detailRead?.id === id) return this.detailRead.promise;
+    const read = { id, promise: this.readDetail(id) };
+    this.detailRead = read;
+    try {
+      await read.promise;
+    } finally {
+      if (this.detailRead === read) this.detailRead = null;
+    }
+  }
+
+  /** Execute one selected offer request and reject obsolete navigation.
+   * @param {string} id
+   * @returns {Promise<void>}
+   */
+  async readDetail(id) {
     const request = this.detailPending.start();
     try {
       const contract = await this.request("/contracts/" + encodeURIComponent(id), {

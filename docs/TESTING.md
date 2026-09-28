@@ -297,3 +297,56 @@ und den rund 504 Meter entfernten funktionierenden Anker. Eine begrenzte
 Live-Gegenprobe erfolgt ausschließlich auf einer SQLite-Backupkopie mit
 normalem Markt, Dispatch, Ankunft und nächster Quote. Vorgehen, Resultate und
 Restabnahme: [Verbindungsprüfung](CONNECTED_ROUTING_REVIEW.md).
+
+
+## Aktuelle verbindliche Gesamtabnahme: Runtime-Isolation
+
+Die vorherigen Hinweise auf ausschliesslich gezielte Tests sind historische
+Abnahmen. Fuer den Runtime-Umbau sind `python scripts/quality.py`, 100 % app-
+Statement-Coverage und `npm run test:e2e` vor Commit/Push vorgeschrieben.
+Keine abgesenkten Coverage-Schwellen, keine uebersprungenen Pflichtpruefungen.
+Neue Gegentests, Browserisolation und reproduzierbare Leistungsmessung stehen
+im [Runtime-Review](RUNTIME_ISOLATION_REVIEW.md). Der Browserserver startet seinen
+Fixture-Worker als eigenen Prozess. Testprofile frueherer unabhaengiger Faelle
+werden im Scheduler gefencet; mehrere Profile desselben Falls bleiben aktiv.
+Provider werden gemockt, Playwright prueft Desktop, Mobil und Tablet. Das ist
+keine echte iPad-Abnahme. Live-Reparaturen sind kein Teil der Testsuite.
+
+## Gemeinsame Vorlagen und stabile Dreier-Auswahl
+
+`test_market_stock.py` prüft drei sichtbare Angebote, zehn vorbereitete
+Alternativen, 14 Modellkontexte, gespeicherte abweichende Kapazität, zwei
+unabhängige Spieler, einmalige Verwendung, parallele Dispatches, finanziellen
+Rollback und sofortiges Nachrücken. Abfahrt, Zeitablauf, Route-TTL, Providerfehler,
+Lease-/Flottenänderungen und Katalogänderungen dürfen keinen Bestand löschen
+oder ungeprüfte Angebote veröffentlichen. Teilweise Verbindungsvorbereitung
+wird nach neuem Repository-Kontext aus dem gespeicherten Checkpoint fortgesetzt.
+Ankünfte aktivieren Bedarf am 60-Minuten-Rand ohne vorzeitiges Settlement.
+
+`test_market_stock_upgrade.py` prüft vollständigen Quellen-/Zielabgleich,
+unveränderte Quelle/Historie, gültige Altangebote ohne Ablauf und Ausschluss
+abgelaufener Angebote. Fehlende Guards, fremde Versionen, kollidierende Tabellen,
+Abgleichabweichungen und Integritätsfehler verhindern eine Ausgabe. CLI-Tests
+verlangen neue getrennte Backup-/Ausgabepfade und bestätigen rein lesenden Check.
+Alle neuen konkreten Core-Callables sind dem Function-Manifest zugeordnet.
+
+Frontend-Verhaltenstests prüfen die serverseitige Fahrzeugabfrage, Zusammenfassung
+gleicher Reads und Ausschluss verspäteter Antworten nach Auswahlwechseln.
+`deferred-map.test.mjs` prüft nachgeladene Renderer, überholte Darstellungszustände,
+Abbruch, Fehler und verspätete Erstellung. Der Browsertest hält das Kartenmodul
+zurück und bedient währenddessen Flotte und Suchfilter. Die Bildgegenprobe
+prüft verzögerten Bezug sichtbarer Farbbilder, entfernte Observer-Einträge und
+Freigabe aller Bildbindungen. Der Routengegenvergleich prüft Distanz, Dauer,
+Provider und jedes Geometrie-Ende, ohne Validierung neuer Snapshots zu umgehen.
+Die vollständige Browser- und Leistungsabnahme verwendet isolierte Datenbanken
+und Fixture-Provider. Reproduzierbar: `python -m tests.runtime_benchmark
+UPGRADED_COPY.db NEW_RESULTS_DIR`; keine parallelen Builds oder Gesamtsuiten.
+Logs und Screenshots bleiben privat. Ein Browser-Plugin ist in dieser Sitzung
+nicht verfügbar; deshalb wird das vorhandene Playwright-Testsystem verwendet.
+
+Akzeptierte Leistungsabweichung vom 28.09.2026: Der Nutzer hat den einmaligen
+prozesskalten Start mit fälligem Settlement bei 3,39 Sekunden akzeptiert.
+Dieser Wert bleibt im Bericht sichtbar; das Werkzeug prüft weitere Spielerstarts
+weiterhin gegen zwei Sekunden. p95 <= 250 ms, höchstens 250 KiB pro normalem
+Runtime-/Verkehrspoll und keine wiederholten unveränderten Geometrien bleiben
+verbindlich. Diese Ausnahme verändert weder funktionale Tests noch Coverage.

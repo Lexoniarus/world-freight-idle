@@ -1,6 +1,7 @@
 import { selectFleetGroups } from "../fleet-selection.js";
 import { prepareTransportRoute, transportRoutePose } from "./route-plan.js";
 import { cityLocations } from "../city-context.js";
+import { routeGeometry } from "./overlay-data.js";
 
 /** Project finite location snapshots to map coordinates. */
 function coordinates(locations) {
@@ -13,12 +14,14 @@ function coordinates(locations) {
 export function vehiclePosition(state, vehicle, now) {
   const trip = state.transports.find((item) => item.vehicle_id === vehicle.id);
   if (!trip) return coordinates([vehicle.location_snapshot ?? vehicle.hub]);
+  if (routeGeometry(trip.route_geojson).coordinates.length < 2) return [];
   const pose = transportRoutePose(prepareTransportRoute(trip), trip, now);
   return pose ? [pose.coordinate] : [];
 }
 
 /** Include the saved entire route and the current journey position. */
 export function transportCoordinates(trip, now) {
+  if (routeGeometry(trip.route_geojson).coordinates.length < 2) return [];
   const route = prepareTransportRoute(trip);
   const pose = transportRoutePose(route, trip, now);
   return [
@@ -35,6 +38,10 @@ export function transportCoordinates(trip, now) {
  */
 export function focusCoordinates(state, url, now, detail, cityUid, cities) {
   const [, section, id] = url.pathname.split("/");
+  const selectedTrip = state.transports.find((trip) =>
+    section === "fleet" ? trip.vehicle_id === id : section === "transports" && trip.id === id,
+  );
+  if (selectedTrip && routeGeometry(selectedTrip.route_geojson).coordinates.length < 2) return null;
   if (section === "fleet") {
     if (id) {
       const vehicle = state.vehicles.find((item) => item.id === id);

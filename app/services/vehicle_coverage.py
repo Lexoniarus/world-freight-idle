@@ -95,6 +95,11 @@ class VehicleCoverageService:
     ) -> CoveragePlan:
         """Plan smaller generation contexts first to share fitting offers."""
         selected = list(plan.selected)
+        contexts: dict[tuple[str, str, int], set[str]] = {}
+        for candidate in candidates:
+            contexts.setdefault(trade_key(candidate), set()).update(
+                v.vehicle.vehicle_id for v in candidate.vehicles
+            )
         for vehicle in sorted(
             fleet, key=lambda v: (v.capacity_tons, v.vehicle_id)
         ):
@@ -103,10 +108,7 @@ class VehicleCoverageService:
             guaranteed = tuple(
                 c
                 for c in selected
-                if any(
-                    v.vehicle.vehicle_id == vehicle.vehicle_id
-                    for v in candidates_for_trade(c, candidates)
-                )
+                if vehicle.vehicle_id in contexts.get(trade_key(c), set())
                 and max(v.vehicle.capacity_tons for v in c.vehicles)
                 <= vehicle.capacity_tons
             )
@@ -154,11 +156,10 @@ class VehicleCoverageService:
         )
 
 
-def candidates_for_trade(
-    candidate: MarketCandidate,
-    pool: tuple[MarketCandidate, ...],
-) -> tuple[CompatibleVehicle, ...]:
-    """Recover all compatible contexts before generation-capacity narrowing."""
-    return tuple(
-        v for c in pool if c.trade == candidate.trade for v in c.vehicles
+def trade_key(candidate: MarketCandidate) -> tuple[str, str, int]:
+    """Index compatible contexts by the stable trade identity."""
+    return (
+        candidate.trade.origin.facility_uid,
+        candidate.trade.destination.facility_uid,
+        candidate.trade.cargo.nhm_row_id,
     )

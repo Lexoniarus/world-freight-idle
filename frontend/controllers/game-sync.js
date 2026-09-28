@@ -6,13 +6,14 @@ import { progressDisplay } from "../views/transports.js";
 
 /** Synchronize global game state with the HUD, panels and map. */
 export class GameSync {
-  /** @param {{state: import("../state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../map/world-map.js").WorldMap | null, notify: import("../types.js").Notify}} dependencies */
+  /** @param {{state: import("../state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../types.js").GameMap | null, notify: import("../types.js").Notify}} dependencies */
   constructor({ state, panel, map, notify }) {
     this.state = state;
     this.panel = panel;
     this.map = map;
     this.notify = notify;
     this.disposed = false;
+    this.panelRevision = "";
     this.onChange = (event) => this.publish(event.detail);
   }
 
@@ -24,12 +25,23 @@ export class GameSync {
   }
 
   /** Publish a state revision to HUD, panel and map.
-   * @param {{previous: import('../types.js').GameSnapshot | null, current: import('../types.js').GameSnapshot}} change
+   * @param {{previous: import('../types.js').GameSnapshot | null, current: import('../types.js').GameSnapshot, mapOnly?: boolean}} change
    * @returns {void}
    */
-  publish({ previous, current }) {
+  publish({ previous, current, mapOnly = false }) {
     if (this.disposed) return;
     this.panel.view.state = current;
+    if (current.trafficAvailable === false && previous?.trafficAvailable !== false)
+      this.notify(
+        "Gemeinsamer Live-Verkehr ist momentan nicht erreichbar. Der letzte bekannte Kartenstand bleibt sichtbar.",
+        "map",
+      );
+    if (current.trafficAvailable === true && previous?.trafficAvailable === false)
+      this.notify("Gemeinsamer Live-Verkehr ist wieder verbunden.", "map");
+    if (mapOnly) {
+      this.updateMap();
+      return;
+    }
     this.panel.view.detailContract = this.state.contractDetail;
     this.panel.view.detailId = this.state.contractDetailId;
     this.panel.view.marketLoaded = this.state.marketLoaded;
@@ -46,18 +58,29 @@ export class GameSync {
       this.notify(
         `${current.player.completed - previous.player.completed} Lieferung(en) abgeschlossen. Erlöse wurden gutgeschrieben.`,
       );
-    if (current.trafficAvailable === false && previous?.trafficAvailable !== false)
-      this.notify(
-        "Gemeinsamer Live-Verkehr ist momentan nicht erreichbar. Der letzte bekannte Kartenstand bleibt sichtbar.",
-        "map",
-      );
-    if (current.trafficAvailable === true && previous?.trafficAvailable === false)
-      this.notify("Gemeinsamer Live-Verkehr ist wieder verbunden.", "map");
     this.updateMap();
     const path = this.panel.view.url.pathname;
     if (path.startsWith("/contracts/"))
       this.map?.select(path.split("/")[2], this.state.contractDetail);
-    if (!this.panel.view.busy) this.panel.render();
+    const revision = JSON.stringify({
+      player: current.player,
+      vehicles: current.vehicles.map(({ energy_level: _energy, ...vehicle }) => vehicle),
+      transports: current.transports.map(
+        ({ route_geojson: _shape, route_legs: _legs, progress: _progress, ...trip }) => trip,
+      ),
+      contracts: current.contracts,
+      preparation: current.market_preparation,
+      coverage: current.vehicle_coverage,
+      detail: this.state.contractDetail,
+      detailId: this.state.contractDetailId,
+      marketLoaded: this.state.marketLoaded,
+      marketStale: this.state.marketStale,
+    });
+    if (!this.panel.view.busy && revision !== this.panelRevision) {
+      this.panelRevision = revision;
+      this.panel.render();
+    }
+    this.updateProgress();
   }
 
   /** Project current route eligibility without moving the camera.
@@ -80,10 +103,14 @@ export class GameSync {
       await this.state.refresh();
     } catch (error) {
       if (this.disposed || error.name === "AbortError") return;
-      requiredElement("#connection").textContent = "Verbindung unterbrochen";
+      const unavailable = error.status === 503;
+      requiredElement("#connection").textContent = unavailable
+        ? "Spielstand derzeit nicht verfügbar"
+        : "Verbindung unterbrochen";
       const notice = requiredElement("#sync-notice");
       notice.replaceChildren(
-        html`<span>Spielstand konnte nicht aktualisiert werden.</span
+        html`<span
+            >${unavailable ? "Der Server konnte deinen Spielstand nicht laden. Bitte erneut versuchen." : "Verbindung zum Server nicht herstellbar. Bitte erneut versuchen."}</span
           ><button data-action="retry">Erneut versuchen</button>`,
       );
       notice.hidden = false;

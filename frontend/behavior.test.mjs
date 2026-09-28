@@ -304,7 +304,7 @@ test("disposed state suppresses late snapshots even when a transport ignores abo
   const state = new GameState(async (path) => {
     paths.push(path);
     await gate;
-    return path === "/dashboard"
+    return path === "/runtime"
       ? { server_time: 0, contracts: [] }
       : path === "/fleet"
         ? { vehicles: [] }
@@ -319,7 +319,7 @@ test("disposed state suppresses late snapshots even when a transport ignores abo
   assert.equal(state.lifetime.signal.aborted, true);
   assert.equal(state.data, null);
   assert.equal(changes, 0);
-  assert.deepEqual(paths.sort(), ["/dashboard", "/fleet", "/map/traffic"].sort());
+  assert.deepEqual(paths.sort(), ["/runtime"]);
 });
 
 test("polling only runs when visible and eligible, and releases both intervals", () => {
@@ -596,13 +596,13 @@ test("uncertain writes wait for old polls then read a fresh snapshot", async () 
     release = resolve;
   });
   const state = new GameState(async (path) => {
-    if (path === "/dashboard") {
+    if (path === "/runtime") {
       reads++;
       const cash = reads === 1 ? 175000 : 26000;
       if (reads === 1) await oldPoll;
-      return { player: { cash }, server_time: Date.now() / 1000 };
+      return { player: { cash }, server_time: Date.now() / 1000, vehicles: [], transports: [] };
     }
-    return path === "/fleet" ? { vehicles: [] } : { contracts: [] };
+    return { transports: [] };
   });
   const actions = new GameActions({
     panel,

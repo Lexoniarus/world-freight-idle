@@ -1,7 +1,10 @@
 # Frontend-v2: Mengen, Tarif und tatsächliche Kosten
 
 Verbindlicher Stand vom 25.09.2026. Referenzen bleiben read-only: World 4.2.0
-und Vehicle 2.2.0; das relationale Game-Schema bleibt 1.1.0.
+und Vehicle 2.2.0; das relationale Game-Schema ist seit dem Vorratsumbau 1.2.0.
+Vorlagen ändern weder Tonnagenverteilung noch Tarif-/Kostenberechnung. Persönliche
+Angebote bleiben immutable und haben `expires_at = null`; historische Konditionen
+einschließlich gespeicherter Ablaufwerte bleiben unverändert.
 
 ## Unabhängige Menge und Vergütung
 
@@ -74,13 +77,13 @@ Ankunft A; der gespeicherte Abschnittsplan liefert die laufende Position.
 
 ## Start und Historie
 
-`MarketStartupService` validiert zuerst beide Referenzen. Eine gemeinsame
-äußere Unit of Work ersetzt danach ausschließlich offene Angebote aller
-bereits vorhandenen Profile, nur für eigene idle-Städte. Ein Fehler beim
-zweiten oder späteren Profil rollt auch vorherige Ersetzungen zurück und
-verhindert die Serverfreigabe. Kein Routing, Settlement oder Anlegen von
-Spielprofilen in diesem Ablauf. Der World-Snapshot und abgeleitete
-NHM-Indizes werden revisionsgebunden wiederverwendet.
+Die API validiert Schema und beide Referenzen vor Freigabe. Der frühere globale
+Start-Rebuild wurde durch den getrennten Vorbereitungsprozess ersetzt (ADR 0007).
+Dieser plant Bedarf für vorhandene Profile ein und veröffentlicht vorbereitete
+Angebote atomar pro Profil, nur für eigene idle-Städte. Ein Vorbereitungsfehler
+verhindert keine API-Freigabe. World-Snapshot und abgeleitete NHM-Indizes werden
+revisionsgebunden wiederverwendet. Neue Spielprofile und fälliges Settlement
+bleiben Aufgaben der Runtime.
 
 Historische Transporte behalten Routen, Beträge und eingebettete Offers.
 Fehlende `tariff`-/`cost_breakdown`-Zusätze bleiben optional lesbar und werden

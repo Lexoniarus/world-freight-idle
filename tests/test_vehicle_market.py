@@ -112,10 +112,12 @@ async def test_vehicle_readiness_requires_approach_and_excludes_stale(
     offers = game.refresh_market()
     assert game.contract_choices(offers, fleet[0].vehicle_id)
     with patch.object(
-        readiness.store, "payload", wraps=readiness.store.payload
+        readiness.store,
+        "payload_available",
+        wraps=readiness.store.payload_available,
     ) as payload:
         payload.side_effect = lambda ref: (
-            None if ref == approach.reference else payload._mock_wraps(ref)
+            False if ref == approach.reference else payload._mock_wraps(ref)
         )
         scoped = game.contract_choices(offers, fleet[0].vehicle_id)
         assert all(
@@ -196,7 +198,7 @@ async def test_departure_during_preparation_cannot_publish_stale_vehicle_coverag
     game, preparation = vehicle_game
     batch = make_batch(game, preparation)
 
-    async def departure(*args):
+    async def departure(*args, **kwargs):
         vehicle = game.get_vehicle("truck")
         vehicle.start_trip()
         game.state_repository.save_vehicle(vehicle)

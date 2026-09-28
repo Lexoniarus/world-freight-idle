@@ -308,8 +308,10 @@ test("list and detail reads publish independently and cancel obsolete detail nav
   assert.equal(state.data.contracts[0], offer);
   url = new URL("http://test/contracts/two");
   const second = market.refresh();
-  requests[2].resolve({ contracts: [offer] });
-  requests[3].resolve({ ...offer, id: "two" });
+  requests
+    .filter((row) => row.path === "/contracts")
+    .forEach((row) => row.resolve({ contracts: [offer] }));
+  requests.find((row) => row.path === "/contracts/two").resolve({ ...offer, id: "two" });
   await second;
   requests[1].resolve({ ...offer, id: "one" });
   await first;

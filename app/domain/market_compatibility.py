@@ -22,6 +22,17 @@ def market_vehicle(
         raise ValueError("Fahrzeugmodell ist nicht auflösbar.")
     if vehicle.status != "idle":
         raise ValueError("Fahrzeug ist nicht verfügbar.")
+    return planning_vehicle(vehicle, model, location)
+
+
+def planning_vehicle(
+    vehicle: OwnedVehicle,
+    model: VehicleModel,
+    location: FacilityLocationSnapshot,
+) -> MarketVehicle:
+    """Project a demand location without changing availability or ownership."""
+    if vehicle.model_id != model.id:
+        raise ValueError("Fahrzeugmodell ist nicht auflösbar.")
     return MarketVehicle(
         vehicle.id,
         model.id,

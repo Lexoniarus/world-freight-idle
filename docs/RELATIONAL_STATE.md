@@ -1,6 +1,6 @@
 # Relationale Spielpersistenz und Transaktionsgrenzen
 
-Status: Relationales Schema 1.1.0, direkte Port-Verdrahtung und getrennte
+Status: Relationales Schema 1.2.0, direkte Port-Verdrahtung und getrennte
 Persistenz-/HTTP-Projektionen sind implementiert. Frühere Formate werden nur
 von expliziten Offline-Werkzeugen gelesen. Aktuelle Prüfergebnisse:
 [Qualitätsbericht](../QUALITY_REPORT.md).
@@ -195,3 +195,29 @@ Schlüssel intern. Ready Relation und Payload bleiben atomar. Offer-Referenzen
 werden vollständig validiert und transaktional ersetzt. Eigenständiger Bind
 und äußere Markt-UoW rollen vollständig zurück. Coverage-/Analytics-/Audit-
 Read-Modelle benötigen keine Schema-Migration.
+
+## Dauerhafter Vorrat: Schema 1.2.0
+
+Die obigen 1.1.0-Abschnitte beschreiben die jeweiligen Einführungsschritte.
+Aktuell ist `contract_offers.expires_at` nullable; bei einem gesetzten Wert
+gilt weiterhin `expires_at > created_at`. Der Server migriert keine bestehende
+Datenbank beim Start. Die explizite Übernahme prüft kanonisches Quellschema,
+Dokumente, Fremdschlüssel, sämtliche unveränderten Tabellen/Rowids und Historie.
+Zu diesem Zeitpunkt gültige Altangebote erhalten nur den Null-Ablaufwert,
+abgelaufene Angebote werden ausgeschlossen. Historische Transport-JSONs bleiben
+bytegetreu. Vorgehen: [Betrieb](RUNTIME_OPERATIONS.md).
+
+`market_templates` enthält globale Modell-/Stadtvorlagen mit immutablem
+Erzeugungssnapshot. `market_offer_templates` ordnet persönliche Offers zu;
+`market_template_uses` enthält die dauerhafte Verwendung je Account/Vorlage.
+Beide besitzen eindeutige Spieler-/Vorlagenschlüssel. Angebot, Verbrauch,
+Finanzen und Transport committen gemeinsam. Ein Offer-Löschen entfernt nur
+die aktive Zuordnung; der Verbrauch bleibt bestehen. Eine normale
+Spielzurücksetzung setzt den Account-Verbrauch nicht zurück.
+
+`market_stock_cursors` und `market_stock_pending` speichern Rotation und
+angefangene Handelsbeziehungen. Alle Tabellen liegen in derselben WAL-Datenbank.
+Bedarfsankünfte werden aus indexierten aktiven Transporten mit skalarem
+Ziel-/Zeitpunktzugriff gelesen, ohne Routenarrays in Python zu laden.
+Die API liest vorhandene Offers; Refill und Kandidatenbildung gehören zum
+separaten Worker. Alter Bestand außerhalb aktueller Bedarfsstädte bleibt erhalten.

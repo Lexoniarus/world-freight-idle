@@ -419,12 +419,12 @@ async def test_commit_rechecks_anchor_and_graph_inside_transaction(
 ):
     publish = case.store.publish_connection
 
-    def change_before_commit(connection, *args):
+    def change_before_commit(connection, *args, **kwargs):
         if changed == "anchor":
             case.anchors.put(replace(connection.origin, validated_at=99))
         else:
             case.store.observe_provider_revision("fake", "new")
-        return publish(connection, *args)
+        return publish(connection, *args, **kwargs)
 
     with patch.object(
         case.store, "publish_connection", side_effect=change_before_commit

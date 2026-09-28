@@ -26,7 +26,7 @@ export function renderContracts(view) {
       ? renderContractDetails(contract, view)
       : view.detailId !== id
         ? html`<p role="status">Auftrag wird geladen …</p>`
-        : html`${emptyState("Auftrag nicht mehr verfügbar", "Er wurde angenommen oder ist abgelaufen.")}${routeLink("/contracts", "Zur Auftragsbörse", "button primary")}`;
+        : html`${emptyState("Auftrag derzeit nicht verfügbar", "Er wurde angenommen oder seine Straßenverbindung wird erneut geprüft.")}${routeLink("/contracts", "Zur Auftragsbörse", "button primary")}`;
   }
   const params = view.url.searchParams;
   const selected = marketVehicle(view.state, view.url);

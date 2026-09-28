@@ -382,10 +382,16 @@ def test_auth_api_and_private_game_resources(tmp_path):
 
 def test_launchers_run_main_without_changing_working_directory():
     root = Path(__file__).resolve().parents[1]
-    with patch("uvicorn.run") as run:
+    from unittest.mock import AsyncMock
+
+    with (
+        patch("app.launcher.run_role", new=AsyncMock(return_value=0)) as run,
+        patch("sys.argv", ["main.py"]),
+        pytest.raises(SystemExit) as exited,
+    ):
         runpy.run_path(str(root / "main.py"), run_name="__main__")
-        assert run.call_args.args == ("app.main:app",)
-        assert run.call_args.kwargs["host"] == "0.0.0.0"
+    assert exited.value.code == 0
+    run.assert_awaited_once_with("all")
 
 
 async def test_initialization_does_not_implicitly_import_legacy_trips(

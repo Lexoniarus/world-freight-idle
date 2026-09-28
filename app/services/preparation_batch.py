@@ -11,7 +11,7 @@ from app.services.market_candidates import MarketCandidateService
 from app.services.market_coverage import MarketCoverageService
 from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
-from app.services.vehicle_coverage import VehicleCoverageService
+from app.services.vehicle_coverage import VehicleCoverageService, trade_key
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,15 +61,17 @@ class MarketPreparationBatchService:
 
     def plan(self) -> PreparationBatchPlan:
         """Read refreshed publication and determine still-needed relations."""
-        with self.preparation.transactions.transaction():
-            return self._plan_in_transaction()
+        self.refresh()
+        with self.preparation.readiness.reading():
+            return self._plan_snapshot()
 
-    def _plan_in_transaction(self) -> PreparationBatchPlan:
-        """Assemble cached demand within the active local transaction."""
-        offers = tuple(self.refresh())
-        status = self.preparation.jobs.status(self.preparation.user_id)
+    def _plan_snapshot(self) -> PreparationBatchPlan:
+        """Plan from immutable inputs after releasing the read transaction."""
+        with self.preparation.transactions.read_transaction():
+            offers = self.repository.list_offers()
+            status = self.preparation.jobs.status(self.preparation.user_id)
+            owned = self.repository.list_vehicles()
         assert status is not None
-        owned = self.repository.list_vehicles()
         fleet = self.candidates.resolve_fleet(owned)
         cities = self.scope.resolve(owned)
         candidates = self.candidates.build(cities, fleet)
@@ -94,8 +96,12 @@ class MarketPreparationBatchService:
             (o.origin.facility_uid, o.destination.facility_uid) for o in offers
         }
         needed = tuple(
-            dict.fromkeys(
+            {
                 (
+                    trade_key(candidate),
+                    tuple(v.vehicle.vehicle_id for v in candidate.vehicles),
+                ): candidate
+                for candidate in (
                     *coverage.selected,
                     *(
                         c
@@ -107,7 +113,7 @@ class MarketPreparationBatchService:
                         in published
                     ),
                 )
-            )
+            }.values()
         )
         unmet = vehicles.extend(
             self.coverage.plan(cities, candidates, offers),
@@ -136,9 +142,21 @@ class MarketPreparationBatchService:
         """Prepare outside transactions and evaluate fresh publication."""
         plan = self.plan()
         complete, retry_at = await self.preparation.prepare_batch(
-            plan.needed, plan.fleet
+            plan.needed, plan.fleet, limit=1
         )
         current = self.plan()
+        if (
+            current.fleet != plan.fleet
+            and current.generation == plan.generation
+        ):
+            self.preparation.request(changed=True)
+            return PreparationBatchResult(
+                plan.generation,
+                "partial",
+                self.preparation.clock(),
+                current.structural_count,
+                current.relation_states,
+            )
         outcome = "partial"
         if complete and current.generation == plan.generation:
             if current.exhausted:
@@ -148,7 +166,9 @@ class MarketPreparationBatchService:
         return PreparationBatchResult(
             plan.generation,
             outcome,
-            retry_at,
+            retry_at
+            if retry_at is not None
+            else self.preparation.clock() + 60,
             current.structural_count,
             current.relation_states,
         )

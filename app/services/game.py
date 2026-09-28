@@ -30,6 +30,7 @@ from app.services.market import MarketGenerator
 from app.services.market_lifecycle import MarketLifecycleService
 from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
+from app.services.market_selection import MarketSelectionService
 
 LOGGER = logging.getLogger(__name__)
 
@@ -49,6 +50,7 @@ class GameService:
         dispatch_planning: DispatchPlanningService,
         time_scale: float = 1.0,
         preparation: MarketPreparationService | None = None,
+        market_selection: MarketSelectionService | None = None,
     ) -> None:
         """Wire player-scoped orchestration to injected service ports."""
         self.unit_of_work = unit_of_work
@@ -62,13 +64,25 @@ class GameService:
         self.market_scope = market_scope
         self.now = clock
         self.market_lifecycle = MarketLifecycleService(
-            unit_of_work, market, market_scope, lambda: self.now(), preparation
+            unit_of_work,
+            market,
+            market_scope,
+            lambda: self.now(),
+            preparation,
+            selection=market_selection,
         )
 
     def ensure_initial_state(self) -> None:
         """Atomically create missing state, including for direct callers."""
+        if (
+            self.state_repository.get_player() is not None
+            and self.state_repository.list_vehicles()
+        ):
+            return
         with self.unit_of_work.transaction():
             self._ensure_initial_state()
+            if self.market_lifecycle.preparation is not None:
+                self.market_lifecycle.preparation.request(changed=True)
 
     def _ensure_initial_state(self) -> None:
         """Initialize player and starter inside the caller's transaction."""
@@ -172,6 +186,9 @@ class GameService:
         self.state_repository.save_player(player)
         self.state_repository.save_vehicle(vehicle)
         self.state_repository.save_transport(trip)
+        preparation = self.market_lifecycle.preparation
+        if preparation is not None and preparation.stock is not None:
+            preparation.stock.consume(contract_id, self.now())
         self.state_repository.remove_offer(contract_id)
         self.market_lifecycle.prune_in_transaction()
         LOGGER.info(
@@ -193,6 +210,8 @@ class GameService:
 
     def reconcile_arrival(self) -> bool:
         """Settle due active transports once, before refreshing the market."""
+        if not self.state_repository.list_due_transports(self.now()):
+            return False
         with self.unit_of_work.transaction():
             now = self.now()
             arrived = self.state_repository.list_due_transports(now)
@@ -200,6 +219,8 @@ class GameService:
                 return False
             for trip in arrived:
                 self._complete_trip(trip, now)
+            if self.market_lifecycle.preparation is not None:
+                self.market_lifecycle.preparation.request(changed=True)
         self.market_lifecycle.refill_after_commit()
         return True
 
@@ -243,8 +264,8 @@ class GameService:
         """Synchronize and read the complete player-owned state."""
         arrived = self.reconcile_arrival()
         if not arrived:
-            self.refresh_market(force=False)
-        with self.unit_of_work.transaction():
+            self.market_lifecycle.published()
+        with self.unit_of_work.read_transaction():
             return GameSnapshot(
                 self.now(),
                 self.time_scale,
@@ -257,7 +278,7 @@ class GameService:
     def dashboard(self) -> GameSnapshot:
         """Read startup state without generating a contract market."""
         self.reconcile_arrival()
-        with self.unit_of_work.transaction():
+        with self.unit_of_work.read_transaction():
             return GameSnapshot(
                 self.now(),
                 self.time_scale,
@@ -269,12 +290,12 @@ class GameService:
     def list_contracts(self) -> list[ContractOffer]:
         """Reconcile arrivals and return retained/refilled city markets."""
         self.reconcile_arrival()
-        return self.refresh_market()
+        return self.market_lifecycle.published()
 
     def refresh_contracts(self) -> list[ContractOffer]:
         """Explicitly regenerate offers only for current active cities."""
         self.reconcile_arrival()
-        return self.refresh_market(force=True)
+        return self.market_lifecycle.published(refresh=True)
 
     def contract_choices(
         self, offers: Sequence[ContractOffer], vehicle_id: str | None = None
@@ -288,7 +309,7 @@ class GameService:
         vehicle_id: str | None = None,
     ) -> MarketPresentation:
         """Read authorized offers and diagnostics in one local transaction."""
-        with self.unit_of_work.transaction():
+        with self.unit_of_work.read_transaction():
             contracts = self.contract_choices(offers, vehicle_id)
             coverage = tuple(
                 item

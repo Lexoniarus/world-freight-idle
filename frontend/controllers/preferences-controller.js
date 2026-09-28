@@ -2,7 +2,7 @@ import { LatestRequest } from "../state.js";
 
 /** Own account preference requests and publish one shared company color. */
 export class PreferencesController {
-  /** @param {{request: import('../types.js').RequestJson, panel: import('./panel-controller.js').PanelController, map: import('../map/world-map.js').WorldMap | null, notify: import('../types.js').Notify, page?: Document}} dependencies */
+  /** @param {{request: import('../types.js').RequestJson, panel: import('./panel-controller.js').PanelController, map: import('../types.js').GameMap | null, notify: import('../types.js').Notify, page?: Document}} dependencies */
   constructor({ request, panel, map, notify, page = document }) {
     this.request = request;
     this.panel = panel;

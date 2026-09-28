@@ -84,11 +84,10 @@ def test_reset_failure_restores_deleted_state(game):
         "accounts",
         "auth",
         "preferences",
-        "market",
+        "world",
+        "catalogue",
         "body",
         "close-first",
-        "worker-start",
-        "worker-close",
     ],
 )
 async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
@@ -107,11 +106,13 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
         patches.enter_context(
             patch("app.main.httpx.AsyncClient", side_effect=creation)
         )
-        patches.enter_context(
+        runtime_factory = patches.enter_context(
             patch(
                 "app.main.build_game_runtime",
                 side_effect=error if failure == "game" else None,
-                return_value=SimpleNamespace(database=Mock()),
+                return_value=SimpleNamespace(
+                    database=Mock(), world=Mock(), catalogue=Mock()
+                ),
             )
         )
         patches.enter_context(
@@ -132,17 +133,12 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
                 side_effect=error if failure == "preferences" else None,
             )
         )
-        worker = SimpleNamespace(start=AsyncMock(), close=AsyncMock())
-        if failure == "worker-start":
-            worker.start.side_effect = error
-        if failure == "worker-close":
-            worker.close.side_effect = error
-        patches.enter_context(
-            patch("app.main.build_preparation_worker", return_value=worker)
-        )
-        startup = patches.enter_context(patch("app.main.build_market_startup"))
-        if failure == "market":
-            startup.return_value.rebuild.side_effect = error
+        if failure == "world":
+            runtime_factory.return_value.world.read.side_effect = error
+        if failure == "catalogue":
+            runtime_factory.return_value.catalogue.list_models.side_effect = (
+                error
+            )
         if failure == "none":
             async with lifespan(app):
                 assert all(
@@ -153,13 +149,5 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
                 async with lifespan(app):
                     if failure == "body":
                         raise error
-    if failure in {
-        "none",
-        "body",
-        "close-first",
-        "worker-start",
-        "worker-close",
-    }:
-        worker.close.assert_awaited_once()
     expected = [0] if failure == "first-client" else [1]
     assert [client.aclose.await_count for client in clients] == expected

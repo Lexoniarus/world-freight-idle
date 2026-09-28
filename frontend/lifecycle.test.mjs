@@ -132,6 +132,7 @@ test("public application, map and controller methods declare module contracts", 
   const files = [
     "application.js",
     "map/world-map.js",
+    "map/deferred-map.js",
     ...readdirSync(new URL("./controllers", import.meta.url)).map((name) => "controllers/" + name),
   ];
   for (const file of files) {

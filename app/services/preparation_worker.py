@@ -4,12 +4,21 @@ import asyncio
 import logging
 from collections.abc import Callable
 from contextvars import Context
+from functools import partial
+from typing import Protocol
 
 from app.domain.market_preparation import PreparationStore
-from app.services.preparation_batch import MarketPreparationBatchService
+from app.services.preparation_batch import PreparationBatchResult
+from app.services.preparation_lease import PreparationLease
 from app.tracing import background_trace
 
 LOGGER = logging.getLogger(__name__)
+
+
+class PreparationBatch(Protocol):
+    """Execute one bounded round without coupling the worker to planning."""
+
+    async def process(self) -> PreparationBatchResult: ...
 
 
 class MarketPreparationWorker:
@@ -18,13 +27,15 @@ class MarketPreparationWorker:
     def __init__(
         self,
         jobs: PreparationStore,
-        batches: Callable[[str], MarketPreparationBatchService],
+        batches: Callable[[str], PreparationBatch],
         clock: Callable[[], float],
+        lease: PreparationLease | None = None,
     ) -> None:
         """Inject scheduling storage and player lifecycle composition."""
         self.jobs = jobs
         self.batches = batches
         self.clock = clock
+        self.lease = lease
         self._task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
@@ -38,13 +49,17 @@ class MarketPreparationWorker:
 
     async def close(self) -> None:
         """Cancel and await owned work before provider resources close."""
-        if self._task is not None:
-            task, self._task = self._task, None
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
+        try:
+            if self._task is not None:
+                task, self._task = self._task, None
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+        finally:
+            if self.lease is not None:
+                self.lease.close()
 
     async def _run(self) -> None:
         """Recover the complete iteration, including scheduler failures."""
@@ -70,7 +85,10 @@ class MarketPreparationWorker:
             return
         with background_trace(status.preparation_id):
             try:
-                await self.process(user_id)
+                if self.lease is None:
+                    await self.process(user_id)
+                elif not await self.lease.run(partial(self.process, user_id)):
+                    await asyncio.sleep(1)
             except Exception:
                 LOGGER.exception(
                     "Market preparation batch failed",

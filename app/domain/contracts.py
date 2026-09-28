@@ -30,7 +30,7 @@ class ContractOfferSnapshot:
     payload_band: str
     rate_eur_per_km_ton: float
     created_at: float
-    expires_at: float
+    expires_at: float | None
     mode: str
     relationship_simulated: bool
     market_context: OfferMarketContext | None = None
@@ -56,7 +56,7 @@ class ContractOffer:
     payload_band: str
     rate_eur_per_km_ton: float
     created_at: float
-    expires_at: float
+    expires_at: float | None
     mode: str
     relationship_simulated: bool
     market_context: OfferMarketContext | None = None
@@ -72,9 +72,10 @@ class ContractOffer:
         require_finite(self.tons, "Tonnage", 0.01)
         require_finite(self.rate_eur_per_km_ton, "Freight rate")
         require_finite(self.created_at, "Creation time")
-        require_finite(self.expires_at, "Expiry time")
-        if self.expires_at <= self.created_at:
-            raise ValueError("Expiry must follow creation.")
+        if self.expires_at is not None:
+            require_finite(self.expires_at, "Expiry time")
+            if self.expires_at <= self.created_at:
+                raise ValueError("Expiry must follow creation.")
         if self.origin.facility_uid == self.destination.facility_uid:
             raise ValueError("Contract endpoints must differ.")
         if self.cargo.code not in {
@@ -117,7 +118,8 @@ class ContractOffer:
         require_finite(now, "Current time")
         return (
             self.market_model == market_model
-            and self.created_at <= now < self.expires_at
+            and self.created_at <= now
+            and (self.expires_at is None or now < self.expires_at)
         )
 
 
@@ -133,7 +135,7 @@ class HistoricalContractSnapshot:
     cargo: NhmProduct | DocumentedCargo
     tons: float
     created_at: float
-    expires_at: float
+    expires_at: float | None
     mode: str
     relationship_simulated: bool
     cargo_basis: str
@@ -152,11 +154,11 @@ class HistoricalContractSnapshot:
         require_finite(self.tons, "Tonnage", 0.01)
         require_finite(self.rate_eur_per_km_ton, "Freight rate")
         require_finite(self.created_at, "Creation")
-        require_finite(self.expires_at, "Expiry")
+        if self.expires_at is not None:
+            require_finite(self.expires_at, "Expiry")
         if (
-            self.expires_at <= self.created_at
-            or self.origin.facility_uid == self.destination.facility_uid
-        ):
+            self.expires_at is not None and self.expires_at <= self.created_at
+        ) or self.origin.facility_uid == self.destination.facility_uid:
             raise ValueError("Invalid historical contract terms.")
         if isinstance(self.cargo, NhmProduct):
             if (

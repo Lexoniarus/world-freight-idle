@@ -275,3 +275,42 @@ mit Diagnose fehlender Standorte/Bänder. `partial` bedeutet fehlende Coverage,
 Angebote. Ein späterer Anchor-/Providerwechsel kann die Vorbereitung reaktivieren.
 Tonnagenverteilung, Tarif, Anfahrt, Energie und historische Transporte bleiben
 unverändert. Ein Generierungsfahrzeug reserviert weiterhin kein Angebot.
+
+
+## Runtime-Trennung und Alttransport-Reparatur (27.09.2026)
+
+Die neue verbindliche Abschlussvoraussetzung ersetzt die fruehere Beschraenkung
+auf gezielte Routingtests: vollstaendiges Quality-Gate mit 100 % app-Statement-
+Coverage sowie komplette Browserregression vor Commit/Push auf feature/frontend-v2.
+Runtime und Vorbereitung laufen getrennt; Spielstand und Flotte erscheinen vor
+Geometrien und Markt. Read-Ziel p95 <= 250 ms, weitere Spielerstarts <= 2 s
+(einmaliger Kaltstart mit Settlement bei 3,39 s am 28.09.2026 akzeptiert),
+Runtime plus Verkehr <= 250 KiB pro Poll. Keine unveraenderten Geometrien im Polling.
+
+Die beiden bestaetigten optionalen Alt-Anfahrtsplaene werden nur offline auf
+einer gesicherten Kopie repariert. Live-Aktivierung und echte iPad-Abnahme bleiben
+separate Betriebsschritte. Implementierung und tatsaechlicher Abnahmestand:
+[Runtime-Review](RUNTIME_ISOLATION_REVIEW.md) und [Qualitaetsbericht](../QUALITY_REPORT.md).
+
+
+## Gemeinsamer Auftragsvorrat (28.09.2026)
+
+Das ausgewählte Fahrzeug erhält genau drei fahrbare Angebote je Streckentyp,
+sofern genügend geprüfter Bestand verfügbar ist. Der gemeinsame Hintergrundvorrat
+hält mindestens zehn Vorlagen je Bedarfsstadt, konkretem Modell und Band; jede
+Vorlage ist einmal je Spieler verwendbar. Die drei sichtbaren gehören zu diesen
+zehn. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen Angebote nutzen.
+
+Ungenutzte Vorlagen und Angebote verfallen nicht zeitlich und bleiben bei Abfahrt
+und Rückkehr erhalten. Ein Verbrauch lässt gespeicherte Reserve sofort nachrücken;
+der Worker füllt nach. Bedarf entsteht im Stand und ab 60 Minuten vor gespeicherter
+Ankunft. Fehlende Hin-/Rückwege, veraltete Prüfnachweise oder unbrauchbare
+Katalogbezüge geben keine Angebote frei. Alle 14 Modelle werden in Bedarfsstädten
+berücksichtigt, tatsächlich wartende Fahrzeuge zuerst.
+
+Die Schemaübernahme nach 1.2.0 ist ein expliziter Offline-Schritt mit Backup und
+neuer Ausgabe. Live-Aktivierung ist nicht Teil von Commit/Push. Verbindliche
+Gesamtabnahme: Quality-Gate mit 100 % app-Statement-Coverage, vollständige
+Browserregression und Leistungsabnahme. Tatsächlicher Stand und Grenzen stehen
+im [Qualitätsbericht](../QUALITY_REPORT.md); Verantwortlichkeiten in
+[ADR 0008](adr/0008-shared-market-stock.md).

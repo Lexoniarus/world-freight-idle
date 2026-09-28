@@ -70,10 +70,14 @@ def test_locate_candidates_are_bounded_and_exclude_nontruck_edges():
         for index in range(8)
     ]
     edges.insert(2, edges[1])
-    candidates = ValhallaTruckAnchorLocator._access_candidates(edges)
+    from app.domain.geography import Coordinates
+
+    candidates = ValhallaTruckAnchorLocator._access_candidates(
+        edges, Coordinates(50, 10), None
+    )
     assert len(candidates) == 5
     assert len(set(candidates)) == 5
-    assert all(c.longitude != 10 for c in candidates)
+    assert all(c.coordinates.longitude != 10 for c in candidates)
 
 
 def test_locate_failure_preserves_bounded_provider_diagnostics():
