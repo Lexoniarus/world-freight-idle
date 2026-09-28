@@ -20,6 +20,7 @@ import { formatDuration } from "./time.js";
 
 const hub = {
   id: "berlin",
+  city_uid: "city-berlin",
   label: "Westhafen",
   city: "Berlin",
   address: "Westhafen 1",
@@ -92,6 +93,7 @@ const trip = {
 function createView(path = "/contracts/job") {
   return {
     url: new URL(path, "http://test"),
+    cityUid: hub.city_uid,
     state: {
       contracts: [contract],
       vehicles: [vehicle],
@@ -302,7 +304,7 @@ test("disposed state suppresses late snapshots even when a transport ignores abo
   const state = new GameState(async (path) => {
     paths.push(path);
     await gate;
-    return path === "/dashboard"
+    return path === "/runtime"
       ? { server_time: 0, contracts: [] }
       : path === "/fleet"
         ? { vehicles: [] }
@@ -317,7 +319,7 @@ test("disposed state suppresses late snapshots even when a transport ignores abo
   assert.equal(state.lifetime.signal.aborted, true);
   assert.equal(state.data, null);
   assert.equal(changes, 0);
-  assert.deepEqual(paths.sort(), ["/dashboard", "/fleet", "/map/traffic"].sort());
+  assert.deepEqual(paths.sort(), ["/runtime"]);
 });
 
 test("polling only runs when visible and eligible, and releases both intervals", () => {
@@ -445,13 +447,14 @@ test("map projections derive relevant locations, discard invalid hubs and remove
     [179, 0],
     [181, 0],
   ]);
-  assert.equal(data.fleetCoordinates(50).length, 2);
+  assert.equal(data.fleetCoordinates(50).length, 1); // Active vehicle has one real position.
   assert.equal(previewFeatures(quote).features.length, 1);
   assert.equal(previewFeatures(null).features.length, 0);
   data.update({ ...data.state, transports: [], traffic: [] });
   assert.equal(data.routes.size, 0);
   assert.equal(data.trafficRoutes.size, 0);
-  assert.equal(data.vehicleFeatures(200).features.length, 0);
+  assert.equal(data.vehicleFeatures(200).features.length, 1);
+  assert.equal(data.vehicleFeatures(200).features[0].properties.idle, true);
 });
 
 test("mobile sheet handles keyboard clicks and a drag without double advancement", () => {
@@ -543,10 +546,12 @@ test("application disposal releases every component exactly once", () => {
 });
 
 test("all feature views render active, empty, unavailable and shop states", () => {
-  const view = createView("/contracts");
+  const view = createView("/contracts?vehicle=truck");
   assert.equal(renderPanel(view).querySelectorAll(".job-card").length, 1);
-  view.url = new URL("http://test/contracts?hub=missing");
-  assert.match(renderPanel(view).textContent, /Keine Aufträge/);
+  view.url = new URL("http://test/contracts?city=missing");
+  view.cityUid = "missing";
+  assert.match(renderPanel(view).textContent, /Keine passenden Aufträge/);
+  view.cityUid = "";
   view.url = new URL("http://test/fleet");
   assert.equal(renderPanel(view).querySelectorAll(".vehicle-card").length, 1);
   view.url = new URL("http://test/fleet?tab=shop");
@@ -561,6 +566,7 @@ test("all feature views render active, empty, unavailable and shop states", () =
         capacity_tons: 12,
         unlock_reputation: 0,
         operating_cost_eur_per_km: 0.49,
+        maintenance_eur_per_1000_km: 80,
         powertrain: "combustion",
         energy: vehicle.energy,
         top_speed_kmh: 90,
@@ -590,13 +596,13 @@ test("uncertain writes wait for old polls then read a fresh snapshot", async () 
     release = resolve;
   });
   const state = new GameState(async (path) => {
-    if (path === "/dashboard") {
+    if (path === "/runtime") {
       reads++;
       const cash = reads === 1 ? 175000 : 26000;
       if (reads === 1) await oldPoll;
-      return { player: { cash }, server_time: Date.now() / 1000 };
+      return { player: { cash }, server_time: Date.now() / 1000, vehicles: [], transports: [] };
     }
-    return path === "/fleet" ? { vehicles: [] } : { contracts: [] };
+    return { transports: [] };
   });
   const actions = new GameActions({
     panel,
@@ -664,6 +670,7 @@ test("catalogue reputations gate offers independently of funds", () => {
         capacity_tons: 24.3,
         unlock_reputation: 5,
         operating_cost_eur_per_km: 0.49,
+        maintenance_eur_per_1000_km: 80,
         powertrain: "combustion",
         energy: vehicle.energy,
         top_speed_kmh: 90,
@@ -673,7 +680,7 @@ test("catalogue reputations gate offers independently of funds", () => {
   const locked = renderPanel(view);
   assert.equal(locked.querySelector('[data-action="buy"]').disabled, true);
   assert.match(locked.textContent, /Reputation reicht nicht/);
-  assert.match(locked.textContent, /0,49/);
+  assert.match(locked.textContent, /0,08/);
   view.state.player.reputation = 5;
   assert.equal(renderPanel(view).querySelector('[data-action="buy"]').disabled, false);
 });
@@ -706,12 +713,13 @@ test("facility snapshots preserve map locations during catalogue outage and lega
   overlays.update({ vehicles: [owned], contracts: [job], transports: [] });
   assert.deepEqual(overlays.fleetCoordinates(0), [[13, 52]]);
   assert.equal(overlays.hubFeatures().features.length, 2);
-  const view = createView("/contracts?hub=berlin");
+  const view = createView("/contracts?vehicle=truck&hub=berlin");
   view.state.contracts = [job];
   const container = document.createElement("div");
   container.append(renderPanel(view));
   assert.equal(container.querySelectorAll(".job-card").length, 1);
-  view.url = new URL("http://test/contracts?hub=unknown");
+  view.url = new URL("http://test/contracts?city=unknown");
+  view.cityUid = "unknown";
   container.replaceChildren(renderPanel(view));
   assert.equal(container.querySelectorAll(".job-card").length, 0);
 });
@@ -790,12 +798,16 @@ test("shipment quantities preserve hundredths for light vehicle selection", () =
   assert.doesNotMatch(container.textContent, /1,2 Tonnen/);
 });
 
-test("city market requests have no viewport parameters and removed details clear offers", async () => {
+test("city market requests have no viewport parameters and removed details preserve the list", async () => {
   const { ContractMarketController } = await import("./controllers/contract-market-controller.js");
   const paths = [];
   let url = new URL("http://test/contracts?bbox=0,0,1,1&zoom=12");
   const state = {
     data: { contracts: [contract] },
+    detail: contract,
+    replaceContractDetail(value) {
+      this.detail = value;
+    },
     replaceContracts(contracts) {
       this.data.contracts = contracts;
     },
@@ -816,6 +828,45 @@ test("city market requests have no viewport parameters and removed details clear
   assert.deepEqual(paths, ["/contracts", "/contracts/refresh"]);
   url = new URL("http://test/contracts/removed");
   await controller.refresh();
-  assert.deepEqual(state.data.contracts, []);
+  assert.deepEqual(state.data.contracts, [contract]);
+  assert.equal(state.detail, null);
   controller.destroy();
+});
+
+test("dispatch follows its trip after active-city URL cleanup but preserves newer navigation", async () => {
+  for (const navigated of [false, true]) {
+    const panel = mountPanel();
+    panel.view.quote = quote;
+    panel.render();
+    const paths = [];
+    const actions = new GameActions({
+      panel,
+      request: async () => ({ id: "started" }),
+      notify() {},
+      navigate: (path) => paths.push(path),
+      state: {
+        afterMutation: async () => {
+          if (navigated) panel.view.url = new URL("http://test/fleet");
+          else panel.view.url.searchParams.set("city", "");
+        },
+      },
+    });
+    await actions.dispatchTransport();
+    assert.deepEqual(paths, navigated ? [] : ["/transports/started"]);
+    actions.destroy();
+    panel.destroy();
+  }
+});
+
+test("an incompatible explicit reference vehicle requires a new deliberate choice", () => {
+  const panel = mountPanel();
+  panel.selectRoute(new URL("http://test/contracts/job?vehicle=too-small"));
+  assert.equal(panel.view.selectedVehicle, "");
+  assert.equal(document.querySelector('[data-action="quote"]').disabled, true);
+  assert.match(panel.content.textContent, /nicht geeignet/);
+  assert.equal(document.querySelector("#vehicle-choice").value, "");
+  panel.view.selectedVehicle = vehicle.id;
+  panel.render();
+  assert.equal(document.querySelector('[data-action="quote"]').disabled, false);
+  panel.destroy();
 });

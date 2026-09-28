@@ -4,18 +4,22 @@
  * @returns {Array<{current: HTMLElement, next: HTMLElement}>}
  */
 export function matchVehicleImages(currentContent, nextContent) {
-  const available = [...currentContent.querySelectorAll(".vehicle-photo[data-image-state]")];
+  const available = [
+    ...currentContent.querySelectorAll(".vehicle-photo[data-image-state], .vehicle-game-asset"),
+  ];
   const matches = [];
-  for (const next of nextContent.querySelectorAll(".vehicle-photo[data-image-state]")) {
+  for (const next of nextContent.querySelectorAll(
+    ".vehicle-photo[data-image-state], .vehicle-game-asset",
+  )) {
     if (!(next instanceof HTMLElement)) continue;
     const initialState = next.dataset.imageState;
     const index = available.findIndex((current) => {
       if (!(current instanceof HTMLElement)) return false;
-      next.dataset.imageState = current.dataset.imageState;
+      if (initialState !== undefined) next.dataset.imageState = current.dataset.imageState;
       return current.isEqualNode(next);
     });
     if (index < 0) {
-      next.dataset.imageState = initialState;
+      if (initialState !== undefined) next.dataset.imageState = initialState;
       continue;
     }
     const [current] = available.splice(index, 1);

@@ -27,12 +27,13 @@ Semantik kommt aus dem Katalog; zusätzliche Waren werden nicht erfunden.
 
 ## Stadtmarkt
 
-Eigene idle OwnedVehicles aktivieren eindeutige Städte anhand city_uid.
+Eigene idle OwnedVehicles und angekündigte Ankünfte ab 60 Minuten vor Ankunft
+aktivieren eindeutige Bedarfsstädte anhand city_uid.
 Der gespeicherte Standort-Snapshot hat Vorrang; fehlt er, wird die gespeicherte
 Facility-ID exakt aufgelöst. Alle geeigneten Facilities dieser Städte sind
 Origins, Ziele bleiben katalogweit verfügbar. Pan/Zoom haben keinen Einfluss.
 
-Jeder Candidate braucht mindestens ein kompatibles idle Fahrzeug: passender
+Jeder Candidate braucht mindestens einen kompatiblen Planungskontext: passender
 Modus, auflösbares Modell, positive Transport-Capability und NHM-Scale.
 Für jedes Fahrzeug gilt Capability-Suitability × Scale-Suitability.
 Candidate-Gewicht ist Evidenz-/Match-/Confidence-/Priority-Gewicht ×
@@ -49,17 +50,20 @@ Frachtrate ist STANDARD_RATE (0,18) × freight_rate_factor_game.
 
 ## Coverage und Retention
 
-Fahrbare, strukturell aktuelle V2-Angebote mit mehr als 60 Sekunden Restlaufzeit
-bleiben erhalten. Zuerst erhält jede geeignete Origin-Facility ein Angebot,
-danach jedes vorhandene Distanzband einer Stadt mindestens drei. Bereits
-geplante Angebote zählen mit. Seltenere Candidates, dann Waren und Zielstädte
-werden bevorzugt; Gleichstände werden gewichtet entschieden. Wiederholungen
-sind zulässig. Es gibt keine globale Mindestzahl sechs.
+Die aktuelle Vorratsregel ersetzt die frühere zeitlich begrenzte Stadtdeckung.
+Der Worker hält mindestens zehn vorbereitete Vorlagen je Bedarfsstadt, konkretem
+Modell und verfügbarem Distanzband vor. Alle 14 Modelle werden berücksichtigt;
+fehlende sichtbare Angebote echter Fahrzeuge und bevorstehende Ankünfte haben
+Vorrang. Für das ausgewählte Fahrzeug liefert die API höchstens drei passende,
+fahrbare Angebote je Band. Die Auswahl bleibt ohne Zustandsänderung stabil.
 
-Bands ohne Candidate werden als unmet Coverage protokolliert; fehlende
-Katalogrelationen werden nicht synthetisch ersetzt. Neue Angebote gelten
-sechs Stunden und speichern vollständigen V2-Kontext. Manueller Refresh
-ersetzt ausschließlich die Angebote aktiver Städte.
+Vorlagen sind gemeinsam, persönliche Angebote und einmalige Verwendung sind
+spielergebunden. Neue persönliche Mengen basieren auf der gespeicherten
+Fahrzeugkapazität. Aufträge verfallen nicht zeitlich (`expires_at = null`) und
+bleiben nach Abfahrt gespeichert. Refresh würfelt sie nicht neu. Abgelaufene
+Routennachweise oder unbrauchbare Katalogbezüge verhindern die Freigabe, ohne
+historische Konditionen zu verändern. Nicht erzeugbare Bänder bleiben eine
+Diagnose, keine synthetische Handelsbeziehung. [ADR 0008](adr/0008-shared-market-stock.md).
 
 ## Bestand und Historie
 
@@ -69,10 +73,10 @@ Zuordnung; weder Name noch Kapazität dienen als Heuristik. Die Zahl eigener
 Fahrzeuge ist kein Architekturvertrag. Ungelöste idle Modelle werden explizit
 abgewiesen. Aktive Transporte rechnen weiter mit ihren gespeicherten Werten.
 
-V1-Angebote werden beim Refresh verworfen, bevor V2-Pflichtfelder verlangt
-werden. Alte payload_band-Werte bleiben historisch lesbar; PayloadBand und
-seine Generierung sind entfernt. Spielschema 1.1.0 und Snapshot-Hüllen bleiben
-unverändert. Aktive und settled Transporte werden weder umgeschrieben noch
+Katalogseitig unbrauchbare Angebote werden nicht mehr freigegeben. Alte
+payload_band-Werte bleiben historisch lesbar; PayloadBand und seine Generierung
+sind entfernt. Spielschema 1.2.0 erlaubt unbegrenzte Angebotslaufzeiten;
+Snapshot-Hüllen bleiben unverändert. Aktive und settled Transporte werden weder umgeschrieben noch
 aus aktuellen Referenzwerten rekonstruiert.
 
 ## Geografie und Datenqualität
@@ -95,3 +99,32 @@ oder Migrationsauftrag für den aktuellen 4.2.0-Referenzkatalog.
 Prüfstrategie: [TESTING.md](TESTING.md), Zuständigkeiten:
 [ARCHITECTURE.md](ARCHITECTURE.md), tatsächliche Abnahme:
 [QUALITY_REPORT.md](../QUALITY_REPORT.md).
+
+
+## Abholanfahrt und Marktentfernung
+
+Market v2 erzeugt weiterhin ohne Routing und bewertet die Luftlinie zwischen
+Abholung B und Lieferung C. Das angebotene Distanzband beschreibt diese
+Frachtrelation. Die spätere Fahrzeugquote ergänzt die tatsächliche Anfahrt
+A → B und Straßenkilometer beider Abschnitte; sie verändert weder Candidates
+noch Coverage-Bands. Kataloge und deren read-only Zugriff bleiben unverändert.
+
+## Wirtschaftsprofile und direkte Wartungsquelle
+
+World-Load-Factor-Grenzen bleiben unverändert. Die reine Beta(3,1)-Transformation
+begünstigt hohe Werte innerhalb dieser Grenzen für alle vier Scales. Der
+kleinste operative NHM-Frachtfaktor wird aus dem validierten Snapshot gelesen
+und revisionsgebunden indexiert. Vehicle 2.2.0 liefert Wartung direkt aus
+`vehicle_balance.maintenance_eur_per_1000_km_game`; alle 14 lokalen Modelle
+sind befüllt. Fehlende/ungültige Wartung wird abgelehnt, niemals aus dem
+aggregierten alten Betriebskostenfeld hergeleitet. Beide DBs bleiben read-only.
+Audit und Formeln: [ECONOMY_V2.md](ECONOMY_V2.md).
+
+
+Beide Referenzkataloge werden beim Serverstart validiert und für die Laufzeit
+als immutable Revision gecacht. `CachedVehicleCatalogue` lädt seinen
+injizierten validierenden Port unter einem Lock einmal erfolgreich; Fehler
+werden nicht gecacht. Ein neuer Katalogstand erfordert einen Serverneustart
+mit erneuter Validierung und globalem Marktneuaufbau. Offline-Werkzeuge lesen
+weiterhin explizit ihren gewählten Katalog. Historische Transporte bleiben
+von neuen Revisionen unabhängig.

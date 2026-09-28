@@ -14,6 +14,8 @@ export class Notifications {
   /** Show literal text in the appropriate notification surface.
    * @param {string} message
    * @param {string} [kind]
+   *
+   * @returns {void}
    */
   show(message, kind = "game") {
     if (kind === "map") {
@@ -26,7 +28,9 @@ export class Notifications {
     this.timers.clearTimeout(this.timer);
     this.timer = this.timers.setTimeout(() => this.toast.classList.remove("visible"), 6500);
   }
-  /** Stop a pending dismissal. */
+  /** Stop a pending dismissal.
+   * @returns {void}
+   */
   destroy() {
     this.timers.clearTimeout(this.timer);
   }

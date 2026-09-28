@@ -21,6 +21,9 @@ class Settings:
     request_timeout_seconds: float
     game_time_scale: float
     log_level: str
+    routing_anchor_max_snap_m: float = 1000.0
+    valhalla_concurrency: int = 1
+    valhalla_minimum_interval: float = 1.0
     cookie_secure: bool = False
     vehicle_catalogue_path: Path | None = None
     world_catalogue_path: Path | None = None
@@ -75,6 +78,14 @@ class Settings:
                 float(os.getenv("GAME_TIME_SCALE", "1")),
             ),
             log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
+            routing_anchor_max_snap_m=max(
+                1.0,
+                float(os.getenv("ROUTING_ANCHOR_MAX_SNAP_M", "1000")),
+            ),
+            valhalla_concurrency=int(os.getenv("VALHALLA_CONCURRENCY", "1")),
+            valhalla_minimum_interval=float(
+                os.getenv("VALHALLA_MINIMUM_INTERVAL", "1")
+            ),
             cookie_secure=os.getenv("COOKIE_SECURE", "false").lower()
             == "true",
         )

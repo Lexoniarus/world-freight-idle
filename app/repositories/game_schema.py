@@ -1,9 +1,9 @@
 """Relational game-state schema, independent of reference catalogues."""
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 SCHEMA = """
 CREATE TABLE game_schema (version TEXT NOT NULL);
-INSERT INTO game_schema VALUES ('1.1.0');
+INSERT INTO game_schema VALUES ('1.2.0');
 CREATE TABLE users (
     id TEXT PRIMARY KEY,
     username TEXT NOT NULL COLLATE NOCASE UNIQUE,
@@ -41,7 +41,7 @@ CREATE TABLE contract_offers (
     origin_facility_uid TEXT NOT NULL,
     destination_facility_uid TEXT NOT NULL,
     created_at REAL NOT NULL,
-    expires_at REAL NOT NULL CHECK(expires_at > created_at),
+    expires_at REAL CHECK(expires_at IS NULL OR expires_at > created_at),
     market_model TEXT NOT NULL,
     offer_snapshot TEXT NOT NULL,
     PRIMARY KEY (user_id, contract_id),

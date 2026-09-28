@@ -1,3 +1,4 @@
+import { renderCostBreakdown } from "../ui/cost-breakdown.js";
 import { phaseLabel, transportProgress } from "../journey.js";
 import { renderEnergyMeter } from "../ui/vehicle-energy.js";
 import { html } from "../ui/dom.js";
@@ -53,13 +54,18 @@ function renderTransportDetails(trip, now, vehicle) {
     <div class="dispatch-banner">
       <span class="badge green" data-phase-trip="${trip.id}"
         >${progressDisplay(trip, now).phase}</span
-      >${renderVehicleImage(vehicle || { name: "Lkw", capacity_tons: 24 })}
+      >${renderVehicleImage(vehicle || { name: "Lkw", capacity_tons: 24 }, "side")}
     </div>
     <h2>${trip.origin.city} ${icon("arrow", 22)} ${trip.destination.city}</h2>
     <p>${trip.contract.cargo} · ${number(trip.contract.tons, 2)} t</p>
+    <p class="footnote">
+      ${trip.start?.label ?? trip.origin.label} → Abholung: ${trip.origin.label} → Lieferung:
+      ${trip.destination.label}
+    </p>
     ${renderProgress(trip, now)} ${vehicle ? renderEnergyMeter(vehicle, trip, now) : null}
+    ${renderCostBreakdown(trip.cost_breakdown)}
     <div class="metrics">
-      ${metric("Strecke", number(trip.distance_km) + " km")}${metric("Erlös bei Ankunft", money(trip.payout_eur))}${metric("Betriebskosten", money(trip.operating_cost_eur))}${metric("Gewinn", money(trip.profit_eur), "profit")}
+      ${metric("Anfahrt zur Abholung", number(trip.approach_distance_km ?? 0) + " km")}${metric("Frachtstrecke", number(trip.delivery_distance_km ?? trip.distance_km) + " km")}${metric("Gesamtdauer", formatDuration(trip.arrives_at - trip.departed_at))}${metric("Strecke gesamt", number(trip.distance_km) + " km")}${metric("Erlös bei Ankunft", money(trip.payout_eur))}${metric("Betriebskosten", money(trip.operating_cost_eur))}${metric("Gewinn", money(trip.profit_eur), "profit")}
     </div>
     ${actionButton("focus-trip", [icon("target", 18), " Route auf der Karte"], false, "secondary", trip.id)}
     <p class="footnote">
@@ -76,7 +82,7 @@ export function progressDisplay(trip, now) {
   const progress = transportProgress(trip, now);
   const paused = ["refuelling", "charging"].includes(progress.phase);
   return {
-    phase: phaseLabel(progress.phase),
+    phase: phaseLabel(progress.phase, progress.stage),
     percent: Math.round(progress.fraction * 100),
     eta:
       progress.phase === "arrived"

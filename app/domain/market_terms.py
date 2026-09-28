@@ -9,6 +9,7 @@ from app.domain.market_profiles import (
     DistanceBand,
     VehicleScale,
 )
+from app.domain.tariffs import FreightTariff
 from app.domain.validation import require_finite, require_integer
 
 
@@ -23,6 +24,7 @@ class OfferMarketContext:
     generated_capacity_tons: float
     cargo_value_eur_per_t: float
     cargo_value_eur: int
+    tariff: FreightTariff | None = None
 
     def __post_init__(self) -> None:
         """Reject inconsistent distance, equipment and monetary facts."""

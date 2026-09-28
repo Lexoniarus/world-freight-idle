@@ -1,3 +1,12 @@
+import { reportCleanup } from "./lifecycle.js";
+import { MapFocusController } from "./controllers/map-focus-controller.js";
+import { VehicleColorAssets } from "./vehicle-color-assets.js";
+import { VehicleImageController } from "./vehicle-image-bindings.js";
+import { PreferencesController } from "./controllers/preferences-controller.js";
+import { CityContextController } from "./controllers/city-context-controller.js";
+import { LayerStateController } from "./controllers/layer-state-controller.js";
+import { AnalyticsController } from "./controllers/analytics-controller.js";
+import { ManagementInput } from "./controllers/management-input.js";
 import { GameApiClient, ApiError } from "./api.js";
 import { GameState } from "./state.js";
 import { BrowserRouter } from "./navigation.js";
@@ -11,7 +20,7 @@ import { InputController } from "./controllers/input-controller.js";
 import { MobileSheet } from "./controllers/mobile-sheet.js";
 import { Notifications } from "./controllers/notifications.js";
 import { RefreshScheduler } from "./controllers/refresh-scheduler.js";
-import { WorldMap } from "./map/world-map.js";
+import { DeferredMap } from "./map/deferred-map.js";
 import { createBasemap } from "./map/provider.js";
 import { renderShell } from "./views/shell.js";
 import { html, requiredElement } from "./ui/dom.js";
@@ -23,8 +32,7 @@ export async function bootstrap() {
   const api = new GameApiClient(globalThis.fetch.bind(globalThis), redirect);
   let application;
   const pagehide = () => {
-    application?.destroy();
-    api.destroy();
+    reportCleanup([() => application?.destroy(), () => api.destroy()]);
   };
   window.addEventListener("pagehide", pagehide, { once: true });
   // A disposed application restored from the back-forward cache needs a fresh lifecycle.
@@ -42,8 +50,7 @@ export async function bootstrap() {
     }
     await application.start();
   } catch (error) {
-    application?.destroy();
-    api.destroy();
+    reportCleanup([() => application?.destroy(), () => api.destroy()]);
     if (error instanceof ApiError && error.status === 401) {
       redirect("/login");
       return;
@@ -61,12 +68,15 @@ export async function bootstrap() {
 
 /** Wire stateful game components around a single persistent shell.
  * @param {GameApiClient} api
- * @param {{username: string}} user
+ * @param {{id: string, username: string, company_color?: string}} user
  * @param {(path: string) => void} redirect
  * @returns {GameApplication}
  */
 function createGameApplication(api, user, redirect) {
   const state = new GameState(api.request);
+  // Start the coalesced runtime read while lightweight controllers are wired.
+  // GameSync joins this request during start and owns its visible error state.
+  void state.refresh().catch(() => {});
   /** @type {import("./types.js").PanelView} */
   const view = {
     url: new URL(location.href),
@@ -88,11 +98,21 @@ function createGameApplication(api, user, redirect) {
     requiredElement("#map-notice"),
   );
   const notify = notifications.show;
+  const assets = new VehicleColorAssets(api.requestAsset);
   const panel = new PanelController({ view, request: api.request, notify, now: () => state.now() });
+  panel.images = new VehicleImageController(assets);
   let application;
   const router = new BrowserRouter(window, (url) => application.navigateTo(url));
   const navigate = (path) => router.navigate(path);
-  const map = createWorldMap(navigate, notify, () => state.now(), api.requestAsset);
+  const map = new DeferredMap({
+    create: () => createWorldMap(navigate, notify, () => state.now(), api.requestAsset, assets),
+    notify,
+  });
+  map?.setCompanyColor(user.company_color);
+  const preferences = new PreferencesController({ request: api.request, panel, map, notify });
+  const city = new CityContextController({ state, view, request: api.request, notify });
+  const layers = new LayerStateController({ userId: user.id, map });
+  const analytics = new AnalyticsController({ request: api.request, panel });
   const sync = new GameSync({ state, panel, map, notify });
   const contractMarket = new ContractMarketController({
     state,
@@ -100,7 +120,19 @@ function createGameApplication(api, user, redirect) {
     notify,
     currentUrl: () => view.url,
   });
+  contractMarket.ordersVisible = () => layers.effective().orders;
+  const managementInput = new ManagementInput({
+    page: document,
+    view,
+    navigate,
+    layers,
+    analytics,
+    panel,
+    market: contractMarket,
+  });
+  const focus = new MapFocusController({ state, view, map });
   const actions = new GameActions({
+    focus,
     request: api.request,
     state,
     panel,
@@ -123,6 +155,7 @@ function createGameApplication(api, user, redirect) {
   const input = new InputController({ page: document, navigate, actions, panel, map });
   const sheet = new MobileSheet(requiredElement("#sheet-handle"), requiredElement("#panel"));
   application = new GameApplication({
+    focus,
     api,
     state,
     panel,
@@ -135,34 +168,34 @@ function createGameApplication(api, user, redirect) {
     input,
     sheet,
     notifications,
+    city,
+    layers,
+    analytics,
+    managementInput,
+    preferences,
+    assets,
     redirect,
   });
   return application;
 }
 
 /** Keep game controls usable when the browser cannot initialize WebGL. */
-function createWorldMap(navigate, notify, now, loadAsset) {
+async function createWorldMap(navigate, notify, now, loadAsset, assets) {
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  try {
-    return new WorldMap("world-map", {
-      navigate,
-      notify,
-      now,
-      loadAsset,
-      provider: createBasemap(),
-      reducedMotion: () => reducedMotion.matches,
-      isHidden: () => document.hidden,
-      viewport: () => ({
-        width: innerWidth,
-        height: innerHeight,
-        panelOpen: !requiredElement("#panel").hidden,
-      }),
-    });
-  } catch {
-    notify(
-      "Die Karte benötigt WebGL. Du kannst Aufträge und Flotte weiterhin über die Navigation verwalten.",
-      "map",
-    );
-    return null;
-  }
+  const { WorldMap } = await import("./map/world-map.js");
+  return new WorldMap("world-map", {
+    navigate,
+    notify,
+    now,
+    loadAsset,
+    assets,
+    provider: createBasemap(),
+    reducedMotion: () => reducedMotion.matches,
+    isHidden: () => document.hidden,
+    viewport: () => ({
+      width: innerWidth,
+      height: innerHeight,
+      panelOpen: !requiredElement("#panel").hidden,
+    }),
+  });
 }

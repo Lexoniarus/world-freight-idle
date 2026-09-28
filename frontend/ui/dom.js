@@ -59,7 +59,7 @@ function bindAttributes(element, values, marker) {
     if (["href", "src", "action"].includes(attribute.name) && !/^(https?:|\/|#)/i.test(value)) {
       throw new Error("Unsupported link protocol");
     }
-    if (["disabled", "selected", "checked", "hidden"].includes(attribute.name)) {
+    if (["disabled", "selected", "checked", "hidden", "open"].includes(attribute.name)) {
       const slot = /^__freight_slot_(\d+)__$/.exec(attribute.value);
       element.toggleAttribute(attribute.name, slot ? Boolean(values[Number(slot[1])]) : true);
     } else element.setAttribute(attribute.name, value);

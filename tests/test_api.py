@@ -7,12 +7,15 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.api.v1.dependencies import get_game_service
+from app.api.v1.game_projection import project_contract
 from app.config import Settings
 from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.game import PlayerState
 from app.domain.journeys import unmetered_journey
+from app.domain.market_preparation import PreparationStatus
 from app.domain.pricing import PriceQuote
-from app.domain.results import ContractQuote, GameSnapshot
+from app.domain.results import AvailableContract, ContractQuote, GameSnapshot
+from app.domain.routing_readiness import RouteReference
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.main import create_app
 from app.providers.routing import RoutingError
@@ -20,6 +23,7 @@ from app.providers.routing import RoutingError
 
 class FakeGame:
     def __init__(self, game):
+        self.market_lifecycle = game.market_lifecycle
         self.offer = replace(game.state_repository.list_offers()[0], id="c1")
         self.vehicle = game.state_repository.list_vehicles()[0]
         self.route = RouteSnapshot(((1, 1), (2, 2)), 10, 20, "fixture")
@@ -45,15 +49,30 @@ class FakeGame:
             1, 1, PlayerState(1, 0, 0), (self.vehicle,), (self.trip,)
         )
 
-    def contract_choices(self, offers):
+    def contract_choices(self, offers, vehicle_id=None):
         from app.domain.results import AvailableContract
 
         return tuple(
             AvailableContract(offer, ("truck_01",)) for offer in offers
         )
 
+    def market_presentation(self, offers, vehicle_id=None):
+        from app.domain.results import MarketPresentation
+
+        return MarketPresentation(
+            self.contract_choices(offers, vehicle_id),
+            self.vehicle_coverage(),
+            self.preparation_status(),
+        )
+
+    def vehicle_coverage(self):
+        return self.market_lifecycle.vehicle_diagnostics()
+
     def list_contracts(self):
         return [self.offer]
+
+    def preparation_status(self):
+        return PreparationStatus("preparation1", "generation1", "partial", 30)
 
     def get_contract(self, contract_id):
         if contract_id == "missing":
@@ -151,6 +170,19 @@ def make_static_files(tmp_path: Path):
         (static / filename).write_text(f"<html>{filename}</html>")
 
 
+def test_route_reference_belongs_only_to_available_market_projection(game):
+    offer = game.state_repository.list_offers()[0]
+    reference = RouteReference("relation1", "revision1")
+    available = AvailableContract(offer, ("truck_01",), reference)
+    assert project_contract(available)["route_reference"] == {
+        "relation_id": "relation1",
+        "revision": "revision1",
+    }
+    assert "route_reference" not in project_contract(offer)
+    historical = HistoricalContractSnapshot.from_offer(offer)
+    assert "route_reference" not in project_contract(historical)
+
+
 def test_v1_resource_endpoints_and_error_mapping(tmp_path: Path, game):
     make_static_files(tmp_path)
     app = create_app(make_settings(tmp_path))
@@ -158,6 +190,12 @@ def test_v1_resource_endpoints_and_error_mapping(tmp_path: Path, game):
         app.dependency_overrides[get_game_service] = lambda: FakeGame(game)
         client.headers["X-Freight-Request"] = "1"
         assert client.get("/api/v1/dashboard").status_code == 200
+        assert client.get("/api/v1/contracts").json()["preparation"] == {
+            "preparation_id": "preparation1",
+            "generation": "generation1",
+            "status": "partial",
+            "next_retry_at": 30,
+        }
         assert (
             client.get("/api/v1/contracts?bbox=13,52,14,53&zoom=7").json()[
                 "contracts"
@@ -263,6 +301,8 @@ def test_product_pages_are_distinct_routes(tmp_path: Path):
             "/contracts": "contracts.html",
             "/contracts/c1": "contract-detail.html",
             "/fleet": "fleet.html",
+            "/fleet/truck_01": "fleet-detail.html",
+            "/company": "company.html",
             "/transports": "transports.html",
             "/transports/t1": "transport-detail.html",
         }
@@ -312,3 +352,76 @@ def test_market_reference_errors_have_explicit_http_responses(tmp_path, game):
             assert response.status_code == status
             assert message in response.json()["detail"]
             assert "private" not in response.text
+
+
+def test_color_preference_http_validation_and_session_isolation(tmp_path):
+    make_static_files(tmp_path)
+    app = create_app(make_settings(tmp_path))
+    with TestClient(app) as client:
+        client.headers["X-Freight-Request"] = "1"
+        assert client.get("/api/v1/auth/preferences").status_code == 401
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "ColorOwner",
+                "password": "a-valid-password-123",
+            },
+        )
+        assert response.status_code == 201
+        initial = client.get("/api/v1/auth/preferences").json()
+        assert len(initial["palette"]) == 10
+        color = initial["palette"][0]
+        for value in ["red", "#000000", "", None]:
+            assert (
+                client.put(
+                    "/api/v1/auth/preferences",
+                    json={
+                        "company_color": value,
+                    },
+                ).status_code
+                == 422
+            )
+        assert client.put(
+            "/api/v1/auth/preferences",
+            json={
+                "company_color": color,
+            },
+        ).json() == {"company_color": color}
+        assert client.get("/api/v1/auth/me").json()["company_color"] == color
+        assert (
+            client.get("/api/v1/auth/preferences").json()["company_color"]
+            == color
+        )
+        assert (
+            client.put(
+                "/api/v1/auth/preferences",
+                json={
+                    "company_color": color,
+                },
+                headers={"Origin": "https://foreign.invalid"},
+            ).status_code
+            == 403
+        )
+
+
+def test_request_initialization_catalogue_failure_is_explicit(tmp_path):
+    from unittest.mock import patch
+
+    from app.domain.errors import CatalogueError
+
+    make_static_files(tmp_path)
+    app = create_app(make_settings(tmp_path))
+    with TestClient(app) as client:
+        client.headers["X-Freight-Request"] = "1"
+        client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "OfflineOwner",
+                "password": "a-valid-password-123",
+            },
+        )
+        with patch(
+            "app.api.v1.dependencies.build_player_service",
+            side_effect=CatalogueError("Unavailable catalogue"),
+        ):
+            assert client.get("/api/v1/dashboard").status_code == 503

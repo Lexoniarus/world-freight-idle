@@ -20,29 +20,42 @@ export class PanelController {
     this.contentFocus = null;
     this.returnFocus = null;
     this.disposed = false;
+    /** @type {import("../vehicle-image-bindings.js").VehicleImageController | null} */
+    this.images = null;
   }
   /** Reset only panel-specific selection when the route changes.
    * @param {URL} url
+   *
+   * @returns {void}
    */
   selectRoute(url) {
+    const sameView = this.view.url.pathname === url.pathname;
+    const scroll = this.content.scrollTop;
     this.returnFocus = document.activeElement?.closest(".nav-item") || this.returnFocus;
     this.pending.cancel();
     Object.assign(this.view, {
       url,
       quote: null,
-      selectedVehicle: "",
+      selectedVehicle: url.searchParams.get("vehicle") ?? "",
       rankings: null,
       panelError: false,
     });
-    this.contentFocus = null;
+    if (!sameView) this.contentFocus = null;
+    if (!sameView || !this.panel.dataset.mode)
+      this.panel.dataset.mode = url.pathname === "/company" ? "management" : "context";
+    document
+      .querySelector("#game")
+      ?.classList.toggle("management-open", this.panel.dataset.mode === "management");
     this.render();
-    this.content.scrollTop = 0;
+    this.content.scrollTop = sameView ? scroll : 0;
     if (url.pathname === "/")
       (this.returnFocus?.isConnected ? this.returnFocus : requiredElement(".nav-item")).focus();
-    else this.title.focus({ preventScroll: true });
+    else if (!sameView) this.title.focus({ preventScroll: true });
     void this.loadDetails();
   }
-  /** Fetch selection-specific data; an obsolete response cannot publish. */
+  /** Fetch selection-specific data; an obsolete response cannot publish.
+   * @returns {Promise<void>}
+   */
   async loadDetails() {
     if (this.disposed) return;
     const path = this.view.url.pathname;
@@ -69,12 +82,17 @@ export class PanelController {
     }
     this.render();
   }
-  /** Synchronize the selected panel and its navigation state. */
+  /** Synchronize the selected panel and its navigation state.
+   * @returns {void}
+   */
   render() {
     if (this.disposed) return;
     this.reconcileVehicleSelection();
     const open = this.view.url.pathname !== "/";
     this.panel.hidden = !open;
+    const mapElement = document.querySelector("#world-map");
+    if (mapElement instanceof HTMLElement)
+      mapElement.inert = open && this.panel.dataset.sheet === "full" && window.innerWidth <= 759;
     requiredElement("#game").classList.toggle("panel-open", open);
     this.title.textContent = panelTitle(this.view.url);
     document.title = this.title.textContent + " · World Freight";
@@ -86,20 +104,29 @@ export class PanelController {
       this.view.state.player.completed > 0 ||
       this.view.state.active_transports > 0;
   }
-  /** Keep the selection explicit and invalidate quotes for removed vehicles. */
+  /** Keep the selection explicit and invalidate quotes for removed vehicles.
+   * @returns {void}
+   */
   reconcileVehicleSelection() {
     const contractId = this.view.url.pathname.startsWith("/contracts/")
       ? this.view.url.pathname.split("/")[2]
       : null;
-    const contract = this.view.state?.contracts.find((item) => item.id === contractId);
+    const contract =
+      this.view.detailId === contractId
+        ? this.view.detailContract
+        : this.view.state?.contracts.find((item) => item.id === contractId);
     const vehicles = contract ? eligibleVehicles(this.view.state.vehicles, contract) : [];
-    if (!vehicles.some((vehicle) => vehicle.id === this.view.selectedVehicle)) {
-      this.view.selectedVehicle = vehicles[0]?.id || "";
+    if (contractId && !vehicles.some((vehicle) => vehicle.id === this.view.selectedVehicle)) {
+      this.view.selectedVehicle = this.view.url.searchParams.get("vehicle")
+        ? ""
+        : vehicles[0]?.id || "";
       this.view.quote = null;
     }
   }
   /** Mark exactly the active navigation destination.
    * @param {boolean} open
+   *
+   * @returns {void}
    */
   updateNavigation(open) {
     document.querySelectorAll(".nav-rail a").forEach((link) => {
@@ -114,7 +141,9 @@ export class PanelController {
       else link.removeAttribute("aria-current");
     });
   }
-  /** Replace changed DOM while preserving a selected control's keyboard focus. */
+  /** Replace changed DOM while preserving a selected control's keyboard focus.
+   * @returns {void}
+   */
   replaceContent() {
     const focused = document.activeElement;
     if (focused instanceof HTMLElement && this.content.contains(focused))
@@ -123,10 +152,21 @@ export class PanelController {
         action: focused.dataset.action,
         item: focused.dataset.id,
         href: focused.getAttribute("href"),
+        filter: focused.getAttribute("data-filter"),
       };
     // A player who moved to navigation or the map must keep that focus.
     if (focused !== document.body && !this.content.contains(focused)) this.contentFocus = null;
     const fragment = renderPanel({ ...this.view, now: this.now() });
+    for (const detail of fragment.querySelectorAll("details[data-disclosure]")) {
+      const current = [...this.content.querySelectorAll("details[data-disclosure]")].find(
+        (item) => item.getAttribute("data-disclosure") === detail.getAttribute("data-disclosure"),
+      );
+      if (current)
+        /** @type {HTMLDetailsElement} */ (detail).open = /** @type {HTMLDetailsElement} */ (
+          current
+        ).open;
+    }
+    this.images?.prepare(fragment, this.view.user.company_color);
     const media = matchVehicleImages(this.content, fragment);
     const same =
       this.content.childNodes.length === fragment.childNodes.length &&
@@ -136,27 +176,35 @@ export class PanelController {
     if (same) return;
     for (const { current, next } of media) next.replaceWith(current);
     this.content.replaceChildren(fragment);
+    this.images?.update(this.content.querySelectorAll("img[data-vehicle-model]"));
     this.restoreFocus();
   }
-  /** Restore a surviving control only when a replacement was necessary. */
+  /** Restore a surviving control only when a replacement was necessary.
+   * @returns {void}
+   */
   restoreFocus() {
     const focus = this.contentFocus;
     if (!focus) return;
     const replacement = [...this.content.querySelectorAll("button, a, select, input")].find(
       (element) =>
-        focus.id
-          ? element.id === focus.id
-          : focus.action
-            ? element.getAttribute("data-action") === focus.action &&
-              element.getAttribute("data-id") === focus.item
-            : focus.href && element.getAttribute("href") === focus.href,
+        focus.filter
+          ? element.getAttribute("data-filter") === focus.filter
+          : focus.id
+            ? element.id === focus.id
+            : focus.action
+              ? element.getAttribute("data-action") === focus.action &&
+                element.getAttribute("data-id") === focus.item
+              : focus.href && element.getAttribute("href") === focus.href,
     );
     if (replacement instanceof HTMLElement && !replacement.hasAttribute("disabled"))
       replacement.focus({ preventScroll: true });
   }
-  /** Stop selection-specific reads and future rendering. */
+  /** Stop selection-specific reads and future rendering.
+   * @returns {void}
+   */
   destroy() {
     this.disposed = true;
     this.pending.cancel();
+    this.images?.destroy();
   }
 }

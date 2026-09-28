@@ -1,6 +1,6 @@
 /** Delegate shell interactions without owning game rules or rendering. */
 export class InputController {
-  /** @param {{page: Document, navigate: import('../types.js').Navigate, actions: import("./game-actions.js").GameActions, panel: import("./panel-controller.js").PanelController, map: import("../map/world-map.js").WorldMap | null}} dependencies */
+  /** @param {{page: Document, navigate: import('../types.js').Navigate, actions: import("./game-actions.js").GameActions, panel: import("./panel-controller.js").PanelController, map: import("../types.js").GameMap | null}} dependencies */
   constructor({ page, navigate, actions, panel, map }) {
     this.page = page;
     this.navigate = navigate;
@@ -9,7 +9,9 @@ export class InputController {
     this.map = map;
     this.listeners = new AbortController();
   }
-  /** Attach one listener per interaction type. */
+  /** Attach one listener per interaction type.
+   * @returns {void}
+   */
   start() {
     const options = { signal: this.listeners.signal };
     this.page.addEventListener("click", (event) => this.handleClick(event), options);
@@ -26,6 +28,8 @@ export class InputController {
   }
   /** Route links and action buttons, preserving modified native link clicks.
    * @param {MouseEvent} event
+   *
+   * @returns {void}
    */
   handleClick(event) {
     if (!(event.target instanceof Element)) return;
@@ -50,17 +54,19 @@ export class InputController {
   }
   /** Update a presentation preference selected by the player.
    * @param {Event} event
+   *
+   * @returns {void}
    */
   handleChange(event) {
     const target = event.target;
     if (!(target instanceof HTMLSelectElement) && !(target instanceof HTMLInputElement)) return;
     if (target.id === "vehicle-choice") this.actions.selectVehicle(target.value);
-    if (target.dataset.layer)
-      this.map?.toggle(target.dataset.layer, /** @type {HTMLInputElement} */ (target).checked);
   }
   /** Reveal loaded photos or retain their illustration after a network failure.
    * @param {Event} event
    * @param {"loaded" | "failed"} state
+   *
+   * @returns {void}
    */
   handleImage(event, state) {
     const image = event.target;
@@ -70,6 +76,8 @@ export class InputController {
   }
   /** Close the topmost overlay using Escape and restore its focus.
    * @param {KeyboardEvent} event
+   *
+   * @returns {void}
    */
   handleKey(event) {
     if (event.key !== "Escape") return;
@@ -79,7 +87,9 @@ export class InputController {
       layers.querySelector("summary").focus();
     } else if (!this.panel.panel.hidden) this.navigate("/");
   }
-  /** Remove all delegated listeners. */
+  /** Remove all delegated listeners.
+   * @returns {void}
+   */
   destroy() {
     this.listeners.abort();
   }

@@ -23,7 +23,9 @@ export class RefreshScheduler {
       if (!this.page.hidden) this.updateProgress();
     };
   }
-  /** Start one polling loop and one progress loop. */
+  /** Start one polling loop and one progress loop.
+   * @returns {void}
+   */
   start() {
     if (this.intervals.length) return;
     this.intervals = [
@@ -33,7 +35,9 @@ export class RefreshScheduler {
     this.page.addEventListener("visibilitychange", this.poll);
     this.browser.addEventListener("online", this.poll);
   }
-  /** Release timers and browser listeners. */
+  /** Release timers and browser listeners.
+   * @returns {void}
+   */
   destroy() {
     this.intervals.forEach((id) => this.timers.clearInterval(id));
     this.intervals = [];

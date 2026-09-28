@@ -3,8 +3,20 @@ import { requiredElement } from "../ui/dom.js";
 
 /** Execute game use cases; views only emit action names and resource IDs. */
 export class GameActions {
-  /** @param {{request: import('../types.js').RequestJson, state: import("../state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../map/world-map.js").WorldMap | null, contractMarket: import("./contract-market-controller.js").ContractMarketController, notify: import('../types.js').Notify, navigate: import('../types.js').Navigate, refresh: () => Promise<void>, logout: () => Promise<void>}} dependencies */
-  constructor({ request, state, panel, map, contractMarket, notify, navigate, refresh, logout }) {
+  /** @param {{focus?: import("./map-focus-controller.js").MapFocusController, request: import('../types.js').RequestJson, state: import("../state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../types.js").GameMap | null, contractMarket: import("./contract-market-controller.js").ContractMarketController, notify: import('../types.js').Notify, navigate: import('../types.js').Navigate, refresh: () => Promise<void>, logout: () => Promise<void>}} dependencies */
+  constructor({
+    request,
+    state,
+    panel,
+    map,
+    contractMarket,
+    notify,
+    navigate,
+    refresh,
+    logout,
+    focus,
+  }) {
+    this.focus = focus;
     this.request = request;
     this.state = state;
     this.panel = panel;
@@ -19,6 +31,9 @@ export class GameActions {
   }
   /** Route a UI action to a single-purpose handler.
    * @param {string} action
+   *
+   * @param {string} [id]
+   * @returns {void | Promise<void>}
    */
   handle(action, id = "") {
     const actions = {
@@ -29,6 +44,7 @@ export class GameActions {
       "focus-trip": () => this.focusTransport(id),
       "retry-panel": () => this.panel.loadDetails(),
       retry: () => this.refresh(),
+      "choose-vehicle": () => this.selectVehicle(id),
       quote: () => this.calculateQuote(),
       buy: () => this.runMutation(() => this.purchaseVehicle(id)),
       dispatch: () => this.runMutation(() => this.dispatchTransport(), false),
@@ -39,27 +55,41 @@ export class GameActions {
   }
   /** Show the route for an active transport if it still exists.
    * @param {string} id
+   *
+   * @returns {Promise<void>}
    */
-  focusTransport(id) {
-    const trip = this.state.data?.transports.find((item) => item.id === id);
-    if (trip) this.map?.focusRoute(trip.route_geojson);
+  async focusTransport(id) {
+    try {
+      const trip = await this.state.loadTransportRoute(id);
+      if (trip && !this.disposed) this.map?.focusRoute(trip.route_geojson);
+    } catch (error) {
+      if (!this.disposed && error.name !== "AbortError") this.notify(error.message);
+    }
   }
-  /** Cancel the old selection's quote without blocking the new selection. */
+  /** Cancel the old selection's quote without blocking the new selection.
+   * @returns {void}
+   */
   cancelQuote() {
     this.quoteRequest.cancel();
     this.panel.view.quoting = false;
   }
   /** Select a vehicle and discard economics belonging to its predecessor.
    * @param {string} vehicleId
+   *
+   * @returns {void}
    */
   selectVehicle(vehicleId) {
     this.cancelQuote();
     this.panel.view.selectedVehicle = vehicleId;
+    this.panel.view.url.searchParams.set("vehicle", vehicleId);
+    window.history.replaceState({}, "", this.panel.view.url.pathname + this.panel.view.url.search);
     this.panel.view.quote = null;
     this.map?.setPreview(null);
     this.panel.render();
   }
-  /** Request a quote and publish it only for the current selection. */
+  /** Request a quote and publish it only for the current selection.
+   * @returns {Promise<void>}
+   */
   async calculateQuote() {
     if (this.disposed || this.panel.view.busy || !this.panel.view.selectedVehicle) return;
     const contractId = this.panel.view.url.pathname.split("/").at(-1);
@@ -76,7 +106,7 @@ export class GameActions {
       if (!request.isCurrent() || vehicleId !== (this.panel.view.selectedVehicle || null)) return;
       this.panel.view.quote = quote;
       this.map?.setPreview(quote);
-      this.map?.focusRoute(quote.route_geojson);
+      this.focus?.quote(quote);
     } catch (error) {
       if (request.isCurrent() && error.name !== "AbortError") this.notify(error.message);
     } finally {
@@ -89,6 +119,8 @@ export class GameActions {
   /** Serialize writes and reconcile even if a response was lost.
    * @param {() => Promise<void>} operation
    * @param {boolean} [reconcile]
+   *
+   * @returns {Promise<void>}
    */
   async runMutation(operation, reconcile = true) {
     if (this.disposed || this.panel.view.busy) return;
@@ -114,6 +146,8 @@ export class GameActions {
   }
   /** Purchase one server-priced vehicle model.
    * @param {string} modelId
+   *
+   * @returns {Promise<void>}
    */
   async purchaseVehicle(modelId) {
     await this.request("/fleet/purchase", {
@@ -122,9 +156,11 @@ export class GameActions {
     });
     if (!this.disposed) this.notify("Dein neuer Lkw ist in Berlin Westhafen einsatzbereit.");
   }
-  /** Dispatch the selected vehicle and follow the resulting transport. */
+  /** Dispatch the selected vehicle and follow the resulting transport.
+   * @returns {Promise<void>}
+   */
   async dispatchTransport() {
-    const path = this.panel.view.url.href;
+    const route = this.panel.view.url;
     const contractId = this.panel.view.url.pathname.split("/").at(-1);
     const choice = /** @type {HTMLSelectElement} */ (requiredElement("#vehicle-choice"));
     if (!this.panel.view.quote || this.panel.view.quote.vehicle_id !== choice.value) return;
@@ -135,17 +171,20 @@ export class GameActions {
     if (this.disposed) return;
     this.notify("Transport gestartet. Gute Fahrt!");
     await this.state.afterMutation();
-    if (!this.disposed && path === this.panel.view.url.href) {
+    if (!this.disposed && route === this.panel.view.url) {
       this.navigate("/transports/" + trip.id);
-      this.map?.focusRoute(trip.route_geojson);
     }
   }
-  /** Replace the player's available contract market. */
+  /** Replace the player's available contract market.
+   * @returns {Promise<void>}
+   */
   async refreshMarket() {
     await this.contractMarket.forceRefresh();
     if (!this.disposed) this.notify("Neue Aufträge sind verfügbar.");
   }
-  /** Invalidate pending quotes and suppress late action results. */
+  /** Invalidate pending quotes and suppress late action results.
+   * @returns {void}
+   */
   destroy() {
     this.disposed = true;
     this.cancelQuote();

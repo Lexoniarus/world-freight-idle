@@ -23,7 +23,7 @@ from app.domain.market_compatibility import (
 )
 from app.domain.market_profiles import NhmMarketProfile
 from app.domain.ports import VehicleCatalogue, WorldCatalogue
-from app.domain.world import WorldSnapshot
+from app.domain.world import Facility, WorldSnapshot
 from app.domain.world_scopes import WorldScope
 from app.services.trade_network import TradeNetwork
 
@@ -40,15 +40,21 @@ class MarketCandidateService:
         self._snapshot: WorldSnapshot | None = None
         self._network: TradeNetwork | None = None
         self._profiles: dict[int, NhmMarketProfile] = {}
+        self._reference_factor = 0.0
+        self._facilities: dict[str, Facility] = {}
 
     def reference(self) -> WorldSnapshot:
         """Refresh derived reference indexes only for a changed revision."""
         snapshot = self.world.read()
         if snapshot != self._snapshot:
             self._network = TradeNetwork(snapshot.facilities)
+            self._facilities = {f.facility_uid: f for f in snapshot.facilities}
             self._profiles = {
                 p.nhm_row_id: p for p in snapshot.market_profiles
             }
+            self._reference_factor = min(
+                p.freight_rate_factor_game for p in snapshot.market_profiles
+            )
             self._snapshot = snapshot
         return snapshot
 
@@ -134,7 +140,13 @@ class MarketCandidateService:
         if weight <= 0:
             return None
         return MarketCandidate(
-            trade, profile, load, distance, compatible, weight
+            trade,
+            profile,
+            load,
+            distance,
+            compatible,
+            weight,
+            self._reference_factor,
         )
 
     def eligible_ids(
@@ -159,7 +171,7 @@ class MarketCandidateService:
         """Require a live routable relation and a selectable distance band."""
         assert self._snapshot is not None
         assert self._network is not None
-        facilities = {f.facility_uid: f for f in self._snapshot.facilities}
+        facilities = self._facilities
         origin = facilities.get(offer.origin.facility_uid)
         destination = facilities.get(offer.destination.facility_uid)
         if (
@@ -167,11 +179,20 @@ class MarketCandidateService:
             or destination is None
             or not origin.is_routable()
             or not destination.is_routable()
+            or origin.coordinates != offer.origin.coordinates
+            or destination.coordinates != offer.destination.coordinates
+            or origin.address.city.city_uid != offer.origin.city.city_uid
+            or destination.address.city.city_uid
+            != offer.destination.city.city_uid
         ):
             return False
         profile = self._profiles.get(offer.cargo.nhm_row_id)
         context = offer.market_context
-        if profile is None or context is None:
+        if (
+            profile is None
+            or context is None
+            or profile.transport_class != context.transport_class
+        ):
             return False
         if not any(
             p.distance_band == context.distance_band and p.selection_weight > 0

@@ -90,7 +90,7 @@ Validiert Fahrzeugstatus, Modus, Standort, Kapazität und Liquidität. Bei Erfol
 ### `POST /contracts/refresh`
 
 Erneuert den NHM-basierten Markt ausschließlich für aktive Fahrzeugstädte
-wie `GET /contracts`; dieselben optionalen `bbox`-/`zoom`-Parameter gelten.
+wie `GET /contracts`; BBox/Zoom gehören nicht zum Contract-Vertrag.
 
 ## Flotte
 
@@ -145,7 +145,8 @@ Jeder HTTP-Request erhält `X-Trace-Id` in der Response.
 
 `GET /fleet/catalogue` behält `models` und `delivery_hub`. Modelle enthalten
 `id`, `name`, `mode`, `capacity_tons`, `price_eur`, `manufacturer`, `powertrain`,
-`unlock_reputation` und `operating_cost_eur_per_km`; sortiert nach Preis und ID.
+`unlock_reputation`, `maintenance_eur_per_1000_km` und den historischen
+Aggregatwert `operating_cost_eur_per_km`; sortiert nach Preis und ID.
 `POST /fleet/purchase` prüft Reputation/Guthaben serverseitig und speichert
 Fahrzeugwerte atomar. Unbekanntes/gesperrtes Modell: 400. Katalogfehler: 503.
 
@@ -153,9 +154,11 @@ Fahrzeugwerte atomar. Unbekanntes/gesperrtes Modell: 400. Katalogfehler: 503.
 Fehlender Body sowie fehlende, leere oder null IDs liefern HTTP 422.
 Besitz, idle-Status, Stadt, Modus, Modell, Klasse, Scale und konkrete Kapazität
 werden serverseitig geprüft; ungültige Auswahl ergibt 400. Antworten enthalten
-`vehicle_id` und `operating_cost_eur_per_km`. Kosten: `round(80 + km * Satz)`.
+`vehicle_id`, `maintenance_eur_per_km` und `cost_breakdown`. Kosten sind
+80 € plus gerundete Wartung und tatsächliche Energieeinkäufe.
 Geroutete Straßenkilometer sind von `estimated_distance_km` (Luftlinie) getrennt.
-Auszahlung nutzt Straßenkilometer und gespeicherte Frachtrate, keinen Warenwert.
+Auszahlung nutzt Fracht-Straßenkilometer und den gespeicherten NHM-Tarif
+einschließlich Mindestfracht, keinen Warenwert.
 `accept` verlangt ebenfalls eine Fahrzeug-ID und prüft nach dem Routing erneut.
 Ein Refill-Fehler nach erfolgreichem Dispatch-Commit verändert die erfolgreiche
 Antwort nicht. Der Transport darf deshalb nicht erneut gestartet werden.
@@ -181,10 +184,10 @@ Ist der Startkatalog beim ersten Spielabruf nicht verfügbar, folgt HTTP 503;
 nach Wiederherstellung genügt ein neuer Abruf. Bestehende Fahrzeuge bleiben
 nutzbar. Es gibt keine allgemeine automatische Altflotten-/Guthabenmigration.
 
-Aufträge werden je routbarer Facility und belegter Nutzlastklasse aus dem
-Fahrzeugkatalog ergänzt. Auch kleine Transporter und bestehende Fahrzeuge
-erhalten geeignete Mengen; `payload_band` ist simuliert, reale Warenbelege
-bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
+Aufträge werden je geeigneter Origin-Facility und vorhandenem Distanzband
+aktiver eigener idle-Städte ergänzt. Mengen entstehen aus dem kompatiblen
+Generierungsfahrzeug und NHM-/Distanzprofil; `payload_band` bleibt nur
+historisch lesbar. Reale Warenbelege bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
 
 ## Domain- und Persistenzgrenze
 
@@ -217,7 +220,7 @@ einer Fahrt wird dieser Wert aus dem unveränderlichen Fahrtplan berechnet.
 Fahrzeugquotes ergänzen `journey`, `energy_consumption`, `energy_stop_count`,
 `driving_seconds`, `pause_seconds` und `total_duration_seconds`. Die drei neuen
 Dauern sind bereits mit dem Spielzeitfaktor skaliert. `duration_seconds` bleibt
-die unveränderte Valhalla-Fahrzeit. Ohne Fahrzeug sind die Planungsfelder null.
+die unveränderte Valhalla-Fahrzeit. Quotes erfordern eine explizite Fahrzeug-ID.
 
 Eigene Transporte enthalten den gespeicherten Plan sowie zeitabhängiges
 `progress` (Phase, Entfernung, Bruchteil, Energiestand, Phasenrestzeit).
@@ -234,3 +237,199 @@ Quote/Accept übersetzen ungültige Fahrzeugauswahl weiterhin mit HTTP 400.
 Ein nicht verfügbarer Fahrzeugkatalog liefert HTTP 503 mit stabiler Meldung,
 ohne interne Pfade offenzulegen. Ein Fehler ausschließlich beim Refill nach
 Dispatch-Commit bleibt eine protokollierte Marktlücke, keine fehlgeschlagene Fahrt.
+
+
+## Authentifizierte API-Ergänzungen – Frontend v2
+
+Alle drei Endpunkte sind private, sessiongebundene Spiel-APIs. Ohne Session:
+HTTP 401. Keine frei wählbare User-ID. Sie sind keine öffentlichen Datenfeeds.
+`/auth/me` liefert bereits stabile `id` und `username`; lokale Layer-Overrides
+verwenden ausschließlich `id` zur Accounttrennung.
+
+### GET /api/v1/company/analytics
+
+| Parameter | Werte / Standard |
+| --- | --- |
+| days | 7, 30, 90, all; Standard 30 |
+| scope | company (Standard), city, vehicle, transport_class, distance_band |
+| scope_id | für jeden Scope außer company erforderlich; bei company verboten |
+
+Ungültige Kombinationen: 422. Gültiger Scope ohne eigene Daten: leere Historie,
+keine Information über fremde Bestände. Antwort: server_time, period (days,
+from, to, timezone=UTC), scope, unternehmensweiter status, totals,
+period_totals, daily, breakdowns, ongoing und coverage. Kennzahlen:
+completed_transports, revenue_eur, operating_cost_eur, profit_eur, distance_km,
+tons sowie profit_per_transport, revenue_per_km und tons_per_transport.
+Nenner null ergibt null. Laufende erwartete Ergebnisse zählen nicht historisch.
+
+Tageszuordnung: gespeichertes arrives_at abgeschlossener Transporte in UTC.
+7/30/90 umfasst den aktuellen UTC-Tag bis server_time und 6/29/89 Vorgängertage.
+all beginnt beim ersten belegten Transport dieses Scopes. Fehlende Tage werden
+mit null Mengen aufgefüllt; ohne Historie bleibt daily leer. status und ongoing
+bleiben unternehmensweit. coverage trennt importierten Fortschritt von belegten
+Fahrten sowie nicht nachträglich klassifizierte V1-Transporte. Breakdowns gelten
+für den gewählten Scope und Zeitraum. Historische Modellstatistik fehlt bewusst.
+
+Analytics verwendet direkte skalare SQLite-JSON-Projektion:
+
+| Wert | JSON-Pfad |
+| --- | --- |
+| Tonnen | `$.data.contract.tons` |
+| Strecke | `$.data.route.distance_km` |
+| Origin-Stadt | `$.data.origin.city.city_uid` |
+| Transportklasse | `$.data.contract.market_context.transport_class` |
+| Distanzband | `$.data.contract.market_context.distance_band` |
+| Marktmodell | `$.data.contract.market_model` |
+
+Beschädigte Hüllen/Pflichtwerte ergeben einen Persistenzfehler ohne interne
+Daten (503). Vor dem read-only Aggregat darf bestehendes idempotentes Settlement
+fällige Transporte verbuchen; keine neue Analytics-Mutation.
+
+### GET /api/v1/map/facilities/{identifier}
+
+Exakte Facility-UID oder ausdrücklich gepflegter Legacy-Alias. Antwort ist eine
+bestehende Standortprojektion einschließlich city_uid. Unbekannt: 404.
+
+### GET /api/v1/map/cities/{city_uid}
+
+Exakte Stadt-UUID, keine Namensauflösung. Antwort: city_uid, city, country.
+Unbekannt: 404. Die Auflösung macht eine Stadt nicht zum aktiven Markt.
+Beide Lookups nutzen die bestehende World-/Map-Schicht und senden nur das
+angefragte Objekt; kein globaler Facility-Download zur Link-Auflösung.
+
+
+## Quote und Transport: tatsächlicher Fahrtbeginn
+
+`origin`, `origin_snapshot` und Origin-IDs behalten die Bedeutung Abholung B.
+Quote und eigener Transport ergänzen:
+
+| Feld | Bedeutung |
+| --- | --- |
+| start | Standortprojektion des tatsächlichen Fahrtbeginns A |
+| approach_distance_km | Straßenkilometer A → B, sonst 0 |
+| delivery_distance_km | Straßenkilometer B → C, Grundlage des Frachterlöses |
+| route_legs | Geordnete approach-/delivery-Abschnitte |
+
+Jeder Abschnitt enthält `purpose`, `start_km`, `end_km`,
+`routing_duration_seconds` und `coordinates`. Kilometergrenzen beziehen sich
+auf die gesamte Fahrt. Providerzeiten sind unskaliert. Die zugehörigen
+skalierten Fahrt-/Pausenzeiten stehen in `journey.segments`. Gesamtroute,
+`distance_km`, Quote-Dauern sowie Transport-Abfahrt/Ankunft beziehen sich auf
+A → B → C. Bei Ankunft an B beginnt automatisch der delivery-Abschnitt.
+
+`GET /api/v1/map/traffic` ergänzt dieselben route_legs ohne Auftrags-,
+Wirtschafts- oder Energiedaten. Historische Transporte ohne gespeicherten Plan
+liefern `start = origin`, Anfahrt 0, Frachtkilometer gleich Gesamtkilometern und
+leere route_legs; Clients verwenden dann unverändert die Gesamtroute.
+
+Geänderter Startstandort nach Routing: HTTP 400, keine Annahme/Abbuchung.
+Providerfehler bleiben HTTP 502; ein erneuter Benutzerauftrag kann neu planen.
+Die explizite vehicle_id-Pflicht und bestehende Eignungsregeln bleiben bestehen.
+Analytische Gesamtkilometer enthalten bei neuen Fahrten auch die Anfahrt.
+
+
+## Frontend-v2: Tarif, Kosten und Firmenfarbe
+
+`GET /auth/me` liefert zusätzlich die wirksame `company_color`.
+`GET /auth/preferences` liefert `{company_color, palette}` mit zehn Farben.
+`PUT /auth/preferences` erwartet `{company_color: "#e45756"}`; nur die
+Palette ist gültig (sonst 422), Sitzung und Schreibschutz gelten wie oben.
+Der Account wird ausschließlich aus der Sitzung bestimmt. Öffentliche
+Verkehrsprojektionen verwenden dieselbe wirksame Farbe als `player_color`.
+
+Offers enthalten ihren unveränderlichen `tariff` mit Version, NHM-Faktor,
+Referenzfaktor, Referenzkosten/km und Mindestfracht/km. Quote und Accept
+verlangen explizites `vehicle_id` (fehlend/leer/null: 422). Neue Quotes
+liefern `maintenance_eur_per_km` statt des aggregierten alten Kostensatzes.
+`cost_breakdown` enthält `policy_version`, `maintenance_eur_per_km`,
+`energy_kind`, `energy_unit`, `energy_price_eur_per_unit`, `base_cost_eur`,
+`maintenance_cost_eur`, `purchases`, `energy_cost_eur`, `total_cost_eur`.
+Ein Kauf enthält `segment_index`, `quantity`, `cost_eur`; der Index bezieht
+sich auf den fortlaufenden Journey-Plan. Transportprojektionen liefern die
+identische gespeicherte Aufteilung oder null bei fehlender Historie.
+`payout_eur`, `operating_cost_eur`, `profit_eur` bleiben ganze Spiel-Euro.
+Negative Ergebnisse werden unverändert ausgeliefert. Formeln: [Economy](ECONOMY_V2.md).
+
+Analytics gruppiert weiterhin mit `vehicle_id` als Key. Das jeweilige
+`label` bzw. `vehicle_label` ist ein aktueller verständlicher Anzeigename;
+bei gleichen Namen folgt eine unterscheidende ID, bei fehlenden Fahrzeugen
+`Fahrzeug <kurze ID>`. Daraus folgt keine historische Modellklassifizierung.
+
+
+## Routing-readiness market projection
+
+GET /api/v1/contracts and POST /api/v1/contracts/refresh return `contracts`
+plus `preparation` (nullable for an unconfigured test composition). Preparation
+contains `preparation_id`, `generation`, `status` and nullable `next_retry_at`.
+A partial market contains only delivery-ready offers. Each live contract exposes
+its separate `route_reference` (relation_id and revision); eligible_vehicle_ids
+also requires the actual-start approach to be ready. These IDs reserve nothing.
+Quote and dispatch load prepared routes and reject stale references without
+provider fallback. Historical transport payload field names remain unchanged.
+
+Preparationstatus `partial` bezeichnet noch unvollständige Vorbereitung,
+`ready` erfüllte vorbereitbare Coverage und `exhausted` einen ausgeschöpften
+Pool bei verbleibender Coverage-Lücke. Alle drei Zustände veröffentlichen
+nur Delivery-ready Offers; Fahrzeug-Eignung verlangt zusätzlich den
+vorbereiteten Approach. Rohdiagnosen bleiben im Backend/Audit.
+
+
+## Fahrzeugbezogene Marktprojektion
+
+`GET /api/v1/contracts` und `POST /api/v1/contracts/refresh` akzeptieren optional
+`vehicle_id`. Ein angegebenes Fahrzeug muss dem Account gehören und idle sein;
+ungültige Auswahl ergibt HTTP 400. Ohne Parameter bleibt der gemeinsame Spielerpool
+als Vereinigung der fahrzeugbezogenen Auswahlen verfügbar. Mit Parameter enthält
+`contracts` höchstens drei fahrbare Offers je `short`/`medium`/`long`, jeweils mit
+dieser ID in `eligible_vehicle_ids`. Bei ausreichender Vorbereitung sind es genau
+drei. Die UI verwendet denselben
+serverseitigen Eignungswert, ohne eigene Klassen-/Scale-/Routingprüfung.
+
+Zusätzlich enthält die Antwort `vehicle_coverage` mit `vehicle_id`, `city_uid`,
+`offer_count`, `distance_counts` (short/medium/long), `unmet_bands` und
+`unmet_facilities`. `preparation` behält Generation, Status und Retry-Zeitpunkt.
+Die bestehende Analytics-JSON-Struktur bleibt unverändert; ein eigener
+API-Projektor übersetzt die typisierten Service-Ergebnisse.
+
+Neue und übernommene dauerhaft gültige Offers liefern `expires_at: null`.
+Historische Transport-Snapshots behalten ihre ursprünglichen Ablaufwerte.
+Refresh erhält IDs, Mengen, Konditionen und Reihenfolge bestehender Angebote;
+er meldet Bedarf und liefert sofort den gespeicherten vorbereiteten Stand.
+Nach Annahme rückt gespeicherte Reserve ohne Routing oder Kandidatenbildung nach.
+`vehicle_coverage` beschreibt den vorbereiteten Bestand, nicht die auf drei
+begrenzte sichtbare Auswahl. Fehlende oder veraltete Hin-/Rückwegnachweise geben
+auch dauerhaft gespeicherte Angebote nicht frei. Globale Vorlagen und fremde
+Verbrauchsnachweise sind kein öffentlicher API-Vertrag.
+
+
+## Kompakter Runtime-Vertrag (additiv)
+
+- `GET /api/v1/runtime`: authentifiziert; `server_time`, `time_scale`, `player`,
+  dargestellte `vehicles`, kompakte aktive `transports`, `idle_vehicles`,
+  `active_transports`, `market_preparation`. Transportdaten enthalten die
+  bisherigen skalaren Wirtschafts-/Journey-Fakten und `route_ref`, jedoch
+  weder `route_geojson` noch koordinatenhaltige `route_legs`.
+- `GET /api/v1/map/traffic?representation=summary`: etablierte oeffentliche
+  Bewegungsdaten mit `route_ref`, ohne Geometrie, Wirtschaft oder Energie.
+  Der Default `representation=full` bleibt kompatibel. Andere Werte: 422.
+- `GET /api/v1/map/routes/{route_ref}`: authentifiziert; Referenzversion 1
+  identifiziert Besitzer und Transport. Eigene historische Route oder aktuell
+  sichtbarer fremder Verkehr; sonst 404. Keine Kenntnis einer Referenz umgeht
+  die Besitz-/Sichtbarkeitspruefung, auch nicht bei `If-None-Match`.
+
+Geometrieantwort: `{coordinates: [[lon,lat],...], legs: [...]}`. Jeder Abschnitt
+enthaelt `purpose`, `start_index` (inklusive), `end_index` (exklusive),
+`start_km`, `end_km`, `routing_duration_seconds`. Ein gemeinsamer Knoten darf
+von beiden Abschnitten referenziert werden; das Koordinatenarray erscheint nur
+einmal. Historische Fahrten ohne Plan liefern leere `legs`. Koordinaten stammen
+unveraendert aus dem gespeicherten Gesamtsnapshot.
+
+ETag ist eine schwache Referenzversion; `Cache-Control: private, no-cache`,
+passender `If-None-Match` ergibt 304 nach Authentifizierung/Sichtbarkeitspruefung.
+Gzip wird bei entsprechender Anfrage ab 1024 Byte angeboten.
+
+Marktrefresh liefert sofort die derzeit gueltigen Angebote und persistierten
+Vorbereitungsdiagnosen. Er wartet nicht auf neue Routen. Nicht lesbare Speicherung
+liefert den bisherigen 503-Vertrag; die UI unterscheidet ihn von Netzwerkfehlern
+und bietet einen erneuten Read an. Finanzielle Aktionen werden nicht automatisch
+wiederholt. Bestehende Endpunkte behalten ihre Antwortvertraege.

@@ -113,7 +113,12 @@ def test_contract_offer_domain_rules(game):
     offer = game.state_repository.list_offers()[0]
 
     assert offer.is_available(offer.created_at, offer.market_model)
-    assert not offer.is_available(offer.expires_at, offer.market_model)
+    assert offer.expires_at is None
+    assert offer.is_available(
+        offer.created_at + 365 * 86400, offer.market_model
+    )
+    expiring = replace(offer, expires_at=offer.created_at + 60)
+    assert not expiring.is_available(offer.created_at + 60, offer.market_model)
     assert not offer.is_available(offer.created_at, "other-model")
 
     snapshot = ContractOfferSnapshot(

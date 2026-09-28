@@ -4,17 +4,22 @@ export const navItems = [
   ["/fleet", "fleet", "Flotte"],
   ["/fleet?tab=shop", "shop", "Fahrzeugshop"],
   ["/transports", "transports", "Transporte"],
+  ["/company", "world", "Unternehmen"],
   ["/leaderboard", "leaderboard", "Rangliste"],
 ];
 
 /** Resolve the visible title of a product URL. @param {URL} url */
 export function panelTitle(url) {
+  if (url.pathname.startsWith("/fleet/")) return "Fahrzeug";
   if (url.pathname === "/fleet")
     return url.searchParams.get("tab") === "shop" ? "Fahrzeugshop" : "Deine Flotte";
   return (
-    { contracts: "Auftragsbörse", transports: "Unterwegs", leaderboard: "Rangliste" }[
-      url.pathname.split("/")[1]
-    ] || "Weltkarte"
+    {
+      company: "Unternehmen",
+      contracts: "Stadtmarkt",
+      transports: "Unterwegs",
+      leaderboard: "Rangliste",
+    }[url.pathname.split("/")[1]] || "Weltkarte"
   );
 }
 

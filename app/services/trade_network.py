@@ -38,10 +38,6 @@ class TradeNetwork:
                 "event": "market.trade_network_indexed",
                 "data": {
                     "origins": len(candidates),
-                    "trade_options": sum(
-                        len(options)
-                        for options in self._options_by_origin.values()
-                    ),
                 },
             },
         )

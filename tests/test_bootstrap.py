@@ -5,6 +5,7 @@ import httpx
 from app.bootstrap import build_game_runtime
 from app.config import Settings
 from app.providers.routing import ValhallaTruckRouter
+from app.services.routing_anchors import RoutingAnchorResolver
 
 
 def test_build_game_service_wires_real_provider_adapters(tmp_path: Path):
@@ -27,6 +28,7 @@ def test_build_game_service_wires_real_provider_adapters(tmp_path: Path):
         rng_seed=1,
     )
     assert isinstance(game.router, ValhallaTruckRouter)
+    assert isinstance(game.anchors, RoutingAnchorResolver)
     assert game.router.base_url == "https://v.test"
     assert game.database.path == settings.db_path
     import asyncio
