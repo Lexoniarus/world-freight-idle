@@ -77,8 +77,9 @@ Terminalaufenthalten und globaler Netzwerkoptimierung.
 
 HTTPS, kontrollierter Reverse Proxy, geeignete Provider-Endpunkte,
 Account-Recovery, Backups/Restore, Moderation und Lasttests.
-PostgreSQL mit Migrationen und verteilte Limiter vor größerer Skalierung.
-Diese Arbeit ist noch offen; lokale Tests sind keine Produktionsfreigabe.
+PostgreSQL/Supabase und versionierte Migrationen sind umgesetzt. Verteilte
+Limiter und die übrige Betriebsabnahme bleiben vor größerer Skalierung offen;
+lokale Tests sind keine Produktionsfreigabe.
 
 ## Standards-Bereinigung der vorhandenen UI-Basis
 
@@ -137,8 +138,9 @@ Die gemeinsame Asset-Zuordnung und Modellordner ändern keine Spielmechanik.
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
-WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
+Typisierte Entities, PostgreSQL-Spielpersistenz in privaten Supabase-Schemas und
+WorldCatalogue 4.2.0 bilden die Produktionslaufzeit. SQLite bleibt auf Tests und
+explizite Offline-Werkzeuge beschränkt. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
 Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).

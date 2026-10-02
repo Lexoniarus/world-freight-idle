@@ -1,5 +1,25 @@
 # Changelog
 
+## Supabase-Produktionsruntime – 02.10.2026
+
+- Produktive Spielstände und beide Referenzkataloge verwenden private
+  PostgreSQL-Schemas auf Supabase; SQLite bleibt Tests und Offline-Werkzeugen
+  vorbehalten.
+- Bestehende drei Spielkonten bleiben über eine eng begrenzte same-origin
+  Loginbrücke erreichbar. E-Mail-Zuordnung, scrypt-Passwort und historische
+  kompakte UUID verweisen weiterhin auf denselben Spielstand; Neuregistrierungen
+  bleiben bei Supabase Auth.
+- PostgreSQL-Kompatibilität für Login-Limits sowie migrierte Zeit- und
+  Energiewerte stabilisiert. Echte fachliche Abweichungen werden weiterhin
+  abgelehnt.
+- Browsertests sind von `.env`, Live-Supabase und produktiven Datenbanken
+  isoliert.
+- Private Schemas entziehen `PUBLIC`, `anon` und `authenticated` alle Rechte.
+  72 Tabellen besitzen RLS; der Start lehnt fehlende RLS-Härtung ab. Drei
+  gemessene Runtime-Fremdschlüsselpfade erhalten gezielte Indizes.
+- Prüfungen und verbleibende Betriebsgrenzen: [Qualitätsbericht](QUALITY_REPORT.md)
+  und [Supabase-Laufzeit](docs/SUPABASE_RUNTIME.md).
+
 ## Befahrbare Standortverbindungen – 27.09.2026
 
 - Jede Anfahrt und Lieferung benötigt echte Truck-Routen in beiden Richtungen

@@ -74,7 +74,7 @@ Diese Themen sind Folge-Meilensteine und dürfen M1 nicht blockieren.
 
 Registrierung und Anmeldung mit öffentlichem Spielernamen, privatem
 Spielstand, 175.000 Euro Startkapital und einem kostenlosen IVECO S-Way 500 XC13 (24,2 t). Der
-Fahrzeugshop bietet 14 reale Modellprofile aus dem SQLite-Katalog mit
+Fahrzeugshop bietet 14 reale Modellprofile aus dem relationalen Fahrzeugkatalog mit
 getrennten Spielwerten für Preis, Nutzlast, Reputationsfreigabe und Kilometerkosten. Pro Fahrzeug kann ein Transport aktiv
 sein; mehrere Fahrzeuge fahren parallel. Spieler konkurrieren in einer
 Lieferungsrangliste. Aufträge sind pro Spieler generiert, kein geteilter
@@ -122,8 +122,9 @@ auch wenn die Einfärbung eines Fahrzeugs auf kleinem Kartenmaßstab dezent ist.
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
-WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
+Typisierte Entities, PostgreSQL-Spielpersistenz in privaten Supabase-Schemas und
+WorldCatalogue 4.2.0 bilden die Produktionslaufzeit. SQLite bleibt auf Tests und
+explizite Offline-Werkzeuge beschränkt. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
 Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).

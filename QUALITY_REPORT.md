@@ -1,3 +1,74 @@
+# Qualitätsbericht: Supabase-Produktionsruntime
+
+Stand: 02.10.2026. Branch `fix/supabase-runtime-current-head`, Basis
+`origin/main`. Dieser Abschnitt dokumentiert die aktuelle Abnahme. Alle Berichte
+unterhalb der Trennlinie bleiben als historische Nachweise unverändert erhalten.
+
+## Ergebnis und Verantwortlichkeiten
+
+PostgreSQL in Supabase ist die produktive Persistenz für Spielstand, Welt- und
+Fahrzeugkatalog. SQLite bleibt auf Tests und ausdrücklich lokale Offline-Arbeit
+begrenzt. Der Backend-Adapter besitzt Verbindungen und Transaktionen; Browser und
+Supabase-Client greifen nicht direkt auf die privaten Anwendungsschemas zu.
+
+Der Login versucht zuerst Supabase Auth. Nur wenn dort noch kein Passwortkonto
+für einen der drei migrierten Altaccounts existiert, verwendet der Browser den
+Same-Origin-Endpunkt. Die private Zuordnung in `game.account_emails` löst dabei
+die hinterlegte E-Mail auf. Kompakte historische Spieler-IDs bleiben erhalten;
+neue Registrierungen laufen ausschließlich über Supabase Auth.
+
+Die Schemas `game`, `world_catalogue` und `vehicle_catalogue` sind für `PUBLIC`,
+`anon` und `authenticated` gesperrt. RLS ist als zusätzliche Schutzschicht auf
+allen Tabellen aktiv. Der Startup-Check bricht bei einer Tabelle ohne RLS ab.
+Die Backend-Rolle behält den für den Adapter erforderlichen Besitz- und
+`BYPASSRLS`-Zugriff. Das manuelle Architekturreview bestätigt weiterhin die
+Trennung von Domain, Services, Transport und Persistenz sowie die zentrale
+Browser-API in `frontend/api.js`.
+
+## Automatisierte Abnahme
+
+`.venv/Scripts/python.exe -X utf8 scripts/quality.py` wurde vollständig mit
+Exitcode 0 ausgeführt. Der reale Supervisor-Test bestand separat in 5,51 s. Der
+abgedeckte Hauptlauf meldete **612 bestanden, 1 gezielt ausgelassen**, **100,00 %
+App-Statement-Coverage** bei **7.179 Statements** und 62 Warnungen aus bestehenden
+Testabhängigkeiten beziehungsweise Ressourcen-Cleanup. Zusätzlich bestanden
+**120 Frontend-Verhaltenstests**, Ruff, Ruff-Format, mypy für 165 Dateien,
+Pyright, ESLint, Stylelint, Prettier, TypeScript/checkJs, Produktionsbuild und
+compileall.
+
+`npm run test:e2e` meldete **33 bestanden** in 6,3 Minuten. Desktop-, Tablet- und
+Mobilfälle liefen über die isolierte Browser-Settings-Schicht; der Playwright-
+Server erhält weder `DATABASE_URL` noch Supabase-Konfiguration und griff nicht
+auf Produktionsdaten zu. Kartenregressionsbilder sowie die Live-Aufnahme wurden
+visuell geprüft. Ein `WinError 10054` beim absichtlich abgebrochenen Netzwerkfall
+ist erwartetes Windows-Socket-Cleanup; der zugehörige Test bestand.
+
+## Live-Verifikation ohne Gameplay-Mutation
+
+Die Remote-Migrationsliste enthält
+`20261002114339_harden_private_schemas`. Der Inhalt entspricht der lokalen,
+bereits angewendeten Migration; sie wurde nicht erneut ausgeführt. Alle **72 von
+72** Anwendungstabellen besitzen RLS. Tabellen- und Funktionsrechte sowie
+Schema-Usage für `PUBLIC`, `anon` und `authenticated` sind jeweils **0**. Die drei
+gezielten Runtime-FK-Indizes sind vorhanden.
+
+Der produktive Backend-Adapter validierte Schema 1.2.0 und lud **558**
+Weltstandorte sowie **14** Fahrzeugmodelle. Ein vorhandener migrierter Account
+konnte sich über die Legacy-Brücke anmelden; Karte, Kapital, Reputation und vier
+Fahrzeuge wurden geladen und als synchronisiert angezeigt. Der anschließende
+Logout bestand. Es wurden keine Käufe, Dispositionen oder sonstigen
+Gameplay-Mutationen ausgelöst.
+
+Der Supabase Security Advisor meldet erwartungsgemäß 72 Info-Hinweise
+`rls_enabled_no_policy`: Für die vollständig privaten Schemas sind keine
+Browser-Policies vorgesehen. Die 31 Hinweise zu Katalog-Fremdschlüsseln, der
+fehlende Primärschlüssel der einzelnen Schema-Versionszeile und aktuell ungenutzte
+Indizes werden ohne gemessenen Bedarf nicht verändert. Hosting, Recovery,
+Backup-/Restore-Abnahme, öffentliche Provider und eine reale iPad-Abnahme bleiben
+separate Betriebsarbeit.
+
+---
+
 # Qualitätsbericht: gemeinsamer Vorrat und schnelle Runtime
 
 Stand: 28.09.2026. Branch `feature/frontend-v2`, Basis `d11034f`.

@@ -18,6 +18,16 @@
 - Parametrisierte SQL-Abfragen, validierte Eingaben, geschützte Geldmutationen.
 - API-Antworten ohne Browsercache; Passwörter und Tokens werden nicht geloggt.
 - Öffentlicher Spielreset entfernt; Rangliste zeigt nur Name und Lieferungen.
+- `game`, `world_catalogue` und `vehicle_catalogue` sind private Schemas ohne
+  Rechte für `PUBLIC`, `anon` oder `authenticated`; auch zukünftige Objekte
+  erben diese Default-Privileges. Alle 72 vorhandenen Tabellen besitzen RLS
+  ohne Browser-Policies. Nur die Backend-Rolle greift auf sie zu.
+- Die PostgreSQL-Initialisierung bricht ab, wenn RLS auf einer erforderlichen
+  `game`-Tabelle fehlt.
+- Der Legacy-Login-Fallback gilt ausschließlich für die drei in
+  `game.account_emails` hinterlegten migrierten Konten. Er löst E-Mail auf den
+  bestehenden scrypt-Account auf und bewahrt dessen kompakte UUID. Neue
+  Registrierungen werden ausschließlich durch Supabase Auth angelegt.
 
 ## Noch kein Produktionsfreigabestatus
 
@@ -39,8 +49,10 @@ interne API-Header und Backend-Zugangsdaten werden nicht mitgeschickt.
 Der lokale Einstieg bindet für WLAN-Tests an 0.0.0.0; HOST=127.0.0.1
 beschränkt ihn auf diesen Rechner.
 
-SQLite-Datei und Backups enthalten Passworthashes und Spielerdaten; passende
-Dateirechte und geschützte Backups sind Aufgabe des Betriebs.
+Produktive PostgreSQL-Daten und Backups enthalten Passworthashes und Spielerdaten;
+Zugriffsschutz sowie verschlüsselte, geprüfte Backups sind Aufgabe des Betriebs.
+SQLite-Kopien dürfen nur als private Testfixture oder Offline-Arbeitskopie
+existieren und unterliegen denselben Schutzanforderungen.
 Eine hohe Testabdeckung ersetzt keine unabhängige Sicherheitsprüfung.
 
 

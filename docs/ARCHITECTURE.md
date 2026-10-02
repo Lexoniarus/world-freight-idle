@@ -1,6 +1,6 @@
 # Architektur
 
-Stand: 25.09.2026. Die Anwendung besitzt genau eine relationale Laufzeit.
+Stand: 02.10.2026. Die Anwendung besitzt genau eine relationale Produktionslaufzeit.
 UI First, native ES-Module, FastAPI und `python main.py` bleiben Grundlage.
 
 ## Schichten und Zuständigkeiten
@@ -10,7 +10,8 @@ UI First, native ES-Module, FastAPI und `python main.py` bleiben Grundlage.
 - `app/services`: Initialisierung, Markt, Kauf, Disposition, Settlement,
   Authentifizierung und Profilpflege. Orchestratoren verbinden benannte
   fachliche Schritte und injizierte Ports.
-- `app/repositories`: SQLite, Verbindungen, Transaktionen, Schema-Validierung
+- `app/repositories`: PostgreSQL-Produktionsadapter sowie SQLite-Adapter für
+  Tests und Offline-Werkzeuge, Verbindungen, Transaktionen, Schema-Validierung
   und kanonisches Snapshot-Mapping. Read-only Referenzdaten bleiben getrennt
   vom beschreibbaren Spielerzustand.
 - `app/providers`: validierte Valhalla-/Geocoding-Antworten, Providerfehler,
@@ -23,16 +24,17 @@ UI First, native ES-Module, FastAPI und `python main.py` bleiben Grundlage.
 
 ```text
 Browser → API → Services → Domain-Ports
-                            ├─ GameUnitOfWork / GameStateRepository → SQLite
-                            ├─ AccountStore / ProviderCache → SQLite
-                            ├─ LeaderboardReader / TrafficReader → SQLite
-                            ├─ VehicleCatalogue / WorldCatalogue → read-only SQLite
+                            ├─ GameUnitOfWork / GameStateRepository → PostgreSQL
+                            ├─ AccountStore / ProviderCache → PostgreSQL
+                            ├─ LeaderboardReader / TrafficReader → PostgreSQL
+                            ├─ VehicleCatalogue / WorldCatalogue → read-only PostgreSQL
                             └─ TruckRouter → Valhalla
 ```
 
 Die Lifespan registriert den Routing-HTTP-Client sofort im AsyncExitStack.
-Start- und Shutdownfehler verhindern dessen Freigabe nicht. SQLite-Verbindungen
-gehören dem jeweiligen Adapter und werden auch bei Fehlern geschlossen.
+Start- und Shutdownfehler verhindern dessen Freigabe nicht. PostgreSQL-Pools
+und optionale SQLite-Verbindungen gehören dem jeweiligen Adapter und werden
+auch bei Fehlern geschlossen.
 Domainregeln erhalten Zeitpunkte als Parameter.
 
 ## Zustand und Atomarität
@@ -457,7 +459,18 @@ im Browser Session und Refresh; FastAPI prüft Bearer-Tokens lokal per ES256/JWK
 und projiziert den stabilen `sub` über den Account-Port nach `game.users`.
 Weder der Datenbankzugang noch ein Supabase Secret Key gelangen ins Frontend.
 Die vorhandene Cookie-Authentifizierung bleibt nur als Migrationsbrücke für
-bestehende lokale Konten erhalten.
+bestehende lokale Konten erhalten. Der Browser versucht Supabase Auth zuerst;
+der same-origin Fallback akzeptiert ausschließlich die drei in der privaten
+Tabelle `game.account_emails` hinterlegten Altkonten. Dabei werden die bisherigen
+scrypt-Hashes und kompakten UUIDs weiterverwendet. Neue Registrierungen bleiben
+vollständig bei Supabase Auth.
+
+Die Schemas `game`, `world_catalogue` und `vehicle_catalogue` entziehen
+`PUBLIC`, `anon` und `authenticated` alle Schema-, Tabellen-, Sequenz- und
+Funktionsrechte. RLS ist auf allen 72 Tabellen als zweite Schutzschicht aktiv;
+Browser-Policies existieren absichtlich nicht. Die Backend-Rolle ist der einzige
+Runtimezugang. Der Start bricht ab, wenn einer erforderlichen `game`-Tabelle RLS
+fehlt.
 
 Der immutable World-Snapshot lädt Facility-Provenienz, Geocoding-Evidenz,
 Aliasse und dokumentierte Güter in vier Batch-Projektionen. Damit bleibt die

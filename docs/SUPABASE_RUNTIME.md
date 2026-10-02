@@ -16,6 +16,21 @@ Der Browser spricht weiterhin ausschließlich mit FastAPI `/api/v1`. Es gibt
 keinen direkten Browserzugriff auf das private `game`-Schema und keine
 Datenbank-Credentials im Frontend.
 
+Die Migration `harden_private_schemas` entzieht `PUBLIC`, `anon` und
+`authenticated` alle Rechte an `game`, `world_catalogue` und
+`vehicle_catalogue`, einschließlich Tabellen, Sequenzen und Funktionen. Sie
+setzt dieselben Default-Privileges für zukünftige Objekte und aktiviert RLS
+auf allen vorhandenen Tabellen als zusätzliche Schutzschicht ohne
+Browser-Policies. Die Backend-Rolle bleibt der einzige Runtime-Zugang und
+besitzt ausdrücklich `BYPASSRLS`; der Browser verwendet weiterhin nur
+`/api/v1`. Die PostgreSQL-Initialisierung verweigert den Start, sobald bei
+einer benötigten `game`-Tabelle RLS fehlt.
+
+Für die drei fehlenden Runtime-Fremdschlüsselindizes auf Sessions und
+Marktvorlagen legt dieselbe Migration gezielte Indizes an. Hinweise auf
+weitere Indizes in den immutable Katalogschemas werden nicht ungeprüft
+übernommen, weil sie aktuell keine gemessene Runtime-Abfrage unterstützen.
+
 ## Authentifizierung
 
 Der Browser verwendet `@supabase/supabase-js` mit der Publishable Key und hält
@@ -31,6 +46,17 @@ Der stabile Supabase-Subject wird beim ersten gültigen Request atomar in
 Anzeigename und niemals Autorisierungsgrundlage. Bestehende Cookie-Sessions
 bleiben für die drei bereits vorhandenen lokalen Konten übergangsweise lesbar;
 neue Browseranmeldungen laufen über Supabase Auth.
+
+Die drei vor Supabase Auth vorhandenen Konten besitzen zusätzlich eine private
+Zuordnung in `game.account_emails`. Beim Login versucht der Browser zuerst
+Supabase Auth. Solange für ein migriertes Konto dort noch kein Passwortkonto
+existiert, fällt ausschließlich der Login auf den same-origin Legacy-Endpunkt
+zurück; dieser löst die hinterlegte E-Mail auf den bestehenden scrypt-Account
+auf. Dadurch bleiben vorhandenes Passwort, Spieler-ID und kompletter Spielstand
+erhalten. Neue Registrierungen verwenden diesen Fallback nicht. Ein späterer
+Supabase-Subject mit derselben UUID darf außerdem die historische kompakte
+UUID-Darstellung ohne Bindestriche wiederverwenden, statt einen zweiten Spieler
+anzulegen.
 
 Der Server lädt JWKS nur bei Bedarf über einen zeitlich begrenzten Cache und
 protokolliert Refresh beziehungsweise Ablehnung strukturiert, aber niemals den
