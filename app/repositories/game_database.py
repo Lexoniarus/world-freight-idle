@@ -121,7 +121,14 @@ class SqliteGameDatabase:
                 )
                 raise
             connection.commit()
-            connection.execute("PRAGMA journal_mode=WAL")
+            # A second process may begin its schema check immediately after the
+            # commit. Give the one-time journal switch enough time to acquire
+            # its exclusive lock without changing the normal 500 ms contract.
+            connection.execute("PRAGMA busy_timeout=5000")
+            try:
+                connection.execute("PRAGMA journal_mode=WAL")
+            finally:
+                connection.execute("PRAGMA busy_timeout=500")
         LOGGER.info(
             "Game schema validated",
             extra={

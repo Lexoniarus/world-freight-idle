@@ -9,19 +9,23 @@ import httpx
 import pytest
 
 from app import launcher
+from app.repositories.game_database import SqliteGameDatabase
 from app.services.preparation_lease import WORKER_SUBJECT, PreparationLease
 from app.services.preparation_worker import MarketPreparationWorker
 from tests.test_routing_readiness_store import routing_store
 
 
 @pytest.mark.asyncio
+@pytest.mark.supervisor_integration
 async def test_real_supervisor_starts_outside_repository_and_closes_children(
     tmp_path,
     monkeypatch,
     unused_tcp_port,
 ):
+    database_path = tmp_path / "isolated.db"
+    SqliteGameDatabase(database_path).initialize()
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "isolated.db"))
+    monkeypatch.setenv("DB_PATH", str(database_path))
     monkeypatch.setenv("HOST", "127.0.0.1")
     monkeypatch.setenv("PORT", str(unused_tcp_port))
     monkeypatch.setenv("LOG_LEVEL", "WARNING")
@@ -58,7 +62,7 @@ async def test_real_supervisor_starts_outside_repository_and_closes_children(
             # Also reclaim a child if an assertion detects an early exit.
             for child in children:
                 await launcher.stop_child(child)
-    assert all(child.returncode == 0 for child in children)
+    assert [child.returncode for child in children] == [0, 0]
 
 
 @pytest.mark.asyncio
@@ -195,7 +199,9 @@ async def test_supervisor_restarts_only_worker_and_closes_children(
         if calls == 1 and start_failure:
             raise OSError("start failed")
         worker = SimpleNamespace(
-            returncode=1, stdin=Mock(), wait=AsyncMock(return_value=1)
+            returncode=1,
+            stdin=Mock(),
+            wait=AsyncMock(return_value=1),
         )
         workers.append(worker)
         if calls == 2:

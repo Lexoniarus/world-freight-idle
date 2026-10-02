@@ -68,6 +68,15 @@ COMMANDS = (
         sys.executable,
         "-m",
         "pytest",
+        "tests/test_process_isolation.py::"
+        "test_real_supervisor_starts_outside_repository_and_closes_children",
+    ),
+    (
+        sys.executable,
+        "-m",
+        "pytest",
+        "-m",
+        "not supervisor_integration",
         "--cov=app",
         "--cov-report=term-missing",
         "--cov-fail-under=100",
