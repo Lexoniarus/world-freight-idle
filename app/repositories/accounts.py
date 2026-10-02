@@ -181,7 +181,8 @@ class AccountRepository:
             )
             row = connection.execute(
                 """INSERT INTO auth_attempts VALUES (?, 1, ?)
-                ON CONFLICT(bucket) DO UPDATE SET attempts = attempts + 1
+                ON CONFLICT(bucket) DO UPDATE SET
+                    attempts = auth_attempts.attempts + 1
                 RETURNING attempts""",
                 (digest, now + 900),
             ).fetchone()

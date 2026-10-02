@@ -353,20 +353,17 @@ def load_transport_record(row: dict) -> ActiveTransport:
         trip = load_transport(
             decode_snapshot("transport", row["transport_snapshot"])
         )
-        expected = (
+        expected_identity = (
             trip.id,
             trip.vehicle_id,
             trip.contract.id,
             trip.origin.facility_uid,
             trip.destination.facility_uid,
             trip.status,
-            trip.departed_at,
-            trip.arrives_at,
-            trip.settled_at,
             trip.operating_cost_eur,
             trip.payout_eur,
         )
-        actual = tuple(
+        actual_identity = tuple(
             row[key]
             for key in (
                 "transport_id",
@@ -375,14 +372,32 @@ def load_transport_record(row: dict) -> ActiveTransport:
                 "origin_facility_uid",
                 "destination_facility_uid",
                 "status",
-                "departed_at",
-                "arrives_at",
-                "settled_at",
                 "operating_cost_eur",
                 "payout_eur",
             )
         )
-        if actual != expected:
+        timestamp_pairs = (
+            (row["departed_at"], trip.departed_at),
+            (row["arrives_at"], trip.arrives_at),
+            (row["settled_at"], trip.settled_at),
+        )
+        timestamps_match = all(
+            (actual is None and expected is None)
+            or (
+                isinstance(actual, (int, float))
+                and not isinstance(actual, bool)
+                and isinstance(expected, (int, float))
+                and not isinstance(expected, bool)
+                and math.isclose(
+                    actual,
+                    expected,
+                    rel_tol=0,
+                    abs_tol=1e-5,
+                )
+            )
+            for actual, expected in timestamp_pairs
+        )
+        if actual_identity != expected_identity or not timestamps_match:
             raise ValueError("Transport columns differ from snapshot")
         return trip
     except (ValueError, TypeError, KeyError) as exc:

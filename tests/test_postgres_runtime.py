@@ -172,6 +172,12 @@ def test_postgres_sql_translation_contract():
         "SELECT name FROM sqlite_master WHERE type='table'"
     )
     assert translate_sql("BEGIN IMMEDIATE") == "BEGIN"
+    assert "auth_attempts.attempts + 1" in translated(
+        """INSERT INTO auth_attempts VALUES (?, 1, ?)
+        ON CONFLICT(bucket) DO UPDATE SET
+            attempts = auth_attempts.attempts + 1
+        RETURNING attempts"""
+    )
     assert translated("SELECT * FROM x WHERE a=?").endswith("a=%s")
     assert "LIKE 'https://%%'" in translated(
         "SELECT * FROM x WHERE url LIKE 'https://%'"

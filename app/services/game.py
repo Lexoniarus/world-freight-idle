@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import uuid
 from collections.abc import Callable, Sequence
 
@@ -230,9 +231,16 @@ class GameService:
         vehicle = self._find_vehicle(
             list(self.state_repository.list_vehicles()), trip.vehicle_id
         )
+        start_energy = trip.journey.segments[0].start_energy
         if trip.journey.energy is not None and (
             vehicle.energy != trip.journey.energy
-            or vehicle.energy_level != trip.journey.segments[0].start_energy
+            or start_energy is None
+            or not math.isclose(
+                vehicle.energy_level,
+                start_energy,
+                rel_tol=0,
+                abs_tol=1e-9,
+            )
         ):
             raise ValueError("Vehicle energy checkpoint differs from trip.")
         vehicle.arrive(trip.destination, trip.journey.segments[-1].end_energy)
