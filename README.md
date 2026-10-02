@@ -184,7 +184,9 @@ Browserprüfung verwendet lokal Microsoft Edge. Alternativ Chromium installieren
 und PLAYWRIGHT_CHANNEL=chromium setzen; CI verwendet Chromium.
 
 Browsertests starten einen isolierten Server auf Port 8011 mit temporären Daten
-und simulierten externen Medien/Providern. Aktuelle ausgeführte Ergebnisse,
+und simulierten externen Medien/Providern. Fehlen die ignorierten lokalen
+SQLite-Kataloge, erzeugt die Testsuite deterministische synthetische Fixtures;
+`.env` und Live-Supabase werden nicht verwendet. Aktuelle ausgeführte Ergebnisse,
 Architekturreview und Abnahmegrenzen: [QUALITY_REPORT](QUALITY_REPORT.md).
 Die vollständige reale iPad-/Safari-Abnahme bleibt offen.
 

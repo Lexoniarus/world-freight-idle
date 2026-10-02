@@ -12,8 +12,9 @@
 - PostgreSQL-Kompatibilität für Login-Limits sowie migrierte Zeit- und
   Energiewerte stabilisiert. Echte fachliche Abweichungen werden weiterhin
   abgelehnt.
-- Browsertests sind von `.env`, Live-Supabase und produktiven Datenbanken
-  isoliert.
+- Python- und Browsertests sind von `.env`, Live-Supabase und produktiven
+  Datenbanken isoliert. Fehlende lokale Kataloge werden für einen frischen
+  Checkout deterministisch als ignorierte synthetische Fixtures erzeugt.
 - Private Schemas entziehen `PUBLIC`, `anon` und `authenticated` alle Rechte.
   72 Tabellen besitzen RLS; der Start lehnt fehlende RLS-Härtung ab. Drei
   gemessene Runtime-Fremdschlüsselpfade erhalten gezielte Indizes.

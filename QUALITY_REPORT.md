@@ -28,7 +28,7 @@ Browser-API in `frontend/api.js`.
 ## Automatisierte Abnahme
 
 `.venv/Scripts/python.exe -X utf8 scripts/quality.py` wurde vollständig mit
-Exitcode 0 ausgeführt. Der reale Supervisor-Test bestand separat in 5,51 s. Der
+Exitcode 0 ausgeführt. Der reale Supervisor-Test bestand separat in 2,70 s. Der
 abgedeckte Hauptlauf meldete **612 bestanden, 1 gezielt ausgelassen**, **100,00 %
 App-Statement-Coverage** bei **7.179 Statements** und 62 Warnungen aus bestehenden
 Testabhängigkeiten beziehungsweise Ressourcen-Cleanup. Zusätzlich bestanden
@@ -36,7 +36,11 @@ Testabhängigkeiten beziehungsweise Ressourcen-Cleanup. Zusätzlich bestanden
 Pyright, ESLint, Stylelint, Prettier, TypeScript/checkJs, Produktionsbuild und
 compileall.
 
-`npm run test:e2e` meldete **33 bestanden** in 6,3 Minuten. Desktop-, Tablet- und
+Der Lauf simulierte einen frischen Checkout ohne lokale Katalogdateien. Ein
+deterministischer Test-Fixture-Builder erzeugte dabei ausschließlich ignorierte,
+synthetische SQLite-Kataloge; `.env` und Live-Supabase blieben deaktiviert.
+
+`npm run test:e2e` meldete **33 bestanden** in 6,5 Minuten. Desktop-, Tablet- und
 Mobilfälle liefen über die isolierte Browser-Settings-Schicht; der Playwright-
 Server erhält weder `DATABASE_URL` noch Supabase-Konfiguration und griff nicht
 auf Produktionsdaten zu. Kartenregressionsbilder sowie die Live-Aufnahme wurden
