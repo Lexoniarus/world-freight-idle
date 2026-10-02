@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from app.api.v1.dependencies import get_auth_service, get_current_user
-from app.api.v1.schemas import Credentials
+from app.api.v1.schemas import Credentials, LoginCredentials
 from app.domain.account_ports import AccountIdentity
 from app.domain.company_colors import COMPANY_COLORS
 from app.services.auth import SESSION_COOKIE, SESSION_LIFETIME, AuthService
@@ -77,7 +77,7 @@ def register(
 
 @router.post("/login")
 def login(
-    body: Credentials,
+    body: LoginCredentials,
     request: Request,
     response: Response,
     auth: AuthService = Depends(get_auth_service),

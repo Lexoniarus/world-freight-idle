@@ -106,7 +106,21 @@ export class AuthController {
             return;
           }
         } else {
-          await this.supabaseAuth.login(String(fields.email), String(fields.password));
+          try {
+            await this.supabaseAuth.login(String(fields.email), String(fields.password));
+          } catch (supabaseError) {
+            try {
+              await this.api.request("/auth/login", {
+                method: "POST",
+                body: JSON.stringify({
+                  username: String(fields.email),
+                  password: String(fields.password),
+                }),
+              });
+            } catch {
+              throw supabaseError;
+            }
+          }
         }
       } else {
         await this.api.request(this.registering ? "/auth/register" : "/auth/login", {

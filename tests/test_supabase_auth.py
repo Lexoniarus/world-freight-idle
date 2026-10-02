@@ -7,7 +7,7 @@ import time
 from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import Any, cast
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import jwt
 import pytest
@@ -211,6 +211,30 @@ def test_external_identity_provisioning_is_stable_and_collision_safe(database):
         "id": "race-id",
         "username": "RacePilot",
     }
+
+
+def test_migrated_email_uses_existing_password_and_compact_player_id(database):
+    accounts = AccountRepository(database)
+    password = "existing-password-123"
+    password_hash = PasswordHasher().hash_password(password)
+    legacy_id = uuid4().hex
+    with database.connect() as connection:
+        connection.execute(
+            "INSERT INTO users VALUES (?, ?, ?, ?)",
+            (legacy_id, "LegacyPilot", password_hash, time.time()),
+        )
+        connection.execute(
+            "INSERT INTO account_emails VALUES (?, ?)",
+            (legacy_id, "legacy@example.test"),
+        )
+
+    authenticated = AuthService(accounts, PasswordHasher()).authenticate(
+        "LEGACY@example.test", password
+    )
+    assert authenticated == {"id": legacy_id, "username": "LegacyPilot"}
+    assert accounts.ensure_external_user(
+        str(UUID(legacy_id)), "IgnoredMetadata"
+    ) == {"id": legacy_id, "username": "LegacyPilot"}
 
 
 def test_bearer_dependency_provisions_verified_user_and_rejects_bad_tokens(

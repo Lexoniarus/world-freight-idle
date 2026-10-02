@@ -23,6 +23,7 @@ LOGGER = logging.getLogger(__name__)
 _WRITER_LOCK = "world-freight-idle:game-writer:v1"
 _SCHEMA_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _RUNTIME_TABLES = {
+    "account_emails",
     "account_preferences",
     "auth_attempts",
     "contract_offers",

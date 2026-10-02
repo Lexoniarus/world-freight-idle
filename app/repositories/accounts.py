@@ -4,6 +4,7 @@ import hashlib
 import sqlite3
 import time
 import uuid
+from uuid import UUID
 
 from app.domain.account_ports import AccountCredentials, AccountIdentity
 from app.domain.errors import DuplicateAccountError
@@ -15,6 +16,10 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT NOT NULL COLLATE NOCASE UNIQUE,
     password_hash TEXT NOT NULL,
     created_at REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS account_emails (
+    user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL COLLATE NOCASE UNIQUE
 );
 CREATE TABLE IF NOT EXISTS sessions (
     token_hash TEXT PRIMARY KEY,
@@ -56,11 +61,14 @@ class AccountRepository:
         return user
 
     def find_user(self, username: str) -> AccountCredentials | None:
-        """Look up a case-insensitive login name."""
+        """Look up a case-insensitive username or migrated email."""
         with self._database.connect() as connection:
             row = connection.execute(
-                "SELECT * FROM users WHERE username = ?",
-                (username,),
+                """SELECT u.* FROM users u
+                LEFT JOIN account_emails e ON e.user_id = u.id
+                WHERE lower(u.username) = lower(?)
+                   OR lower(e.email) = lower(?)""",
+                (username, username),
             ).fetchone()
         return (
             AccountCredentials(
@@ -77,15 +85,23 @@ class AccountRepository:
         self, user_id: str, username: str
     ) -> AccountIdentity:
         """Provision one Supabase identity without storing its credentials."""
+        identities = [user_id]
+        try:
+            compact_id = UUID(user_id).hex
+        except ValueError:
+            compact_id = user_id
+        if compact_id not in identities:
+            identities.append(compact_id)
         with self._database.connect() as connection:
-            existing = connection.execute(
-                "SELECT id, username FROM users WHERE id = ?",
-                (user_id,),
-            ).fetchone()
-            if existing:
-                return AccountIdentity(
-                    id=existing["id"], username=existing["username"]
-                )
+            for identity in identities:
+                existing = connection.execute(
+                    "SELECT id, username FROM users WHERE id = ?",
+                    (identity,),
+                ).fetchone()
+                if existing:
+                    return AccountIdentity(
+                        id=existing["id"], username=existing["username"]
+                    )
             fallback = (
                 "Driver_" + hashlib.sha256(user_id.encode()).hexdigest()[:12]
             )

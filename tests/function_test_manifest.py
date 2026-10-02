@@ -200,7 +200,7 @@ FUNCTION_TESTS.update(
         "app.bootstrap.build_player_service": "test_player_service_isolation_and_atomic_purchases",
         "app.repositories.accounts.AccountRepository.allow_attempt": "test_auth_sessions_expire_revoke_and_throttle",
         "app.repositories.accounts.AccountRepository.create_user": "test_auth_sessions_expire_revoke_and_throttle",
-        "app.repositories.accounts.AccountRepository.find_user": "test_auth_sessions_expire_revoke_and_throttle",
+        "app.repositories.accounts.AccountRepository.find_user": "test_migrated_email_uses_existing_password_and_compact_player_id",
         "app.repositories.accounts.AccountRepository.revoke_session": "test_auth_sessions_expire_revoke_and_throttle",
         "app.repositories.accounts.AccountRepository.save_session": "test_auth_sessions_expire_revoke_and_throttle",
         "app.repositories.accounts.AccountRepository.session_user": "test_auth_sessions_expire_revoke_and_throttle",
@@ -997,6 +997,6 @@ FUNCTION_TESTS.update(
         "app.providers.supabase_auth.TracingJwkClient.fetch_data": "test_supabase_jwks_client_is_cached_and_refreshes_through_pyjwt",
         "app.providers.supabase_auth.SupabaseJwtVerifier.__init__": "test_supabase_jwks_client_is_cached_and_refreshes_through_pyjwt",
         "app.providers.supabase_auth.SupabaseJwtVerifier.verify": "test_supabase_jwt_verification_accepts_only_stable_valid_identity",
-        "app.repositories.accounts.AccountRepository.ensure_external_user": "test_external_identity_provisioning_is_stable_and_collision_safe",
+        "app.repositories.accounts.AccountRepository.ensure_external_user": "test_migrated_email_uses_existing_password_and_compact_player_id",
     }
 )

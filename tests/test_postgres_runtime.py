@@ -293,6 +293,7 @@ def test_postgres_adapter_failure_contracts():
 
 def test_postgres_database_lifecycle(monkeypatch):
     required = {
+        "account_emails",
         "account_preferences",
         "auth_attempts",
         "contract_offers",

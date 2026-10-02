@@ -263,6 +263,43 @@ test("auth controller uses email for Supabase and keeps username registration me
   assert.deepEqual(calls.slice(2), [["destroy"], ["api-destroy"]]);
 });
 
+test("Supabase login falls back to migrated email credentials without creating a new player", async () => {
+  const calls = [];
+  const redirects = [];
+  const root = document.createElement("div");
+  document.body.replaceChildren(root);
+  const supabaseAuth = {
+    login: async (email, password) => {
+      calls.push(["supabase-login", email, password]);
+      throw new Error("E-Mail oder Passwort ist falsch.");
+    },
+    register: async () => true,
+    destroy: () => {},
+  };
+  const api = {
+    request: async (path, options) => {
+      calls.push(["legacy-login", path, JSON.parse(options.body)]);
+      return { id: "legacy", username: "Alex" };
+    },
+    destroy: () => {},
+  };
+  const controller = new AuthController(root, api, (path) => redirects.push(path), supabaseAuth);
+  controller.start();
+  requiredElement("#email").value = "alex@example.test";
+  requiredElement("#password").value = "existing-password";
+  await controller.submitCredentials();
+  assert.deepEqual(calls, [
+    ["supabase-login", "alex@example.test", "existing-password"],
+    [
+      "legacy-login",
+      "/auth/login",
+      { username: "alex@example.test", password: "existing-password" },
+    ],
+  ]);
+  assert.deepEqual(redirects, ["/"]);
+  controller.destroy();
+});
+
 test("API errors distinguish expired sessions, validation errors and non-JSON failures", async () => {
   const redirects = [];
   let response = { ok: false, status: 401, json: async () => ({ detail: "expired" }) };
