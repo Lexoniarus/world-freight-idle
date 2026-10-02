@@ -446,6 +446,16 @@ class PostgresGameDatabase(SqliteGameDatabase):
             ).fetchall()
             if [row[0] for row in versions] != [VERSION]:
                 raise UnsupportedGameSchema("Unbekannte Spielstandversion.")
+            rls_tables = {
+                row[0]
+                for row in connection.execute(
+                    "SELECT c.relname FROM pg_class c "
+                    "JOIN pg_namespace n ON n.oid=c.relnamespace "
+                    "WHERE n.nspname=%s AND c.relkind IN ('r', 'p') "
+                    "AND c.relrowsecurity",
+                    (self.schema,),
+                )
+            }
             index = connection.execute(
                 "SELECT indexdef FROM pg_indexes WHERE schemaname=%s "
                 "AND indexname='one_active_transport_per_vehicle'",
@@ -459,7 +469,11 @@ class PostgresGameDatabase(SqliteGameDatabase):
                 "AND t.tgname='retain_settlement' AND NOT t.tgisinternal",
                 (self.schema,),
             ).fetchone()
-            if index is None or trigger is None:
+            if (
+                not _RUNTIME_TABLES.issubset(rls_tables)
+                or index is None
+                or trigger is None
+            ):
                 raise UnsupportedGameSchema(
                     "PostgreSQL-Spielstandschutz ist unvollständig."
                 )

@@ -334,6 +334,8 @@ def test_postgres_database_lifecycle(monkeypatch):
             return ([(name,) for name in sorted(required)], ("table_name",))
         if "SELECT version FROM game_schema" in statement:
             return ([("1.2.0",)], ("version",))
+        if "c.relrowsecurity" in statement:
+            return ([(name,) for name in sorted(required)], ("relname",))
         if "FROM pg_indexes" in statement:
             return ([("CREATE UNIQUE INDEX ...",)], ("indexdef",))
         if "pg_get_triggerdef" in statement:
@@ -400,15 +402,16 @@ def test_postgres_database_failure_contracts(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    ("version", "index_rows", "trigger_rows", "error_text"),
+    ("version", "rls", "index_rows", "trigger_rows", "error_text"),
     (
-        (None, (), (), "unvollständig"),
-        ("0.0.0", (("index",),), (("trigger",),), "version"),
-        ("1.2.0", (), (("trigger",),), "schutz"),
+        (None, False, (), (), "unvollständig"),
+        ("0.0.0", True, (("index",),), (("trigger",),), "version"),
+        ("1.2.0", True, (), (("trigger",),), "schutz"),
+        ("1.2.0", False, (("index",),), (("trigger",),), "schutz"),
     ),
 )
 def test_postgres_schema_validation_failures(
-    monkeypatch, version, index_rows, trigger_rows, error_text
+    monkeypatch, version, rls, index_rows, trigger_rows, error_text
 ):
     def responses(statement, parameters):
         del parameters
@@ -417,6 +420,9 @@ def test_postgres_schema_validation_failures(
             return ([(name,) for name in sorted(tables)], ("table_name",))
         if "SELECT version FROM game_schema" in statement:
             return ([(version,)], ("version",))
+        if "c.relrowsecurity" in statement:
+            rows = _RUNTIME_TABLES if rls else ()
+            return ([(name,) for name in sorted(rows)], ("relname",))
         if "FROM pg_indexes" in statement:
             return (index_rows, ("indexdef",))
         if "pg_get_triggerdef" in statement:

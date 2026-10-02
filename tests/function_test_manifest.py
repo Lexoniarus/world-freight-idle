@@ -986,7 +986,7 @@ FUNCTION_TESTS.update(
         "app.repositories.postgres_database.PostgresGameDatabase.connect": "test_postgres_database_lifecycle",
         "app.repositories.postgres_database.PostgresGameDatabase.read_transaction": "test_postgres_database_lifecycle",
         "app.repositories.postgres_database.PostgresGameDatabase.transaction": "test_postgres_database_lifecycle",
-        "app.repositories.postgres_database.PostgresGameDatabase.initialize": "test_postgres_database_lifecycle",
+        "app.repositories.postgres_database.PostgresGameDatabase.initialize": "test_postgres_schema_validation_failures",
         "app.repositories.postgres_database.PostgresGameDatabase.close": "test_postgres_database_lifecycle",
         "app.repositories.postgres_catalogues._catalogue_conninfo": "test_postgres_catalogue_connection_contract",
         "app.repositories.postgres_catalogues.PostgresWorldCatalogue.__init__": "test_postgres_catalogue_connection_contract",
