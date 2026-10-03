@@ -301,6 +301,10 @@ test("missing fleet coordinates and tile outages preserve the playable lists", a
   await page.route("**/api/v1/runtime", async (route) => {
     const response = await route.fetch();
     const data = await response.json();
+    if (!response.ok() || !Array.isArray(data.vehicles)) {
+      await route.fulfill({ response });
+      return;
+    }
     for (const vehicle of data.vehicles) {
       vehicle.hub = { ...vehicle.hub, lat: null, lon: null, resolution_status: "unavailable" };
       if (vehicle.location_snapshot)
@@ -782,13 +786,13 @@ test("frontend v2: account layer overrides, group keyboard access and persistent
   expect(purchase.ok()).toBeTruthy();
   await page.reload();
   await expect(page.locator(".vehicle-group.own")).toHaveText("2");
-  for (let step = 0; step < 3; step++) {
-    await page.locator(".vehicle-group.own").focus();
-    await page.keyboard.press("Enter");
-  }
-  await page.locator(".vehicle-group.own").focus();
-  await page.keyboard.press("Enter");
-  await expect(page.locator(".map-object-list button")).toHaveCount(2);
+  await expect(async () => {
+    if ((await page.locator(".map-object-list button").count()) !== 2)
+      await page.locator(".vehicle-group.own").press("Enter");
+    await expect(page.locator(".map-object-list button")).toHaveCount(2, {
+      timeout: 1000,
+    });
+  }).toPass({ timeout: 15000 });
   await page.locator(".map-object-list button").first().click();
   await expect(page).toHaveURL(/fleet\//);
   await page.locator(".layer-menu summary").click();

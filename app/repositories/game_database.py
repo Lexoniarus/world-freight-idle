@@ -49,7 +49,7 @@ class SqliteGameDatabase:
         try:
             if connection is None:
                 connection = sqlite3.connect(
-                    self.path, timeout=0.5, isolation_level=None
+                    self.path, timeout=5.0, isolation_level=None
                 )
                 connection.row_factory = sqlite3.Row
                 connection.execute("PRAGMA foreign_keys=ON")
@@ -137,13 +137,9 @@ class SqliteGameDatabase:
                 raise
             connection.commit()
             # A second process may begin its schema check immediately after the
-            # commit. Give the one-time journal switch enough time to acquire
-            # its exclusive lock without changing the normal 500 ms contract.
-            connection.execute("PRAGMA busy_timeout=5000")
-            try:
-                _enable_wal(connection)
-            finally:
-                connection.execute("PRAGMA busy_timeout=500")
+            # commit. The bounded SQLite writer wait also covers this one-time
+            # journal switch in test and offline multi-process runtimes.
+            _enable_wal(connection)
         LOGGER.info(
             "Game schema validated",
             extra={

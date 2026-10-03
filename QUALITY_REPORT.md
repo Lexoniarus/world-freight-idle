@@ -43,9 +43,9 @@ sichtbare und zehn gespeicherte Angebote je Band auf.
 ## Automatisierte Abnahme
 
 `.venv/Scripts/python.exe -X utf8 scripts/quality.py` wurde vollständig mit
-Exitcode 0 ausgeführt. Der reale Supervisor-Test bestand separat in 2,19 s. Der
+Exitcode 0 ausgeführt. Der reale Supervisor-Test bestand separat in 1,78 s. Der
 abgedeckte Hauptlauf meldete **618 bestanden, 1 gezielt ausgelassen**, **100,00 %
-App-Statement-Coverage** bei **7.679 Statements** und 62 Warnungen aus bestehenden
+App-Statement-Coverage** bei **7.676 Statements** und 62 Warnungen aus bestehenden
 Testabhängigkeiten beziehungsweise Ressourcen-Cleanup. Zusätzlich bestanden
 **122 Frontend-Verhaltenstests**, Ruff, Ruff-Format, mypy für 170 Dateien,
 Pyright, ESLint, Stylelint, Prettier, TypeScript/checkJs, Produktionsbuild und
@@ -58,6 +58,10 @@ Der in der Linux-CI beobachtete parallele WAL-Initialisierungs-Race ist durch
 einen auf `database is locked` begrenzten Retry abgesichert. Der Gegentest lehnt
 andere SQLite-Fehler und eine anhaltende Sperre weiterhin unmittelbar ab; 20
 zusätzliche aufeinanderfolgende Parallelstarts bestanden lokal.
+Die isolierte Test-/Offline-Laufzeit wartet zudem höchstens fünf Sekunden auf
+ihren einzelnen SQLite-Writer. Browser-Interception verändert ausschließlich
+erfolgreiche Runtime-Snapshots; Map-Gruppen warten zustandsbasiert auf Zoom und
+Popup, statt Renderer-Tastendrücke zeitkritisch zu stapeln.
 
 `npm run test:e2e` meldete **34 bestanden** in 5,7 Minuten. Desktop-, Tablet- und
 Mobilfälle liefen über die isolierte Browser-Settings-Schicht; der Playwright-

@@ -397,8 +397,8 @@ serverseitige Eignungs-IDs; Views berechnen keine neue Kompatibilität.
 
 ADR 0007 ersetzt den bisherigen Worker im API-Lifespan. `main.py` startet und
 ueberwacht getrennte Rollen; beide verwenden dieselbe relationale SQLite-Datei
-mit WAL/FULL und 500 ms Lock-Wartezeit. Runtime liest publizierte Offers und
-Coverage; nur der Worker baut Kandidaten ausserhalb des Writers. Persistierte
+mit WAL/FULL und 5 s begrenzter Lock-Wartezeit. Runtime liest publizierte Offers
+und Coverage; nur der Worker baut Kandidaten ausserhalb des Writers. Persistierte
 Bedarfsversionen, globale Worker-Lease und Routingnachweise sichern kurze
 Publikationstransaktionen ab. Zeitaufwendige Providerarbeit ist kein API-Fallback.
 

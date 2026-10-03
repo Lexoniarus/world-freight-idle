@@ -23,7 +23,7 @@ def test_wal_read_snapshot_rejects_writes_and_resets_after_failure(database):
     with database.connect() as db:
         assert db.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
         assert db.execute("PRAGMA synchronous").fetchone()[0] == 2
-        assert db.execute("PRAGMA busy_timeout").fetchone()[0] == 500
+        assert db.execute("PRAGMA busy_timeout").fetchone()[0] == 5000
     with database.read_transaction(), database.read_transaction():
         with pytest.raises(PersistenceError), database.connect() as db:
             db.execute("UPDATE users SET created_at=1")
