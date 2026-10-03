@@ -1,6 +1,7 @@
 """Shared immutable supply and private, once-per-account consumption ports."""
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 from app.domain.contracts import ContractOffer
@@ -9,6 +10,26 @@ from app.domain.validation import require_identity, require_integer
 from app.domain.world import FacilityLocationSnapshot
 
 TradeKey = tuple[str, str, int]
+StockScope = tuple[str, str, str]
+
+
+@dataclass(frozen=True, slots=True)
+class MarketStockRepairPlan:
+    """Describe only rows that a guarded maintenance run may change."""
+
+    scopes: tuple[StockScope, ...]
+    offers: tuple[tuple[str, str], ...]
+    templates: tuple[str, ...]
+    users: tuple[str, ...]
+
+    def report(self) -> dict[str, int]:
+        """Expose aggregate counts without account or market identities."""
+        return {
+            "duplicate_scopes": len(self.scopes),
+            "offers_to_remove": len(self.offers),
+            "templates_to_remove": len(self.templates),
+            "affected_accounts": len(self.users),
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +105,10 @@ class MarketTemplateStore(Protocol):
         self, cities: tuple[str, ...]
     ) -> tuple[PreparedTemplate, ...]: ...
 
+    def scoped_templates(
+        self, scopes: tuple[tuple[str, str], ...]
+    ) -> tuple[PreparedTemplate, ...]: ...
+
     def levels(self) -> tuple[TemplateStockLevel, ...]: ...
 
     def add(self, template: PreparedTemplate) -> None: ...
@@ -107,3 +132,26 @@ class MarketStockStore(MarketTemplateStore, Protocol):
     def pending(self, context: str) -> TradeKey | None: ...
 
     def checkpoint(self, context: str, trade: TradeKey | None) -> None: ...
+
+    def reconcile_pending(
+        self,
+        active_contexts: tuple[str, ...],
+        completed_context: str | None,
+    ) -> None: ...
+
+
+class MarketStockMaintenancePort(Protocol):
+    """Plan and apply an explicitly archived stock repair."""
+
+    def duplicate_scopes(self) -> tuple[StockScope, ...]: ...
+
+    def inspect(
+        self, repairable_scopes: frozenset[StockScope]
+    ) -> MarketStockRepairPlan: ...
+
+    def apply(
+        self,
+        plan: MarketStockRepairPlan,
+        archive: Path,
+        now: float,
+    ) -> dict[str, int | str]: ...

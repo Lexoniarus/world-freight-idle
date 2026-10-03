@@ -30,13 +30,15 @@ class MarketTemplateService:
     ) -> tuple[
         tuple[PreparedTemplate, ...], tuple[tuple[str, ContractOffer], ...]
     ]:
-        """Fill a bounded deficit, reusing supply before creating new seeds."""
+        """Publish one deterministic stock unit from one selected trade."""
         limit = (
             self.policy.visible_per_band
             if target.priority < 2
             else self.policy.reserve_per_band
         )
         deficit = limit - target.count
+        if deficit <= 0:
+            return (), ()
         reusable = tuple(
             t
             for t in templates
@@ -52,22 +54,37 @@ class MarketTemplateService:
         )
         created: list[PreparedTemplate] = []
         issued = []
-        for index in range(deficit):
-            if not target.demand.catalogue_only and index < len(reusable):
-                template = reusable[index]
-            else:
-                template = PreparedTemplate(
-                    uuid4().hex,
-                    target.demand.vehicle.model_id,
-                    target.demand.vehicle.city_uid,
-                    ContractOffer.from_snapshot(
-                        self.factory.build(candidate, self.clock())
-                    ),
+        identity = "\x1e".join(
+            (
+                target.key,
+                str(target.priority),
+                str(target.count),
+                *(str(value) for value in trade_key(candidate)),
+            )
+        )
+        if not target.demand.catalogue_only and reusable:
+            template = min(reusable, key=lambda item: item.template_id)
+        else:
+            template = PreparedTemplate(
+                uuid4().hex,
+                target.demand.vehicle.model_id,
+                target.demand.vehicle.city_uid,
+                ContractOffer.from_snapshot(
+                    self.factory.build(
+                        candidate,
+                        self.clock(),
+                        identity + "\x1etemplate",
+                    )
+                ),
+            )
+            created.append(template)
+        if not target.demand.catalogue_only:
+            offer = ContractOffer.from_snapshot(
+                self.factory.build(
+                    candidate,
+                    self.clock(),
+                    identity + "\x1epersonal",
                 )
-                created.append(template)
-            if not target.demand.catalogue_only:
-                offer = ContractOffer.from_snapshot(
-                    self.factory.build(candidate, self.clock())
-                )
-                issued.append((template.template_id, offer))
+            )
+            issued.append((template.template_id, offer))
         return tuple(created), tuple(issued)
