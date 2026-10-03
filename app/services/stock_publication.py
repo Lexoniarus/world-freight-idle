@@ -3,6 +3,7 @@
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from time import perf_counter
 
 from app.domain.contracts import ContractOffer
 from app.domain.game import OwnedVehicle
@@ -48,6 +49,8 @@ class StockSnapshot:
     ready_contexts: frozenset[tuple[TradeKey, str]]
     usable_offers: tuple[ContractOffer, ...]
     usable_templates: tuple[PreparedTemplate, ...]
+    template_scopes: tuple[tuple[str, str], ...]
+    phase_durations: tuple[tuple[str, float], ...]
 
 
 @dataclass(slots=True)
@@ -65,29 +68,37 @@ class StockPublicationService:
         prep = self.preparation
         stock = prep.stock
         assert stock is not None
+        started = perf_counter()
         now = prep.clock()
         with self.unit.read_transaction():
             owned = self.unit.repository.list_vehicles()
             offers = self.unit.repository.list_offers()
-            arrivals = stock.arrivals(
-                now + prep.policy.arrival_horizon_seconds
-            )
+            arrivals = stock.arrivals()
             status = prep.jobs.status(prep.user_id)
             used, bindings = stock.used(), stock.bindings()
+        state_read = perf_counter()
         assert status is not None
         reference = self.market.candidates.reference()
         demands = self.demand.resolve(owned, arrivals, now)
         cities = tuple(sorted({d.vehicle.city_uid for d in demands}))
-        templates = stock.templates(cities)
+        scopes = tuple(
+            sorted({(d.vehicle.city_uid, d.vehicle.model_id) for d in demands})
+        )
+        demand_read = perf_counter()
+        templates = stock.scoped_templates(scopes)
+        templates_read = perf_counter()
         candidates = self.market.candidates.build(
             cities,
             tuple(d.vehicle for d in demands),
         )
-        with prep.readiness.reading():
+        candidates_built = perf_counter()
+        pairs = required_relations(candidates)
+        with prep.readiness.reading(pairs):
             ready = prep.ready_candidates(candidates)
             evidence = tuple(
                 prep.demand_state(*pair) for pair in required_relations(ready)
             )
+        readiness_read = perf_counter()
         return StockSnapshot(
             owned,
             offers,
@@ -119,6 +130,14 @@ class StockPublicationService:
                 if t.offer.is_available(now, self.market.model_id)
                 and self.market.candidates.structurally_current(t.offer)
             ),
+            scopes,
+            (
+                ("state", (state_read - started) * 1000),
+                ("demand", (demand_read - state_read) * 1000),
+                ("templates", (templates_read - demand_read) * 1000),
+                ("candidates", (candidates_built - templates_read) * 1000),
+                ("readiness", (readiness_read - candidates_built) * 1000),
+            ),
         )
 
     def unchanged(self, snapshot: StockSnapshot) -> bool:
@@ -130,16 +149,11 @@ class StockPublicationService:
             self.guard()
             and self.unit.repository.list_vehicles() == snapshot.owned
             and self.unit.repository.list_offers() == snapshot.offers
-            and stock.arrivals(
-                snapshot.observed_at + prep.policy.arrival_horizon_seconds
-            )
-            == snapshot.arrivals
+            and stock.arrivals() == snapshot.arrivals
             and prep.jobs.status(prep.user_id) == snapshot.status
             and stock.used() == snapshot.used
             and stock.bindings() == snapshot.bindings
-            and stock.templates(
-                tuple(sorted({d.vehicle.city_uid for d in snapshot.demands}))
-            )
+            and stock.scoped_templates(snapshot.template_scopes)
             == snapshot.templates
             and self.market.candidates.reference() == snapshot.reference
             and tuple(
@@ -154,6 +168,8 @@ class StockPublicationService:
         snapshot: StockSnapshot,
         templates: tuple[PreparedTemplate, ...],
         issued: tuple[tuple[str, ContractOffer], ...],
+        active_contexts: tuple[str, ...] = (),
+        completed_context: str | None = None,
     ) -> bool:
         """Commit new stock, private snapshots and diagnostics together."""
         prep = self.preparation
@@ -171,7 +187,17 @@ class StockPublicationService:
             for d in snapshot.demands
             if not d.catalogue_only and d.transport_id is None
         )
-        with prep.readiness.reading():
+        binding_pairs = tuple(
+            dict.fromkeys(
+                (
+                    offer.origin.facility_uid,
+                    offer.destination.facility_uid,
+                )
+                for offer in offers
+                if self.market.candidates.structurally_current(offer)
+            )
+        )
+        with prep.readiness.reading(binding_pairs):
             bindings = tuple(
                 (offer.id, reference)
                 for offer in offers
@@ -184,7 +210,12 @@ class StockPublicationService:
                 )
                 is not None
             )
-        with self.unit.transaction(), prep.readiness.reading():
+        evidence_pairs = tuple(
+            (state.origin_uid, state.destination_uid)
+            for state in snapshot.evidence
+        )
+        all_pairs = tuple(dict.fromkeys((*binding_pairs, *evidence_pairs)))
+        with self.unit.transaction(), prep.readiness.reading(all_pairs):
             if not self.unchanged(snapshot):
                 return False
             # References outside current demand must also remain current.
@@ -201,6 +232,7 @@ class StockPublicationService:
                 stock.add(template)
             for template_id, offer in issued:
                 stock.issue(template_id, offer)
+            stock.reconcile_pending(active_contexts, completed_context)
             prep.references.replace(bindings)
             prep.jobs.publish_diagnostics(
                 prep.user_id,

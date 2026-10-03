@@ -44,7 +44,7 @@ async def test_geocode_calls_nominatim_and_caches(cache: SqliteProviderCache):
     finally:
         await client.aclose()
     assert result == (52.5, 13.4, "Berlin")
-    assert "q=Berlin+test" in seen["query"]
+    assert httpx.URL(seen["query"]).params["q"] == "Berlin test"
     assert seen["headers"]["user-agent"] == "agent"
     assert cache.get_geocode("Berlin test") is not None
 

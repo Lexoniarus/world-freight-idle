@@ -12,7 +12,11 @@ from app.bootstrap import (
     build_traffic_reader,
     build_vehicle_catalogue,
 )
-from app.domain.errors import CatalogueError
+from app.domain.errors import (
+    CatalogueError,
+    DuplicateAccountError,
+    SupabaseAuthUnavailable,
+)
 from app.domain.ports import VehicleCatalogue
 from app.domain.read_ports import LeaderboardReader, TrafficReader
 from app.domain.runtime_views import RuntimeReader
@@ -45,7 +49,30 @@ def get_current_user(
     request: Request,
     auth: AuthService = Depends(get_auth_service),
 ) -> dict:
-    """Require an unexpired server-side session for private resources."""
+    """Prefer a locally verified Supabase JWT, then legacy sessions."""
+    authorization = request.headers.get("authorization", "")
+    if authorization:
+        scheme, _, token = authorization.partition(" ")
+        verifier = request.app.state.supabase_auth
+        if scheme.lower() != "bearer" or not token or verifier is None:
+            raise HTTPException(401, "Bitte anmelden.")
+        try:
+            identity = verifier.verify(token)
+            return dict(
+                auth.accounts.ensure_external_user(
+                    identity["id"], identity["username"]
+                )
+            )
+        except SupabaseAuthUnavailable as exc:
+            raise HTTPException(
+                503, "Anmeldung derzeit nicht verfügbar."
+            ) from exc
+        except DuplicateAccountError as exc:
+            raise HTTPException(
+                409, "Spielerprofil konnte nicht angelegt werden."
+            ) from exc
+        except ValueError as exc:
+            raise HTTPException(401, "Bitte anmelden.") from exc
     token = request.cookies.get(SESSION_COOKIE, "")
     user = auth.accounts.session_user(token)
     if user is None:

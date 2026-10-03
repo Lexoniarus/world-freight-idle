@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from typing import Any
+
 from app.domain.geography import Coordinates
 from app.domain.routing_anchors import RoutingAnchor, RoutingAnchorStatus
 from app.repositories.game_database import SqliteGameDatabase
@@ -59,25 +62,42 @@ class SqliteRoutingAnchorRepository:
         routing_profile: str,
     ) -> RoutingAnchor | None:
         """Return one persisted routing result."""
+        return self.get_many((facility_uid,), routing_profile).get(
+            facility_uid
+        )
+
+    def get_many(
+        self,
+        facility_uids: tuple[str, ...],
+        routing_profile: str,
+    ) -> dict[str, RoutingAnchor | None]:
+        """Read anchors and their fingerprints with one set query."""
+        result: dict[str, RoutingAnchor | None] = {
+            uid: None for uid in facility_uids
+        }
+        if not facility_uids:
+            return result
         with self._database.connect() as connection:
-            row = connection.execute(
-                """
-                SELECT facility_uid, routing_profile, anchor_lat, anchor_lon,
-                       method, facility_lat, facility_lon, snap_distance_m,
-                       validation_status, provider, provider_revision,
-                       validated_at
-                FROM routing_anchors
-                WHERE facility_uid=? AND routing_profile=?
-                """,
-                (facility_uid, routing_profile),
-            ).fetchone()
-            source = connection.execute(
-                "SELECT fingerprint FROM routing_anchor_sources "
-                "WHERE facility_uid=? AND routing_profile=?",
-                (facility_uid, routing_profile),
-            ).fetchone()
-        if row is None:
-            return None
+            rows = connection.execute(
+                "SELECT a.facility_uid, a.routing_profile, a.anchor_lat, "
+                "a.anchor_lon, a.method, a.facility_lat, a.facility_lon, "
+                "a.snap_distance_m, a.validation_status, a.provider, "
+                "a.provider_revision, a.validated_at, s.fingerprint "
+                "FROM routing_anchors a LEFT JOIN routing_anchor_sources s "
+                "ON s.facility_uid=a.facility_uid AND "
+                "s.routing_profile=a.routing_profile "
+                "WHERE a.facility_uid IN "
+                "(SELECT value FROM json_each(?)) "
+                "AND a.routing_profile=?",
+                (json.dumps(facility_uids), routing_profile),
+            ).fetchall()
+        for row in rows:
+            result[str(row[0])] = self._decode(row)
+        return result
+
+    @staticmethod
+    def _decode(row: Any) -> RoutingAnchor:
+        """Decode one joined adapter row into a routing anchor."""
         anchor = (
             Coordinates(float(row[2]), float(row[3]))
             if row[2] is not None and row[3] is not None
@@ -105,7 +125,7 @@ class SqliteRoutingAnchorRepository:
             provider=str(row[9]),
             provider_revision=(str(row[10]) if row[10] is not None else None),
             validated_at=float(row[11]),
-            source_fingerprint=source[0] if source else None,
+            source_fingerprint=row[12],
         )
 
     def put(self, anchor: RoutingAnchor) -> None:

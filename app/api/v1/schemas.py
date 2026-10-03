@@ -26,6 +26,13 @@ class Credentials(BaseModel):
     password: str = Field(min_length=12, max_length=128)
 
 
+class LoginCredentials(BaseModel):
+    """Legacy-login bridge accepting a username or migrated email address."""
+
+    username: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=12, max_length=128)
+
+
 class PurchaseRequest(BaseModel):
     """The server decides vehicle price, specifications and delivery hub."""
 

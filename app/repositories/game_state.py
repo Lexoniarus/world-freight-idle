@@ -1,5 +1,6 @@
 """Player-scoped relational repository and SQLite unit of work."""
 
+import math
 from collections import OrderedDict
 from contextlib import AbstractContextManager
 from dataclasses import asdict, replace
@@ -302,26 +303,44 @@ def load_offer_record(row: dict) -> ContractOffer:
     """Require indexed columns to agree with historical contract facts."""
     try:
         offer = load_offer(decode_snapshot("offer", row["offer_snapshot"]))
-        expected = (
+        expected_identity = (
             offer.id,
             offer.origin.facility_uid,
             offer.destination.facility_uid,
-            offer.created_at,
-            offer.expires_at,
             offer.market_model,
         )
-        actual = tuple(
+        actual_identity = tuple(
             row[key]
             for key in (
                 "contract_id",
                 "origin_facility_uid",
                 "destination_facility_uid",
-                "created_at",
-                "expires_at",
                 "market_model",
             )
         )
-        if actual != expected:
+        created_at_matches = math.isclose(
+            row["created_at"],
+            offer.created_at,
+            rel_tol=1e-7,
+            abs_tol=1e-6,
+        )
+        expires_at_matches = (
+            row["expires_at"] is None and offer.expires_at is None
+        ) or (
+            row["expires_at"] is not None
+            and offer.expires_at is not None
+            and math.isclose(
+                row["expires_at"],
+                offer.expires_at,
+                rel_tol=1e-7,
+                abs_tol=1e-6,
+            )
+        )
+        if (
+            actual_identity != expected_identity
+            or not created_at_matches
+            or not expires_at_matches
+        ):
             raise ValueError("Offer columns differ from snapshot")
         return offer
     except (ValueError, TypeError, KeyError) as exc:
@@ -334,20 +353,17 @@ def load_transport_record(row: dict) -> ActiveTransport:
         trip = load_transport(
             decode_snapshot("transport", row["transport_snapshot"])
         )
-        expected = (
+        expected_identity = (
             trip.id,
             trip.vehicle_id,
             trip.contract.id,
             trip.origin.facility_uid,
             trip.destination.facility_uid,
             trip.status,
-            trip.departed_at,
-            trip.arrives_at,
-            trip.settled_at,
             trip.operating_cost_eur,
             trip.payout_eur,
         )
-        actual = tuple(
+        actual_identity = tuple(
             row[key]
             for key in (
                 "transport_id",
@@ -356,14 +372,32 @@ def load_transport_record(row: dict) -> ActiveTransport:
                 "origin_facility_uid",
                 "destination_facility_uid",
                 "status",
-                "departed_at",
-                "arrives_at",
-                "settled_at",
                 "operating_cost_eur",
                 "payout_eur",
             )
         )
-        if actual != expected:
+        timestamp_pairs = (
+            (row["departed_at"], trip.departed_at),
+            (row["arrives_at"], trip.arrives_at),
+            (row["settled_at"], trip.settled_at),
+        )
+        timestamps_match = all(
+            (actual is None and expected is None)
+            or (
+                isinstance(actual, (int, float))
+                and not isinstance(actual, bool)
+                and isinstance(expected, (int, float))
+                and not isinstance(expected, bool)
+                and math.isclose(
+                    actual,
+                    expected,
+                    rel_tol=0,
+                    abs_tol=1e-5,
+                )
+            )
+            for actual, expected in timestamp_pairs
+        )
+        if actual_identity != expected_identity or not timestamps_match:
             raise ValueError("Transport columns differ from snapshot")
         return trip
     except (ValueError, TypeError, KeyError) as exc:

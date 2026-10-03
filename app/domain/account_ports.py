@@ -26,6 +26,10 @@ class AccountStore(Protocol):
 
     def find_user(self, username: str) -> AccountCredentials | None: ...
 
+    def ensure_external_user(
+        self, user_id: str, username: str
+    ) -> AccountIdentity: ...
+
     def save_session(
         self, token: str, user_id: str, lifetime: int
     ) -> None: ...

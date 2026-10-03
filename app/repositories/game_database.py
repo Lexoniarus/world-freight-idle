@@ -7,11 +7,26 @@ from collections.abc import Iterator
 from contextlib import closing, contextmanager
 from contextvars import ContextVar
 from pathlib import Path
+from time import monotonic, sleep
 
 from app.domain.errors import PersistenceError, UnsupportedGameSchema
 from app.repositories.game_schema import REQUIRED_TABLES, SCHEMA, VERSION
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _enable_wal(connection: sqlite3.Connection) -> None:
+    """Retry the one-time WAL switch while another initializer owns SQLite."""
+    deadline = monotonic() + 2.0
+    while True:
+        try:
+            connection.execute("PRAGMA journal_mode=WAL")
+            return
+        except sqlite3.OperationalError as exc:
+            lock_is_transient = "locked" in str(exc).lower()
+            if not lock_is_transient or monotonic() >= deadline:
+                raise
+            sleep(0.01)
 
 
 class SqliteGameDatabase:
@@ -23,6 +38,9 @@ class SqliteGameDatabase:
             "game_transaction", default=None
         )
 
+    def close(self) -> None:
+        """Release shared resources; SQLite keeps no persistent handle."""
+
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
         """Reuse the transaction connection or reliably close a fresh one."""
@@ -31,7 +49,7 @@ class SqliteGameDatabase:
         try:
             if connection is None:
                 connection = sqlite3.connect(
-                    self.path, timeout=0.5, isolation_level=None
+                    self.path, timeout=5.0, isolation_level=None
                 )
                 connection.row_factory = sqlite3.Row
                 connection.execute("PRAGMA foreign_keys=ON")
@@ -118,7 +136,10 @@ class SqliteGameDatabase:
                 )
                 raise
             connection.commit()
-            connection.execute("PRAGMA journal_mode=WAL")
+            # A second process may begin its schema check immediately after the
+            # commit. The bounded SQLite writer wait also covers this one-time
+            # journal switch in test and offline multi-process runtimes.
+            _enable_wal(connection)
         LOGGER.info(
             "Game schema validated",
             extra={

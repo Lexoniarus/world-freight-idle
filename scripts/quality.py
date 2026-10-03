@@ -22,6 +22,7 @@ COMMANDS = (
         "scripts/audit_economy.py",
         "scripts/audit_routing_readiness.py",
         "scripts/repair_transport_metadata.py",
+        "scripts/repair_market_stock.py",
         "scripts/upgrade_market_stock.py",
     ),
     (
@@ -41,6 +42,7 @@ COMMANDS = (
         "scripts/audit_economy.py",
         "scripts/audit_routing_readiness.py",
         "scripts/repair_transport_metadata.py",
+        "scripts/repair_market_stock.py",
         "scripts/upgrade_market_stock.py",
     ),
     (
@@ -56,6 +58,7 @@ COMMANDS = (
         "scripts/audit_economy.py",
         "scripts/audit_routing_readiness.py",
         "scripts/repair_transport_metadata.py",
+        "scripts/repair_market_stock.py",
         "scripts/upgrade_market_stock.py",
     ),
     (
@@ -68,6 +71,15 @@ COMMANDS = (
         sys.executable,
         "-m",
         "pytest",
+        "tests/test_process_isolation.py::"
+        "test_real_supervisor_starts_outside_repository_and_closes_children",
+    ),
+    (
+        sys.executable,
+        "-m",
+        "pytest",
+        "-m",
+        "not supervisor_integration",
         "--cov=app",
         "--cov-report=term-missing",
         "--cov-fail-under=100",

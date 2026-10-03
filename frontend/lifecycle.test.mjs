@@ -109,6 +109,7 @@ test("logout and cleanup reporting preserve workflow results", async () => {
   console.error = (...args) => reported.push(args);
   try {
     const redirects = [];
+    const authCalls = [];
     const app = new GameApplication({
       api: {
         request: async () => {},
@@ -116,10 +117,19 @@ test("logout and cleanup reporting preserve workflow results", async () => {
           throw new Error("close");
         },
       },
+      supabaseAuth: {
+        async logout() {
+          authCalls.push("logout");
+        },
+        destroy() {
+          authCalls.push("destroy");
+        },
+      },
       redirect: (path) => redirects.push(path),
     });
     await app.logout();
     assert.deepEqual(redirects, ["/login"]);
+    assert.deepEqual(authCalls, ["logout", "destroy"]);
     assert.equal(reported.length, 1);
     assert.ok(reported[0][1] instanceof AggregateError);
     reportCleanup([() => {}]);

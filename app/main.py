@@ -24,6 +24,7 @@ from app.domain.errors import (
     WorldCatalogueError,
 )
 from app.logging_config import configure_logging
+from app.providers.supabase_auth import SupabaseJwtVerifier
 from app.repositories.accounts import AccountRepository
 from app.services.auth import AuthService, PasswordHasher
 from app.tracing import TraceIdMiddleware
@@ -44,8 +45,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             settings,
             routing_client,
         )
-        app.state.auth = AuthService(
-            AccountRepository(app.state.game.database), PasswordHasher()
+        resources.callback(app.state.game.database.close)
+        accounts = AccountRepository(app.state.game.database)
+        app.state.auth = AuthService(accounts, PasswordHasher())
+        supabase_url = getattr(settings, "supabase_url", None)
+        supabase_jwks_url = getattr(settings, "supabase_jwks_url", None)
+        app.state.supabase_auth = (
+            SupabaseJwtVerifier(
+                supabase_url,
+                supabase_jwks_url,
+            )
+            if supabase_url and supabase_jwks_url
+            else None
         )
         app.state.preferences = build_preferences(app.state.game)
         app.state.game.world.read()

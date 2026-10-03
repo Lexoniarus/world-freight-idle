@@ -1,4 +1,5 @@
 import { LatestRequest } from "../state.js";
+import { marketVehicle } from "../market-context.js";
 
 /** Own city-market reads independently of map navigation. */
 export class ContractMarketController {
@@ -13,7 +14,7 @@ export class ContractMarketController {
     this.started = false;
     this.disposed = false;
     this.ordersVisible = () => false;
-    /** @type {{key: string, promise: Promise<void>} | null} */
+    /** @type {{key: string, promise: Promise<import("../types.js").MarketResponse | null>} | null} */
     this.listRead = null;
     /** @type {{id: string, promise: Promise<void>} | null} */
     this.detailRead = null;
@@ -34,7 +35,11 @@ export class ContractMarketController {
     const path = this.currentUrl().pathname;
     const detailId = path.startsWith("/contracts/") ? path.split("/")[2] : "";
     const tasks = [];
-    if (path === "/contracts" || this.ordersVisible()) tasks.push(this.loadList(false));
+    if (
+      (path === "/contracts" || this.ordersVisible()) &&
+      marketVehicle(this.state.data, this.currentUrl())
+    )
+      tasks.push(this.loadList(false));
     if (detailId) tasks.push(this.loadDetail(detailId));
     else if (this.detailRead) {
       this.detailPending.cancel();
@@ -44,26 +49,27 @@ export class ContractMarketController {
   }
 
   /** Request preparation and read the preserved market on explicit refresh.
-   * @returns {Promise<void>}
+   * @returns {Promise<import("../types.js").MarketResponse | null>}
    */
   async forceRefresh() {
-    if (!this.started || this.disposed || !this.state.data) return;
-    if (this.currentUrl().pathname !== "/contracts") return;
-    await this.loadList(true);
+    if (!this.started || this.disposed || !this.state.data) return null;
+    if (this.currentUrl().pathname !== "/contracts") return null;
+    if (!marketVehicle(this.state.data, this.currentUrl())) return null;
+    return this.loadList(true);
   }
 
   /** Load and publish the authoritative selection for the current vehicle.
    * @param {boolean} force
-   * @returns {Promise<void>}
+   * @returns {Promise<import("../types.js").MarketResponse | null>}
    */
   async loadList(force) {
     const url = this.currentUrl();
-    const key = url.pathname === "/contracts" ? (url.searchParams.get("vehicle") ?? "") : "";
+    const key = marketVehicle(this.state.data, url)?.id ?? "";
     if (!force && this.listRead?.key === key) return this.listRead.promise;
     const read = { key, promise: this.readList(force, key) };
     this.listRead = read;
     try {
-      await read.promise;
+      return await read.promise;
     } finally {
       if (this.listRead === read) this.listRead = null;
     }
@@ -72,7 +78,7 @@ export class ContractMarketController {
   /** Execute one list revision; only explicit replacement aborts it.
    * @param {boolean} force
    * @param {string} vehicleId
-   * @returns {Promise<void>}
+   * @returns {Promise<import("../types.js").MarketResponse | null>}
    */
   async readList(force, vehicleId) {
     const request = this.pending.start();
@@ -86,12 +92,14 @@ export class ContractMarketController {
       });
       if (request.isCurrent()) {
         this.state.replaceContracts(result.contracts, result.preparation, result.vehicle_coverage);
+        return result;
       }
     } catch (error) {
       if (request.isCurrent() && error.name !== "AbortError") {
         this.notify(error.message);
       }
     }
+    return null;
   }
 
   /** Load one selected offer without accepting stale responses.

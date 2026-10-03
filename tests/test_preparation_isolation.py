@@ -2,7 +2,7 @@
 
 import sqlite3
 from dataclasses import replace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -23,7 +23,7 @@ def test_wal_read_snapshot_rejects_writes_and_resets_after_failure(database):
     with database.connect() as db:
         assert db.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
         assert db.execute("PRAGMA synchronous").fetchone()[0] == 2
-        assert db.execute("PRAGMA busy_timeout").fetchone()[0] == 500
+        assert db.execute("PRAGMA busy_timeout").fetchone()[0] == 5000
     with database.read_transaction(), database.read_transaction():
         with pytest.raises(PersistenceError), database.connect() as db:
             db.execute("UPDATE users SET created_at=1")
@@ -123,16 +123,26 @@ async def test_readiness_read_view_reuses_facts_but_never_crosses_publication(
     readiness = preparation.readiness
     offer = game.state_repository.list_offers()[0]
     pair = offer.origin.facility_uid, offer.destination.facility_uid
-    with patch.object(
-        readiness.store, "get", wraps=readiness.store.get
-    ) as get:
-        with readiness.reading(), readiness.reading():
+    with (
+        patch.object(
+            readiness.store,
+            "get_many",
+            wraps=readiness.store.get_many,
+        ) as get_many,
+        patch.object(
+            readiness.anchor_store,
+            "get_many",
+            wraps=readiness.anchor_store.get_many,
+        ) as anchors,
+    ):
+        with readiness.reading((pair,)), readiness.reading((pair,)):
             assert readiness.current(*pair) is None
             assert readiness.current(*pair) is None
-            get.assert_called_once()
+            get_many.assert_called_once()
+            anchors.assert_called_once()
             assert readiness.fingerprint(*pair) == readiness.fingerprint(*pair)
         assert readiness.current(*pair) is None
-        assert get.call_count == 2
+        assert get_many.call_count == 2
     readiness.worker_owner = "worker"
     # Losing global ownership prevents either direction from being published.
     assert await readiness.prepare(*pair) is None
@@ -302,3 +312,39 @@ def test_two_process_roles_can_initialize_the_same_empty_file(tmp_path):
             ]
             == 1
         )
+
+
+def test_wal_switch_retries_only_transient_lock_errors():
+    from app.repositories.game_database import _enable_wal
+
+    connection = Mock()
+    connection.execute.side_effect = [
+        sqlite3.OperationalError("database is locked"),
+        None,
+    ]
+    with (
+        patch(
+            "app.repositories.game_database.monotonic",
+            side_effect=[0.0, 0.1],
+        ),
+        patch("app.repositories.game_database.sleep") as pause,
+    ):
+        _enable_wal(connection)
+    pause.assert_called_once_with(0.01)
+    assert connection.execute.call_count == 2
+
+    for message, clock in (
+        ("disk I/O error", [0.0]),
+        ("database is locked", [0.0, 2.0]),
+    ):
+        connection = Mock()
+        connection.execute.side_effect = sqlite3.OperationalError(message)
+        with (
+            patch(
+                "app.repositories.game_database.monotonic", side_effect=clock
+            ),
+            patch("app.repositories.game_database.sleep") as pause,
+            pytest.raises(sqlite3.OperationalError, match=message),
+        ):
+            _enable_wal(connection)
+        pause.assert_not_called()

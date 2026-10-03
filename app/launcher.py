@@ -49,6 +49,15 @@ async def stop_child(child: asyncio.subprocess.Process) -> None:
             await child.wait()
 
 
+async def serve_http(server: uvicorn.Server) -> int:
+    """Convert Uvicorn's bind-time process exit into a role exit code."""
+    try:
+        await server.serve()
+    except SystemExit as exc:
+        return exc.code if isinstance(exc.code, int) else 1
+    return 0
+
+
 async def supervise() -> int:
     """Keep runtime serving while independently restarting preparation."""
     LOGGER.info(
@@ -100,7 +109,7 @@ async def supervise() -> int:
 
 def parent_eof(loop: asyncio.AbstractEventLoop, stop: asyncio.Event) -> None:
     """Translate the parent pipe closing into a graceful shutdown request."""
-    sys.stdin.buffer.read(1)
+    os.read(sys.stdin.fileno(), 1)
     try:
         loop.call_soon_threadsafe(stop.set)
     except RuntimeError:
@@ -108,26 +117,30 @@ def parent_eof(loop: asyncio.AbstractEventLoop, stop: asyncio.Event) -> None:
         pass
 
 
-async def run_runtime(stop: asyncio.Event) -> None:
+async def run_runtime(stop: asyncio.Event) -> int:
     """Serve HTTP while accepting an independent supervisor stop request."""
+    settings = Settings.from_env()
     server = uvicorn.Server(
         uvicorn.Config(
             "app.main:app",
-            host=os.getenv("HOST", "0.0.0.0"),
-            port=int(os.getenv("PORT", "8000")),
+            host=settings.host,
+            port=settings.port,
         )
     )
-    serving = asyncio.create_task(server.serve())
+    serving = asyncio.create_task(serve_http(server))
     stopping = asyncio.create_task(stop.wait())
     try:
-        await asyncio.wait(
+        finished, _ = await asyncio.wait(
             (serving, stopping), return_when=asyncio.FIRST_COMPLETED
         )
+        if stopping in finished:
+            server.should_exit = True
+        return await serving
     finally:
         server.should_exit = True
         stopping.cancel()
         await asyncio.gather(stopping, return_exceptions=True)
-        await serving
+        await asyncio.gather(serving, return_exceptions=True)
 
 
 async def run_prewarm(stop: asyncio.Event) -> None:
@@ -138,6 +151,7 @@ async def run_prewarm(stop: asyncio.Event) -> None:
             httpx.AsyncClient(timeout=settings.request_timeout_seconds)
         )
         runtime = build_game_runtime(settings, client)
+        resources.callback(runtime.database.close)
         worker = build_preparation_worker(runtime)
         resources.push_async_callback(worker.close)
         assert runtime.preparation_jobs is not None
@@ -149,7 +163,7 @@ async def run_prewarm(stop: asyncio.Event) -> None:
 
 async def run_role(role: str) -> int:
     """Select the composition root; standalone roles support Ctrl+C."""
-    configure_logging(os.getenv("LOG_LEVEL", "INFO"))
+    configure_logging(Settings.from_env().log_level)
     loop, task = asyncio.get_running_loop(), asyncio.current_task()
     assert task is not None
     if sys.platform != "win32":
@@ -175,7 +189,7 @@ async def execute_role(role: str) -> int:
             daemon=True,
         ).start()
     if role == "runtime":
-        await run_runtime(stop)
+        return await run_runtime(stop)
     else:
         await run_prewarm(stop)
     return 0

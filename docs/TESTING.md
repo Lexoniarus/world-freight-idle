@@ -321,7 +321,30 @@ Rollback und sofortiges Nachrücken. Abfahrt, Zeitablauf, Route-TTL, Providerfeh
 Lease-/Flottenänderungen und Katalogänderungen dürfen keinen Bestand löschen
 oder ungeprüfte Angebote veröffentlichen. Teilweise Verbindungsvorbereitung
 wird nach neuem Repository-Kontext aus dem gespeicherten Checkpoint fortgesetzt.
-Ankünfte aktivieren Bedarf am 60-Minuten-Rand ohne vorzeitiges Settlement.
+Aktive Transporte aktivieren Zielstadtbedarf unmittelbar ab Dispatch, ohne
+vorzeitiges Settlement oder eine Bewegung des echten Fahrzeugs.
+Zusätzliche Gegenproben sichern kontextdeterministische gewichtete Auswahl bei
+vertauschter Eingabereihenfolge, reproduzierbare Konditionen bei neuen UUIDs,
+Diversität bis zur strukturellen Erschöpfung, den sichtbaren Übergang von null
+auf ein, zwei und drei Angebote sowie atomisches Checkpoint-Aufräumen.
+
+Die globale Vorratsregression prüft die feste Reihenfolge aus Idle sichtbar,
+Zielstadt sichtbar, Idle-Reserve, Zielstadt-Reserve und globalem Vorrat. Sie
+sichert außerdem, dass `partial` einschließlich Backoff den globalen Lauf
+sperrt, globale Vorbereitung keine künstliche Anfahrt erzeugt und Stadt,
+Modell, Nutzlast sowie Transportklasse getrennt bleiben. Bulk-Readiness-Tests
+prüfen set-basierte Relationen, Anker, Proofs und Payloads statt einer SQL-
+Abfrage je Relation. Frontendtests verlangen einen gültigen Idle-Fahrzeugscope
+und unterscheiden Angebote, laufende Vorbereitung, erschöpfte Coverage und
+einen vollständig vorbereiteten Leermarkt. Die Browserregression hält den Markt
+bei `partial` und prüft, dass jedes bereits veröffentlichte Teilergebnis sofort
+als echte Auftragskarte erscheint.
+
+Die Wartungsregression erzeugt ausschließlich ungenutzte exakte Duplikate,
+prüft den schreibfreien Bericht, das private SHA-256-Archiv, transaktionalen
+Rollback, Idempotenz sowie unveränderte Spieler-, Fahrzeug-, Transport- und
+Verwendungsdaten. Ein Cleanup ist niemals Teil von Startup oder Tests gegen
+Produktivdaten.
 
 `test_market_stock_upgrade.py` prüft vollständigen Quellen-/Zielabgleich,
 unveränderte Quelle/Historie, gültige Altangebote ohne Ablauf und Ausschluss

@@ -14,25 +14,35 @@ test.beforeEach(async ({ context, page }) => {
   // Model independent clients behind the trusted local test proxy. Keep the
   // production IP throttle active within each test instead of sharing its
   // attempt budget across the entire browser suite.
-  const peer = "192.0.2." + (++peerCounter);
-  await context.route("http://127.0.0.1:8011/api/v1/auth/**", route => route.continue({
-    headers: { ...route.request().headers(), "x-forwarded-for": peer },
-  }));
-  await context.route("https://tile.openstreetmap.org/**", (route) => route.fulfill({ contentType: "image/png", body: tile }));
+  const peer = "192.0.2." + ++peerCounter;
+  await context.route("http://127.0.0.1:8011/api/v1/auth/**", (route) =>
+    route.continue({
+      headers: { ...route.request().headers(), "x-forwarded-for": peer },
+    }),
+  );
+  await context.route("https://tile.openstreetmap.org/**", (route) =>
+    route.fulfill({ contentType: "image/png", body: tile }),
+  );
   if (!process.env.REAL_VEHICLE_PHOTO) {
-    await context.route("https://upload.wikimedia.org/**", route => {
+    await context.route("https://upload.wikimedia.org/**", (route) => {
       const headers = route.request().headers();
       expect(headers["x-freight-request"]).toBeUndefined();
       expect(headers.cookie).toBeUndefined();
       expect(headers.referer).toBeUndefined();
-      return route.fulfill({contentType: "image/png", headers: {"access-control-allow-origin":"*"}, body: tile});
+      return route.fulfill({
+        contentType: "image/png",
+        headers: { "access-control-allow-origin": "*" },
+        body: tile,
+      });
     });
   }
-  page.on("pageerror", (error) => { throw error; });
+  page.on("pageerror", (error) => {
+    throw error;
+  });
 });
 
-async function register(page, {waitForMap = true} = {}) {
-  const username = "driver_" + Date.now().toString(36) + (++counter);
+async function register(page, { waitForMap = true } = {}) {
+  const username = "driver_" + Date.now().toString(36) + ++counter;
   await page.goto("/login");
   await expect(page).toHaveTitle(/World Freight/);
   await page.getByRole("button", { name: "Konto erstellen", exact: true }).click();
@@ -83,8 +93,10 @@ async function openVehicleMarket(page, vehicleId = "truck_01") {
 test("fleet controls work while the map renderer module is delayed", async ({ page }) => {
   await register(page);
   let release;
-  const blocked = new Promise(resolve => { release = resolve; });
-  await page.route("**/world-map-*.js", async route => {
+  const blocked = new Promise((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/world-map-*.js", async (route) => {
     await blocked;
     await route.continue();
   });
@@ -104,30 +116,40 @@ test("selected vehicle keeps three offers per band across refresh", async ({ pag
   await register(page);
   const path = "/api/v1/contracts?vehicle_id=truck_01";
   let contracts = [];
-  await expect.poll(async () => {
-    const response = await page.request.get(path);
-    expect(response.ok()).toBe(true);
-    contracts = (await response.json()).contracts;
-    return contracts.length;
-  }, { timeout: 60000 }).toBe(9);
+  await expect
+    .poll(
+      async () => {
+        const response = await page.request.get(path);
+        expect(response.ok()).toBe(true);
+        contracts = (await response.json()).contracts;
+        return contracts.length;
+      },
+      { timeout: 60000 },
+    )
+    .toBe(9);
   for (const band of ["short", "medium", "long"]) {
-    expect(contracts.filter(offer => offer.distance_band === band)).toHaveLength(3);
+    expect(contracts.filter((offer) => offer.distance_band === band)).toHaveLength(3);
   }
-  expect(contracts.every(offer => offer.expires_at === null)).toBe(true);
-  const ids = contracts.map(offer => offer.id);
+  expect(contracts.every((offer) => offer.expires_at === null)).toBe(true);
+  const ids = contracts.map((offer) => offer.id);
   const response = await page.request.post("/api/v1/contracts/refresh?vehicle_id=truck_01", {
     headers: { "X-Freight-Request": "1" },
   });
   expect(response.ok()).toBe(true);
-  expect((await response.json()).contracts.map(offer => offer.id)).toEqual(ids);
+  expect((await response.json()).contracts.map((offer) => offer.id)).toEqual(ids);
   await page.goto("/contracts?vehicle=truck_01");
   await expect(page.locator("#panel .job-card")).toHaveCount(9);
 });
 
-test("desktop: registration, map, quote, dispatch, purchase, arrival, logout and login", async ({ page }) => {
+test("desktop: registration, map, quote, dispatch, purchase, arrival, logout and login", async ({
+  page,
+}) => {
   test.setTimeout(90000);
   const errors = [];
-  page.on("console", (message) => { if (message.type() === "error") errors.push(message.text() + " (" + message.location().url + ")"); });
+  page.on("console", (message) => {
+    if (message.type() === "error")
+      errors.push(message.text() + " (" + message.location().url + ")");
+  });
   const username = await register(page);
   await expect(page.locator("#map-notice")).toBeHidden();
   await page.screenshot({ animations: "disabled", path: screenshot("desktop") });
@@ -142,7 +164,11 @@ test("desktop: registration, map, quote, dispatch, purchase, arrival, logout and
   await expect(page).toHaveURL(/transports\//);
   await expect(page.locator("[data-phase-trip]")).toBeVisible();
   await page.getByRole("link", { name: "Fahrzeugshop", exact: true }).first().click();
-  await page.locator(".shop-card").filter({ hasText: "S-Way" }).getByRole("button", { name: "Fahrzeug kaufen" }).click();
+  await page
+    .locator(".shop-card")
+    .filter({ hasText: "S-Way" })
+    .getByRole("button", { name: "Fahrzeug kaufen" })
+    .click();
   await expect(page.locator("#fleet-count")).toHaveText("2");
   await page.keyboard.press("Escape");
   await expect(page.locator("#panel")).toBeHidden();
@@ -151,7 +177,8 @@ test("desktop: registration, map, quote, dispatch, purchase, arrival, logout and
   // Two speed-limited sections take about 36 seconds plus polling.
   await expect(page.locator("#reputation")).toHaveText("1", { timeout: 45000 });
   const cash = await page.locator("#cash").textContent();
-  if (!(await page.getByRole("button", {name: "Abmelden"}).isVisible())) await page.getByRole("button", {name: "Mehr", exact: true}).click();
+  if (!(await page.getByRole("button", { name: "Abmelden" }).isVisible()))
+    await page.getByRole("button", { name: "Mehr", exact: true }).click();
   await page.getByRole("button", { name: "Abmelden" }).click();
   await expect(page).toHaveURL(/login/);
   await page.getByLabel("Spielername", { exact: true }).fill(username);
@@ -184,16 +211,25 @@ test("mobile: sheets, navigation, keyboard and attribution stay usable", async (
   const catalogue = (await (await page.request.get("/api/v1/fleet/catalogue")).json()).models;
   expect(catalogue.length).toBeGreaterThanOrEqual(8);
   await expect(page.locator(".shop-card")).toHaveCount(catalogue.length);
-  if (!(await page.getByRole("link", { name: "Rangliste", exact: true }).isVisible())) await page.getByRole("button", { name: "Mehr", exact: true }).click();
+  if (!(await page.getByRole("link", { name: "Rangliste", exact: true }).isVisible()))
+    await page.getByRole("button", { name: "Mehr", exact: true }).click();
   await page.getByRole("link", { name: "Rangliste", exact: true }).click();
   await expect(page.locator(".rankings li.you")).toBeVisible();
 });
 
-test("stale quote cannot overwrite a new panel; failures and session expiry are visible", async ({ page }) => {
+test("stale quote cannot overwrite a new panel; failures and session expiry are visible", async ({
+  page,
+}) => {
   await register(page);
   await page.route("**/api/v1/contracts/*/quote", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 800));
-    await route.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ detail: "Routing ist offline." }) }).catch(() => {});
+    await route
+      .fulfill({
+        status: 502,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "Routing ist offline." }),
+      })
+      .catch(() => {});
   });
   await page.getByRole("link", { name: "Aufträge", exact: true }).click();
   await openEligibleOffer(page);
@@ -206,23 +242,37 @@ test("stale quote cannot overwrite a new panel; failures and session expiry are 
   await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
   await expect(page.locator("#toasts")).toContainText("Routing ist offline");
   await expect(page.getByRole("button", { name: "Transport starten" })).toBeDisabled();
-  await page.route("**/api/v1/runtime", (route) => route.fulfill({ status: 401, contentType: "application/json", body: '{"detail":"Bitte anmelden."}' }));
+  await page.route("**/api/v1/runtime", (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: '{"detail":"Bitte anmelden."}',
+    }),
+  );
   await page.reload();
   await expect(page).toHaveURL(/login/);
 });
 
-test("parallel trips persist across navigation and map controls work without rebuilding the canvas", async ({ page }) => {
+test("parallel trips persist across navigation and map controls work without rebuilding the canvas", async ({
+  page,
+}) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await register(page);
   const headers = { "X-Freight-Request": "1" };
-  const purchase = await page.request.post("/api/v1/fleet/purchase", { headers, data: { model_id: "iveco_sway_500" } });
+  const purchase = await page.request.post("/api/v1/fleet/purchase", {
+    headers,
+    data: { model_id: "iveco_sway_500" },
+  });
   expect(purchase.ok()).toBeTruthy();
   const fleet = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
   for (const vehicle of fleet) {
     await page.request.post("/api/v1/contracts/refresh", { headers });
     const contracts = await readyContracts(page);
     const contract = contracts.find((item) => item.eligible_vehicle_ids.includes(vehicle.id));
-    const dispatch = await page.request.post("/api/v1/contracts/" + contract.id + "/accept", { headers, data: { vehicle_id: vehicle.id } });
+    const dispatch = await page.request.post("/api/v1/contracts/" + contract.id + "/accept", {
+      headers,
+      data: { vehicle_id: vehicle.id },
+    });
     expect(dispatch.ok()).toBeTruthy();
   }
   await page.goto("/transports");
@@ -243,11 +293,18 @@ test("parallel trips persist across navigation and map controls work without reb
   await page.keyboard.press("Escape");
 });
 
-test("missing fleet coordinates and tile outages preserve the playable lists", async ({ page, context }) => {
+test("missing fleet coordinates and tile outages preserve the playable lists", async ({
+  page,
+  context,
+}) => {
   await context.route("https://tile.openstreetmap.org/**", (route) => route.abort());
   await page.route("**/api/v1/runtime", async (route) => {
     const response = await route.fetch();
     const data = await response.json();
+    if (!response.ok() || !Array.isArray(data.vehicles)) {
+      await route.fulfill({ response });
+      return;
+    }
     for (const vehicle of data.vehicles) {
       vehicle.hub = { ...vehicle.hub, lat: null, lon: null, resolution_status: "unavailable" };
       if (vehicle.location_snapshot)
@@ -260,7 +317,7 @@ test("missing fleet coordinates and tile outages preserve the playable lists", a
     }
     await route.fulfill({ json: data });
   });
-  await register(page, {waitForMap: false});
+  await register(page, { waitForMap: false });
   await expect(page.locator("#map-notice")).toBeVisible();
   await page.getByRole("link", { name: "Flotte", exact: true }).click();
   await expect(page.getByRole("link", { name: "IVECO S-Way 500 XC13", exact: true })).toBeVisible();
@@ -268,35 +325,52 @@ test("missing fleet coordinates and tile outages preserve the playable lists", a
   await expect(page.locator(".job-card").first()).toBeVisible();
 });
 
-test("DB vehicle selection changes costs, dispatches and settles after relogin", async ({ page }) => {
+test("DB vehicle selection changes costs, dispatches and settles after relogin", async ({
+  page,
+}) => {
   test.setTimeout(90000);
   const username = await register(page);
   await page.getByRole("link", { name: "Fahrzeugshop", exact: true }).first().click();
   const catalogue = (await (await page.request.get("/api/v1/fleet/catalogue")).json()).models;
   expect(catalogue.length).toBeGreaterThanOrEqual(8);
   await expect(page.locator(".shop-card")).toHaveCount(catalogue.length);
-  await expect(page.locator(".shop-card").filter({ hasText: "DAF" }).getByRole("button")).toBeDisabled();
+  await expect(
+    page.locator(".shop-card").filter({ hasText: "DAF" }).getByRole("button"),
+  ).toBeDisabled();
   await page.screenshot({ animations: "disabled", path: screenshot("catalogue-desktop") });
-  await page.locator(".shop-card").filter({ hasText: "Renault" }).getByRole("button", { name: "Fahrzeug kaufen" }).click();
+  await page
+    .locator(".shop-card")
+    .filter({ hasText: "Renault" })
+    .getByRole("button", { name: "Fahrzeug kaufen" })
+    .click();
   await expect(page.locator("#cash")).toContainText("21.000");
   await expect(page.locator("#fleet-count")).toHaveText("2");
   const vehicles = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
-  const purchased = vehicles.find(vehicle => vehicle.model_id === "renault_t_high_520");
+  const purchased = vehicles.find((vehicle) => vehicle.model_id === "renault_t_high_520");
   await page.getByRole("link", { name: "Aufträge", exact: true }).click();
-  await openEligibleOffer(page, [vehicles.find(v => v.id !== purchased.id).id, purchased.id]);
+  await openEligibleOffer(page, [vehicles.find((v) => v.id !== purchased.id).id, purchased.id]);
   await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
   await expect(page.getByRole("button", { name: "Transport starten" })).toBeEnabled();
   await page.getByLabel("Fahrzeug disponieren").selectOption(purchased.id);
   await expect(page.getByRole("button", { name: "Transport starten" })).toBeDisabled();
-  const response = page.waitForResponse(response => response.url().endsWith("/quote") && response.request().postDataJSON()?.vehicle_id === purchased.id);
+  const response = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/quote") &&
+      response.request().postDataJSON()?.vehicle_id === purchased.id,
+  );
   await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
   const quote = await (await response).json();
   expect(quote.cost_breakdown.maintenance_eur_per_km).toBeGreaterThan(0);
-  expect(quote.operating_cost_eur).toBe(quote.cost_breakdown.base_cost_eur + quote.cost_breakdown.maintenance_cost_eur + quote.cost_breakdown.energy_cost_eur);
+  expect(quote.operating_cost_eur).toBe(
+    quote.cost_breakdown.base_cost_eur +
+      quote.cost_breakdown.maintenance_cost_eur +
+      quote.cost_breakdown.energy_cost_eur,
+  );
   await expect(page.getByRole("button", { name: "Transport starten" })).toBeEnabled();
   await page.getByRole("button", { name: "Transport starten" }).click();
   await expect(page).toHaveURL(/transports\//);
-  if (!(await page.getByRole("button", {name: "Abmelden"}).isVisible())) await page.getByRole("button", {name: "Mehr", exact: true}).click();
+  if (!(await page.getByRole("button", { name: "Abmelden" }).isVisible()))
+    await page.getByRole("button", { name: "Mehr", exact: true }).click();
   await page.getByRole("button", { name: "Abmelden" }).click();
   await expect(page).toHaveURL(/login/);
   // Wait past both routed legs before exercising offline settlement.
@@ -313,7 +387,9 @@ test("DB vehicle selection changes costs, dispatches and settles after relogin",
 test("mobile DB shop preserves focus, shows failure and supports purchase", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await register(page);
-  await page.route("**/api/v1/fleet/catalogue", route => route.fulfill({ status: 503, json: { detail: "Fahrzeugkatalog derzeit nicht verfügbar." } }));
+  await page.route("**/api/v1/fleet/catalogue", (route) =>
+    route.fulfill({ status: 503, json: { detail: "Fahrzeugkatalog derzeit nicht verfügbar." } }),
+  );
   await page.getByRole("button", { name: "Mehr", exact: true }).click();
   await page.getByRole("link", { name: "Fahrzeugshop", exact: true }).first().click();
   await expect(page.locator("#panel-content")).toContainText("Erneut");
@@ -323,18 +399,32 @@ test("mobile DB shop preserves focus, shows failure and supports purchase", asyn
   expect(catalogue.length).toBeGreaterThanOrEqual(8);
   await expect(page.locator(".shop-card")).toHaveCount(catalogue.length);
   await page.screenshot({ animations: "disabled", path: screenshot("catalogue-mobile") });
-  await page.locator(".shop-card").filter({ hasText: "S-Way" }).getByRole("button", { name: "Fahrzeug kaufen" }).click();
+  await page
+    .locator(".shop-card")
+    .filter({ hasText: "S-Way" })
+    .getByRole("button", { name: "Fahrzeug kaufen" })
+    .click();
   await expect(page.locator("#fleet-count")).toHaveText("2");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("link", { name: "Fahrzeugshop", exact: true }).first()).toBeFocused();
 });
 
-test("two independent profiles stay isolated and local vehicle assets are deterministic", async ({ page, browser }) => {
+test("two independent profiles stay isolated and local vehicle assets are deterministic", async ({
+  page,
+  browser,
+}) => {
   await register(page);
-  const second = await browser.newContext({ viewport: { width: 1024, height: 1366 }, isMobile: true, hasTouch: true, baseURL: "http://127.0.0.1:8011" });
-  await second.route("https://tile.openstreetmap.org/**", route => route.fulfill({ contentType: "image/png", body: tile }));
-  await second.route("https://upload.wikimedia.org/**", route => route.abort());
+  const second = await browser.newContext({
+    viewport: { width: 1024, height: 1366 },
+    isMobile: true,
+    hasTouch: true,
+    baseURL: "http://127.0.0.1:8011",
+  });
+  await second.route("https://tile.openstreetmap.org/**", (route) =>
+    route.fulfill({ contentType: "image/png", body: tile }),
+  );
+  await second.route("https://upload.wikimedia.org/**", (route) => route.abort());
   const ipad = await second.newPage();
   try {
     await register(ipad);
@@ -347,18 +437,29 @@ test("two independent profiles stay isolated and local vehicle assets are determ
     await expect(offer.locator("figcaption")).toContainText("Spielgrafik");
     await offer.getByRole("button", { name: "Fahrzeug kaufen" }).click();
     await expect(page.locator("#fleet-count")).toHaveText("2");
-    const purchased = (await (await page.request.get("/api/v1/fleet")).json()).vehicles.find(v => v.id !== "truck_01");
+    const purchased = (await (await page.request.get("/api/v1/fleet")).json()).vehicles.find(
+      (v) => v.id !== "truck_01",
+    );
     expect((await ipad.request.get("/api/v1/fleet/" + purchased.id)).status()).toBe(404);
     const dashboard = await (await ipad.request.get("/api/v1/dashboard")).json();
     expect(dashboard.player.cash).toBe(175000);
     expect(dashboard.idle_vehicles).toBe(1);
     await page.goto("/fleet");
-    await expect(page.locator(".vehicle-card").filter({ hasText: "S-Way" }).first().locator("img[data-local-vehicle-asset]")).toHaveCount(2);
+    await expect(
+      page
+        .locator(".vehicle-card")
+        .filter({ hasText: "S-Way" })
+        .first()
+        .locator("img[data-local-vehicle-asset]"),
+    ).toHaveCount(2);
     await ipad.goto("/fleet?tab=shop");
     const ipadOffer = ipad.locator(".shop-card").first();
     await expect(ipadOffer.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
     await expect(ipadOffer.locator("[data-image-state]")).toHaveCount(0);
-    const response = await ipad.request.post("/api/v1/fleet/purchase", { headers, data: { model_id: "iveco_sway_500" } });
+    const response = await ipad.request.post("/api/v1/fleet/purchase", {
+      headers,
+      data: { model_id: "iveco_sway_500" },
+    });
     expect(response.status()).toBe(201);
     await ipad.reload();
     await expect(ipad.locator("#fleet-count")).toHaveText("2");
@@ -367,7 +468,9 @@ test("two independent profiles stay isolated and local vehicle assets are determ
   }
 });
 
-test("starter game assets survive polling and changed transport panel content", async ({ page }) => {
+test("starter game assets survive polling and changed transport panel content", async ({
+  page,
+}) => {
   await register(page);
   const vehicles = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
   expect(vehicles[0].model_id).toBe("iveco_sway_500");
@@ -377,24 +480,34 @@ test("starter game assets survive polling and changed transport panel content", 
   await expect(figure).toHaveClass(/vehicle-game-asset/);
   await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
   await expect(figure.locator("img").first()).toHaveAttribute("src", /^blob:/);
-  await page.waitForResponse(response => response.url().endsWith("/api/v1/runtime"), { timeout: 15000 });
+  await page.waitForResponse((response) => response.url().endsWith("/api/v1/runtime"), {
+    timeout: 15000,
+  });
   await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
   const headers = { "X-Freight-Request": "1" };
   const contracts = await readyContracts(page);
-  const contract = contracts.find(item => item.eligible_vehicle_ids.includes(vehicles[0].id));
-  const response = await page.request.post("/api/v1/contracts/" + contract.id + "/accept", { headers, data: { vehicle_id: vehicles[0].id } });
+  const contract = contracts.find((item) => item.eligible_vehicle_ids.includes(vehicles[0].id));
+  const response = await page.request.post("/api/v1/contracts/" + contract.id + "/accept", {
+    headers,
+    data: { vehicle_id: vehicles[0].id },
+  });
   expect(response.ok()).toBeTruthy();
-  await expect(page.locator(".vehicle-card .badge").first()).toHaveText(/Zur Abholung|Fracht unterwegs/, { timeout: 15000 });
+  await expect(page.locator(".vehicle-card .badge").first()).toHaveText(
+    /Zur Abholung|Fracht unterwegs/,
+    { timeout: 15000 },
+  );
   await expect(figure.locator("img[data-local-vehicle-asset]")).toHaveCount(2);
 });
 
-test("facility identities, lazy market scope and catalogue outages preserve the game", async ({ page }) => {
+test("facility identities, lazy market scope and catalogue outages preserve the game", async ({
+  page,
+}) => {
   await register(page);
   const response = await page.request.get("/api/v1/map/facilities?bbox=13,52,14,53");
   expect(response.ok()).toBeTruthy();
   const result = await response.json();
   expect(result.unavailable_count).toBe(0);
-  const berlin = result.facilities.find(f => f.aliases.includes("berlin_westhafen"));
+  const berlin = result.facilities.find((f) => f.aliases.includes("berlin_westhafen"));
   expect(berlin.facility_uid).toMatch(/^[0-9a-f-]{36}$/);
   expect(berlin.facility_id).toBeUndefined();
   expect(berlin.company_uid).toBe(berlin.company.company_uid);
@@ -410,18 +523,33 @@ test("facility identities, lazy market scope and catalogue outages preserve the 
   expect(allResult.facilities).toHaveLength(559);
 
   let localJobs;
-  await expect.poll(async () => {
-    localJobs = (await (await page.request.get("/api/v1/contracts?vehicle_id=truck_01")).json()).contracts;
-    return localJobs.length;
-  }, {timeout: 60000}).toBe(9);
-  expect(new Set(localJobs.map(job => job.origin.city_uid))).toEqual(new Set([berlin.city_uid]));
-  const facilityIds = new Set(allResult.facilities.map(facility => facility.facility_uid));
-  expect(localJobs.every(job => facilityIds.has(job.origin_facility_uid) && facilityIds.has(job.destination_facility_uid))).toBe(true);
-  expect(localJobs.every(job => job.market_model === "nhm_v2")).toBeTruthy();
-  expect(localJobs.every(job => ["documented", "derived"].includes(job.cargo_basis))).toBeTruthy();
-  expect(localJobs.every(job => job.cargo_evidence)).toBeTruthy();
+  await expect
+    .poll(
+      async () => {
+        localJobs = (await (await page.request.get("/api/v1/contracts?vehicle_id=truck_01")).json())
+          .contracts;
+        return localJobs.length;
+      },
+      { timeout: 60000 },
+    )
+    .toBe(9);
+  expect(new Set(localJobs.map((job) => job.origin.city_uid))).toEqual(new Set([berlin.city_uid]));
+  const facilityIds = new Set(allResult.facilities.map((facility) => facility.facility_uid));
+  expect(
+    localJobs.every(
+      (job) =>
+        facilityIds.has(job.origin_facility_uid) && facilityIds.has(job.destination_facility_uid),
+    ),
+  ).toBe(true);
+  expect(localJobs.every((job) => job.market_model === "nhm_v2")).toBeTruthy();
+  expect(
+    localJobs.every((job) => ["documented", "derived"].includes(job.cargo_basis)),
+  ).toBeTruthy();
+  expect(localJobs.every((job) => job.cargo_evidence)).toBeTruthy();
 
-  const viewportJobs = (await (await page.request.get("/api/v1/contracts?bbox=8,48,15,54&zoom=7")).json()).contracts;
+  const viewportJobs = (
+    await (await page.request.get("/api/v1/contracts?bbox=8,48,15,54&zoom=7")).json()
+  ).contracts;
   expect(viewportJobs).toEqual(localJobs);
 
   await openVehicleMarket(page);
@@ -429,36 +557,57 @@ test("facility identities, lazy market scope and catalogue outages preserve the 
   await expect(page).toHaveURL(new RegExp("city=" + berlin.city_uid));
   await expect(page.locator(".job-card")).toHaveCount(localJobs.length);
   await page.locator(".job-card").first().click();
-  await expect(page.locator(".footnote").first()).toContainText("Geschäftsbeziehung, Menge und Auftrag simuliert");
-  expect(await originalCanvas.evaluate(element => element.isConnected)).toBeTruthy();
+  await expect(page.locator(".footnote").first()).toContainText(
+    "Geschäftsbeziehung, Menge und Auftrag simuliert",
+  );
+  expect(await originalCanvas.evaluate((element) => element.isConnected)).toBeTruthy();
 
   await page.getByRole("link", { name: "Flotte", exact: true }).click();
-  await page.route(/\/api\/v1\/contracts(?:\?.*)?$/, route => route.fulfill({
-    status: 503,
-    json: { detail: "Weltkatalog derzeit nicht verfügbar." },
-  }));
+  await page.route(/\/api\/v1\/contracts\/refresh(?:\?.*)?$/, (route) =>
+    route.fulfill({
+      status: 503,
+      json: { detail: "Weltkatalog derzeit nicht verfügbar." },
+    }),
+  );
   await page.getByRole("link", { name: "Aufträge", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Erneuern", exact: true })).toBeDisabled();
+  await page.getByRole("link", { name: "Flotte", exact: true }).click();
+  await page.getByRole("link", { name: "Stadtmarkt öffnen" }).click();
+  await page.getByRole("button", { name: "Erneuern", exact: true }).click();
   await expect(page.locator("#toasts")).toContainText("Weltkatalog derzeit nicht verfügbar");
   await page.getByRole("link", { name: "Flotte", exact: true }).click();
   await expect(page.locator(".vehicle-card")).toContainText("Berlin Westhafen");
 });
 
-for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile", {width:390,height:844}]]) {
-  test(`${device}: energy pauses retain images, offline arrival retains energy`, async ({page}) => {
+for (const [device, viewport] of [
+  ["desktop", { width: 1440, height: 900 }],
+  ["mobile", { width: 390, height: 844 }],
+]) {
+  test(`${device}: energy pauses retain images, offline arrival retains energy`, async ({
+    page,
+  }) => {
     await page.setViewportSize(viewport);
     const username = await register(page);
     await readyContracts(page);
-    const prepared = await page.request.post("/__tests__/energy-fixture", {headers:{"X-Freight-Request":"1"}});
+    const prepared = await page.request.post("/__tests__/energy-fixture", {
+      headers: { "X-Freight-Request": "1" },
+    });
     expect(prepared.ok()).toBeTruthy();
     await page.reload();
     const fleetBefore = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
-    const offers = await readyContracts(page, [fleetBefore[0].id], offer => offer.origin_facility_uid === fleetBefore[0].facility_uid);
-    const direct = offers.find(offer => offer.origin_facility_uid === fleetBefore[0].facility_uid);
+    const offers = await readyContracts(
+      page,
+      [fleetBefore[0].id],
+      (offer) => offer.origin_facility_uid === fleetBefore[0].facility_uid,
+    );
+    const direct = offers.find(
+      (offer) => offer.origin_facility_uid === fleetBefore[0].facility_uid,
+    );
     await page.goto("/contracts/" + direct.id);
     await page.getByLabel("Fahrzeug disponieren").selectOption(fleetBefore[0].id);
-    await page.getByRole("button", {name:"Route & Ertrag berechnen"}).click();
+    await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
     await expect(page.getByText(/5 Tank-\/Ladepausen/)).toBeVisible();
-    await page.getByRole("button", {name:"Transport starten"}).click();
+    await page.getByRole("button", { name: "Transport starten" }).click();
     await expect(page).toHaveURL(/transports\//);
     await expect(page.locator("[data-phase-trip]")).toHaveText("Lädt");
     await expect(page.locator(".eta")).toContainText("Weiter in");
@@ -466,18 +615,19 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     const meter = page.locator("meter");
     await expect(meter).toHaveAttribute("value", "10");
     await meter.scrollIntoViewIfNeeded();
-    await page.screenshot({path:screenshot(`energy-${device}`),animations:"disabled"});
+    await page.screenshot({ path: screenshot(`energy-${device}`), animations: "disabled" });
     await expect(page.locator("[data-phase-trip]")).toHaveText("Fracht unterwegs");
-    expect(await image.evaluate(node => node.isConnected)).toBeTruthy();
+    expect(await image.evaluate((node) => node.isConnected)).toBeTruthy();
     const fleet = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
     expect(fleet[0].energy_level).toBeGreaterThan(10);
-    if (!(await page.getByRole("button", {name: "Abmelden"}).isVisible())) await page.getByRole("button", {name: "Mehr", exact: true}).click();
-    await page.getByRole("button", {name:"Abmelden"}).click();
+    if (!(await page.getByRole("button", { name: "Abmelden" }).isVisible()))
+      await page.getByRole("button", { name: "Mehr", exact: true }).click();
+    await page.getByRole("button", { name: "Abmelden" }).click();
     // Stay logged out past the authoritative arrival; no background settlement job.
     await page.waitForTimeout(31000);
-    await page.getByLabel("Spielername", {exact:true}).fill(username);
-    await page.getByLabel("Passwort", {exact:true}).fill(password);
-    await page.getByRole("button", {name:"Anmelden",exact:true}).last().click();
+    await page.getByLabel("Spielername", { exact: true }).fill(username);
+    await page.getByLabel("Passwort", { exact: true }).fill(password);
+    await page.getByRole("button", { name: "Anmelden", exact: true }).last().click();
     await expect(page.locator("#reputation")).toHaveText("1");
     const arrived = (await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
     expect(arrived.status).toBe("idle");
@@ -493,7 +643,7 @@ test("city offers survive pan and zoom without market requests", async ({ page }
   await expect(page.locator(".job-card").first()).toBeVisible();
   await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
   const requests = [];
-  page.on("request", request => {
+  page.on("request", (request) => {
     if (new URL(request.url()).pathname.startsWith("/api/v1/contracts"))
       requests.push(request.url());
   });
@@ -507,57 +657,76 @@ test("city offers survive pan and zoom without market requests", async ({ page }
   expect(requests).toEqual([]);
   expect(await page.locator(".job-card").allTextContents()).toEqual(before);
   await expect(page.locator(".job-card").first()).toContainText(/ca\. .*km/);
-  await page.screenshot({path: screenshot("market-v2-desktop"), animations: "disabled"});
+  await page.screenshot({ path: screenshot("market-v2-desktop"), animations: "disabled" });
   await page.locator(".job-card").first().click();
   await expect(page.locator("#panel-content")).toContainText("Warenwert");
-  await page.setViewportSize({width:390,height:844});
-  await page.emulateMedia({reducedMotion:"reduce"});
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.clock.runFor(100);
-  await page.screenshot({path: screenshot("market-v2-mobile"), animations: "disabled"});
+  await page.screenshot({ path: screenshot("market-v2-mobile"), animations: "disabled" });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
 });
 
-for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["tablet", {width:1024,height:768}], ["mobile", {width:390,height:844}]]) {
-  test(`frontend v2 ${device}: city, dispatch, analytics scopes and accessible charts`, async ({page}) => {
+for (const [device, viewport] of [
+  ["desktop", { width: 1440, height: 900 }],
+  ["tablet", { width: 1024, height: 768 }],
+  ["mobile", { width: 390, height: 844 }],
+]) {
+  test(`frontend v2 ${device}: city, dispatch, analytics scopes and accessible charts`, async ({
+    page,
+  }) => {
     test.setTimeout(90000);
     await page.setViewportSize(viewport);
-    await page.emulateMedia({reducedMotion:"reduce"});
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await register(page);
     const canvas = await page.locator(".maplibregl-canvas").elementHandle();
-    await page.getByRole("link", {name:"Flotte",exact:true}).click();
-    const cities = await page.getByLabel("Stadt", {exact:true}).locator("option").evaluateAll(nodes => nodes.map(node => node.value));
-    await page.getByLabel("Stadt", {exact:true}).selectOption(cities[1]);
+    await page.getByRole("link", { name: "Flotte", exact: true }).click();
+    const cities = await page
+      .getByLabel("Stadt", { exact: true })
+      .locator("option")
+      .evaluateAll((nodes) => nodes.map((node) => node.value));
+    await page.getByLabel("Stadt", { exact: true }).selectOption(cities[1]);
     const city = cities[1];
-    await page.getByLabel("Stadt", {exact:true}).selectOption("");
+    await page.getByLabel("Stadt", { exact: true }).selectOption("");
     await expect(page).not.toHaveURL(/city=/);
     await page.goBack();
-    await expect(page.getByLabel("Stadt", {exact:true})).toHaveValue(city);
-    await page.getByRole("link", {name:"Stadtmarkt öffnen"}).first().click();
+    await expect(page.getByLabel("Stadt", { exact: true })).toHaveValue(city);
+    await page.getByRole("link", { name: "Stadtmarkt öffnen" }).first().click();
     await expect(page).toHaveURL(/vehicle=truck_01/);
-    const eligible = (await readyContracts(page)).find(offer => offer.eligible_vehicle_ids.includes("truck_01"));
+    const eligible = (await readyContracts(page)).find((offer) =>
+      offer.eligible_vehicle_ids.includes("truck_01"),
+    );
     await page.locator(`.job-card[href*="/contracts/${eligible.id}"]`).click();
     await page.getByLabel("Fahrzeug disponieren").selectOption("truck_01");
     await expect(page.getByRole("radio").first()).toBeVisible();
-    await page.getByRole("button", {name:"Route & Ertrag berechnen"}).click();
-    await expect(page.getByRole("button", {name:"Transport starten"})).toBeEnabled();
-    await page.getByRole("button", {name:"Transport starten"}).click();
+    await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
+    await expect(page.getByRole("button", { name: "Transport starten" })).toBeEnabled();
+    await page.getByRole("button", { name: "Transport starten" }).click();
     await expect(page.locator(".asset-side")).toBeVisible();
     // The 35.6 s fixture journey can finish just after the 10 s runtime poll.
-    await expect(page.locator("#reputation")).toHaveText("1", {timeout:55000});
-    await page.getByRole("link", {name:"Unternehmen",exact:true}).click();
-    await expect(page.locator("#panel")).toHaveAttribute("data-mode","management");
-    await expect(page.getByRole("heading", {name:"Finanzen",exact:true})).toBeVisible();
-    expect(await canvas.evaluate(node=>node.isConnected)).toBe(true);
-    for (const days of ["7","30","90","all"]) {
-      const response = page.waitForResponse(response=>response.url().includes("company/analytics?") && new URL(response.url()).searchParams.get("days")===days);
-      await page.getByLabel("Zeitraum",{exact:true}).selectOption(days);
+    await expect(page.locator("#reputation")).toHaveText("1", { timeout: 55000 });
+    await page.getByRole("link", { name: "Unternehmen", exact: true }).click();
+    await expect(page.locator("#panel")).toHaveAttribute("data-mode", "management");
+    await expect(page.getByRole("heading", { name: "Finanzen", exact: true })).toBeVisible();
+    expect(await canvas.evaluate((node) => node.isConnected)).toBe(true);
+    for (const days of ["7", "30", "90", "all"]) {
+      const response = page.waitForResponse(
+        (response) =>
+          response.url().includes("company/analytics?") &&
+          new URL(response.url()).searchParams.get("days") === days,
+      );
+      await page.getByLabel("Zeitraum", { exact: true }).selectOption(days);
       const data = await (await response).json();
       expect(data.totals.completed_transports).toBe(1);
       expect(data.period.timezone).toBe("UTC");
     }
-    for (const scope of ["city","vehicle","transport_class","distance_band","company"]) {
-      const response = page.waitForResponse(response=>response.url().includes("company/analytics?") && new URL(response.url()).searchParams.get("scope")===scope);
-      await page.getByLabel("Auswertung",{exact:true}).selectOption(scope);
+    for (const scope of ["city", "vehicle", "transport_class", "distance_band", "company"]) {
+      const response = page.waitForResponse(
+        (response) =>
+          response.url().includes("company/analytics?") &&
+          new URL(response.url()).searchParams.get("scope") === scope,
+      );
+      await page.getByLabel("Auswertung", { exact: true }).selectOption(scope);
       const data = await (await response).json();
       expect(data.scope.type).toBe(scope);
       expect(data.totals.completed_transports).toBe(1);
@@ -567,24 +736,36 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["tablet
     const gridBox = await grid.boundingBox();
     const lastMetric = await grid.locator(".metric").last().boundingBox();
     expect(gridBox.y + gridBox.height).toBeGreaterThanOrEqual(lastMetric.y + lastMetric.height);
-    await page.locator("#panel-content").evaluate(node=>{node.scrollTop=0;});
-    await page.screenshot({path:screenshot(`frontend-v2-company-${device}`),animations:"disabled"});
-    await page.getByText("Werte als Tabelle",{exact:true}).first().click();
+    await page.locator("#panel-content").evaluate((node) => {
+      node.scrollTop = 0;
+    });
+    await page.screenshot({
+      path: screenshot(`frontend-v2-company-${device}`),
+      animations: "disabled",
+    });
+    await page.getByText("Werte als Tabelle", { exact: true }).first().click();
     await expect(page.locator(".chart table").first()).toBeVisible();
-    expect(await page.locator(".chart table").first().locator("tbody tr").count()).toBeGreaterThan(0);
+    expect(await page.locator(".chart table").first().locator("tbody tr").count()).toBeGreaterThan(
+      0,
+    );
     await page.locator(".chart table").first().scrollIntoViewIfNeeded();
-    await page.screenshot({path:screenshot(`analytics-table-${device}`),animations:"disabled"});
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(viewport.width);
+    await page.screenshot({
+      path: screenshot(`analytics-table-${device}`),
+      animations: "disabled",
+    });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(viewport.width);
     if (device === "desktop") {
-      await page.route("**/api/v1/company/analytics?*", route=>route.fulfill({status:503,json:{detail:"Statistik vorübergehend nicht verfügbar"}}));
-      await page.getByRole("button",{name:"Aktualisieren",exact:true}).click();
+      await page.route("**/api/v1/company/analytics?*", (route) =>
+        route.fulfill({ status: 503, json: { detail: "Statistik vorübergehend nicht verfügbar" } }),
+      );
+      await page.getByRole("button", { name: "Aktualisieren", exact: true }).click();
       await expect(page.getByRole("alert")).toContainText("Statistik nicht erreichbar");
       await page.unroute("**/api/v1/company/analytics?*");
-      await page.getByRole("button",{name:"Erneut versuchen",exact:true}).click();
-      await expect(page.getByRole("heading",{name:"Finanzen",exact:true})).toBeVisible();
+      await page.getByRole("button", { name: "Erneut versuchen", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "Finanzen", exact: true })).toBeVisible();
     }
-    if(device==="mobile") {
-      await page.getByRole("button", {name:/Panelhöhe ändern/}).click();
+    if (device === "mobile") {
+      await page.getByRole("button", { name: /Panelhöhe ändern/ }).click();
       await expect(page.locator("#world-map")).toHaveAttribute("inert", "");
       await page.keyboard.press("Escape");
       await expect(page.locator("#world-map")).not.toHaveAttribute("inert", "");
@@ -592,68 +773,93 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["tablet
   });
 }
 
-test("frontend v2: account layer overrides, group keyboard access and persistent camera", async ({page}) => {
-  await page.emulateMedia({reducedMotion:"reduce"});
+test("frontend v2: account layer overrides, group keyboard access and persistent camera", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await register(page);
   const user = await (await page.request.get("/api/v1/auth/me")).json();
-  const purchase = await page.request.post("/api/v1/fleet/purchase", {headers:{"X-Freight-Request":"1"},data:{model_id:"iveco_sway_500"}});
+  const purchase = await page.request.post("/api/v1/fleet/purchase", {
+    headers: { "X-Freight-Request": "1" },
+    data: { model_id: "iveco_sway_500" },
+  });
   expect(purchase.ok()).toBeTruthy();
   await page.reload();
   await expect(page.locator(".vehicle-group.own")).toHaveText("2");
-  for(let step=0;step<3;step++) {
-    await page.locator(".vehicle-group.own").focus();
-    await page.keyboard.press("Enter");
-  }
-  await page.locator(".vehicle-group.own").focus();
-  await page.keyboard.press("Enter");
-  await expect(page.locator(".map-object-list button")).toHaveCount(2);
+  await expect(async () => {
+    if ((await page.locator(".map-object-list button").count()) !== 2)
+      await page.locator(".vehicle-group.own").press("Enter");
+    await expect(page.locator(".map-object-list button")).toHaveCount(2, {
+      timeout: 1000,
+    });
+  }).toPass({ timeout: 15000 });
   await page.locator(".map-object-list button").first().click();
   await expect(page).toHaveURL(/fleet\//);
   await page.locator(".layer-menu summary").click();
-  await page.getByLabel("Eigene Fahrzeuge",{exact:true}).uncheck();
-  await page.getByLabel("Objekte gruppieren",{exact:true}).uncheck();
-  await page.screenshot({path:screenshot("frontend-v2-selected-hidden-layer"),animations:"disabled"});
-  const preferences = await page.evaluate(()=>Object.fromEntries(Object.entries(localStorage).filter(([key])=>key.startsWith("world-freight:layers:"))));
-  expect(Object.keys(preferences)).toEqual(["world-freight:layers:v2:"+user.id]);
-  await page.getByRole("link", {name:"Unternehmen",exact:true}).click();
-  await expect(page.getByLabel("Eigene Fahrzeuge",{exact:true})).toBeChecked();
-  await page.getByRole("link", {name:"Flotte",exact:true}).click();
-  await expect(page.getByLabel("Eigene Fahrzeuge",{exact:true})).not.toBeChecked();
-  await page.getByRole("button", {name:"Ansicht zurücksetzen"}).click();
-  await expect(page.getByLabel("Eigene Fahrzeuge",{exact:true})).toBeChecked();
-  await expect(page.getByLabel("Objekte gruppieren",{exact:true})).not.toBeChecked();
+  await page.getByLabel("Eigene Fahrzeuge", { exact: true }).uncheck();
+  await page.getByLabel("Objekte gruppieren", { exact: true }).uncheck();
+  await page.screenshot({
+    path: screenshot("frontend-v2-selected-hidden-layer"),
+    animations: "disabled",
+  });
+  const preferences = await page.evaluate(() =>
+    Object.fromEntries(
+      Object.entries(localStorage).filter(([key]) => key.startsWith("world-freight:layers:")),
+    ),
+  );
+  expect(Object.keys(preferences)).toEqual(["world-freight:layers:v2:" + user.id]);
+  await page.getByRole("link", { name: "Unternehmen", exact: true }).click();
+  await expect(page.getByLabel("Eigene Fahrzeuge", { exact: true })).toBeChecked();
+  await page.getByRole("link", { name: "Flotte", exact: true }).click();
+  await expect(page.getByLabel("Eigene Fahrzeuge", { exact: true })).not.toBeChecked();
+  await page.getByRole("button", { name: "Ansicht zurücksetzen" }).click();
+  await expect(page.getByLabel("Eigene Fahrzeuge", { exact: true })).toBeChecked();
+  await expect(page.getByLabel("Objekte gruppieren", { exact: true })).not.toBeChecked();
   await page.reload();
   await page.locator(".layer-menu summary").click();
-  await expect(page.getByLabel("Objekte gruppieren",{exact:true})).not.toBeChecked();
+  await expect(page.getByLabel("Objekte gruppieren", { exact: true })).not.toBeChecked();
 });
 
-for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile", {width:390,height:844}]]) {
-  test(`${device}: actual departure, automatic pickup and reload use both road legs`, async ({page}) => {
+for (const [device, viewport] of [
+  ["desktop", { width: 1440, height: 900 }],
+  ["mobile", { width: 390, height: 844 }],
+]) {
+  test(`${device}: actual departure, automatic pickup and reload use both road legs`, async ({
+    page,
+  }) => {
     await page.setViewportSize(viewport);
-    await page.emulateMedia({reducedMotion:"reduce"});
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await register(page);
     await readyContracts(page);
     const prepared = await page.request.post("/__tests__/approach-fixture");
     expect(prepared.ok()).toBe(true);
     const start = (await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
-    const offers = await readyContracts(page, [start.id], item => item.origin_facility_uid !== start.facility_uid);
-    const offer = offers.find(item => item.origin_facility_uid !== start.facility_uid && item.eligible_vehicle_ids.includes(start.id));
+    const offers = await readyContracts(
+      page,
+      [start.id],
+      (item) => item.origin_facility_uid !== start.facility_uid,
+    );
+    const offer = offers.find(
+      (item) =>
+        item.origin_facility_uid !== start.facility_uid &&
+        item.eligible_vehicle_ids.includes(start.id),
+    );
     expect(offer).toBeTruthy();
     await page.goto("/contracts/" + offer.id);
     await page.getByLabel("Fahrzeug disponieren").selectOption(start.id);
     await expect(page.getByRole("radio").first()).toHaveAttribute("aria-checked", "true");
     await expect(page.locator(".itinerary")).toContainText(start.hub.label);
     await expect(page.locator(".itinerary")).toContainText(offer.origin.label);
-    const quoted = page.waitForResponse(response => response.url().endsWith("/quote"));
-    await page.getByRole("button", {name:"Route & Ertrag berechnen"}).click();
+    const quoted = page.waitForResponse((response) => response.url().endsWith("/quote"));
+    await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
     const quote = await (await quoted).json();
     expect(quote.start.facility_uid).toBe(start.facility_uid);
-    expect(quote.route_legs.map(leg=>leg.purpose)).toEqual(["approach", "delivery"]);
+    expect(quote.route_legs.map((leg) => leg.purpose)).toEqual(["approach", "delivery"]);
     expect(quote.approach_distance_km).toBe(400);
     expect(quote.delivery_distance_km).toBe(400);
-    await expect(page.getByText("Anfahrt zur Abholung", {exact:true})).toBeVisible();
-    const accepted = page.waitForResponse(response => response.url().endsWith("/accept"));
-    await page.getByRole("button", {name:"Transport starten"}).click();
+    await expect(page.getByText("Anfahrt zur Abholung", { exact: true })).toBeVisible();
+    const accepted = page.waitForResponse((response) => response.url().endsWith("/accept"));
+    await page.getByRole("button", { name: "Transport starten" }).click();
     const trip = await (await accepted).json();
     await expect(page.locator("[data-phase-trip]")).toHaveText("Zur Abholung");
     expect(trip.origin.facility_uid).toBe(offer.origin_facility_uid);
@@ -664,24 +870,37 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     const moving = (await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
     expect(moving.facility_uid).toBe(start.facility_uid);
     expect(moving.status).toBe("enroute");
-    await page.locator("#panel-content").evaluate(node=>{node.scrollTop=0;});
-    await page.screenshot({path:screenshot(`approach-${device}`),animations:"disabled"});
-    await expect(page.locator("[data-phase-trip]")).toHaveText("Fracht unterwegs", {timeout:25000});
+    await page.locator("#panel-content").evaluate((node) => {
+      node.scrollTop = 0;
+    });
+    await page.screenshot({ path: screenshot(`approach-${device}`), animations: "disabled" });
+    await expect(page.locator("[data-phase-trip]")).toHaveText("Fracht unterwegs", {
+      timeout: 25000,
+    });
     await page.reload();
     await expect(page.locator("[data-phase-trip]")).toHaveText("Fracht unterwegs");
     await expect(page.locator("#world-map")).toHaveAttribute("aria-busy", "false");
-    await page.getByRole("button", {name:"Route auf der Karte"}).click();
-    await page.locator("#panel-content").evaluate(node=>{node.scrollTop=0;});
-    await page.screenshot({path:screenshot(`delivery-${device}`),animations:"disabled"});
+    await page.getByRole("button", { name: "Route auf der Karte" }).click();
+    await page.locator("#panel-content").evaluate((node) => {
+      node.scrollTop = 0;
+    });
+    await page.screenshot({ path: screenshot(`delivery-${device}`), animations: "disabled" });
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(viewport.width);
-    expect((await (await page.request.get("/api/v1/fleet")).json()).vehicles[0].facility_uid).toBe(start.facility_uid);
+    expect((await (await page.request.get("/api/v1/fleet")).json()).vehicles[0].facility_uid).toBe(
+      start.facility_uid,
+    );
   });
 }
 
-for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile", {width:390,height:844}]]) {
-  test(`${device}: company livery persists across map and stable panel images`, async ({page}) => {
+for (const [device, viewport] of [
+  ["desktop", { width: 1440, height: 900 }],
+  ["mobile", { width: 390, height: 844 }],
+]) {
+  test(`${device}: company livery persists across map and stable panel images`, async ({
+    page,
+  }) => {
     await page.setViewportSize(viewport);
-    await page.emulateMedia({reducedMotion:"reduce"});
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await register(page);
     await page.goto("/company");
     await expect(page.locator("[data-company-color]")).toHaveCount(10);
@@ -692,45 +911,91 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     const front = page.locator('img[data-vehicle-role="front"]').first();
     await expect(front).toHaveAttribute("src", /^blob:/);
     await expect(front).toHaveAttribute("data-vehicle-color", color);
-    expect(await front.evaluate(async image=>(await (await fetch(image.src)).text()))).toContain(`--vehicle-color:${color}`);
-    await front.evaluate(image=>{window.stableLiveryImage=image;});
-    await page.getByRole("button",{name:"Aktualisieren",exact:true}).click();
-    await expect.poll(()=>front.evaluate(image=>image===window.stableLiveryImage)).toBe(true);
+    expect(await front.evaluate(async (image) => await (await fetch(image.src)).text())).toContain(
+      `--vehicle-color:${color}`,
+    );
+    await front.evaluate((image) => {
+      window.stableLiveryImage = image;
+    });
+    await page.getByRole("button", { name: "Aktualisieren", exact: true }).click();
+    await expect
+      .poll(() => front.evaluate((image) => image === window.stableLiveryImage))
+      .toBe(true);
     await expect(async () => {
-      await page.getByRole("heading",{name:"Firmenfarbe",exact:true}).scrollIntoViewIfNeeded();
+      await page
+        .getByRole("heading", { name: "Firmenfarbe", exact: true })
+        .scrollIntoViewIfNeeded();
     }).toPass();
-    await page.screenshot({path:screenshot(`livery-${device}`),animations:"disabled"});
+    await page.screenshot({ path: screenshot(`livery-${device}`), animations: "disabled" });
     await page.reload();
-    await expect(page.locator(`[data-company-color="${color}"]`)).toHaveAttribute("aria-pressed","true");
+    await expect(page.locator(`[data-company-color="${color}"]`)).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect((await (await page.request.get("/api/v1/auth/me")).json()).company_color).toBe(color);
     await page.goto("/");
-    await expect(page.locator("#world-map")).toHaveAttribute("aria-busy","false");
-    for (let index=0;index<5;index++) await page.getByRole("button",{name:"Zoom out",exact:true}).click();
+    await expect(page.locator("#world-map")).toHaveAttribute("aria-busy", "false");
+    for (let index = 0; index < 5; index++)
+      await page.getByRole("button", { name: "Zoom out", exact: true }).click();
     await expect(page.locator(".vehicle-group")).toHaveCount(0);
     await expect(page.locator(".maplibregl-canvas")).toBeVisible();
-    await page.screenshot({path:screenshot(`regional-livery-${device}`),animations:"disabled"});
-    expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(viewport.width);
+    await page.screenshot({
+      path: screenshot(`regional-livery-${device}`),
+      animations: "disabled",
+    });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(viewport.width);
   });
 }
 
-for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile", {width:390,height:844}]]) {
-  test(`${device}: low and high shipment quotes expose exact cost components`, async ({page}) => {
+for (const [device, viewport] of [
+  ["desktop", { width: 1440, height: 900 }],
+  ["mobile", { width: 390, height: 844 }],
+]) {
+  test(`${device}: low and high shipment quotes expose exact cost components`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    await page.emulateMedia({reducedMotion:"reduce"});
+    await page.emulateMedia({ reducedMotion: "reduce" });
     await register(page);
-    const offers = (await readyContracts(page)).filter(offer => offer.eligible_vehicle_ids.includes("truck_01")).sort((a,b)=>a.tons-b.tons);
-    expect(offers.length).toBeGreaterThan(1);
-    for (const [label, offer, stops] of [["low", offers[0], false], ["high", offers.at(-1), false], ["one-stop", offers[0], "single"], ["purchases", offers[0], "multiple"]]) {
-      if (stops) expect((await page.request.post("/__tests__/energy-fixture"+(stops === "single" ? "?single_stop=true" : ""), {headers:{"X-Freight-Request":"1"}})).ok()).toBeTruthy();
-      await page.goto("/contracts/"+offer.id);
+    let offers;
+    await expect
+      .poll(
+        async () => {
+          const body = await (await page.request.get("/api/v1/contracts")).json();
+          offers = body.contracts
+            .filter((offer) => offer.eligible_vehicle_ids.includes("truck_01"))
+            .sort((a, b) => a.tons - b.tons);
+          return offers.length;
+        },
+        { timeout: 30000 },
+      )
+      .toBeGreaterThan(1);
+    for (const [label, offer, stops] of [
+      ["low", offers[0], false],
+      ["high", offers.at(-1), false],
+      ["one-stop", offers[0], "single"],
+      ["purchases", offers[0], "multiple"],
+    ]) {
+      if (stops)
+        expect(
+          (
+            await page.request.post(
+              "/__tests__/energy-fixture" + (stops === "single" ? "?single_stop=true" : ""),
+              { headers: { "X-Freight-Request": "1" } },
+            )
+          ).ok(),
+        ).toBeTruthy();
+      await page.goto("/contracts/" + offer.id);
       await page.getByLabel("Fahrzeug disponieren").selectOption("truck_01");
-      const response = page.waitForResponse(value=>value.url().includes("/quote") && value.request().method()==="POST");
-      await page.getByRole("button",{name:"Route & Ertrag berechnen"}).click();
+      const response = page.waitForResponse(
+        (value) => value.url().includes("/quote") && value.request().method() === "POST",
+      );
+      await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
       const quote = await (await response).json();
       const costs = quote.cost_breakdown;
-      expect(costs.total_cost_eur).toBe(80+costs.maintenance_cost_eur+costs.purchases.reduce((sum,p)=>sum+p.cost_eur,0));
+      expect(costs.total_cost_eur).toBe(
+        80 + costs.maintenance_cost_eur + costs.purchases.reduce((sum, p) => sum + p.cost_eur, 0),
+      );
       expect(costs.total_cost_eur).toBe(quote.operating_cost_eur);
-      expect(costs.purchases.length>0).toBe(Boolean(stops));
+      expect(costs.purchases.length > 0).toBe(Boolean(stops));
       if (stops === "single") expect(costs.purchases).toHaveLength(1);
       if (stops === "multiple") expect(costs.purchases.length).toBeGreaterThan(1);
       expect(quote.contract.tons).toBe(offer.tons);
@@ -742,41 +1007,57 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
       await expect(details).toContainText("Wartung");
       await expect(details).toContainText("Gesamtkosten");
       if (stops) await expect(details).toContainText("kWh");
-      await page.screenshot({path:screenshot(`costs-${label}-${device}`),animations:"disabled"});
-      expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(viewport.width);
+      await page.screenshot({
+        path: screenshot(`costs-${label}-${device}`),
+        animations: "disabled",
+      });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(viewport.width);
     }
   });
 }
 
-test("palette retry and navigation surfaces remain usable without reload after saving", async ({page}) => {
-  await page.emulateMedia({reducedMotion:"reduce"});
+test("palette retry and navigation surfaces remain usable without reload after saving", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await register(page);
-  let failing=true;
-  await page.route("**/api/v1/auth/preferences", route=>failing && route.request().method()==="GET" ? route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({detail:"offline"})}) : route.continue());
+  let failing = true;
+  await page.route("**/api/v1/auth/preferences", (route) =>
+    failing && route.request().method() === "GET"
+      ? route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ detail: "offline" }),
+        })
+      : route.continue(),
+  );
   await page.goto("/company");
   await expect(page.getByText("Firmenfarben konnten nicht geladen werden.")).toBeVisible();
-  failing=false;
+  failing = false;
   await page.locator("[data-preference-retry]").click();
   await expect(page.locator("[data-company-color]")).toHaveCount(10);
-  await page.screenshot({path:screenshot("palette-retried"),animations:"disabled"});
-  const vehicle=(await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
-  await page.goto("/fleet/"+vehicle.id);
-  await expect(page.locator('img[data-vehicle-role="front"]').first()).toHaveAttribute("src",/^blob:/);
-  await page.screenshot({path:screenshot("focused-vehicle-detail"),animations:"disabled"});
+  await page.screenshot({ path: screenshot("palette-retried"), animations: "disabled" });
+  const vehicle = (await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
+  await page.goto("/fleet/" + vehicle.id);
+  await expect(page.locator('img[data-vehicle-role="front"]').first()).toHaveAttribute(
+    "src",
+    /^blob:/,
+  );
+  await page.screenshot({ path: screenshot("focused-vehicle-detail"), animations: "disabled" });
   await page.goto("/contracts");
-  const offers=await readyContracts(page);
-  const offer=offers.find(o=>o.eligible_vehicle_ids.includes(vehicle.id));
-  await page.goto("/contracts/"+offer.id);
-      await page.getByLabel("Fahrzeug disponieren").selectOption("truck_01");
-  await page.screenshot({path:screenshot("focused-contract-endpoints"),animations:"disabled"});
-  await page.getByRole("button",{name:"Route & Ertrag berechnen"}).click();
-  await expect(page.getByRole("button",{name:"Transport starten"})).toBeEnabled();
-  await page.screenshot({path:screenshot("focused-contract-quote"),animations:"disabled"});
-  await page.getByRole("button",{name:"Transport starten"}).click();
+  const offers = await readyContracts(page);
+  const offer = offers.find((o) => o.eligible_vehicle_ids.includes(vehicle.id));
+  await page.goto("/contracts/" + offer.id);
+  await page.getByLabel("Fahrzeug disponieren").selectOption("truck_01");
+  await page.screenshot({ path: screenshot("focused-contract-endpoints"), animations: "disabled" });
+  await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
+  await expect(page.getByRole("button", { name: "Transport starten" })).toBeEnabled();
+  await page.screenshot({ path: screenshot("focused-contract-quote"), animations: "disabled" });
+  await page.getByRole("button", { name: "Transport starten" }).click();
   await expect(page).toHaveURL(/\/transports\//);
-  await page.screenshot({path:screenshot("focused-transport-detail"),animations:"disabled"});
+  await page.screenshot({ path: screenshot("focused-transport-detail"), animations: "disabled" });
   await page.goto("/transports");
-  await page.screenshot({path:screenshot("focused-transport-list"),animations:"disabled"});
+  await page.screenshot({ path: screenshot("focused-transport-list"), animations: "disabled" });
 });
 
 test("vehicle market shows only eligible offers and switches shared city vehicles", async ({
@@ -794,7 +1075,9 @@ test("vehicle market shows only eligible offers and switches shared city vehicle
   const onlySecond = { ...offers[0], id: "only-second", eligible_vehicle_ids: [second.id] };
   const neither = { ...offers[0], id: "neither", eligible_vehicle_ids: [] };
   await page.route("**/api/v1/runtime", async (route) =>
-    route.fulfill({ json: { ...(await (await route.fetch()).json()), vehicles: [vehicle, second] } }),
+    route.fulfill({
+      json: { ...(await (await route.fetch()).json()), vehicles: [vehicle, second] },
+    }),
   );
   await page.route(/\/api\/v1\/contracts(?:\?.*)?$/, (route) =>
     route.fulfill({
@@ -830,28 +1113,66 @@ test("vehicle market shows only eligible offers and switches shared city vehicle
   await expect(page.locator("#panel")).toBeHidden();
 });
 
+test("partial market publishes prepared offers incrementally", async ({ page }) => {
+  await register(page);
+  const fleet = await (await page.request.get("/api/v1/fleet")).json();
+  const vehicle = fleet.vehicles[0];
+  const availableOffers = await readyContracts(page, [vehicle.id]);
+  const offers = ["first", "second", "third"].map((suffix, index) => ({
+    ...availableOffers[0],
+    id: `incremental-${suffix}`,
+    cargo: `${availableOffers[0].cargo} ${index + 1}`,
+  }));
+  let visible = 0;
+  await page.route(/\/api\/v1\/contracts(?:\?.*)?$/, (route) =>
+    route.fulfill({
+      json: {
+        contracts: offers.slice(0, visible),
+        preparation: { status: "partial" },
+      },
+    }),
+  );
+  await page.goto("/contracts?vehicle=" + encodeURIComponent(vehicle.id));
+  await expect(page.locator(".job-card")).toHaveCount(0);
+  await expect(page.getByText(/Straßenverbindungen werden vorbereitet/)).toBeVisible();
+  for (visible = 1; visible <= 3; visible += 1) {
+    await page.reload();
+    await expect(page.locator(".job-card")).toHaveCount(visible);
+    await expect(page.getByText(/Bereits geprüfte Aufträge sind verfügbar/)).toBeVisible();
+  }
+});
 
-test("runtime remains usable during blocked traffic and distinguishes storage from network failures", async ({page}) => {
+test("runtime remains usable during blocked traffic and distinguishes storage from network failures", async ({
+  page,
+}) => {
   let release;
-  const blocked = new Promise(resolve => { release = resolve; });
-  await page.route("**/api/v1/map/traffic?representation=summary", async route => {
+  const blocked = new Promise((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/v1/map/traffic?representation=summary", async (route) => {
     await blocked;
-    await route.fulfill({json:{transports:[]}}).catch(() => {});
+    await route.fulfill({ json: { transports: [] } }).catch(() => {});
   });
   await register(page);
-  await page.getByRole("link", {name:"Flotte",exact:true}).click();
+  await page.getByRole("link", { name: "Flotte", exact: true }).click();
   await expect(page.locator("#panel-content")).toContainText("IVECO");
   release();
   await page.unroute("**/api/v1/map/traffic?representation=summary");
-  await page.route("**/api/v1/runtime", route => route.fulfill({status:503,json:{detail:"Spielstand derzeit nicht verfuegbar."}}));
+  await page.route("**/api/v1/runtime", (route) =>
+    route.fulfill({ status: 503, json: { detail: "Spielstand derzeit nicht verfuegbar." } }),
+  );
   await page.reload();
-  await expect(page.locator("#sync-notice")).toContainText("Der Server konnte deinen Spielstand nicht laden");
+  await expect(page.locator("#sync-notice")).toContainText(
+    "Der Server konnte deinen Spielstand nicht laden",
+  );
   await page.unroute("**/api/v1/runtime");
-  await page.route("**/api/v1/runtime", route => route.abort("failed"));
-  await page.getByRole("button", {name:"Erneut versuchen",exact:true}).click();
-  await expect(page.locator("#sync-notice")).toContainText("Verbindung zum Server nicht herstellbar");
+  await page.route("**/api/v1/runtime", (route) => route.abort("failed"));
+  await page.getByRole("button", { name: "Erneut versuchen", exact: true }).click();
+  await expect(page.locator("#sync-notice")).toContainText(
+    "Verbindung zum Server nicht herstellbar",
+  );
   await page.unroute("**/api/v1/runtime");
-  await page.getByRole("button", {name:"Erneut versuchen",exact:true}).click();
+  await page.getByRole("button", { name: "Erneut versuchen", exact: true }).click();
   await expect(page.locator("#sync-notice")).toBeHidden();
   await expect(page.locator("#cash")).toContainText("175.000");
 });

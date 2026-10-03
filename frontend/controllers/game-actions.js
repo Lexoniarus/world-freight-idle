@@ -179,8 +179,17 @@ export class GameActions {
    * @returns {Promise<void>}
    */
   async refreshMarket() {
-    await this.contractMarket.forceRefresh();
-    if (!this.disposed) this.notify("Neue Aufträge sind verfügbar.");
+    const result = await this.contractMarket.forceRefresh();
+    if (this.disposed || !result) return;
+    if (result.contracts.length) {
+      this.notify(`${result.contracts.length} fahrbare Aufträge verfügbar.`);
+    } else if (result.preparation?.status === "partial") {
+      this.notify("Aufträge und Straßenverbindungen werden vorbereitet.");
+    } else if (result.preparation?.status === "exhausted") {
+      this.notify("Keine weiteren geprüften Straßenverbindungen verfügbar.");
+    } else {
+      this.notify("Der Stadtmarkt ist vorbereitet, aber derzeit leer.");
+    }
   }
   /** Invalidate pending quotes and suppress late action results.
    * @returns {void}

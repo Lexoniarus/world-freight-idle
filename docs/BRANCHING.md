@@ -94,11 +94,12 @@ seine Autorisierung erzwingt später der serverseitige Branchschutz.
 
 ## Was versioniert wird
 
-Code, Tests, Dokumentation, Konfigurationsvorlagen, Lockfile und der geprüfte
-Referenzkataloge `data/world_freight_vehicle_catalog.sqlite3` und
-`data/world_freight_company_facility_mvp.sqlite3` gehören ins Git.
-Spielstände, Konten, Backups, lokale .env-Dateien, Schlüssel, node_modules,
-virtuelle Umgebungen, generierte Builds und Prüfartefakte bleiben lokal.
-Katalogänderungen müssen Herkunft/Lizenz, Schema und Spielwerte im PR erläutern;
-die Katalogtests und Auslieferungsprüfung sind Pflicht. Der Katalog darf keine
-Spieler- oder Sitzungsdaten enthalten. Git ersetzt kein Spielstand-Backup.
+Code, Tests, Dokumentation, Konfigurationsvorlagen und Lockfiles gehören ins
+Git. Datenbanken, Spielstände, Konten, Backups, lokale `.env`-Dateien, Schlüssel,
+`node_modules`, virtuelle Umgebungen, generierte Builds und Prüfartefakte bleiben
+außerhalb des Repositorys. Produktive Spiel-, Welt- und Fahrzeugdaten liegen in
+PostgreSQL/Supabase; SQLite-Kataloge sind ausschließlich lokale Offline-Kopien
+oder Test-Fixtures. Katalogänderungen müssen Herkunft/Lizenz, Schema und
+Spielwerte im PR erläutern; Katalogtests und Auslieferungsprüfung sind Pflicht.
+Kataloge dürfen keine Spieler- oder Sitzungsdaten enthalten. Git ersetzt kein
+Spielstand-Backup.

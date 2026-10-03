@@ -137,7 +137,7 @@ async def test_dispatch_replans_after_routing_and_settlement_rolls_back(game):
     with pytest.raises(ValueError, match="checkpoint"):
         game.reconcile_arrival()
     assert game._get_player() == before
-    corrupted._energy_level = 100
+    corrupted._energy_level = 100 - 1e-12
     game.state_repository.save_vehicle(corrupted)
     assert game.reconcile_arrival()
     assert game.get_vehicle(vehicle.id).energy_level == 20

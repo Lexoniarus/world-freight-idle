@@ -39,6 +39,10 @@ class PersistenceError(RuntimeError):
     """The persistence adapter could not safely read or write state."""
 
 
+class SupabaseAuthUnavailable(RuntimeError):
+    """Cached Supabase signing keys could not be refreshed."""
+
+
 class UnsupportedGameSchema(PersistenceError):
     """Normal runtime refuses an old, incomplete or unknown state schema."""
 

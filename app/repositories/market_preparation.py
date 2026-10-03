@@ -119,12 +119,21 @@ class SqlitePreparationStore:
         with self.database.connect() as conn:
             row = conn.execute(
                 "SELECT user_id FROM market_preparations "
-                "WHERE (status='partial' AND next_retry_at IS NULL) "
-                "OR next_retry_at<=? "
+                "WHERE status='partial' AND (next_retry_at IS NULL "
+                "OR next_retry_at<=?) "
                 "ORDER BY updated_at, user_id LIMIT 1",
                 (now,),
             ).fetchone()
         return row[0] if row else None
+
+    def has_incomplete(self) -> bool:
+        """Report any unfinished player demand, including retry backoff."""
+        with self.database.connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM market_preparations "
+                "WHERE status='partial' LIMIT 1"
+            ).fetchone()
+        return row is not None
 
     def finish(
         self,

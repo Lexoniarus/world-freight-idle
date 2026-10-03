@@ -1,6 +1,6 @@
 # Architektur
 
-Stand: 25.09.2026. Die Anwendung besitzt genau eine relationale Laufzeit.
+Stand: 02.10.2026. Die Anwendung besitzt genau eine relationale Produktionslaufzeit.
 UI First, native ES-Module, FastAPI und `python main.py` bleiben Grundlage.
 
 ## Schichten und Zuständigkeiten
@@ -10,7 +10,8 @@ UI First, native ES-Module, FastAPI und `python main.py` bleiben Grundlage.
 - `app/services`: Initialisierung, Markt, Kauf, Disposition, Settlement,
   Authentifizierung und Profilpflege. Orchestratoren verbinden benannte
   fachliche Schritte und injizierte Ports.
-- `app/repositories`: SQLite, Verbindungen, Transaktionen, Schema-Validierung
+- `app/repositories`: PostgreSQL-Produktionsadapter sowie SQLite-Adapter für
+  Tests und Offline-Werkzeuge, Verbindungen, Transaktionen, Schema-Validierung
   und kanonisches Snapshot-Mapping. Read-only Referenzdaten bleiben getrennt
   vom beschreibbaren Spielerzustand.
 - `app/providers`: validierte Valhalla-/Geocoding-Antworten, Providerfehler,
@@ -23,16 +24,17 @@ UI First, native ES-Module, FastAPI und `python main.py` bleiben Grundlage.
 
 ```text
 Browser → API → Services → Domain-Ports
-                            ├─ GameUnitOfWork / GameStateRepository → SQLite
-                            ├─ AccountStore / ProviderCache → SQLite
-                            ├─ LeaderboardReader / TrafficReader → SQLite
-                            ├─ VehicleCatalogue / WorldCatalogue → read-only SQLite
+                            ├─ GameUnitOfWork / GameStateRepository → PostgreSQL
+                            ├─ AccountStore / ProviderCache → PostgreSQL
+                            ├─ LeaderboardReader / TrafficReader → PostgreSQL
+                            ├─ VehicleCatalogue / WorldCatalogue → read-only PostgreSQL
                             └─ TruckRouter → Valhalla
 ```
 
 Die Lifespan registriert den Routing-HTTP-Client sofort im AsyncExitStack.
-Start- und Shutdownfehler verhindern dessen Freigabe nicht. SQLite-Verbindungen
-gehören dem jeweiligen Adapter und werden auch bei Fehlern geschlossen.
+Start- und Shutdownfehler verhindern dessen Freigabe nicht. PostgreSQL-Pools
+und optionale SQLite-Verbindungen gehören dem jeweiligen Adapter und werden
+auch bei Fehlern geschlossen.
 Domainregeln erhalten Zeitpunkte als Parameter.
 
 ## Zustand und Atomarität
@@ -395,8 +397,8 @@ serverseitige Eignungs-IDs; Views berechnen keine neue Kompatibilität.
 
 ADR 0007 ersetzt den bisherigen Worker im API-Lifespan. `main.py` startet und
 ueberwacht getrennte Rollen; beide verwenden dieselbe relationale SQLite-Datei
-mit WAL/FULL und 500 ms Lock-Wartezeit. Runtime liest publizierte Offers und
-Coverage; nur der Worker baut Kandidaten ausserhalb des Writers. Persistierte
+mit WAL/FULL und 5 s begrenzter Lock-Wartezeit. Runtime liest publizierte Offers
+und Coverage; nur der Worker baut Kandidaten ausserhalb des Writers. Persistierte
 Bedarfsversionen, globale Worker-Lease und Routingnachweise sichern kurze
 Publikationstransaktionen ab. Zeitaufwendige Providerarbeit ist kein API-Fallback.
 
@@ -411,9 +413,22 @@ Details und manuelles Verantwortungsreview: [Runtime-Review](RUNTIME_ISOLATION_R
 [ADR 0008](adr/0008-shared-market-stock.md) ergänzt die Runtime-Trennung.
 Die Produktionsverdrahtung verwendet `StockPreparationBatch` mit getrennten
 Bedarfs-, Planungs-, Vorlagen- und Publikationsservices. Sie liest kompakte
-Ankunftsfakten ohne Geometrien und plant spätestens ab dem 60-Minuten-Horizont
-auch Zielstädte. Die reine Dreier-Auswahl bleibt in `MarketSelectionService`.
+Zielfakten ohne Geometrien und plant Zielstädte unmittelbar ab Dispatch.
+Die reine Dreier-Auswahl bleibt in `MarketSelectionService`.
 SQL, Konsistenzgrenzen und Migrationsregeln sind in ADR 0008 benannt.
+
+`MarketPreparationWorker` priorisiert sichtbaren Idle-Bestand, sichtbaren
+Zielstadtbestand, Idle-Reserve und Zielstadtreserve. Nur wenn kein Spielerstatus
+mehr `partial` ist, erhält `GlobalStockPreparationBatch` eine Runde für den
+übrigen Weltvorrat. Er baut Kandidaten nur für einen ausgewählten
+Stadt-/Modell-/Band-Kontext und prüft nur dessen Delivery-Paar. Gemeinsame
+Vorlagen liegen hinter `SqliteMarketTemplateStore`; der persönliche Store
+besitzt weiterhin Ausgabe, Verbrauch und Checkpoints.
+
+`ReadinessView` lädt Relationen, Anker, Verbindungsevidenz und
+Payload-Verfügbarkeit mengenbasiert. Candidate-Readiness und beide Batches
+verwenden denselben Snapshot; die SQL-Zahl wächst daher nicht mit jeder
+einzelnen Relation. Gezielte Provider-/Dispatchpfade behalten Einzelzugriffe.
 
 `StockPublicationService` hält den vollständigen unveränderlichen Bestand für
 den Revisionsvergleich und projiziert davon separat kataloggültige Angebote
@@ -427,3 +442,50 @@ Funktionen zusätzlich zu den automatischen Importgrenzen und Manifesttests.
 Veränderte Frachtklasse oder geografisch verschobene Katalogstandorte sperren
 alte Vorlagen/Angebote für die Freigabe und Defizitberechnung. Ihre gespeicherten
 Konditionen und historische Transporte werden dabei nicht umgeschrieben.
+
+## Supabase/PostgreSQL production runtime (28.09.2026)
+
+Produktiv verwendet die Anwendung eine serverseitige PostgreSQL-Verbindung zu
+Supabase. `game`, `world_catalogue` und `vehicle_catalogue` sind getrennte
+Schemas derselben PostgreSQL-Instanz. Browserzugriff auf diese Schemas findet
+nicht statt; der Browser bleibt an `/api/v1` gebunden.
+
+`DATABASE_URL` aktiviert den PostgreSQL-Pfad. Ohne diese Variable bleiben die
+bestehenden SQLite-Adapter ausschließlich für Tests und explizite Offline-
+Werkzeuge verfügbar. Die Produktions-Composition-Root wählt PostgreSQL für
+Spielzustand und beide Referenzkataloge. Der World-/Vehicle-Snapshot wird wie
+zuvor pro Prozess validiert und gecacht.
+
+Die PostgreSQL-Game-UoW hält die bestehende atomare Semantik konservativ durch
+einen transaktionsgebundenen Advisory Lock aufrecht. Provider-Awaits bleiben
+außerhalb von Schreibtransaktionen. Read-Transaktionen verwenden einen
+repeatable-read/read-only Snapshot. Der Connection-Pool gehört dem jeweiligen
+Runtime-/Prewarm-Prozess und wird beim Shutdown geschlossen.
+
+Historische Snapshot-Texte bleiben Text und werden nicht still nach JSONB
+migriert. SQLite-spezifische JSON1-Leseprojektionen werden ausschließlich an
+der PostgreSQL-Adaptergrenze in native PostgreSQL-JSONB-Ausdrücke übersetzt.
+Die Domain-, Service- und HTTP-Verträge ändern sich dadurch nicht.
+
+Supabase Auth ist eine getrennte Providergrenze. `@supabase/supabase-js` besitzt
+im Browser Session und Refresh; FastAPI prüft Bearer-Tokens lokal per ES256/JWKS
+und projiziert den stabilen `sub` über den Account-Port nach `game.users`.
+Weder der Datenbankzugang noch ein Supabase Secret Key gelangen ins Frontend.
+Die vorhandene Cookie-Authentifizierung bleibt nur als Migrationsbrücke für
+bestehende lokale Konten erhalten. Der Browser versucht Supabase Auth zuerst;
+der same-origin Fallback akzeptiert ausschließlich die drei in der privaten
+Tabelle `game.account_emails` hinterlegten Altkonten. Dabei werden die bisherigen
+scrypt-Hashes und kompakten UUIDs weiterverwendet. Neue Registrierungen bleiben
+vollständig bei Supabase Auth.
+
+Die Schemas `game`, `world_catalogue` und `vehicle_catalogue` entziehen
+`PUBLIC`, `anon` und `authenticated` alle Schema-, Tabellen-, Sequenz- und
+Funktionsrechte. RLS ist auf allen 72 Tabellen als zweite Schutzschicht aktiv;
+Browser-Policies existieren absichtlich nicht. Die Backend-Rolle ist der einzige
+Runtimezugang. Der Start bricht ab, wenn einer erforderlichen `game`-Tabelle RLS
+fehlt.
+
+Der immutable World-Snapshot lädt Facility-Provenienz, Geocoding-Evidenz,
+Aliasse und dokumentierte Güter in vier Batch-Projektionen. Damit bleibt die
+SQLite-Domainprojektion erhalten, ohne deren frühere N+1-Leseform über die
+PostgreSQL-Netzwerkgrenze zu tragen.

@@ -3,21 +3,18 @@
 import asyncio
 import sys
 import threading
-from dataclasses import replace
 from pathlib import Path
 
 import httpx
 
 from app.bootstrap import build_game_runtime, build_preparation_worker
-from app.config import Settings
 from app.launcher import parent_eof
+from tests.browser_settings import isolated_browser_settings
 from tests.conftest import FakeRouter, FakeRoutingAnchorResolver
 
 
 async def main() -> None:
-    settings = replace(
-        Settings.from_env(), db_path=Path(sys.argv[1]), game_time_scale=900
-    )
+    settings = isolated_browser_settings(Path(sys.argv[1]))
     stop = asyncio.Event()
     threading.Thread(
         target=parent_eof, args=(asyncio.get_running_loop(), stop), daemon=True

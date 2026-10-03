@@ -15,7 +15,6 @@ backups
 **/*.bak
 **/*.dump
 data/*
-!data/world_freight_vehicle_catalog.sqlite3
 artifacts
 .env
 node_modules
@@ -29,5 +28,3 @@ playwright-report
 .env.*
 *.pem
 *.key
-
-!data/world_freight_company_facility_mvp.sqlite3

@@ -5,9 +5,9 @@ Status: angenommen, 28.09.2026. Ergänzt ADR 0007.
 ## Entscheidung
 
 Die Auswahl umfasst höchstens drei fahrbare Angebote pro Entfernungsklasse
-und ausgewähltem Fahrzeug. Der Worker hält mindestens zehn Vorlagen pro
-Bedarfsstadt, Katalogmodell und strukturell verfügbarem Band vor. Alle 14
-Truckmodelle werden berücksichtigt; tatsächliche Fahrzeugbedarfe haben Vorrang.
+und ausgewähltem Fahrzeug. Der Worker hält mindestens zehn Vorlagen pro Stadt,
+Katalogmodell und strukturell verfügbarem Band vor. Alle Truckmodelle werden
+berücksichtigt; tatsächliche Fahrzeugbedarfe haben strikt Vorrang.
 Die drei sichtbaren Angebote gehören zum Vorrat, sie kommen nicht zusätzlich
 zu zehn Reservierungen hinzu. Fehlende geprüfte Straßen werden nicht erfunden.
 
@@ -16,7 +16,13 @@ Persönliche Angebote erhalten eigene IDs und unveränderliche Mengen/Tarife aus
 der vorhandenen Factory mit tatsächlich gespeicherter Fahrzeugkapazität.
 Kompatible Fahrzeuge können dasselbe persönliche Angebot verwenden. Eine
 Vorlage darf von jedem Spieler einmal verwendet werden. Verbrauch, Abbuchung,
-Fahrzeugreservierung und Transportanlage teilen eine SQLite-Transaktion.
+Fahrzeugreservierung und Transportanlage teilen eine relationale Transaktion.
+
+Marktauswahl und Konditionen verwenden keinen prozessabhängigen Zufallszustand.
+Ein versionierter SHA-256-Kontext aus Stadt, Modell, Band, Priorität,
+Vorratsplatz, Trade und Verwendungszweck bestimmt gewichtete Auswahl,
+Fahrzeugkontext und Load Factor reproduzierbar. Reihenfolge, Neustart und Retry
+ändern das Ergebnis nicht; Angebots- und Vorlagenidentitäten bleiben neue UUIDs.
 
 Vorlagen und persönliche Angebote haben keine zeitliche Ablaufgrenze. Abfahrt,
 Neustart und Refresh entfernen oder verändern ungenutzte Angebote nicht. Eine
@@ -29,13 +35,15 @@ Zehn ist eine Untergrenze, keine globale Begrenzung oder Löschregel.
 | Baustein | Aufgabe |
 | --- | --- |
 | `StockPolicy`, `PreparedTemplate`, `MarketDemand`, `MarketArrival` | Typisierte Regeln, Bestand und Planungskontexte ohne SQL/HTTP |
-| `MarketDemandResolver` | Idle-Standorte und gespeicherte Ziele ab 60 Minuten vor Ankunft; keine Auszahlung/Fahrzeugbewegung |
+| `MarketDemandResolver` | Konkrete Idle-Standorte und gespeicherte Ziele ab Dispatch; globale Katalogkontexte getrennt projizieren |
 | `StockPlanningService` | Defizite, Prioritäten und stabile Rotation; keine Seiteneffekte |
 | `MarketTemplateService` | Wiederverwendung und Materialisierung passender unveränderlicher Angebote |
 | `MarketSelectionService` | Stabile Dreier-Projektion bereits vorbereiteter Angebote ohne Providerarbeit |
 | `StockPreparationBatch` | Eine Verbindung pro Spielerrunde, Wiederaufnahme und Orchestrierung |
+| `GlobalStockPreparationBatch` | Ohne Spieler-UoW genau einen globalen Stadt-/Modell-/Band-Kontext vorbereiten |
 | `StockPublicationService` | Lesesnapshot, Revisionsvergleich und atomare Veröffentlichung |
-| `SqliteMarketStockStore` | SQL für globale Vorlagen, persönliche Zuordnung/Verwendung, kompakte Ankünfte und Checkpoints |
+| `SqliteMarketTemplateStore` | SQL für globale Vorlagen und mengenbasierte Bestandsstände |
+| `SqliteMarketStockStore` | Persönliche Zuordnung/Verwendung, kompakte Ziele und Checkpoints; delegiert Vorlagenzugriffe |
 | `MarketStockUpgradeRepository` | Ausschließlich explizite Offline-Übernahme nach 1.2.0 |
 
 Der bestehende Worker besitzt Scheduling, Trace und globale Lease. Die
@@ -43,12 +51,20 @@ Zusammensetzung erfolgt in `app/bootstrap.py`. Die Produktions-Runtime baut
 keine Kandidaten und ruft keine Routingprovider auf. Der Marktcontroller fragt
 die serverseitige Fahrzeugauswahl ab; Views besitzen keine eigenen Requests.
 
-Reihenfolge: fehlende sichtbare Angebote wartender Fahrzeuge, Grundversorgung
-angekündigter Ankünfte, Reserve für aktuelle Bedarfe, übrige Modelle. Gleichrangige
-Kontexte rotieren über persistierte Schlüssel; teilweise geprüfte Relationen
-bleiben nachvollziehbar. Andere fällige Spieler erhalten nach einer Verbindung
-wieder Gelegenheit. Deterministische Fehler und Providerbackoff blockieren
-keine anderen Kontexte.
+Die fünf effektiven Stufen sind: sichtbarer Bestand für idle Fahrzeuge,
+sichtbarer Bestand in Zielstädten aktiver Transporte, Idle-Reserve,
+Zielstadt-Reserve und erst danach globaler Vorrat für alle übrigen
+Stadt-/Modell-/Band-Kontexte. Zielstadtbedarf gilt unmittelbar ab Dispatch.
+Solange irgendein Spielerstatus `partial` ist, läuft Stufe fünf auch während
+Backoff nicht. Nach jedem globalen Routenpaar wird Spielerbedarf erneut geprüft.
+Deterministische Fehler und Providerbackoff blockieren keine anderen Kontexte
+derselben zulässigen Stufe.
+
+Eine fertige Verbindung veröffentlicht zunächst genau ein persönliches Angebot.
+Der Status darf dabei weiter `partial` sein; das geprüfte Teilergebnis ist sofort
+sichtbar. Folgerunden bevorzugen zuerst eine neue Handelsrelation, dann neue
+Fracht und anschließend eine neue Zielstadt. Wiederholungen sind erst zulässig,
+wenn der strukturelle Kandidatenraum keine weitere dieser Varianten enthält.
 
 ## Konsistenz und Folgen
 
@@ -57,6 +73,9 @@ Commit werden Lease, Bedarfsversion, Flotte, persönliche Angebote, Ankünfte,
 Vorlagen, Verbrauch, Weltkatalog und verwendete Routingnachweise erneut geprüft.
 Veraltete Arbeit wird verworfen. Einmalige Verwendung ist zusätzlich durch
 einen eindeutigen `(user_id, template_id)`-Schlüssel abgesichert.
+Der erfolgreiche Commit entfernt den zugehörigen Checkpoint atomar. Vorhandene
+private Angebote mit abgelaufener Straßenevidenz werden zuerst revalidiert und
+nicht währenddessen dupliziert.
 
 Straßennachweise bleiben zeitlich begrenzt: 24 Stunden bei Erfolg, eine Stunde
 bei endgültigem Fehler, 60 Sekunden bei Providerstörung. Ungültige Nachweise
@@ -66,8 +85,10 @@ Die bestehende bidirektionale Prüfung (fünf Kandidaten, 1 km, zehn Meter,
 25 Kombinationen, 120 Sekunden) bleibt unverändert.
 
 Die dauerhafte Speicherung wächst mit Spielerfortschritt und besuchten Städten.
-Es gibt kein Vorladen aller Weltstandorte. Infrastruktur liegt relational in
-derselben SQLite-Datei, mit Indizes nach Stadt/Modell und Spieler/Vorlage.
+Es gibt kein synchrones Vorladen aller Weltstandorte. Der opportunistische
+globale Lauf erzeugt ausschließlich Delivery-Vorlagen; standortabhängige
+Anfahrten gehören zu konkretem Spielerbedarf. Infrastruktur liegt relational
+in PostgreSQL/Supabase, mit SQLite-Adaptern für Tests und Offline-Werkzeuge.
 Historische Transporte behalten ihre Snapshots einschließlich alter Ablaufwerte.
 
 Schema 1.2.0 erlaubt `expires_at = null`. Bestehende 1.1.0-Dateien werden beim

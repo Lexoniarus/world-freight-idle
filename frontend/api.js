@@ -19,8 +19,17 @@ export class GameApiClient {
     this.fetchResponse = fetchResponse;
     this.redirect = redirect;
     this.lifetime = new AbortController();
+    this.accessTokenProvider = null;
     this.request = this.request.bind(this);
     this.requestAsset = this.requestAsset.bind(this);
+  }
+
+  /** Attach a session-token provider after runtime auth discovery.
+   * @param {() => Promise<string>} provider
+   * @returns {void}
+   */
+  setAccessTokenProvider(provider) {
+    this.accessTokenProvider = provider;
   }
 
   /** Request an API-relative resource with same-origin credentials only.
@@ -34,6 +43,8 @@ export class GameApiClient {
     const headers = new Headers(options.headers);
     headers.set("Content-Type", "application/json");
     headers.set("X-Freight-Request", "1");
+    const accessToken = await this.accessTokenProvider?.();
+    if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
     const response = await this.fetchResponse(`/api/v1${path}`, {
       ...options,
       headers,

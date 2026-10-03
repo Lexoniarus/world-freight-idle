@@ -3,8 +3,8 @@
 [GitHub-Repository](https://github.com/Lexoniarus/world-freight-idle) ·
 [Quality CI](https://github.com/Lexoniarus/world-freight-idle/actions/workflows/quality.yml)
 
-Browserbasierter Multiplayer-Logistik-Idler mit Python/FastAPI, SQLite und einer
-MapLibre-/OpenStreetMap-Weltkarte. **UI First: spielbare Grundlage, M1 noch in
+Browserbasierter Multiplayer-Logistik-Idler mit Python/FastAPI, PostgreSQL auf
+Supabase und einer MapLibre-/OpenStreetMap-Weltkarte. **UI First: spielbare Grundlage, M1 noch in
 Arbeit.** Die aktuelle Basis ist lokal und automatisiert geprüft; sie ist kein
 freigegebener öffentlicher Produktionsdienst.
 <img width="1897" height="887" alt="image" src="https://github.com/user-attachments/assets/cf9b7716-34a4-4ae0-9021-593feef781e8" />
@@ -93,9 +93,11 @@ $env:HOST = "127.0.0.1"
 | Variable | Standard / Zweck |
 | --- | --- |
 | HOST / PORT | 0.0.0.0 / 8000 |
-| DATA_DIR / DB_PATH | data/ bzw. data/game.db; private Spielstände |
-| VEHICLE_CATALOGUE_PATH | Mitgelieferter data/world_freight_vehicle_catalog.sqlite3 |
-| WORLD_CATALOGUE_PATH | Mitgelieferter data/world_freight_company_facility_mvp.sqlite3, Schema 4.2.0 |
+| DATABASE_URL | PostgreSQL-/Supabase-Verbindung für die Produktionslaufzeit |
+| SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY / SUPABASE_JWKS_URL | Supabase-Auth und lokale JWT-Prüfung; kein Secret Key im Browser oder Runtime-Code |
+| DATA_DIR / DB_PATH | data/ bzw. data/game.db; ausschließlich SQLite-Tests und Offline-Werkzeuge |
+| VEHICLE_CATALOGUE_PATH | SQLite-Fahrzeugkatalog für Tests und Offline-Werkzeuge |
+| WORLD_CATALOGUE_PATH | SQLite-Weltkatalog für Tests und Offline-Werkzeuge, Schema 4.2.0 |
 | GAME_TIME_SCALE | 1 = Echtzeit; Beschleunigung nur für lokale Tests |
 | COOKIE_SECURE | false für lokales HTTP; true bei HTTPS-Betrieb |
 | VALHALLA_URL | Routing gespeicherter Facility-Koordinaten |
@@ -103,7 +105,10 @@ $env:HOST = "127.0.0.1"
 | NOMINATIM_URL | Offline-Enrichment und begrenzter Backend-Fallback für Routing-Anker |
 | HTTP_USER_AGENT | Vor öffentlichen Providerabrufen mit passendem Kontakt setzen |
 
-Der Katalog wird nur lesend geöffnet und unabhängig vom Spielstandpfad gefunden.
+Produktiv werden Spielstand und beide Kataloge aus getrennten privaten Schemas
+derselben Supabase-PostgreSQL-Instanz gelesen. SQLite wird nur in isolierten Tests
+und expliziten Offline-Werkzeugen verwendet. Der Katalog wird nur lesend geöffnet
+und unabhängig vom Spielstandpfad gefunden.
 Fehlende/defekte Katalogdaten ergeben 503 bei Katalog/Kauf oder erster Startflotte;
 bestehende Fahrzeuge bleiben nutzbar. Spielstände und Backups gehören nicht ins Git.
 
@@ -112,7 +117,13 @@ Straßenendpunkten. Erfolgreiche Nachweise gelten maximal 24 Stunden; definitive
 Fehler werden nach einer Stunde, vorübergehende Fehler nach 60 Sekunden erneut
 vorbereitbar. Details und Wolfsburger Kopie-Abnahme:
 [Verbindungsprüfung](docs/CONNECTED_ROUTING_REVIEW.md).
-Nur die beiden Referenz-Katalogdateien werden mitgeliefert. Lizenz-/Datenherkunft:
+Der Marktworker priorisiert Idle-Fahrzeuge, danach die gespeicherten Zielstädte
+aller aktiven Transporte ab Dispatch und deren Reserven. Nur ohne offenen
+Spielerbedarf bereitet er opportunistisch eine globale Stadt-/Modell-/Band-
+Kombination vor. Der Browser lädt und erneuert `/contracts` nur mit einem
+gültigen eigenen Idle-Fahrzeug als Stadtmarktscope.
+Die beiden SQLite-Referenzkataloge werden für Tests und Offline-Arbeit mitgeliefert.
+Lizenz-/Datenherkunft:
 [DATA_SOURCES](docs/DATA_SOURCES.md).
 
 Gezielte lokale Profilpflege: `python scripts/update_test_profile.py --username
@@ -178,7 +189,9 @@ Browserprüfung verwendet lokal Microsoft Edge. Alternativ Chromium installieren
 und PLAYWRIGHT_CHANNEL=chromium setzen; CI verwendet Chromium.
 
 Browsertests starten einen isolierten Server auf Port 8011 mit temporären Daten
-und simulierten externen Medien/Providern. Aktuelle ausgeführte Ergebnisse,
+und simulierten externen Medien/Providern. Fehlen die ignorierten lokalen
+SQLite-Kataloge, erzeugt die Testsuite deterministische synthetische Fixtures;
+`.env` und Live-Supabase werden nicht verwendet. Aktuelle ausgeführte Ergebnisse,
 Architekturreview und Abnahmegrenzen: [QUALITY_REPORT](QUALITY_REPORT.md).
 Die vollständige reale iPad-/Safari-Abnahme bleibt offen.
 
@@ -194,15 +207,16 @@ beide Teil des Quality Gates.
 
 ## Docker und Betrieb
 
-`docker compose up --build` baut das Frontend und liefert beide Kataloge
-und `assets/vehicles/` mit aus;
-Compose bindet beide Kataloge zusätzlich separat nur lesend ein. Docker wurde in
+`docker compose up --build` baut das Frontend und liefert die Offline-Kataloge
+und `assets/vehicles/` mit aus. Compose bindet beide SQLite-Kataloge für den
+expliziten Offline-Betrieb separat nur lesend ein. Docker wurde in
 der aktuellen lokalen Abnahme nicht ausgeführt. Individuelle Deployments müssen
 beide Referenzkataloge sowie Assets und zugehörigen Frontend-Build mitliefern.
 Nach einer Asset-Pfadänderung benötigen offene Seiten einen Reload.
 
-Aktuell: ein Prozess, SQLite und gemeinsame Provider-Limiter. HTTPS, kontrollierter
-Reverse Proxy, Betriebsbackups, geeignete Provider und weitere Konten-/Betriebs-
+Aktuell: getrennte API-/Vorbereitungsprozesse, private Supabase-PostgreSQL-Schemas
+und pro Runtimeinstanz begrenzte Providerzugriffe. HTTPS, kontrollierter Reverse
+Proxy, Backup-/Restore-Abnahme, geeignete Provider und weitere Konten-/Betriebs-
 funktionen sind vor öffentlichem Betrieb zu ergänzen: [SECURITY](docs/SECURITY.md).
 Das GitHub-Repository ist als `origin` eingerichtet und derzeit öffentlich.
 GitHub Actions prüft

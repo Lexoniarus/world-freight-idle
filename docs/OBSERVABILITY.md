@@ -103,6 +103,10 @@ mit `python -m tests.runtime_benchmark`; Betrieb und Reparaturaktivierung siehe
 
 `market.stock_published` protokolliert die Anzahl neuer gemeinsamer Vorlagen,
 persönlicher Angebote und die geprüfte Bedarfsversion im vorhandenen Worker-Trace.
+`market.stock_preparation_progress` ergänzt Priorität, Stadt, Modell, Band,
+Candidate-/Relationsanzahl und getrennte Millisekunden für State, Demand,
+Templates, Candidates, Readiness, Provider und Gesamtrunde. Benutzer-IDs,
+Konditionen, lokale Pfade und Zugangsdaten werden nicht aufgenommen.
 Verbrauch bleibt über das atomare `trip.dispatch`-Ereignis nachvollziehbar.
 `state.market_stock_upgraded` nennt nur übernommene/abgelaufene Angebotszahlen
 und die Anzahl unveränderter Transporte. Vorlageninhalte, Konten und
