@@ -16,6 +16,9 @@
 - Ein ausschließlich manuelles Wartungskommando prüft oder bereinigt frühere
   ungenutzte Duplikate transaktional mit privatem SHA-256-Archiv. Startup und
   HTTP führen keine automatische Bereinigung aus.
+- Parallele Test- und Offline-Prozesse wiederholen ausschließlich den einmaligen
+  SQLite-WAL-Wechsel bei einer kurzzeitigen Sperre; andere Speicherfehler bleiben
+  unmittelbar sichtbar. Die produktive PostgreSQL-Laufzeit ist davon unberührt.
 
 ## Priorisierte globale Marktvorbereitung – 03.10.2026
 

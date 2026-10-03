@@ -7,11 +7,26 @@ from collections.abc import Iterator
 from contextlib import closing, contextmanager
 from contextvars import ContextVar
 from pathlib import Path
+from time import monotonic, sleep
 
 from app.domain.errors import PersistenceError, UnsupportedGameSchema
 from app.repositories.game_schema import REQUIRED_TABLES, SCHEMA, VERSION
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _enable_wal(connection: sqlite3.Connection) -> None:
+    """Retry the one-time WAL switch while another initializer owns SQLite."""
+    deadline = monotonic() + 2.0
+    while True:
+        try:
+            connection.execute("PRAGMA journal_mode=WAL")
+            return
+        except sqlite3.OperationalError as exc:
+            lock_is_transient = "locked" in str(exc).lower()
+            if not lock_is_transient or monotonic() >= deadline:
+                raise
+            sleep(0.01)
 
 
 class SqliteGameDatabase:
@@ -126,7 +141,7 @@ class SqliteGameDatabase:
             # its exclusive lock without changing the normal 500 ms contract.
             connection.execute("PRAGMA busy_timeout=5000")
             try:
-                connection.execute("PRAGMA journal_mode=WAL")
+                _enable_wal(connection)
             finally:
                 connection.execute("PRAGMA busy_timeout=500")
         LOGGER.info(

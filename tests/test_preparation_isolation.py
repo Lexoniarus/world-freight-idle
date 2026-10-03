@@ -2,7 +2,7 @@
 
 import sqlite3
 from dataclasses import replace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -312,3 +312,39 @@ def test_two_process_roles_can_initialize_the_same_empty_file(tmp_path):
             ]
             == 1
         )
+
+
+def test_wal_switch_retries_only_transient_lock_errors():
+    from app.repositories.game_database import _enable_wal
+
+    connection = Mock()
+    connection.execute.side_effect = [
+        sqlite3.OperationalError("database is locked"),
+        None,
+    ]
+    with (
+        patch(
+            "app.repositories.game_database.monotonic",
+            side_effect=[0.0, 0.1],
+        ),
+        patch("app.repositories.game_database.sleep") as pause,
+    ):
+        _enable_wal(connection)
+    pause.assert_called_once_with(0.01)
+    assert connection.execute.call_count == 2
+
+    for message, clock in (
+        ("disk I/O error", [0.0]),
+        ("database is locked", [0.0, 2.0]),
+    ):
+        connection = Mock()
+        connection.execute.side_effect = sqlite3.OperationalError(message)
+        with (
+            patch(
+                "app.repositories.game_database.monotonic", side_effect=clock
+            ),
+            patch("app.repositories.game_database.sleep") as pause,
+            pytest.raises(sqlite3.OperationalError, match=message),
+        ):
+            _enable_wal(connection)
+        pause.assert_not_called()

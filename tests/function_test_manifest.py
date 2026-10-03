@@ -97,6 +97,7 @@ FUNCTION_TESTS = {
     "app.repositories.legacy_import_mapping.read_legacy_route": "test_legacy_route_rejects_unretained_feature_metadata",
     "app.repositories.game_database.SqliteGameDatabase._validate_keys": "test_schema_rejects_missing_or_changed_ownership_keys",
     "app.repositories.game_database.SqliteGameDatabase._validate_guards": "test_schema_rejects_ineffective_unique_index",
+    "app.repositories.game_database._enable_wal": "test_wal_switch_retries_only_transient_lock_errors",
     "app.repositories.game_database.schema_sql_tokens": "test_schema_accepts_formatting_but_preserves_literals",
     "app.repositories.game_state.SqliteGameStateRepository.list_active_transports": "test_transport_queries_filter_before_decoding",
     "app.repositories.game_state.SqliteGameStateRepository.list_due_transports": "test_transport_queries_filter_before_decoding",
