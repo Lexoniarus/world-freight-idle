@@ -217,6 +217,34 @@ FUNCTION_TESTS.update(
     }
 )
 
+
+FUNCTION_TESTS.update(
+    {
+        "app.bootstrap.build_market_stock_maintenance": "test_market_stock_cleanup_is_archived_targeted_and_idempotent",
+        "app.repositories.market_stock.SqliteMarketStockStore.reconcile_pending": "test_partial_connection_resumes_after_restart_and_never_releases_early",
+        "app.repositories.market_stock.SqliteMarketStockStore.scoped_templates": "test_shared_stock_has_three_visible_ten_ready_and_does_not_expire",
+        "app.repositories.market_stock.SqliteMarketTemplateStore.scoped_templates": "test_shared_stock_has_three_visible_ten_ready_and_does_not_expire",
+        "app.repositories.market_stock_maintenance.MarketStockMaintenanceRepository.__init__": "test_market_stock_cleanup_is_archived_targeted_and_idempotent",
+        "app.repositories.market_stock_maintenance.MarketStockMaintenanceRepository._protected_digest": "test_market_stock_cleanup_is_archived_targeted_and_idempotent",
+        "app.repositories.market_stock_maintenance.MarketStockMaintenanceRepository._scope": "test_market_stock_cleanup_is_archived_targeted_and_idempotent",
+        "app.repositories.market_stock_maintenance.MarketStockMaintenanceRepository._templates": "test_market_stock_cleanup_is_archived_targeted_and_idempotent",
+        "app.repositories.market_stock_maintenance.MarketStockMaintenanceRepository._trade": "test_market_stock_cleanup_is_archived_targeted_and_idempotent",
+        "app.repositories.market_stock_maintenance.MarketStockMaintenanceRepository._write_archive": "test_market_stock_cleanup_is_archived_targeted_and_idempotent",
+        "app.repositories.market_stock_maintenance.MarketStockMaintenanceRepository.apply": "test_market_stock_cleanup_is_archived_targeted_and_idempotent",
+        "app.repositories.market_stock_maintenance.MarketStockMaintenanceRepository.duplicate_scopes": "test_market_stock_cleanup_is_archived_targeted_and_idempotent",
+        "app.repositories.market_stock_maintenance.MarketStockMaintenanceRepository.inspect": "test_market_stock_cleanup_is_archived_targeted_and_idempotent",
+        "app.domain.market_stock.MarketStockRepairPlan.report": "test_market_stock_cleanup_is_archived_targeted_and_idempotent",
+        "app.services.deterministic_market_random.DeterministicMarketRandom.fraction": "test_stock_random_is_deterministic_without_reusing_offer_ids",
+        "app.services.deterministic_market_random.DeterministicMarketRandom.weighted_index": "test_stock_random_is_deterministic_without_reusing_offer_ids",
+        "app.services.market_stock_maintenance.MarketStockMaintenanceService._repairable_scopes": "test_market_stock_cleanup_is_archived_targeted_and_idempotent",
+        "app.services.market_stock_maintenance.MarketStockMaintenanceService.apply": "test_market_stock_cleanup_is_archived_targeted_and_idempotent",
+        "app.services.market_stock_maintenance.MarketStockMaintenanceService.inspect": "test_market_stock_cleanup_is_archived_targeted_and_idempotent",
+        "app.services.stock_planning.StockPlanningService.preferred": "test_stock_random_is_deterministic_without_reusing_offer_ids",
+        "app.services.stock_preparation.StockPreparationBatch._bound_trades": "test_stale_evidence_reuses_offers_and_backoff_never_releases_stock",
+        "app.services.stock_preparation.StockPreparationBatch._log": "test_shared_stock_has_three_visible_ten_ready_and_does_not_expire",
+    }
+)
+
 FUNCTION_TESTS.update(
     {
         "app.bootstrap.build_fleet_service": "test_auth_api_and_private_game_resources",

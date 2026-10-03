@@ -22,6 +22,7 @@ COMMANDS = (
         "scripts/audit_economy.py",
         "scripts/audit_routing_readiness.py",
         "scripts/repair_transport_metadata.py",
+        "scripts/repair_market_stock.py",
         "scripts/upgrade_market_stock.py",
     ),
     (
@@ -41,6 +42,7 @@ COMMANDS = (
         "scripts/audit_economy.py",
         "scripts/audit_routing_readiness.py",
         "scripts/repair_transport_metadata.py",
+        "scripts/repair_market_stock.py",
         "scripts/upgrade_market_stock.py",
     ),
     (
@@ -56,6 +58,7 @@ COMMANDS = (
         "scripts/audit_economy.py",
         "scripts/audit_routing_readiness.py",
         "scripts/repair_transport_metadata.py",
+        "scripts/repair_market_stock.py",
         "scripts/upgrade_market_stock.py",
     ),
     (

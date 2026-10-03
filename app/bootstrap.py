@@ -38,6 +38,9 @@ from app.repositories.market_stock import (
     SqliteMarketStockStore,
     SqliteMarketTemplateStore,
 )
+from app.repositories.market_stock_maintenance import (
+    MarketStockMaintenanceRepository,
+)
 from app.repositories.market_stock_upgrade import MarketStockUpgradeRepository
 from app.repositories.postgres_catalogues import (
     PostgresVehicleCatalogue,
@@ -76,6 +79,9 @@ from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_selection import MarketSelectionService
 from app.services.market_startup import MarketStartupService
+from app.services.market_stock_maintenance import (
+    MarketStockMaintenanceService,
+)
 from app.services.market_templates import MarketTemplateService
 from app.services.preferences import PreferenceService
 from app.services.preparation_lease import PreparationLease
@@ -305,6 +311,27 @@ def build_market_stock_upgrade(
 ) -> MarketStockUpgradeRepository:
     """Wire explicit offline schema adoption without opening active storage."""
     return MarketStockUpgradeRepository(source, now)
+
+
+def build_market_stock_maintenance(
+    settings: Settings,
+) -> tuple[MarketStockMaintenanceService, SqliteGameDatabase]:
+    """Bind explicit stock maintenance without HTTP or provider access."""
+    database = build_game_database(settings)
+    database.initialize()
+    candidates = MarketCandidateService(
+        build_world_catalogue(settings),
+        CachedVehicleCatalogue(build_vehicle_catalogue(settings)),
+    )
+    return (
+        MarketStockMaintenanceService(
+            candidates,
+            MarketDemandResolver(candidates),
+            MarketStockMaintenanceRepository(database),
+            time.time,
+        ),
+        database,
+    )
 
 
 def build_runtime_view(

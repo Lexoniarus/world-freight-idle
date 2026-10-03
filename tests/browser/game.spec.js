@@ -951,10 +951,19 @@ for (const [device, viewport] of [
     await page.setViewportSize(viewport);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await register(page);
-    const offers = (await readyContracts(page))
-      .filter((offer) => offer.eligible_vehicle_ids.includes("truck_01"))
-      .sort((a, b) => a.tons - b.tons);
-    expect(offers.length).toBeGreaterThan(1);
+    let offers;
+    await expect
+      .poll(
+        async () => {
+          const body = await (await page.request.get("/api/v1/contracts")).json();
+          offers = body.contracts
+            .filter((offer) => offer.eligible_vehicle_ids.includes("truck_01"))
+            .sort((a, b) => a.tons - b.tons);
+          return offers.length;
+        },
+        { timeout: 30000 },
+      )
+      .toBeGreaterThan(1);
     for (const [label, offer, stops] of [
       ["low", offers[0], false],
       ["high", offers.at(-1), false],
@@ -1098,6 +1107,35 @@ test("vehicle market shows only eligible offers and switches shared city vehicle
   await page.getByRole("link", { name: "Weltkarte", exact: true }).click();
   await expect(page).not.toHaveURL(/city=|vehicle=/);
   await expect(page.locator("#panel")).toBeHidden();
+});
+
+test("partial market publishes prepared offers incrementally", async ({ page }) => {
+  await register(page);
+  const fleet = await (await page.request.get("/api/v1/fleet")).json();
+  const vehicle = fleet.vehicles[0];
+  const availableOffers = await readyContracts(page, [vehicle.id]);
+  const offers = ["first", "second", "third"].map((suffix, index) => ({
+    ...availableOffers[0],
+    id: `incremental-${suffix}`,
+    cargo: `${availableOffers[0].cargo} ${index + 1}`,
+  }));
+  let visible = 0;
+  await page.route(/\/api\/v1\/contracts(?:\?.*)?$/, (route) =>
+    route.fulfill({
+      json: {
+        contracts: offers.slice(0, visible),
+        preparation: { status: "partial" },
+      },
+    }),
+  );
+  await page.goto("/contracts?vehicle=" + encodeURIComponent(vehicle.id));
+  await expect(page.locator(".job-card")).toHaveCount(0);
+  await expect(page.getByText(/Straßenverbindungen werden vorbereitet/)).toBeVisible();
+  for (visible = 1; visible <= 3; visible += 1) {
+    await page.reload();
+    await expect(page.locator(".job-card")).toHaveCount(visible);
+    await expect(page.getByText(/Bereits geprüfte Aufträge sind verfügbar/)).toBeVisible();
+  }
 });
 
 test("runtime remains usable during blocked traffic and distinguishes storage from network failures", async ({
