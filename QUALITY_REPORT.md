@@ -32,14 +32,22 @@ auch während eines Backoffs. Globale Runden prüfen höchstens ein bidirektiona
 Delivery-Paar und veröffentlichen nur gemeinsame Vorlagen; fahrzeugabhängige
 Anfahrten bleiben Priorität 1 und 2 vorbehalten.
 
+Die Auswahl innerhalb einer Qualitätsstufe verwendet den versionierten
+SHA-256-Seed `market-stock-v1`. Stadt, Modell, Entfernungsband, Priorität,
+Vorratsplatz, Trade-Key und Zweck bestimmen Auswahl, Fahrzeug und Beladung
+unabhängig von Eingabereihenfolge, Neustart oder Retry. IDs bleiben neue UUIDs.
+Eine fertig geprüfte Verbindung veröffentlicht sofort genau ein Angebot; weitere
+Runden bevorzugen neue Relation, Frachtart und Ziel und füllen danach bis auf drei
+sichtbare und zehn gespeicherte Angebote je Band auf.
+
 ## Automatisierte Abnahme
 
 `.venv/Scripts/python.exe -X utf8 scripts/quality.py` wurde vollständig mit
-Exitcode 0 ausgeführt. Der reale Supervisor-Test bestand separat in 1,72 s. Der
-abgedeckte Hauptlauf meldete **614 bestanden, 1 gezielt ausgelassen**, **100,00 %
-App-Statement-Coverage** bei **7.403 Statements** und 62 Warnungen aus bestehenden
+Exitcode 0 ausgeführt. Der reale Supervisor-Test bestand separat in 2,22 s. Der
+abgedeckte Hauptlauf meldete **617 bestanden, 1 gezielt ausgelassen**, **100,00 %
+App-Statement-Coverage** bei **7.667 Statements** und 62 Warnungen aus bestehenden
 Testabhängigkeiten beziehungsweise Ressourcen-Cleanup. Zusätzlich bestanden
-**122 Frontend-Verhaltenstests**, Ruff, Ruff-Format, mypy für 166 Dateien,
+**122 Frontend-Verhaltenstests**, Ruff, Ruff-Format, mypy für 170 Dateien,
 Pyright, ESLint, Stylelint, Prettier, TypeScript/checkJs, Produktionsbuild und
 compileall.
 
@@ -47,13 +55,13 @@ Der Lauf simulierte einen frischen Checkout ohne lokale Katalogdateien. Ein
 deterministischer Test-Fixture-Builder erzeugte dabei ausschließlich ignorierte,
 synthetische SQLite-Kataloge; `.env` und Live-Supabase blieben deaktiviert.
 
-`npm run test:e2e` meldete **33 bestanden** in 6,1 Minuten. Desktop-, Tablet- und
+`npm run test:e2e` meldete **34 bestanden** in 5,7 Minuten. Desktop-, Tablet- und
 Mobilfälle liefen über die isolierte Browser-Settings-Schicht; der Playwright-
 Server erhält weder `DATABASE_URL` noch Supabase-Konfiguration und griff nicht
-auf Produktionsdaten zu. Kartenregressionsbilder sowie die Live-Aufnahme wurden
-visuell geprüft. Der Stadtmarkt-Screenshot zeigt drei Angebote je Band, den
-Vorbereitungs- und Coverage-Status sowie den fahrzeuggebundenen Refresh ohne
-Layoutüberlagerung.
+auf Produktionsdaten zu. Die Regression bestätigt zusätzlich den sichtbaren
+Übergang `0 -> 1 -> 2 -> 3`, inkrementelles Auffüllen bei `partial` sowie das
+Warten auf das zweite Angebot in Konditionsvergleichen. Kartenregressionsbilder
+und fahrzeuggebundener Refresh blieben ohne Layoutüberlagerung.
 
 ## Lesende Performanceprüfung des Marktworkers
 
@@ -69,6 +77,30 @@ Priorität 3 begrenzt; drei produktive Spielerstatus waren zum Messzeitpunkt
 `partial`, weshalb der Worker globale Vorbereitung korrekt nicht starten würde.
 Eine zusätzliche Spalte oder Migration wurde entsprechend dem vereinbarten
 Umbau ohne Schemaänderung nicht eingeführt.
+
+Nach der gezielten Bereinigung enthielt der produktive Bestand 294 Vorlagen und
+117 gebundene Angebote; alle drei Spielerjobs waren erwartungsgemäß `partial`,
+Checkpoints waren null. Die Scheduler-Abfrage benötigte laut `EXPLAIN (ANALYZE,
+BUFFERS)` 0,163 ms. Der konkrete Stadt-/Modell-Template-Read verwendete den
+vorhandenen Index `templates_scope`; die Indexabfrage selbst benötigte 0,120 ms,
+der vollständige Explain-Lauf einschließlich zweier Scope-Init-Pläne 2,895 ms.
+
+Der vorgeschaltete Read-only-Wartungslauf plante 267 Duplikatssegmente, 946
+ungenutzte gebundene Angebote und 2.471 unreferenzierte Template-Duplikate für
+drei Konten. Der transaktionale Apply-Lauf archivierte diese Datensätze mit
+SHA-256, prüfte die geschützten Spiel-/Transportdaten vor und nach dem Lauf und
+setzte nur betroffene Markt-Cursor, Checkpoints und Jobs zurück. Ein unmittelbar
+anschließender `--check` meldete für alle vier Zähler null und bestätigte damit
+Idempotenz.
+
+Nach dem kontrollierten Neustart veröffentlichte jede der ersten drei fälligen
+Spielerrunden genau ein Angebot. Die kalte erste Runde benötigte 17,31 s, die
+folgenden beiden 8,47 s und 10,69 s. Davon entfielen 4,62 bis 5,20 s auf reale
+Providerarbeit. Nach dem Warm-up sanken State-, Kandidaten- und Readiness-Anteile
+deutlich; weitere beobachtete Runden lagen zwischen 8,35 s und 12,34 s. Der
+Worker rotierte dabei zwischen den drei `partial`-Jobs. Die aggregierten
+gebundenen Bestände lagen während der Beobachtung bei 18, 45 und 63 Angeboten;
+Benutzerkennungen wurden weder ausgegeben noch in den Bericht übernommen.
 
 ## Live-Verifikation ohne Gameplay-Mutation
 

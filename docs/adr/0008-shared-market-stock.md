@@ -18,6 +18,12 @@ Kompatible Fahrzeuge können dasselbe persönliche Angebot verwenden. Eine
 Vorlage darf von jedem Spieler einmal verwendet werden. Verbrauch, Abbuchung,
 Fahrzeugreservierung und Transportanlage teilen eine relationale Transaktion.
 
+Marktauswahl und Konditionen verwenden keinen prozessabhängigen Zufallszustand.
+Ein versionierter SHA-256-Kontext aus Stadt, Modell, Band, Priorität,
+Vorratsplatz, Trade und Verwendungszweck bestimmt gewichtete Auswahl,
+Fahrzeugkontext und Load Factor reproduzierbar. Reihenfolge, Neustart und Retry
+ändern das Ergebnis nicht; Angebots- und Vorlagenidentitäten bleiben neue UUIDs.
+
 Vorlagen und persönliche Angebote haben keine zeitliche Ablaufgrenze. Abfahrt,
 Neustart und Refresh entfernen oder verändern ungenutzte Angebote nicht. Eine
 Annahme lässt bereits gespeicherten Vorrat sofort nachrücken. Der Worker füllt
@@ -54,6 +60,12 @@ Backoff nicht. Nach jedem globalen Routenpaar wird Spielerbedarf erneut geprüft
 Deterministische Fehler und Providerbackoff blockieren keine anderen Kontexte
 derselben zulässigen Stufe.
 
+Eine fertige Verbindung veröffentlicht zunächst genau ein persönliches Angebot.
+Der Status darf dabei weiter `partial` sein; das geprüfte Teilergebnis ist sofort
+sichtbar. Folgerunden bevorzugen zuerst eine neue Handelsrelation, dann neue
+Fracht und anschließend eine neue Zielstadt. Wiederholungen sind erst zulässig,
+wenn der strukturelle Kandidatenraum keine weitere dieser Varianten enthält.
+
 ## Konsistenz und Folgen
 
 Planung und Provideraufrufe liegen außerhalb von Schreibtransaktionen. Vor dem
@@ -61,6 +73,9 @@ Commit werden Lease, Bedarfsversion, Flotte, persönliche Angebote, Ankünfte,
 Vorlagen, Verbrauch, Weltkatalog und verwendete Routingnachweise erneut geprüft.
 Veraltete Arbeit wird verworfen. Einmalige Verwendung ist zusätzlich durch
 einen eindeutigen `(user_id, template_id)`-Schlüssel abgesichert.
+Der erfolgreiche Commit entfernt den zugehörigen Checkpoint atomar. Vorhandene
+private Angebote mit abgelaufener Straßenevidenz werden zuerst revalidiert und
+nicht währenddessen dupliziert.
 
 Straßennachweise bleiben zeitlich begrenzt: 24 Stunden bei Erfolg, eine Stunde
 bei endgültigem Fehler, 60 Sekunden bei Providerstörung. Ungültige Nachweise

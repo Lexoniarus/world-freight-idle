@@ -48,6 +48,40 @@ Die Manifest-Architekturprüfung deckt jede neue konkrete Python-Core-Funktion
 mit einem expliziten Gegentest ab. Alle öffentlichen Callables sind typisiert und
 dokumentiert; die Quality-Gates bestätigen PEP 8, 79 Zeichen, mypy und Pyright.
 
+## Nachtrag 03.10.2026: Determinismus, Diversität und Bereinigung
+
+Der bestehende Vorratspfad bleibt erhalten. `StockPlanningService` übernimmt
+die reine Diversitäts- und deterministische gewichtete Auswahl. Die zustandslose
+SHA-256-Komponente besitzt keinen Prozesszustand; `ContractFactory` verwendet sie
+nur bei der Vorratsmaterialisierung und erzeugt weiterhin neue UUIDs.
+`MarketTemplateService` materialisiert genau eine Einheit. Der Batch priorisiert
+vorhandenen Bestand zur Revalidierung, veröffentlicht erste Teilergebnisse und
+räumt den erfolgreichen Checkpoint im Publication-Commit auf.
+
+`StockPublicationService` liest Vorlagen nur für konkrete Stadt-/Modellpaare und
+trägt reine Phasenmesswerte. Nach Providerarbeit erfolgt kein zweiter vollständiger
+Spieler-/Marktsnapshot; die aktuelle einzelne Candidate-Readiness und der bereits
+vorhandene atomare Publication-Fence sichern die Freigabe. Das Repository besitzt
+weiterhin sämtliches SQL.
+
+Die neue Wartungsgrenze ist absichtlich nicht Teil der Runtime. Der Service
+entscheidet ausschließlich anhand struktureller Katalogvielfalt, ob ein Scope
+bereinigbar ist. Das Repository plant SQL-Zeilen, schreibt das private Archiv,
+mutiert in einer Transaktion und vergleicht geschützten Spielzustand. Das CLI
+besitzt nur Argument-/Pfadprüfung und Ausgabe aggregierter Zählwerte.
+
+### Verantwortlichkeitsprüfung des Nachtrags
+
+| Grenze | Ergebnis |
+| --- | --- |
+| `DeterministicMarketRandom`, `StockPlanningService.preferred/choose` | Zustandslose Projektion und Auswahl; keine Persistenz, Zeit oder Providerarbeit. |
+| `MarketTemplateService.materialize` | Erzeugt eine unveränderliche Vorratseinheit mit getrennten Template-/Personal-Kontexten. |
+| `StockPreparationBatch` | Orchestriert Auswahl, höchstens eine Relation und gefencete Publikation; bestehende Angebote werden vor Neuanlage revalidiert. |
+| `scoped_templates`, `reconcile_pending` | Jeweils eine schmale set-basierte SQL-Verantwortung. |
+| `MarketStockMaintenanceService` | Prüft nur strukturelle Vielfalt über injizierte Katalogports. |
+| `MarketStockMaintenanceRepository` | Plant, archiviert, mutiert und reconciliert ausschließlich die ausdrücklich erlaubten Vorratszeilen. |
+| `repair_market_stock.py` und Composition Root | Operator-/Pfadorchestrierung beziehungsweise Dependency Injection; keine Marktregel. |
+
 ## Manuelle Prüfung der Verantwortlichkeiten
 
 | Funktionen / Grenze | Inhaltliches Review |

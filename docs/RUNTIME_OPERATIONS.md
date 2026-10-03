@@ -37,6 +37,10 @@ Worker verarbeitet zuerst fälligen Spielerbedarf. Ein vorhandener
 `partial`-Status sperrt globale Vorbereitung auch während Retry-Backoff. Erst
 ohne offenen Spielerbedarf wird eine globale Stadt-/Modell-/Band-Kombination
 bearbeitet. Nach einem begonnenen bidirektionalen Paar wird erneut priorisiert.
+Eine fertige Relation veröffentlicht sofort ein Angebot; nachfolgende Runden
+füllen diversifiziert auf. Prozessneustarts oder Retries würfeln weder Auswahl
+noch Konditionen neu. `market.stock_preparation_progress` trennt State-, Demand-,
+Template-, Candidate-, Readiness-, Provider- und Gesamtdauer ohne Kontoangaben.
 
 `market.preparation_failed` / `market.preparation_scheduler_failed` signalisieren
 einen erneut eingeplanten Lauf. `process.prewarm_restart` nennt den Backoff.
@@ -96,6 +100,32 @@ rückwirkenden Kostenänderungen vornehmen.
 
 Dieser Schritt wird nicht durch Tests, Commit oder Push ausgelöst. Datenbanken,
 Backups, Reparaturarchive, Sitzungen und Messartefakte bleiben außerhalb von Git.
+
+## Gezielte Bereinigung früher Marktduplikate
+
+Dieser einmalige Lauf ist nur für bereits erzeugte, ungenutzte Duplikate nötig.
+Zuerst API und Worker vollständig stoppen. Der Prüfmodus liest nur Zählwerte:
+
+```powershell
+python scripts/repair_market_stock.py --check
+```
+
+Nur wenn der Bericht erwartbar ist, mit einem neuen privaten Archivpfad außerhalb
+des Repositories anwenden:
+
+```powershell
+python scripts/repair_market_stock.py --apply --archive $env:TEMP\wif-market-stock-private.json
+```
+
+Das Werkzeug entfernt pro Spieler und Trade nur zusätzliche ungenutzte Angebote,
+wenn der aktuelle Katalog im betreffenden Stadt-/Modell-/Band-Kontext mindestens
+zwei strukturelle Trades besitzt. Verwendete Vorlagen, Transporte, Spielerstand
+und Fahrzeuge bleiben unverändert. Unreferenzierte exakte Template-Duplikate
+werden danach bereinigt, Checkpoints/Cursor betroffener Konten zurückgesetzt und
+ihr Bedarf als `partial` neu eingestellt. Die Mutation ist eine Transaktion;
+vorher entsteht ein exklusiv neu angelegtes Archiv mit SHA-256. Bei Abweichung
+rollt die Datenbank zurück und das unvollständige Archiv wird entfernt. Danach
+Worker und API starten und den Aufbau `1 → 2 → 3` beobachten.
 
 ## Vorratsschema 1.2.0 ausdrücklich übernehmen
 

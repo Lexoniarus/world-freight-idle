@@ -1,5 +1,22 @@
 # Changelog
 
+## Deterministischer und vielfältiger Frachtmarkt – 03.10.2026
+
+- Gewichtete Kandidatenauswahl, Generierungsfahrzeug und Beladung werden aus
+  einem versionierten SHA-256-Kontext reproduzierbar abgeleitet; neue Angebote
+  behalten eindeutige UUIDs.
+- Eine geprüfte Verbindung veröffentlicht sofort einen Auftrag. Weitere Runden
+  bevorzugen neue Relation, Fracht und Zielstadt und wiederholen erst nach
+  struktureller Erschöpfung.
+- Erfolgreiche Publikation entfernt Checkpoints atomar. Abgelaufene Evidenz wird
+  für vorhandenen Bestand revalidiert, ohne dabei Duplikate anzulegen.
+- Stadt-/Modell-Templates werden mengenbasiert und eng gescopt gelesen; nach
+  Providerarbeit entfällt der zweite vollständige Marktsnapshot. Phasendauern
+  sind strukturiert und ohne Kontokennung beobachtbar.
+- Ein ausschließlich manuelles Wartungskommando prüft oder bereinigt frühere
+  ungenutzte Duplikate transaktional mit privatem SHA-256-Archiv. Startup und
+  HTTP führen keine automatische Bereinigung aus.
+
 ## Priorisierte globale Marktvorbereitung – 03.10.2026
 
 - Spielergebundene Vorbereitung verarbeitet nur konkrete Idle-Fahrzeuge und
