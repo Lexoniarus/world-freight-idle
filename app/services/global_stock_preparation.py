@@ -132,7 +132,9 @@ class GlobalStockPreparationBatch:
                 )
                 is not None
             )
-        templates = self.store.templates((selected.vehicle.city_uid,))
+        templates = self.store.scoped_templates(
+            ((selected.vehicle.city_uid, selected.vehicle.model_id),)
+        )
         targets = self.planning.targets(
             (selected,), candidates, ready, (), templates
         )

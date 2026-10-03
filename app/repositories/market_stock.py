@@ -64,6 +64,27 @@ class SqliteMarketTemplateStore:
         except (ValueError, TypeError, KeyError) as exc:
             raise PersistenceError("Auftragsvorlage nicht lesbar.") from exc
 
+    def scoped_templates(
+        self, scopes: tuple[tuple[str, str], ...]
+    ) -> tuple[PreparedTemplate, ...]:
+        """Read demanded city/model pairs with one bounded query."""
+        if not scopes:
+            return ()
+        unique = tuple(dict.fromkeys(scopes))
+        predicates = " OR ".join("(city_uid=? AND model_id=?)" for _ in unique)
+        parameters = tuple(value for scope in unique for value in scope)
+        with self.database.connect() as db:
+            rows = db.execute(
+                "SELECT * FROM market_templates WHERE "
+                + predicates
+                + " ORDER BY rowid",
+                parameters,
+            ).fetchall()
+        try:
+            return tuple(_load_template(row) for row in rows)
+        except (ValueError, TypeError, KeyError) as exc:
+            raise PersistenceError("Auftragsvorlage nicht lesbar.") from exc
+
     def levels(self) -> tuple[TemplateStockLevel, ...]:
         """Count global stock with one set-based relational query."""
         with self.database.connect() as db:
@@ -125,6 +146,12 @@ class SqliteMarketStockStore:
     ) -> tuple[PreparedTemplate, ...]:
         """Delegate global template reads to their narrow repository."""
         return self.template_store.templates(cities)
+
+    def scoped_templates(
+        self, scopes: tuple[tuple[str, str], ...]
+    ) -> tuple[PreparedTemplate, ...]:
+        """Delegate bounded city/model reads to the template repository."""
+        return self.template_store.scoped_templates(scopes)
 
     def levels(self) -> tuple[TemplateStockLevel, ...]:
         """Delegate global stock counts to their narrow repository."""
@@ -270,6 +297,32 @@ class SqliteMarketStockStore:
                 db.execute(
                     "INSERT INTO market_stock_pending VALUES (?, ?, ?, ?, ?)",
                     (self.user_id, context, *trade),
+                )
+
+    def reconcile_pending(
+        self,
+        active_contexts: tuple[str, ...],
+        completed_context: str | None,
+    ) -> None:
+        """Remove completed and obsolete resumable selection checkpoints."""
+        with self.database.connect() as db:
+            if active_contexts:
+                placeholders = ",".join("?" for _ in active_contexts)
+                db.execute(
+                    "DELETE FROM market_stock_pending WHERE user_id=? "
+                    "AND context NOT IN (" + placeholders + ")",
+                    (self.user_id, *active_contexts),
+                )
+            else:
+                db.execute(
+                    "DELETE FROM market_stock_pending WHERE user_id=?",
+                    (self.user_id,),
+                )
+            if completed_context is not None:
+                db.execute(
+                    "DELETE FROM market_stock_pending WHERE user_id=? "
+                    "AND context=?",
+                    (self.user_id, completed_context),
                 )
 
 
