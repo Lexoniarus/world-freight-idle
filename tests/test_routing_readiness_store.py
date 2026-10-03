@@ -75,6 +75,8 @@ def test_readiness_domain_rejects_incoherent_records():
 
 def test_global_lease_fences_expired_and_competing_writers(tmp_path):
     database, store = routing_store(tmp_path)
+    assert store.get_many(()) == {}
+    assert store.connected_references(()) == frozenset()
     other = SqliteRoutingReadinessStore(database)
     relation = ready_relation()
     key = relation.reference.relation_id
@@ -156,6 +158,7 @@ def test_anchor_publication_rejects_expired_owner(tmp_path):
 
     database, store = routing_store(tmp_path)
     anchors = SqliteRoutingAnchorRepository(database)
+    assert anchors.get_many((), "truck") == {}
     anchor = RoutingAnchor(
         "A",
         "truck",

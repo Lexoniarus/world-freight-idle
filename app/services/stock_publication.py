@@ -69,9 +69,7 @@ class StockPublicationService:
         with self.unit.read_transaction():
             owned = self.unit.repository.list_vehicles()
             offers = self.unit.repository.list_offers()
-            arrivals = stock.arrivals(
-                now + prep.policy.arrival_horizon_seconds
-            )
+            arrivals = stock.arrivals()
             status = prep.jobs.status(prep.user_id)
             used, bindings = stock.used(), stock.bindings()
         assert status is not None
@@ -83,7 +81,8 @@ class StockPublicationService:
             cities,
             tuple(d.vehicle for d in demands),
         )
-        with prep.readiness.reading():
+        pairs = required_relations(candidates)
+        with prep.readiness.reading(pairs):
             ready = prep.ready_candidates(candidates)
             evidence = tuple(
                 prep.demand_state(*pair) for pair in required_relations(ready)
@@ -130,10 +129,7 @@ class StockPublicationService:
             self.guard()
             and self.unit.repository.list_vehicles() == snapshot.owned
             and self.unit.repository.list_offers() == snapshot.offers
-            and stock.arrivals(
-                snapshot.observed_at + prep.policy.arrival_horizon_seconds
-            )
-            == snapshot.arrivals
+            and stock.arrivals() == snapshot.arrivals
             and prep.jobs.status(prep.user_id) == snapshot.status
             and stock.used() == snapshot.used
             and stock.bindings() == snapshot.bindings
@@ -171,7 +167,17 @@ class StockPublicationService:
             for d in snapshot.demands
             if not d.catalogue_only and d.transport_id is None
         )
-        with prep.readiness.reading():
+        binding_pairs = tuple(
+            dict.fromkeys(
+                (
+                    offer.origin.facility_uid,
+                    offer.destination.facility_uid,
+                )
+                for offer in offers
+                if self.market.candidates.structurally_current(offer)
+            )
+        )
+        with prep.readiness.reading(binding_pairs):
             bindings = tuple(
                 (offer.id, reference)
                 for offer in offers
@@ -184,7 +190,12 @@ class StockPublicationService:
                 )
                 is not None
             )
-        with self.unit.transaction(), prep.readiness.reading():
+        evidence_pairs = tuple(
+            (state.origin_uid, state.destination_uid)
+            for state in snapshot.evidence
+        )
+        all_pairs = tuple(dict.fromkeys((*binding_pairs, *evidence_pairs)))
+        with self.unit.transaction(), prep.readiness.reading(all_pairs):
             if not self.unchanged(snapshot):
                 return False
             # References outside current demand must also remain current.

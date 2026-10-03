@@ -28,7 +28,8 @@ class StockPreparationBatch:
         stock = prep.stock
         assert stock is not None
         snapshot = self.publication.read()
-        with prep.readiness.reading():
+        pairs = required_relations(snapshot.candidates)
+        with prep.readiness.reading(pairs):
             targets = self.planning.targets(
                 snapshot.demands,
                 snapshot.candidates,

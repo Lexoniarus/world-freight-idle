@@ -115,6 +115,19 @@ class FakeConnection:
         self.rollbacks += 1
         self.info.transaction_status = TransactionStatus.IDLE
 
+    @contextmanager
+    def transaction(self):
+        self.info.transaction_status = TransactionStatus.INTRANS
+        try:
+            yield self
+        except BaseException:
+            self.rollbacks += 1
+            raise
+        else:
+            self.commits += 1
+        finally:
+            self.info.transaction_status = TransactionStatus.IDLE
+
     def __enter__(self):
         return self
 
@@ -380,7 +393,8 @@ def test_postgres_database_failure_contracts(monkeypatch):
     with pytest.raises(RuntimeError):
         with database.transaction():
             raise RuntimeError("rollback")
-    assert raw.rollbacks >= 2
+    assert raw.rollbacks == 1
+    assert raw.commits >= 2
 
     class FailingPool:
         @contextmanager

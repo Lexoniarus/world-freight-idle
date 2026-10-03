@@ -24,6 +24,14 @@ class RoutingAnchorStore(Protocol):
         """Return one persisted routing result."""
         ...
 
+    def get_many(
+        self,
+        facility_uids: tuple[str, ...],
+        routing_profile: str,
+    ) -> dict[str, RoutingAnchor | None]:
+        """Return persisted results for a bounded facility set."""
+        ...
+
     def put(self, anchor: RoutingAnchor) -> None:
         """Replace one persisted routing result."""
         ...

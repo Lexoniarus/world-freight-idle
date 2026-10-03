@@ -288,8 +288,10 @@ def test_preparation_generation_and_reference_rollback(game, database):
     preparation.jobs.finish(
         "test-owner", first.generation, "ready", None, game.now()
     )
+    assert not preparation.jobs.has_incomplete()
     assert preparation.jobs.next_player(game.now()) is None
     preparation.jobs.request("test-owner", "new-generation", game.now())
+    assert preparation.jobs.has_incomplete()
     assert (
         require_value(preparation.jobs.status("test-owner")).status
         == "partial"

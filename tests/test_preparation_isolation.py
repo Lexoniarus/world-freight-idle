@@ -123,16 +123,26 @@ async def test_readiness_read_view_reuses_facts_but_never_crosses_publication(
     readiness = preparation.readiness
     offer = game.state_repository.list_offers()[0]
     pair = offer.origin.facility_uid, offer.destination.facility_uid
-    with patch.object(
-        readiness.store, "get", wraps=readiness.store.get
-    ) as get:
-        with readiness.reading(), readiness.reading():
+    with (
+        patch.object(
+            readiness.store,
+            "get_many",
+            wraps=readiness.store.get_many,
+        ) as get_many,
+        patch.object(
+            readiness.anchor_store,
+            "get_many",
+            wraps=readiness.anchor_store.get_many,
+        ) as anchors,
+    ):
+        with readiness.reading((pair,)), readiness.reading((pair,)):
             assert readiness.current(*pair) is None
             assert readiness.current(*pair) is None
-            get.assert_called_once()
+            get_many.assert_called_once()
+            anchors.assert_called_once()
             assert readiness.fingerprint(*pair) == readiness.fingerprint(*pair)
         assert readiness.current(*pair) is None
-        assert get.call_count == 2
+        assert get_many.call_count == 2
     readiness.worker_owner = "worker"
     # Losing global ownership prevents either direction from being published.
     assert await readiness.prepare(*pair) is None

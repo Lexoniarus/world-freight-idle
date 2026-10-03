@@ -43,6 +43,15 @@ class ReadinessView:
         default_factory=dict
     )
     fingerprints: dict[tuple[str, str], str] = field(default_factory=dict)
+    stored: dict[str, RoutingRelation] = field(default_factory=dict)
+    prefetched: set[str] = field(default_factory=set)
+    anchors: dict[str, RoutingAnchor | None] = field(default_factory=dict)
+    payloads: set[RouteReference] = field(default_factory=set)
+    connections: set[tuple[RouteReference, RouteReference]] = field(
+        default_factory=set
+    )
+    revision_loaded: bool = False
+    provider_revision: str | None = None
 
 
 class RoutingReadinessService:
@@ -82,17 +91,62 @@ class RoutingReadinessService:
         self._locations: dict = {}
 
     @contextmanager
-    def reading(self) -> Iterator[None]:
+    def reading(
+        self, pairs: tuple[tuple[str, str], ...] = ()
+    ) -> Iterator[None]:
         """Reuse synchronous evidence without leaking it across requests."""
-        if self._view.get() is not None:
+        existing = self._view.get()
+        if existing is not None:
+            self._preload(existing, pairs)
             yield
             return
-        token = self._view.set(ReadinessView())
+        view = ReadinessView()
+        token = self._view.set(view)
         try:
             with self.store.read_transaction():
+                self._preload(view, pairs)
                 yield
         finally:
             self._view.reset(token)
+
+    def _preload(
+        self,
+        view: ReadinessView,
+        pairs: tuple[tuple[str, str], ...],
+    ) -> None:
+        """Load relations, anchors, proofs and payloads in bounded sets."""
+        relation_ids = tuple(
+            dict.fromkeys(
+                relation_identity(origin, destination)
+                for pair in pairs
+                for origin, destination in (pair, pair[::-1])
+            )
+        )
+        missing = tuple(
+            uid for uid in relation_ids if uid not in view.prefetched
+        )
+        facilities = tuple(
+            dict.fromkeys(uid for pair in pairs for uid in pair)
+        )
+        missing_facilities = tuple(
+            uid for uid in facilities if uid not in view.anchors
+        )
+        if missing_facilities:
+            view.anchors.update(
+                self.anchor_store.get_many(missing_facilities, "truck")
+            )
+        if not missing:
+            return
+        view.stored.update(self.store.get_many(missing))
+        view.prefetched.update(missing)
+        ready = tuple(
+            relation.reference
+            for uid in missing
+            if (relation := view.stored.get(uid)) is not None
+            and relation.status == "ready"
+        )
+        view.payloads.update(self.store.available_payloads(ready))
+        view.connections.update(self.store.connected_references(missing))
 
     def fingerprint(
         self,
@@ -110,18 +164,34 @@ class RoutingReadinessService:
         if snapshot is not self._world_snapshot:
             self._world_snapshot = snapshot
             self._locations = {f.facility_uid: f for f in snapshot.facilities}
-        selected = (
-            anchors
-            if anchors is not None
-            else (
+        selected = anchors
+        if selected is None and view is not None:
+            missing = tuple(
+                uid for uid in (origin, destination) if uid not in view.anchors
+            )
+            if missing:
+                view.anchors.update(
+                    self.anchor_store.get_many(missing, "truck")
+                )
+            selected = (view.anchors[origin], view.anchors[destination])
+        if selected is None:
+            selected = (
                 self.anchor_store.get(origin, "truck"),
                 self.anchor_store.get(destination, "truck"),
             )
-        )
+        if view is not None and not view.revision_loaded:
+            view.provider_revision = (
+                self.provider_revision() if self.provider_revision else None
+            )
+            view.revision_loaded = True
         facts = (
             VALIDATION_VERSION,
             self.provider_identity,
-            self.provider_revision() if self.provider_revision else None,
+            view.provider_revision
+            if view is not None
+            else self.provider_revision()
+            if self.provider_revision
+            else None,
             self.anchors.max_snap_distance_m,
             tuple(
                 (
@@ -153,24 +223,56 @@ class RoutingReadinessService:
         self, origin: str, destination: str
     ) -> RoutingRelation | None:
         """Validate fresh persisted evidence for one synchronous read view."""
-        relation = self.store.get(relation_identity(origin, destination))
+        view = self._view.get()
+        relation_id = relation_identity(origin, destination)
+        relation = (
+            view.stored.get(relation_id)
+            if view is not None and relation_id in view.prefetched
+            else self.store.get(relation_id)
+        )
         if relation is None:
             return None
         now = self.clock()
         stale = relation.fingerprint != self.fingerprint(origin, destination)
         if relation.status == "ready":
-            reverse = self.store.get(relation_identity(destination, origin))
+            reverse_id = relation_identity(destination, origin)
+            reverse = (
+                view.stored.get(reverse_id)
+                if view is not None and reverse_id in view.prefetched
+                else self.store.get(reverse_id)
+            )
+            connected = (
+                (
+                    (relation.reference, reverse.reference) in view.connections
+                    or (reverse.reference, relation.reference)
+                    in view.connections
+                )
+                if view is not None
+                and relation_id in view.prefetched
+                and reverse_id in view.prefetched
+                and reverse is not None
+                else reverse is not None
+                and self.store.connected(relation.reference, reverse.reference)
+            )
+            payloads = (
+                relation.reference in view.payloads
+                and reverse is not None
+                and reverse.reference in view.payloads
+                if view is not None
+                and relation_id in view.prefetched
+                and reverse_id in view.prefetched
+                else reverse is not None
+                and self.store.payload_available(relation.reference)
+                and self.store.payload_available(reverse.reference)
+            )
             stale = stale or (
                 now - relation.checked_at >= POSITIVE_TTL
                 or reverse is None
                 or reverse.status != "ready"
                 or now - reverse.checked_at >= POSITIVE_TTL
                 or reverse.fingerprint != self.fingerprint(destination, origin)
-                or not self.store.connected(
-                    relation.reference, reverse.reference
-                )
-                or not self.store.payload_available(relation.reference)
-                or not self.store.payload_available(reverse.reference)
+                or not connected
+                or not payloads
             )
         elif relation.status == "deterministic_failure":
             stale = stale or now - relation.checked_at >= NEGATIVE_TTL

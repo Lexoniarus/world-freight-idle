@@ -14,6 +14,7 @@ import httpx
 from app.config import Settings
 from app.domain.game_import import GameStateImporter
 from app.domain.geography_migration import GeographyMigrationStore
+from app.domain.market_stock import StockPolicy
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
 from app.domain.read_ports import LeaderboardReader, TrafficReader
 from app.domain.routing_anchor_ports import RoutingAnchorResolverPort
@@ -33,7 +34,10 @@ from app.repositories.leaderboard import SqliteLeaderboardReader
 from app.repositories.legacy_game_import import LegacyGameImporter
 from app.repositories.market_preparation import SqlitePreparationStore
 from app.repositories.market_startup import SqliteMarketStartupStore
-from app.repositories.market_stock import SqliteMarketStockStore
+from app.repositories.market_stock import (
+    SqliteMarketStockStore,
+    SqliteMarketTemplateStore,
+)
 from app.repositories.market_stock_upgrade import MarketStockUpgradeRepository
 from app.repositories.postgres_catalogues import (
     PostgresVehicleCatalogue,
@@ -61,6 +65,7 @@ from app.services.dispatch_planning import DispatchPlanningService
 from app.services.economy_audit import EconomyAuditService
 from app.services.fleet import FleetService
 from app.services.game import GameService
+from app.services.global_stock_preparation import GlobalStockPreparationBatch
 from app.services.map_locations import MapLocationService
 from app.services.market import MarketGenerator
 from app.services.market_candidates import MarketCandidateService
@@ -100,6 +105,7 @@ class GameRuntime:
     clock: Callable[[], float] = time.time
     readiness: RoutingReadinessService | None = None
     preparation_jobs: SqlitePreparationStore | None = None
+    template_store: SqliteMarketTemplateStore | None = None
 
 
 def build_analytics_service(
@@ -170,6 +176,7 @@ def build_game_runtime(
     evidence = SqliteRoutingReadinessStore(database)
     jobs = SqlitePreparationStore(database)
     SqliteMarketStockStore.initialize(database)
+    templates = SqliteMarketTemplateStore(database)
     limiter = ProviderRequestLimiter(
         settings.valhalla_concurrency, settings.valhalla_minimum_interval
     )
@@ -205,6 +212,7 @@ def build_game_runtime(
     return GameRuntime(
         readiness=readiness,
         preparation_jobs=jobs,
+        template_store=templates,
         database=database,
         world=world,
         router=router,
@@ -433,6 +441,9 @@ def build_market_preparation(
     """Bind production routing infrastructure to one player's offers."""
     if runtime.readiness is None or runtime.preparation_jobs is None:
         return None
+    templates = runtime.template_store or SqliteMarketTemplateStore(
+        runtime.database
+    )
     return MarketPreparationService(
         user_id,
         runtime.readiness,
@@ -440,7 +451,7 @@ def build_market_preparation(
         runtime.preparation_jobs,
         runtime.clock,
         runtime.database,
-        SqliteMarketStockStore(runtime.database, user_id),
+        SqliteMarketStockStore(runtime.database, user_id, templates),
     )
 
 
@@ -448,6 +459,9 @@ def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
     """Assemble owned preparation without initializing player state."""
     assert runtime.preparation_jobs is not None
     assert runtime.readiness is not None
+    templates = runtime.template_store or SqliteMarketTemplateStore(
+        runtime.database
+    )
     lease = PreparationLease(runtime.readiness.store, runtime.clock)
     runtime.readiness.worker_owner = lease.owner
 
@@ -469,8 +483,26 @@ def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
             ),
         )
 
+    stock_policy = StockPolicy()
+    global_batch = GlobalStockPreparationBatch(
+        runtime.market.candidates,
+        MarketDemandResolver(runtime.market.candidates),
+        StockPlanningService(stock_policy),
+        MarketTemplateService(
+            runtime.market.factory, stock_policy, runtime.clock
+        ),
+        runtime.readiness,
+        templates,
+        runtime.database,
+        runtime.clock,
+        lease.owned,
+    )
     return MarketPreparationWorker(
-        runtime.preparation_jobs, batch, runtime.clock, lease
+        runtime.preparation_jobs,
+        batch,
+        runtime.clock,
+        lease,
+        global_batch,
     )
 
 

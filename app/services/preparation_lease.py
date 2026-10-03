@@ -3,10 +3,12 @@
 import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
+from typing import TypeVar
 
 from app.domain.readiness_ports import RoutingReadinessStore
 
 WORKER_SUBJECT = "worker:market-preparation"
+ResultT = TypeVar("ResultT")
 
 
 class PreparationLease:
@@ -31,7 +33,7 @@ class PreparationLease:
             WORKER_SUBJECT, self.owner, now, now + 180
         ) or self.store.acquire(WORKER_SUBJECT, self.owner, now, now + 180)
 
-    async def run(self, operation: Callable[[], Awaitable[None]]) -> bool:
+    async def run(self, operation: Callable[[], Awaitable[ResultT]]) -> bool:
         """Run one batch only while renewal succeeds; always join children."""
         if not self.claim():
             return False

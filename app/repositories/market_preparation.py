@@ -126,6 +126,15 @@ class SqlitePreparationStore:
             ).fetchone()
         return row[0] if row else None
 
+    def has_incomplete(self) -> bool:
+        """Report any unfinished player demand, including retry backoff."""
+        with self.database.connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM market_preparations "
+                "WHERE status='partial' LIMIT 1"
+            ).fetchone()
+        return row is not None
+
     def finish(
         self,
         user_id: str,

@@ -30,12 +30,14 @@ class MarketPreparationWorker:
         batches: Callable[[str], PreparationBatch],
         clock: Callable[[], float],
         lease: PreparationLease | None = None,
+        background: PreparationBatch | None = None,
     ) -> None:
         """Inject scheduling storage and player lifecycle composition."""
         self.jobs = jobs
         self.batches = batches
         self.clock = clock
         self.lease = lease
+        self.background = background
         self._task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
@@ -78,6 +80,9 @@ class MarketPreparationWorker:
         """Run one due job in its own trace and persist retry state."""
         user_id = self.jobs.next_player(self.clock())
         if user_id is None:
+            if self.background is not None and not self.jobs.has_incomplete():
+                await self._process_background()
+                return
             await asyncio.sleep(1)
             return
         status = self.jobs.status(user_id)
@@ -104,6 +109,29 @@ class MarketPreparationWorker:
                     self.clock() + 60,
                     self.clock(),
                 )
+
+    async def _process_background(self) -> None:
+        """Use idle worker capacity for one bounded global stock round."""
+        background = self.background
+        assert background is not None
+        with background_trace("global-market-stock"):
+            if self.lease is not None:
+                if not await self.lease.run(background.process):
+                    await asyncio.sleep(1)
+                return
+            result = await background.process()
+            LOGGER.info(
+                "Global market preparation round completed",
+                extra={
+                    "event": "market.global_preparation_completed",
+                    "data": {
+                        "status": result.status,
+                        "structural_candidates": result.structural_count,
+                    },
+                },
+            )
+            if result.status == "ready":
+                await asyncio.sleep(1)
 
     async def process(self, user_id: str) -> None:
         """Execute a typed batch and persist its fenced scheduling result."""

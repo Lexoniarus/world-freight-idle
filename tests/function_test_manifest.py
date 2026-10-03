@@ -941,7 +941,7 @@ FUNCTION_TESTS.update(
         "app.repositories.market_stock_upgrade.MarketStockUpgradeRepository._validate": "test_market_upgrade_rejects_unknown_schema_and_rolls_back_bad_output",
         "app.repositories.market_stock_upgrade.MarketStockUpgradeRepository.inspect": "test_market_upgrade_preserves_source_history_and_only_converts_live_offers",
         "app.repositories.market_stock_upgrade.MarketStockUpgradeRepository.upgrade_to": "test_market_upgrade_preserves_source_history_and_only_converts_live_offers",
-        "app.services.market_demand.MarketDemandResolver.resolve": "test_arrival_stock_starts_at_horizon_without_early_settlement",
+        "app.services.market_demand.MarketDemandResolver.resolve": "test_arrival_stock_starts_at_dispatch_without_early_settlement",
         "app.services.market_selection.MarketSelectionService.select": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
         "app.services.market_templates.MarketTemplateService.materialize": "test_templates_are_shared_but_consumption_is_once_per_account",
         "app.services.stock_planning.StockPlanningService.choose": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
@@ -998,5 +998,40 @@ FUNCTION_TESTS.update(
         "app.providers.supabase_auth.SupabaseJwtVerifier.__init__": "test_supabase_jwks_client_is_cached_and_refreshes_through_pyjwt",
         "app.providers.supabase_auth.SupabaseJwtVerifier.verify": "test_supabase_jwt_verification_accepts_only_stable_valid_identity",
         "app.repositories.accounts.AccountRepository.ensure_external_user": "test_migrated_email_uses_existing_password_and_compact_player_id",
+    }
+)
+
+
+FUNCTION_TESTS.update(
+    {
+        "app.domain.market_preparation.delivery_relations": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.repositories.market_preparation.SqlitePreparationStore.has_incomplete": "test_preparation_generation_and_reference_rollback",
+        "app.repositories.market_stock.SqliteMarketStockStore.levels": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.repositories.market_stock.SqliteMarketTemplateStore.__init__": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.repositories.market_stock.SqliteMarketTemplateStore.add": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.repositories.market_stock.SqliteMarketTemplateStore.levels": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.repositories.market_stock.SqliteMarketTemplateStore.templates": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.repositories.market_stock._load_template": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.repositories.routing_anchors.SqliteRoutingAnchorRepository._decode": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
+        "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.get_many": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
+        "app.repositories.routing_readiness.SqliteRoutingReadinessStore._valid_payload": "test_payload_validation_cache_detects_changes_and_worker_fences_failure",
+        "app.repositories.routing_readiness.SqliteRoutingReadinessStore.available_payloads": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
+        "app.repositories.routing_readiness.SqliteRoutingReadinessStore.connected_references": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
+        "app.repositories.routing_readiness.SqliteRoutingReadinessStore.get_many": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
+        "app.repositories.routing_readiness._load_relation": "test_global_lease_fences_expired_and_competing_writers",
+        "app.services.global_stock_preparation.GlobalStockPreparationBatch._filled": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.services.global_stock_preparation.GlobalStockPreparationBatch._choose": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.services.global_stock_preparation.GlobalStockPreparationBatch._log": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.services.global_stock_preparation.GlobalStockPreparationBatch._next_context": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.services.global_stock_preparation.GlobalStockPreparationBatch._plan": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.services.global_stock_preparation.GlobalStockPreparationBatch._prepare": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.services.global_stock_preparation.GlobalStockPreparationBatch._publish": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.services.global_stock_preparation.GlobalStockPreparationBatch._result": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.services.global_stock_preparation.GlobalStockPreparationBatch._runnable": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.services.global_stock_preparation.GlobalStockPreparationBatch.process": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.services.market_demand.MarketDemandResolver.catalogue": "test_demand_models_and_owned_capacity_remain_separate",
+        "app.services.market_preparation.MarketPreparationService._prepare_relations": "test_preparation_failures_backoff_fencing_and_worker_cleanup",
+        "app.services.preparation_worker.MarketPreparationWorker._process_background": "test_worker_pauses_global_stock_for_every_incomplete_player",
+        "app.services.routing_readiness.RoutingReadinessService._preload": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
     }
 )

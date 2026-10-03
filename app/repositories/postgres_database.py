@@ -379,19 +379,17 @@ class PostgresGameDatabase(SqliteGameDatabase):
                 connection.execute(
                     cast(Any, f"SET search_path TO {self.schema}, public")
                 )
-                connection.autocommit = False
-                connection.execute(
-                    "BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ "
-                    "READ ONLY"
-                )
-                adapter = PostgresConnectionAdapter(connection)
-                token = self._postgres_active.set(adapter)
-                try:
-                    yield
-                finally:
-                    connection.rollback()
-                    self._postgres_active.reset(token)
-                    connection.autocommit = True
+                with connection.transaction():
+                    connection.execute(
+                        "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ "
+                        "READ ONLY"
+                    )
+                    adapter = PostgresConnectionAdapter(connection)
+                    token = self._postgres_active.set(adapter)
+                    try:
+                        yield
+                    finally:
+                        self._postgres_active.reset(token)
         except (psycopg.Error, PoolTimeout) as exc:
             raise PersistenceError("Spielstand nicht verfügbar.") from exc
 
@@ -406,23 +404,18 @@ class PostgresGameDatabase(SqliteGameDatabase):
                 connection.execute(
                     cast(Any, f"SET search_path TO {self.schema}, public")
                 )
-                connection.autocommit = False
-                connection.execute("BEGIN")
-                connection.execute(
-                    "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
-                    (_WRITER_LOCK,),
-                )
-                adapter = PostgresConnectionAdapter(connection)
-                token = self._postgres_active.set(adapter)
-                try:
-                    yield
-                    connection.commit()
-                except BaseException:
-                    connection.rollback()
-                    raise
-                finally:
-                    self._postgres_active.reset(token)
-                    connection.autocommit = True
+                with connection.transaction():
+                    connection.execute(
+                        "SELECT pg_advisory_xact_lock("
+                        "hashtextextended(%s, 0))",
+                        (_WRITER_LOCK,),
+                    )
+                    adapter = PostgresConnectionAdapter(connection)
+                    token = self._postgres_active.set(adapter)
+                    try:
+                        yield
+                    finally:
+                        self._postgres_active.reset(token)
         except (psycopg.Error, PoolTimeout) as exc:
             raise PersistenceError("Spielstand nicht verfügbar.") from exc
 
