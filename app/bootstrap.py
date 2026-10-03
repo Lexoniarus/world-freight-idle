@@ -14,6 +14,7 @@ import httpx
 from app.config import Settings
 from app.domain.game_import import GameStateImporter
 from app.domain.geography_migration import GeographyMigrationStore
+from app.domain.market_stock import StockPolicy
 from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
 from app.domain.read_ports import LeaderboardReader, TrafficReader
 from app.domain.routing_anchor_ports import RoutingAnchorResolverPort
@@ -33,8 +34,19 @@ from app.repositories.leaderboard import SqliteLeaderboardReader
 from app.repositories.legacy_game_import import LegacyGameImporter
 from app.repositories.market_preparation import SqlitePreparationStore
 from app.repositories.market_startup import SqliteMarketStartupStore
-from app.repositories.market_stock import SqliteMarketStockStore
+from app.repositories.market_stock import (
+    SqliteMarketStockStore,
+    SqliteMarketTemplateStore,
+)
+from app.repositories.market_stock_maintenance import (
+    MarketStockMaintenanceRepository,
+)
 from app.repositories.market_stock_upgrade import MarketStockUpgradeRepository
+from app.repositories.postgres_catalogues import (
+    PostgresVehicleCatalogue,
+    PostgresWorldCatalogue,
+)
+from app.repositories.postgres_database import PostgresGameDatabase
 from app.repositories.preferences import SqlitePreferenceStore
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.relational_traffic import SqliteTrafficReader
@@ -56,6 +68,7 @@ from app.services.dispatch_planning import DispatchPlanningService
 from app.services.economy_audit import EconomyAuditService
 from app.services.fleet import FleetService
 from app.services.game import GameService
+from app.services.global_stock_preparation import GlobalStockPreparationBatch
 from app.services.map_locations import MapLocationService
 from app.services.market import MarketGenerator
 from app.services.market_candidates import MarketCandidateService
@@ -66,6 +79,9 @@ from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_selection import MarketSelectionService
 from app.services.market_startup import MarketStartupService
+from app.services.market_stock_maintenance import (
+    MarketStockMaintenanceService,
+)
 from app.services.market_templates import MarketTemplateService
 from app.services.preferences import PreferenceService
 from app.services.preparation_lease import PreparationLease
@@ -95,6 +111,7 @@ class GameRuntime:
     clock: Callable[[], float] = time.time
     readiness: RoutingReadinessService | None = None
     preparation_jobs: SqlitePreparationStore | None = None
+    template_store: SqliteMarketTemplateStore | None = None
 
 
 def build_analytics_service(
@@ -142,18 +159,30 @@ def build_routing_anchor_resolver(
     )
 
 
+def build_game_database(settings: Settings) -> SqliteGameDatabase:
+    """Select PostgreSQL for production and SQLite for local fixtures."""
+    if settings.database_url:
+        return PostgresGameDatabase(
+            settings.database_url,
+            settings.game_database_schema,
+            settings.database_pool_size,
+        )
+    return SqliteGameDatabase(settings.db_path)
+
+
 def build_game_runtime(
     settings: Settings,
     routing_client: httpx.AsyncClient,
     rng_seed: int | None = None,
 ) -> GameRuntime:
     """Initialize only relational storage and shared application resources."""
-    database = SqliteGameDatabase(settings.db_path)
+    database = build_game_database(settings)
     database.initialize()
     cache = SqliteProviderCache(database)
     evidence = SqliteRoutingReadinessStore(database)
     jobs = SqlitePreparationStore(database)
     SqliteMarketStockStore.initialize(database)
+    templates = SqliteMarketTemplateStore(database)
     limiter = ProviderRequestLimiter(
         settings.valhalla_concurrency, settings.valhalla_minimum_interval
     )
@@ -189,6 +218,7 @@ def build_game_runtime(
     return GameRuntime(
         readiness=readiness,
         preparation_jobs=jobs,
+        template_store=templates,
         database=database,
         world=world,
         router=router,
@@ -232,7 +262,11 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
 
 
 def build_vehicle_catalogue(settings: Settings) -> SqliteVehicleCatalogue:
-    """Resolve the bundled catalogue independently of the player database."""
+    """Resolve production PostgreSQL or an explicit local fixture."""
+    if settings.database_url:
+        return PostgresVehicleCatalogue(
+            settings.database_url, settings.vehicle_database_schema
+        )
     return SqliteVehicleCatalogue(
         settings.vehicle_catalogue_path
         or settings.base_dir / "data" / "world_freight_vehicle_catalog.sqlite3"
@@ -279,6 +313,27 @@ def build_market_stock_upgrade(
     return MarketStockUpgradeRepository(source, now)
 
 
+def build_market_stock_maintenance(
+    settings: Settings,
+) -> tuple[MarketStockMaintenanceService, SqliteGameDatabase]:
+    """Bind explicit stock maintenance without HTTP or provider access."""
+    database = build_game_database(settings)
+    database.initialize()
+    candidates = MarketCandidateService(
+        build_world_catalogue(settings),
+        CachedVehicleCatalogue(build_vehicle_catalogue(settings)),
+    )
+    return (
+        MarketStockMaintenanceService(
+            candidates,
+            MarketDemandResolver(candidates),
+            MarketStockMaintenanceRepository(database),
+            time.time,
+        ),
+        database,
+    )
+
+
 def build_runtime_view(
     runtime: GameRuntime, user_id: str
 ) -> RuntimeViewService:
@@ -316,12 +371,18 @@ def build_profile_maintenance_service(
 
 def build_world_catalogue(settings: Settings) -> CachedWorldCatalogue:
     """Resolve one lazily cached immutable runtime world revision."""
-    source = SqliteWorldCatalogue(
-        settings.world_catalogue_path
-        or settings.base_dir
-        / "data"
-        / "world_freight_company_facility_mvp.sqlite3"
-    )
+    source: WorldCatalogue
+    if settings.database_url:
+        source = PostgresWorldCatalogue(
+            settings.database_url, settings.world_database_schema
+        )
+    else:
+        source = SqliteWorldCatalogue(
+            settings.world_catalogue_path
+            or settings.base_dir
+            / "data"
+            / "world_freight_company_facility_mvp.sqlite3"
+        )
     return CachedWorldCatalogue(source)
 
 
@@ -407,6 +468,9 @@ def build_market_preparation(
     """Bind production routing infrastructure to one player's offers."""
     if runtime.readiness is None or runtime.preparation_jobs is None:
         return None
+    templates = runtime.template_store or SqliteMarketTemplateStore(
+        runtime.database
+    )
     return MarketPreparationService(
         user_id,
         runtime.readiness,
@@ -414,7 +478,7 @@ def build_market_preparation(
         runtime.preparation_jobs,
         runtime.clock,
         runtime.database,
-        SqliteMarketStockStore(runtime.database, user_id),
+        SqliteMarketStockStore(runtime.database, user_id, templates),
     )
 
 
@@ -422,6 +486,9 @@ def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
     """Assemble owned preparation without initializing player state."""
     assert runtime.preparation_jobs is not None
     assert runtime.readiness is not None
+    templates = runtime.template_store or SqliteMarketTemplateStore(
+        runtime.database
+    )
     lease = PreparationLease(runtime.readiness.store, runtime.clock)
     runtime.readiness.worker_owner = lease.owner
 
@@ -443,8 +510,26 @@ def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
             ),
         )
 
+    stock_policy = StockPolicy()
+    global_batch = GlobalStockPreparationBatch(
+        runtime.market.candidates,
+        MarketDemandResolver(runtime.market.candidates),
+        StockPlanningService(stock_policy),
+        MarketTemplateService(
+            runtime.market.factory, stock_policy, runtime.clock
+        ),
+        runtime.readiness,
+        templates,
+        runtime.database,
+        runtime.clock,
+        lease.owned,
+    )
     return MarketPreparationWorker(
-        runtime.preparation_jobs, batch, runtime.clock, lease
+        runtime.preparation_jobs,
+        batch,
+        runtime.clock,
+        lease,
+        global_batch,
     )
 
 
@@ -454,7 +539,7 @@ def build_routing_audit(runtime: GameRuntime) -> SqliteRoutingAudit:
 
 
 def build_economy_audit(root: Path, seed: int) -> EconomyAuditService:
-    """Compose reproducible audits from read-only reference catalogues."""
+    """Compose reproducible audits from explicit offline catalogues."""
     return EconomyAuditService(
         SqliteVehicleCatalogue(
             root / "data/world_freight_vehicle_catalog.sqlite3"

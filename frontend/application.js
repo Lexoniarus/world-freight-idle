@@ -23,10 +23,12 @@ export class GameApplication {
     preferences,
     focus,
     assets,
+    supabaseAuth,
   }) {
     this.focus = focus;
     this.preferences = preferences;
     this.assets = assets;
+    this.supabaseAuth = supabaseAuth;
     this.city = city;
     this.layers = layers;
     this.analytics = analytics;
@@ -101,6 +103,7 @@ export class GameApplication {
   /** @returns {Promise<void>} */
   async logout() {
     await this.api.request("/auth/logout", { method: "POST" });
+    await this.supabaseAuth?.logout();
     reportCleanup([() => this.destroy()]);
     this.redirect("/login");
   }
@@ -129,6 +132,7 @@ export class GameApplication {
         this.notifications,
         this.state,
         this.assets,
+        this.supabaseAuth,
         this.api,
       ].map((component) => () => component?.destroy()),
     );

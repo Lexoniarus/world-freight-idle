@@ -16,6 +16,7 @@ async def test_audit_report_is_local_and_prewarm_counts_every_request(
     capsys,
 ):
     monkeypatch.setenv("DB_PATH", str(tmp_path / "audit.db"))
+    monkeypatch.setenv("DATABASE_URL", "")
     monkeypatch.setenv("VALHALLA_URL", "https://routing.test")
     monkeypatch.setenv("VALHALLA_MINIMUM_INTERVAL", "0")
     actual_client = httpx.AsyncClient

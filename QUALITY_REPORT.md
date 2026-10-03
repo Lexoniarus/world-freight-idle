@@ -1,3 +1,135 @@
+# Qualitätsbericht: Supabase-Produktionsruntime
+
+Stand: 03.10.2026. Branch `fix/supabase-runtime-current-head`, Basis
+`origin/main`. Dieser Abschnitt dokumentiert die aktuelle Abnahme. Alle Berichte
+unterhalb der Trennlinie bleiben als historische Nachweise unverändert erhalten.
+
+## Ergebnis und Verantwortlichkeiten
+
+PostgreSQL in Supabase ist die produktive Persistenz für Spielstand, Welt- und
+Fahrzeugkatalog. SQLite bleibt auf Tests und ausdrücklich lokale Offline-Arbeit
+begrenzt. Der Backend-Adapter besitzt Verbindungen und Transaktionen; Browser und
+Supabase-Client greifen nicht direkt auf die privaten Anwendungsschemas zu.
+
+Der Login versucht zuerst Supabase Auth. Nur wenn dort noch kein Passwortkonto
+für einen der drei migrierten Altaccounts existiert, verwendet der Browser den
+Same-Origin-Endpunkt. Die private Zuordnung in `game.account_emails` löst dabei
+die hinterlegte E-Mail auf. Kompakte historische Spieler-IDs bleiben erhalten;
+neue Registrierungen laufen ausschließlich über Supabase Auth.
+
+Die Schemas `game`, `world_catalogue` und `vehicle_catalogue` sind für `PUBLIC`,
+`anon` und `authenticated` gesperrt. RLS ist als zusätzliche Schutzschicht auf
+allen Tabellen aktiv. Der Startup-Check bricht bei einer Tabelle ohne RLS ab.
+Die Backend-Rolle behält den für den Adapter erforderlichen Besitz- und
+`BYPASSRLS`-Zugriff. Das manuelle Architekturreview bestätigt weiterhin die
+Trennung von Domain, Services, Transport und Persistenz sowie die zentrale
+Browser-API in `frontend/api.js`.
+
+Der Marktworker behandelt konkrete Nachfrage strikt vor globalem Vorrat: Idle-
+Fahrzeuge, Zielstädte aktiver Transporte, beide Reserven und erst danach globale
+Stadt-/Modell-/Band-Kontexte. Ein `partial`er Spielerstatus sperrt Priorität 3
+auch während eines Backoffs. Globale Runden prüfen höchstens ein bidirektionales
+Delivery-Paar und veröffentlichen nur gemeinsame Vorlagen; fahrzeugabhängige
+Anfahrten bleiben Priorität 1 und 2 vorbehalten.
+
+Die Auswahl innerhalb einer Qualitätsstufe verwendet den versionierten
+SHA-256-Seed `market-stock-v1`. Stadt, Modell, Entfernungsband, Priorität,
+Vorratsplatz, Trade-Key und Zweck bestimmen Auswahl, Fahrzeug und Beladung
+unabhängig von Eingabereihenfolge, Neustart oder Retry. IDs bleiben neue UUIDs.
+Eine fertig geprüfte Verbindung veröffentlicht sofort genau ein Angebot; weitere
+Runden bevorzugen neue Relation, Frachtart und Ziel und füllen danach bis auf drei
+sichtbare und zehn gespeicherte Angebote je Band auf.
+
+## Automatisierte Abnahme
+
+`.venv/Scripts/python.exe -X utf8 scripts/quality.py` wurde vollständig mit
+Exitcode 0 ausgeführt. Der reale Supervisor-Test bestand separat in 2,22 s. Der
+abgedeckte Hauptlauf meldete **617 bestanden, 1 gezielt ausgelassen**, **100,00 %
+App-Statement-Coverage** bei **7.667 Statements** und 62 Warnungen aus bestehenden
+Testabhängigkeiten beziehungsweise Ressourcen-Cleanup. Zusätzlich bestanden
+**122 Frontend-Verhaltenstests**, Ruff, Ruff-Format, mypy für 170 Dateien,
+Pyright, ESLint, Stylelint, Prettier, TypeScript/checkJs, Produktionsbuild und
+compileall.
+
+Der Lauf simulierte einen frischen Checkout ohne lokale Katalogdateien. Ein
+deterministischer Test-Fixture-Builder erzeugte dabei ausschließlich ignorierte,
+synthetische SQLite-Kataloge; `.env` und Live-Supabase blieben deaktiviert.
+
+`npm run test:e2e` meldete **34 bestanden** in 5,7 Minuten. Desktop-, Tablet- und
+Mobilfälle liefen über die isolierte Browser-Settings-Schicht; der Playwright-
+Server erhält weder `DATABASE_URL` noch Supabase-Konfiguration und griff nicht
+auf Produktionsdaten zu. Die Regression bestätigt zusätzlich den sichtbaren
+Übergang `0 -> 1 -> 2 -> 3`, inkrementelles Auffüllen bei `partial` sowie das
+Warten auf das zweite Angebot in Konditionsvergleichen. Kartenregressionsbilder
+und fahrzeuggebundener Refresh blieben ohne Layoutüberlagerung.
+
+## Lesende Performanceprüfung des Marktworkers
+
+Die Prüfung am 03.10.2026 verwendete ausschließlich `SELECT` und `EXPLAIN
+(ANALYZE, BUFFERS)`. Es gab keine Provider-, Auth- oder Gameplay-Mutation. Der
+mengenbasierte Read lud 246 Routinganker in 11,04 ms und 133 geprüfte
+Routenpayloads aus einer Auswahl von 250 Relationen in 54,16 ms. Damit wächst
+die SQL-Abfragezahl nicht mit jeder einzelnen Relation.
+
+Die globale Bandzählung gruppierte 1.761 Vorlagen in 180 Bestandsgruppen und
+benötigte 737,93 ms. Dieser bekannte Vollscan bleibt auf die opportunistische
+Priorität 3 begrenzt; drei produktive Spielerstatus waren zum Messzeitpunkt
+`partial`, weshalb der Worker globale Vorbereitung korrekt nicht starten würde.
+Eine zusätzliche Spalte oder Migration wurde entsprechend dem vereinbarten
+Umbau ohne Schemaänderung nicht eingeführt.
+
+Nach der gezielten Bereinigung enthielt der produktive Bestand 294 Vorlagen und
+117 gebundene Angebote; alle drei Spielerjobs waren erwartungsgemäß `partial`,
+Checkpoints waren null. Die Scheduler-Abfrage benötigte laut `EXPLAIN (ANALYZE,
+BUFFERS)` 0,163 ms. Der konkrete Stadt-/Modell-Template-Read verwendete den
+vorhandenen Index `templates_scope`; die Indexabfrage selbst benötigte 0,120 ms,
+der vollständige Explain-Lauf einschließlich zweier Scope-Init-Pläne 2,895 ms.
+
+Der vorgeschaltete Read-only-Wartungslauf plante 267 Duplikatssegmente, 946
+ungenutzte gebundene Angebote und 2.471 unreferenzierte Template-Duplikate für
+drei Konten. Der transaktionale Apply-Lauf archivierte diese Datensätze mit
+SHA-256, prüfte die geschützten Spiel-/Transportdaten vor und nach dem Lauf und
+setzte nur betroffene Markt-Cursor, Checkpoints und Jobs zurück. Ein unmittelbar
+anschließender `--check` meldete für alle vier Zähler null und bestätigte damit
+Idempotenz.
+
+Nach dem kontrollierten Neustart veröffentlichte jede der ersten drei fälligen
+Spielerrunden genau ein Angebot. Die kalte erste Runde benötigte 17,31 s, die
+folgenden beiden 8,47 s und 10,69 s. Davon entfielen 4,62 bis 5,20 s auf reale
+Providerarbeit. Nach dem Warm-up sanken State-, Kandidaten- und Readiness-Anteile
+deutlich; weitere beobachtete Runden lagen zwischen 8,35 s und 12,34 s. Der
+Worker rotierte dabei zwischen den drei `partial`-Jobs. Die aggregierten
+gebundenen Bestände lagen während der Beobachtung bei 18, 45 und 63 Angeboten;
+Benutzerkennungen wurden weder ausgegeben noch in den Bericht übernommen.
+
+## Live-Verifikation ohne Gameplay-Mutation
+
+Die Remote-Migrationsliste enthält
+`20261002114339_harden_private_schemas`. Der Inhalt entspricht der lokalen,
+bereits angewendeten Migration; sie wurde nicht erneut ausgeführt. Alle **72 von
+72** Anwendungstabellen besitzen RLS; eine erneute lesende Kontrolle am
+03.10.2026 ergab weiterhin **0** öffentlich lesbare Tabellen. Tabellen- und
+Funktionsrechte sowie
+Schema-Usage für `PUBLIC`, `anon` und `authenticated` sind jeweils **0**. Die drei
+gezielten Runtime-FK-Indizes sind vorhanden.
+
+Der produktive Backend-Adapter validierte Schema 1.2.0 und lud **558**
+Weltstandorte sowie **14** Fahrzeugmodelle. Ein vorhandener migrierter Account
+konnte sich über die Legacy-Brücke anmelden; Karte, Kapital, Reputation und vier
+Fahrzeuge wurden geladen und als synchronisiert angezeigt. Der anschließende
+Logout bestand. Es wurden keine Käufe, Dispositionen oder sonstigen
+Gameplay-Mutationen ausgelöst.
+
+Der Supabase Security Advisor meldet erwartungsgemäß 72 Info-Hinweise
+`rls_enabled_no_policy`: Für die vollständig privaten Schemas sind keine
+Browser-Policies vorgesehen. Die 31 Hinweise zu Katalog-Fremdschlüsseln, der
+fehlende Primärschlüssel der einzelnen Schema-Versionszeile und aktuell ungenutzte
+Indizes werden ohne gemessenen Bedarf nicht verändert. Hosting, Recovery,
+Backup-/Restore-Abnahme, öffentliche Provider und eine reale iPad-Abnahme bleiben
+separate Betriebsarbeit.
+
+---
+
 # Qualitätsbericht: gemeinsamer Vorrat und schnelle Runtime
 
 Stand: 28.09.2026. Branch `feature/frontend-v2`, Basis `d11034f`.

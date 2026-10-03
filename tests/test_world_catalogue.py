@@ -381,17 +381,18 @@ def test_world_catalogue_is_packaged_independently_of_player_state(
 
     root = Path(__file__).resolve().parents[1]
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("DATABASE_URL", "")
     monkeypatch.delenv("DB_PATH", raising=False)
     monkeypatch.delenv("WORLD_CATALOGUE_PATH", raising=False)
     settings = Settings.from_env(root)
     assert settings.db_path.parent == tmp_path
     assert build_world_catalogue(settings).read().facilities
     for name in (".gitignore", ".dockerignore"):
-        assert "!data/world_freight_company_facility_mvp.sqlite3" in (
+        assert "!data/world_freight_company_facility_mvp.sqlite3" not in (
             root / name
         ).read_text(encoding="utf-8")
     compose = (root / "docker-compose.yml").read_text(encoding="utf-8")
-    assert "world_freight_company_facility_mvp.sqlite3:ro" in compose
+    assert "world_freight_company_facility_mvp.sqlite3:ro" not in compose
     monkeypatch.setenv(
         "WORLD_CATALOGUE_PATH", str(tmp_path / "missing.sqlite3")
     )

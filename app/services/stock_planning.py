@@ -1,6 +1,6 @@
 """Prioritize finite market deficits independently of provider execution."""
 
-from collections import Counter, defaultdict
+from collections import defaultdict
 from dataclasses import dataclass
 
 from app.domain.contracts import ContractOffer
@@ -12,6 +12,10 @@ from app.domain.market_stock import (
     StockPolicy,
     TradeKey,
 )
+from app.services.deterministic_market_random import (
+    DeterministicMarketRandom,
+)
+from app.services.market_coverage import CityCoverage
 from app.services.vehicle_coverage import (
     restrict_candidate,
     trade_key,
@@ -49,6 +53,7 @@ class StockPlanningService:
     """Rank real deficits, preserving deterministic fair group rotation."""
 
     policy: StockPolicy
+    random: DeterministicMarketRandom = DeterministicMarketRandom()
 
     def targets(
         self,
@@ -175,20 +180,56 @@ class StockPlanningService:
         )
         if existing is not None:
             return existing
-        counts = Counter(
-            (
-                t.offer.origin.facility_uid,
-                t.offer.destination.facility_uid,
-                t.offer.cargo.nhm_row_id,
+        preferred = self.preferred(target, templates)
+        identities = tuple(
+            "\x1e".join(map(str, trade_key(candidate)))
+            for candidate in preferred
+        )
+        index = self.random.weighted_index(
+            identities,
+            tuple(candidate.weight for candidate in preferred),
+            target.key,
+            target.priority,
+            target.count,
+            "candidate",
+        )
+        return preferred[index]
+
+    def preferred(
+        self,
+        target: StockTarget,
+        templates: tuple[PreparedTemplate, ...],
+    ) -> tuple[MarketCandidate, ...]:
+        """Return the least represented relation/cargo/destination rank."""
+        coverage = CityCoverage()
+        for template in templates:
+            offer = template.offer
+            context = offer.market_context
+            if (
+                template.city_uid != target.demand.vehicle.city_uid
+                or template.model_id != target.demand.vehicle.model_id
+                or context is None
+                or context.distance_band != target.band
+            ):
+                continue
+            coverage.record(
+                offer.origin.facility_uid,
+                offer.destination.facility_uid,
+                offer.cargo.nhm_row_id,
+                offer.destination.city.city_uid,
+                context.distance_band,
             )
-            for t in templates
-            if t.model_id == target.demand.vehicle.model_id
+        preferred_rank = min(coverage.rank(c) for c in target.choices)
+        ranked = tuple(
+            c for c in target.choices if coverage.rank(c) == preferred_rank
         )
-        return min(
-            target.choices,
-            key=lambda c: (
-                counts[trade_key(c)],
-                -c.weight,
-                trade_key(c),
-            ),
-        )
+        unique: dict[TradeKey, MarketCandidate] = {}
+        for candidate in ranked:
+            key = trade_key(candidate)
+            current = unique.get(key)
+            if current is None or (candidate.weight, repr(candidate)) > (
+                current.weight,
+                repr(current),
+            ):
+                unique[key] = candidate
+        return tuple(unique[key] for key in sorted(unique))

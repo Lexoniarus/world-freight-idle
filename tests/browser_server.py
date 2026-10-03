@@ -11,22 +11,20 @@ from tempfile import TemporaryDirectory
 from fastapi import Depends
 
 from app.api.v1.dependencies import get_game_service
-from app.config import Settings
 from app.domain.energy import EnergyProfile
 from app.launcher import stop_child
 from app.main import create_app, lifespan
 from app.repositories.market_startup import SqliteMarketStartupStore
 from app.services.game import GameService
+from tests.browser_settings import isolated_browser_settings
 from tests.conftest import (
     FakeRouter,
     FakeRoutingAnchorResolver,
 )
 
 temporary = TemporaryDirectory(prefix="world-freight-browser-")
-settings = replace(
-    Settings.from_env(),
-    db_path=Path(temporary.name) / "test.db",
-    game_time_scale=900,
+settings = isolated_browser_settings(
+    Path(temporary.name) / "test.db",
 )
 app = create_app(settings)
 

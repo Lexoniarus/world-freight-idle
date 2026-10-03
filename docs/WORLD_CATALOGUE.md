@@ -27,7 +27,7 @@ Semantik kommt aus dem Katalog; zusätzliche Waren werden nicht erfunden.
 
 ## Stadtmarkt
 
-Eigene idle OwnedVehicles und angekündigte Ankünfte ab 60 Minuten vor Ankunft
+Eigene idle OwnedVehicles und Zielorte aller aktiven Transporte ab Dispatch
 aktivieren eindeutige Bedarfsstädte anhand city_uid.
 Der gespeicherte Standort-Snapshot hat Vorrang; fehlt er, wird die gespeicherte
 Facility-ID exakt aufgelöst. Alle geeigneten Facilities dieser Städte sind
@@ -51,11 +51,15 @@ Frachtrate ist STANDARD_RATE (0,18) × freight_rate_factor_game.
 ## Coverage und Retention
 
 Die aktuelle Vorratsregel ersetzt die frühere zeitlich begrenzte Stadtdeckung.
-Der Worker hält mindestens zehn vorbereitete Vorlagen je Bedarfsstadt, konkretem
-Modell und verfügbarem Distanzband vor. Alle 14 Modelle werden berücksichtigt;
-fehlende sichtbare Angebote echter Fahrzeuge und bevorstehende Ankünfte haben
-Vorrang. Für das ausgewählte Fahrzeug liefert die API höchstens drei passende,
-fahrbare Angebote je Band. Die Auswahl bleibt ohne Zustandsänderung stabil.
+Der Worker hält mindestens zehn vorbereitete Vorlagen je Stadt, konkretem Modell
+und verfügbarem Distanzband vor. Sichtbare Idle-Angebote, sichtbare Zielstadt-
+Angebote und deren Reserven werden zuerst gefüllt. Erst danach wird der übrige
+globale Vorrat opportunistisch je einzelner Kombination vorbereitet. Für das
+ausgewählte Fahrzeug liefert die API höchstens drei passende, fahrbare Angebote
+je Band. Der erste geprüfte Auftrag erscheint sofort; der Worker ergänzt danach
+schrittweise vielfältige Relationen. Auswahl, Generierungsfahrzeug und Load
+Factor sind über einen versionierten Kontext deterministisch und damit von
+Iteration, Prozessneustart und Retry unabhängig. IDs bleiben neu und eindeutig.
 
 Vorlagen sind gemeinsam, persönliche Angebote und einmalige Verwendung sind
 spielergebunden. Neue persönliche Mengen basieren auf der gespeicherten
@@ -63,7 +67,10 @@ Fahrzeugkapazität. Aufträge verfallen nicht zeitlich (`expires_at = null`) und
 bleiben nach Abfahrt gespeichert. Refresh würfelt sie nicht neu. Abgelaufene
 Routennachweise oder unbrauchbare Katalogbezüge verhindern die Freigabe, ohne
 historische Konditionen zu verändern. Nicht erzeugbare Bänder bleiben eine
-Diagnose, keine synthetische Handelsbeziehung. [ADR 0008](adr/0008-shared-market-stock.md).
+Diagnose, keine synthetische Handelsbeziehung. Innerhalb eines Bandes werden
+unbenutzte Relation, Fracht und Zielstadt in dieser Reihenfolge bevorzugt. Erst
+ein strukturell erschöpfter Kandidatenraum darf Wiederholungen zum Erreichen des
+Vorratsziels verwenden. [ADR 0008](adr/0008-shared-market-stock.md).
 
 ## Bestand und Historie
 

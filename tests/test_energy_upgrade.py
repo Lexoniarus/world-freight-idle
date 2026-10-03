@@ -278,7 +278,7 @@ def test_energy_upgrade_builder_requires_catalogue(tmp_path):
     from app.config import Settings
     from app.domain.errors import CatalogueError
 
-    settings = Settings.from_env()
+    settings = replace(Settings.from_env(), database_url=None)
     assert build_energy_upgrade(tmp_path / "source.db", settings).models
     with pytest.raises(CatalogueError):
         build_energy_upgrade(

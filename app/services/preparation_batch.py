@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from app.domain.contracts import ContractOffer
 from app.domain.market import MarketCandidate, MarketVehicle
+from app.domain.market_preparation import required_relations
 from app.domain.state_ports import GameStateRepository
 from app.services.market_candidates import MarketCandidateService
 from app.services.market_coverage import MarketCoverageService
@@ -75,15 +76,20 @@ class MarketPreparationBatchService:
         fleet = self.candidates.resolve_fleet(owned)
         cities = self.scope.resolve(owned)
         candidates = self.candidates.build(cities, fleet)
-        states = {
-            pair: self.preparation.readiness.current(*pair)
-            for pair in dict.fromkeys(
-                (c.trade.origin.facility_uid, c.trade.destination.facility_uid)
-                for c in candidates
-            )
-        }
-        usable = self.preparation.preparable_candidates(candidates)
-        ready = self.preparation.ready_candidates(candidates)
+        pairs = required_relations(candidates)
+        with self.preparation.readiness.reading(pairs):
+            states = {
+                pair: self.preparation.readiness.current(*pair)
+                for pair in dict.fromkeys(
+                    (
+                        candidate.trade.origin.facility_uid,
+                        candidate.trade.destination.facility_uid,
+                    )
+                    for candidate in candidates
+                )
+            }
+            usable = self.preparation.preparable_candidates(candidates)
+            ready = self.preparation.ready_candidates(candidates)
         vehicles = self.vehicle_coverage
         coverage = vehicles.extend(
             self.coverage.plan(cities, usable, offers),
@@ -175,8 +181,6 @@ class MarketPreparationBatchService:
 
     def _ready(self, plan: PreparationBatchPlan) -> bool:
         """Require every planned delivery and approach to be ready."""
-        from app.domain.market_preparation import required_relations
-
         return all(
             self.preparation.readiness.ready(*pair) is not None
             for pair in required_relations(plan.needed)

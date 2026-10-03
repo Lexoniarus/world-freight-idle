@@ -60,8 +60,8 @@ async def test_truck_anchor_locator_uses_real_locate_edge_shape():
     assert calls[0].headers["X-Client-Id"] == "client-id"
     assert "X-Trace-Id" in calls[0].headers
     body = calls[0].read().decode("utf-8")
-    assert '"costing":"truck"' in body
-    assert '"verbose":true' in body
+    assert httpx.Response(200, content=body).json()["costing"] == "truck"
+    assert httpx.Response(200, content=body).json()["verbose"] is True
 
 
 @pytest.mark.asyncio

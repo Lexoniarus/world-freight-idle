@@ -77,8 +77,9 @@ Terminalaufenthalten und globaler Netzwerkoptimierung.
 
 HTTPS, kontrollierter Reverse Proxy, geeignete Provider-Endpunkte,
 Account-Recovery, Backups/Restore, Moderation und Lasttests.
-PostgreSQL mit Migrationen und verteilte Limiter vor größerer Skalierung.
-Diese Arbeit ist noch offen; lokale Tests sind keine Produktionsfreigabe.
+PostgreSQL/Supabase und versionierte Migrationen sind umgesetzt. Verteilte
+Limiter und die übrige Betriebsabnahme bleiben vor größerer Skalierung offen;
+lokale Tests sind keine Produktionsfreigabe.
 
 ## Standards-Bereinigung der vorhandenen UI-Basis
 
@@ -137,8 +138,9 @@ Die gemeinsame Asset-Zuordnung und Modellordner ändern keine Spielmechanik.
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
-WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
+Typisierte Entities, PostgreSQL-Spielpersistenz in privaten Supabase-Schemas und
+WorldCatalogue 4.2.0 bilden die Produktionslaufzeit. SQLite bleibt auf Tests und
+explizite Offline-Werkzeuge beschränkt. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
 Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).
@@ -277,10 +279,11 @@ zehn. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen Angebote nutze
 
 Ungenutzte Vorlagen und Angebote verfallen nicht zeitlich und bleiben bei Abfahrt
 und Rückkehr erhalten. Ein Verbrauch lässt gespeicherte Reserve sofort nachrücken;
-der Worker füllt nach. Bedarf entsteht im Stand und ab 60 Minuten vor gespeicherter
-Ankunft. Fehlende Hin-/Rückwege, veraltete Prüfnachweise oder unbrauchbare
-Katalogbezüge geben keine Angebote frei. Alle 14 Modelle werden in Bedarfsstädten
-berücksichtigt, tatsächlich wartende Fahrzeuge zuerst.
+der Worker füllt nach. Bedarf entsteht für Idle-Fahrzeuge am aktuellen Standort
+und für aktive Transporte unmittelbar ab Dispatch in der Zielstadt. Sichtbarer
+Bestand und Reserve dieser Kontexte haben Vorrang. Erst danach bereitet der
+Worker alle übrigen Stadt-/Modell-/Band-Kontexte global vor. Fehlende Hin-/
+Rückwege, veraltete Nachweise oder unbrauchbare Katalogbezüge geben nichts frei.
 
 Die Schemaübernahme nach 1.2.0 ist ein expliziter Offline-Schritt mit Backup und
 neuer Ausgabe. Live-Aktivierung ist nicht Teil von Commit/Push. Verbindliche
@@ -288,3 +291,27 @@ Gesamtabnahme: Quality-Gate mit 100 % app-Statement-Coverage, vollständige
 Browserregression und Leistungsabnahme. Tatsächlicher Stand und Grenzen stehen
 im [Qualitätsbericht](../QUALITY_REPORT.md); Verantwortlichkeiten in
 [ADR 0008](adr/0008-shared-market-stock.md).
+
+## Supabase/PostgreSQL production runtime (28.09.2026)
+
+Produktiv verwendet die Anwendung eine serverseitige PostgreSQL-Verbindung zu
+Supabase. `game`, `world_catalogue` und `vehicle_catalogue` sind getrennte
+Schemas derselben PostgreSQL-Instanz. Browserzugriff auf diese Schemas findet
+nicht statt; der Browser bleibt an `/api/v1` gebunden.
+
+`DATABASE_URL` aktiviert den PostgreSQL-Pfad. Ohne diese Variable bleiben die
+bestehenden SQLite-Adapter ausschließlich für Tests und explizite Offline-
+Werkzeuge verfügbar. Die Produktions-Composition-Root wählt PostgreSQL für
+Spielzustand und beide Referenzkataloge. Der World-/Vehicle-Snapshot wird wie
+zuvor pro Prozess validiert und gecacht.
+
+Die PostgreSQL-Game-UoW hält die bestehende atomare Semantik konservativ durch
+einen transaktionsgebundenen Advisory Lock aufrecht. Provider-Awaits bleiben
+außerhalb von Schreibtransaktionen. Read-Transaktionen verwenden einen
+repeatable-read/read-only Snapshot. Der Connection-Pool gehört dem jeweiligen
+Runtime-/Prewarm-Prozess und wird beim Shutdown geschlossen.
+
+Historische Snapshot-Texte bleiben Text und werden nicht still nach JSONB
+migriert. SQLite-spezifische JSON1-Leseprojektionen werden ausschließlich an
+der PostgreSQL-Adaptergrenze in native PostgreSQL-JSONB-Ausdrücke übersetzt.
+Die Domain-, Service- und HTTP-Verträge ändern sich dadurch nicht.

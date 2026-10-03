@@ -11,12 +11,65 @@ from app.bootstrap import build_economy_audit
 from app.domain.errors import PersistenceError, RoutingError
 from app.domain.market_preparation import PreparationStatus
 from app.services.economy_audit import summarize_economy
+from app.services.preparation_batch import PreparationBatchResult
 from app.services.preparation_worker import MarketPreparationWorker
 from tests.test_market_preparation import (
     bind_preparation,
     make_batch,
     require_value,
 )
+
+
+@pytest.mark.asyncio
+async def test_worker_pauses_global_stock_for_every_incomplete_player():
+    jobs = Mock()
+    jobs.next_player.return_value = None
+    jobs.has_incomplete.return_value = True
+    background = Mock()
+    background.process = AsyncMock(
+        return_value=PreparationBatchResult("global", "partial", 0, 1, ())
+    )
+    worker = MarketPreparationWorker(
+        jobs,
+        Mock(),
+        lambda: 10,
+        background=background,
+    )
+    with patch(
+        "app.services.preparation_worker.asyncio.sleep", new=AsyncMock()
+    ):
+        await worker._iteration()
+        background.process.assert_not_awaited()
+        jobs.has_incomplete.return_value = False
+        await worker._iteration()
+        background.process.assert_awaited_once()
+        background.process.return_value = PreparationBatchResult(
+            "global", "ready", 70, 0, ()
+        )
+        await worker._iteration()
+        assert background.process.await_count == 2
+        jobs.next_player.return_value = "owner"
+        jobs.status.return_value = PreparationStatus(
+            "player", "generation", "partial", None
+        )
+        with patch.object(worker, "process", new=AsyncMock()) as process:
+            await worker._iteration()
+            process.assert_awaited_once_with("owner")
+        assert background.process.await_count == 2
+
+        lease = Mock()
+        lease.run = AsyncMock(side_effect=(False, True))
+        leased = MarketPreparationWorker(
+            jobs,
+            Mock(),
+            lambda: 10,
+            lease=lease,
+            background=background,
+        )
+        jobs.next_player.return_value = None
+        await leased._iteration()
+        await leased._iteration()
+        assert lease.run.await_count == 2
 
 
 @pytest.mark.asyncio

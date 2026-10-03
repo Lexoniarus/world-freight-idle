@@ -24,7 +24,7 @@ class MarketDemandResolver:
         arrivals: tuple[MarketArrival, ...],
         now: float,
     ) -> tuple[MarketDemand, ...]:
-        """Project idle and pending arrival demand, then missing models."""
+        """Project concrete idle and pending-arrival vehicle demand."""
         models = {
             model.id: model
             for model in self.candidates.catalogue.list_models()
@@ -49,31 +49,6 @@ class MarketDemandResolver:
                     arrival.transport_id,
                 )
             )
-        cities = {d.vehicle.city_uid: d.vehicle.facility_uid for d in result}
-        for city, facility in sorted(cities.items()):
-            for model in models.values():
-                if model.mode != "truck":
-                    continue
-                result.append(
-                    MarketDemand(
-                        MarketVehicle(
-                            f"catalogue:{city}:{model.id}",
-                            model.id,
-                            city,
-                            model.mode,
-                            model.capacity_tons,
-                            vehicle_scale_for_segment(model.segment),
-                            model.transport_capabilities,
-                            VehicleCostProfile(
-                                model.maintenance_eur_per_1000_km / 1000
-                            ),
-                            model.energy,
-                            facility,
-                        ),
-                        now,
-                        catalogue_only=True,
-                    )
-                )
         return tuple(
             sorted(
                 result,
@@ -84,3 +59,45 @@ class MarketDemandResolver:
                 ),
             )
         )
+
+    def catalogue(self, now: float) -> tuple[MarketDemand, ...]:
+        """Enumerate lightweight global city/model preparation contexts."""
+        facilities: dict[str, str] = {}
+        for facility in sorted(
+            self.candidates.reference().facilities,
+            key=lambda item: item.facility_uid,
+        ):
+            if facility.is_routable():
+                facilities.setdefault(
+                    facility.address.city.city_uid,
+                    facility.facility_uid,
+                )
+        demands = []
+        for city_uid, facility_uid in sorted(facilities.items()):
+            for model in sorted(
+                self.candidates.catalogue.list_models(),
+                key=lambda item: item.id,
+            ):
+                if model.mode != "truck":
+                    continue
+                demands.append(
+                    MarketDemand(
+                        MarketVehicle(
+                            f"catalogue:{city_uid}:{model.id}",
+                            model.id,
+                            city_uid,
+                            model.mode,
+                            model.capacity_tons,
+                            vehicle_scale_for_segment(model.segment),
+                            model.transport_capabilities,
+                            VehicleCostProfile(
+                                model.maintenance_eur_per_1000_km / 1000
+                            ),
+                            model.energy,
+                            facility_uid,
+                        ),
+                        now,
+                        catalogue_only=True,
+                    )
+                )
+        return tuple(demands)

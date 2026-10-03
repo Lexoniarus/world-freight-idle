@@ -74,11 +74,13 @@ Diese Themen sind Folge-Meilensteine und dürfen M1 nicht blockieren.
 
 Registrierung und Anmeldung mit öffentlichem Spielernamen, privatem
 Spielstand, 175.000 Euro Startkapital und einem kostenlosen IVECO S-Way 500 XC13 (24,2 t). Der
-Fahrzeugshop bietet 14 reale Modellprofile aus dem SQLite-Katalog mit
+Fahrzeugshop bietet 14 reale Modellprofile aus dem relationalen Fahrzeugkatalog mit
 getrennten Spielwerten für Preis, Nutzlast, Reputationsfreigabe und Kilometerkosten. Pro Fahrzeug kann ein Transport aktiv
 sein; mehrere Fahrzeuge fahren parallel. Spieler konkurrieren in einer
-Lieferungsrangliste. Aufträge sind pro Spieler generiert, kein geteilter
-knapper Weltmarkt. Preise und Nutzlast sind Spielwerte, keine realen Marktangebote.
+Lieferungsrangliste. Konkrete Angebote und ihre einmalige Verwendung sind
+spielergebunden; Vorlagen und geprüfte Routen werden accountübergreifend
+wiederverwendet. Ein dynamisch knapper Weltmarkt ist weiterhin nicht umgesetzt.
+Preise und Nutzlast sind Spielwerte, keine realen Marktangebote.
 
 Zusätzliche Seiten: `/login` für Konten und `/leaderboard` für die Rangliste.
 
@@ -122,8 +124,9 @@ auch wenn die Einfärbung eines Fahrzeugs auf kleinem Kartenmaßstab dezent ist.
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
-WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
+Typisierte Entities, PostgreSQL-Spielpersistenz in privaten Supabase-Schemas und
+WorldCatalogue 4.2.0 bilden die Produktionslaufzeit. SQLite bleibt auf Tests und
+explizite Offline-Werkzeuge beschränkt. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
 Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).
@@ -303,10 +306,11 @@ zehn. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen Angebote nutze
 
 Ungenutzte Vorlagen und Angebote verfallen nicht zeitlich und bleiben bei Abfahrt
 und Rückkehr erhalten. Ein Verbrauch lässt gespeicherte Reserve sofort nachrücken;
-der Worker füllt nach. Bedarf entsteht im Stand und ab 60 Minuten vor gespeicherter
-Ankunft. Fehlende Hin-/Rückwege, veraltete Prüfnachweise oder unbrauchbare
-Katalogbezüge geben keine Angebote frei. Alle 14 Modelle werden in Bedarfsstädten
-berücksichtigt, tatsächlich wartende Fahrzeuge zuerst.
+der Worker füllt nach. Bedarf entsteht für Idle-Fahrzeuge am aktuellen Standort
+und für aktive Transporte unmittelbar ab Dispatch in der Zielstadt. Sichtbarer
+Bestand und Reserve dieser Kontexte haben Vorrang. Erst danach bereitet der
+Worker alle übrigen Stadt-/Modell-/Band-Kontexte global vor. Fehlende Hin-/
+Rückwege, veraltete Nachweise oder unbrauchbare Katalogbezüge geben nichts frei.
 
 Die Schemaübernahme nach 1.2.0 ist ein expliziter Offline-Schritt mit Backup und
 neuer Ausgabe. Live-Aktivierung ist nicht Teil von Commit/Push. Verbindliche

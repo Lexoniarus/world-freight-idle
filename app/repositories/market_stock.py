@@ -1,10 +1,16 @@
 """Relational reusable templates and atomic private issuance/consumption."""
 
 import json
+from typing import Any
 
 from app.domain.contracts import ContractOffer
 from app.domain.errors import PersistenceError
-from app.domain.market_stock import MarketArrival, PreparedTemplate, TradeKey
+from app.domain.market_stock import (
+    MarketArrival,
+    PreparedTemplate,
+    TemplateStockLevel,
+    TradeKey,
+)
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.snapshot_mapping import load_location, load_offer
 from app.repositories.state_snapshots import decode_snapshot, encode_snapshot
@@ -36,20 +42,12 @@ STOCK_SCHEMA = (
 )
 
 
-class SqliteMarketStockStore:
-    """Bind private use records while sharing the same global template pool."""
+class SqliteMarketTemplateStore:
+    """Own SQL for the player-independent reusable template pool."""
 
-    def __init__(self, database: SqliteGameDatabase, user_id: str) -> None:
-        """Inject existing storage; schema creation belongs to startup."""
+    def __init__(self, database: SqliteGameDatabase) -> None:
+        """Inject the existing relational runtime."""
         self.database = database
-        self.user_id = user_id
-
-    @staticmethod
-    def initialize(database: SqliteGameDatabase) -> None:
-        """Create additive stock infrastructure before serving requests."""
-        with database.transaction(), database.connect() as db:
-            for statement in STOCK_SCHEMA:
-                db.execute(statement)
 
     def templates(
         self, cities: tuple[str, ...]
@@ -62,19 +60,102 @@ class SqliteMarketStockStore:
                 (json.dumps(cities),),
             ).fetchall()
         try:
-            return tuple(
-                PreparedTemplate(
-                    row["template_id"],
-                    row["model_id"],
-                    row["city_uid"],
-                    load_offer(
-                        decode_snapshot("offer", row["offer_snapshot"])
-                    ),
-                )
-                for row in rows
-            )
+            return tuple(_load_template(row) for row in rows)
         except (ValueError, TypeError, KeyError) as exc:
             raise PersistenceError("Auftragsvorlage nicht lesbar.") from exc
+
+    def scoped_templates(
+        self, scopes: tuple[tuple[str, str], ...]
+    ) -> tuple[PreparedTemplate, ...]:
+        """Read demanded city/model pairs with one bounded query."""
+        if not scopes:
+            return ()
+        unique = tuple(dict.fromkeys(scopes))
+        predicates = " OR ".join("(city_uid=? AND model_id=?)" for _ in unique)
+        parameters = tuple(value for scope in unique for value in scope)
+        with self.database.connect() as db:
+            rows = db.execute(
+                "SELECT * FROM market_templates WHERE "
+                + predicates
+                + " ORDER BY rowid",
+                parameters,
+            ).fetchall()
+        try:
+            return tuple(_load_template(row) for row in rows)
+        except (ValueError, TypeError, KeyError) as exc:
+            raise PersistenceError("Auftragsvorlage nicht lesbar.") from exc
+
+    def levels(self) -> tuple[TemplateStockLevel, ...]:
+        """Count global stock with one set-based relational query."""
+        with self.database.connect() as db:
+            rows = db.execute(
+                "SELECT city_uid, model_id, "
+                "json_extract(offer_snapshot, "
+                "'$.data.market_context.distance_band') AS distance_band, "
+                "COUNT(*) AS template_count FROM market_templates "
+                "GROUP BY city_uid, model_id, distance_band "
+                "ORDER BY city_uid, model_id, distance_band"
+            ).fetchall()
+        return tuple(
+            TemplateStockLevel(
+                str(row["city_uid"]),
+                str(row["model_id"]),
+                str(row["distance_band"]),
+                int(row["template_count"]),
+            )
+            for row in rows
+        )
+
+    def add(self, template: PreparedTemplate) -> None:
+        """Insert immutable supply in the caller's transaction."""
+        with self.database.connect() as db:
+            db.execute(
+                "INSERT INTO market_templates VALUES (?, ?, ?, ?)",
+                (
+                    template.template_id,
+                    template.city_uid,
+                    template.model_id,
+                    encode_snapshot("offer", template.offer),
+                ),
+            )
+
+
+class SqliteMarketStockStore:
+    """Bind private use records while delegating the global template pool."""
+
+    def __init__(
+        self,
+        database: SqliteGameDatabase,
+        user_id: str,
+        templates: SqliteMarketTemplateStore | None = None,
+    ) -> None:
+        """Inject existing storage; schema creation belongs to startup."""
+        self.database = database
+        self.user_id = user_id
+        self.template_store = templates or SqliteMarketTemplateStore(database)
+
+    @staticmethod
+    def initialize(database: SqliteGameDatabase) -> None:
+        """Create additive stock infrastructure before serving requests."""
+        with database.transaction(), database.connect() as db:
+            for statement in STOCK_SCHEMA:
+                db.execute(statement)
+
+    def templates(
+        self, cities: tuple[str, ...]
+    ) -> tuple[PreparedTemplate, ...]:
+        """Delegate global template reads to their narrow repository."""
+        return self.template_store.templates(cities)
+
+    def scoped_templates(
+        self, scopes: tuple[tuple[str, str], ...]
+    ) -> tuple[PreparedTemplate, ...]:
+        """Delegate bounded city/model reads to the template repository."""
+        return self.template_store.scoped_templates(scopes)
+
+    def levels(self) -> tuple[TemplateStockLevel, ...]:
+        """Delegate global stock counts to their narrow repository."""
+        return self.template_store.levels()
 
     def used(self) -> frozenset[str]:
         """Read this account's permanent consumption ledger."""
@@ -101,17 +182,8 @@ class SqliteMarketStockStore:
             )
 
     def add(self, template: PreparedTemplate) -> None:
-        """Insert immutable supply in the caller's publication transaction."""
-        with self.database.connect() as db:
-            db.execute(
-                "INSERT INTO market_templates VALUES (?, ?, ?, ?)",
-                (
-                    template.template_id,
-                    template.city_uid,
-                    template.model_id,
-                    encode_snapshot("offer", template.offer),
-                ),
-            )
+        """Delegate immutable supply publication to the global repository."""
+        self.template_store.add(template)
 
     def issue(self, template_id: str, offer: ContractOffer) -> None:
         """Atomically issue a private snapshot only for an unused template."""
@@ -160,16 +232,16 @@ class SqliteMarketStockStore:
                     (self.user_id, row[0], now),
                 )
 
-    def arrivals(self, until: float) -> tuple[MarketArrival, ...]:
-        """Project pending destination facts without deserializing roads."""
+    def arrivals(self) -> tuple[MarketArrival, ...]:
+        """Project every active destination from dispatch onward."""
         with self.database.connect() as db:
             rows = db.execute(
                 "SELECT transport_id, vehicle_id, arrives_at, "
                 "destination_facility_uid, json_extract(transport_snapshot, "
                 "'$.data.destination') AS destination FROM transports "
-                "WHERE user_id=? AND status='active' AND arrives_at<=? "
+                "WHERE user_id=? AND status='active' "
                 "ORDER BY arrives_at, transport_id",
-                (self.user_id, until),
+                (self.user_id,),
             ).fetchall()
         result = []
         try:
@@ -226,3 +298,40 @@ class SqliteMarketStockStore:
                     "INSERT INTO market_stock_pending VALUES (?, ?, ?, ?, ?)",
                     (self.user_id, context, *trade),
                 )
+
+    def reconcile_pending(
+        self,
+        active_contexts: tuple[str, ...],
+        completed_context: str | None,
+    ) -> None:
+        """Remove completed and obsolete resumable selection checkpoints."""
+        with self.database.connect() as db:
+            if active_contexts:
+                placeholders = ",".join("?" for _ in active_contexts)
+                db.execute(
+                    "DELETE FROM market_stock_pending WHERE user_id=? "
+                    "AND context NOT IN (" + placeholders + ")",
+                    (self.user_id, *active_contexts),
+                )
+            else:
+                db.execute(
+                    "DELETE FROM market_stock_pending WHERE user_id=?",
+                    (self.user_id,),
+                )
+            if completed_context is not None:
+                db.execute(
+                    "DELETE FROM market_stock_pending WHERE user_id=? "
+                    "AND context=?",
+                    (self.user_id, completed_context),
+                )
+
+
+def _load_template(row: Any) -> PreparedTemplate:
+    """Decode one adapter row into the shared immutable template model."""
+    values = dict(row)
+    return PreparedTemplate(
+        values["template_id"],
+        values["model_id"],
+        values["city_uid"],
+        load_offer(decode_snapshot("offer", values["offer_snapshot"])),
+    )

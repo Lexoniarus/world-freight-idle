@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import random
 import time
 from pathlib import Path
@@ -18,6 +19,18 @@ from app.services.cost_profiles import VehicleCostResolver
 from app.services.dispatch_planning import DispatchPlanningService
 from app.services.game import GameService
 from app.services.market_scope import MarketScopeResolver
+from tests.catalogue_fixtures import CatalogueFixtureBuilder
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+for environment_name in (
+    "DATABASE_URL",
+    "SUPABASE_JWKS_URL",
+    "SUPABASE_PUBLISHABLE_KEY",
+    "SUPABASE_SECRET_KEY",
+    "SUPABASE_URL",
+):
+    os.environ[environment_name] = ""
+CatalogueFixtureBuilder(PROJECT_ROOT / "data").ensure()
 
 
 class FakeRouter:
@@ -63,9 +76,7 @@ def cache(database) -> SqliteProviderCache:
 
 
 WORLD_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "data"
-    / "world_freight_company_facility_mvp.sqlite3"
+    PROJECT_ROOT / "data" / "world_freight_company_facility_mvp.sqlite3"
 )
 BERLIN_UID = (
     WorldScope(SqliteWorldCatalogue(WORLD_PATH).read())

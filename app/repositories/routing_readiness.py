@@ -5,6 +5,7 @@ from collections import OrderedDict
 from contextlib import AbstractContextManager
 from dataclasses import asdict
 from hashlib import sha256
+from typing import Any
 
 from app.domain.routing_anchors import VALIDATION_VERSION, RoutingAnchor
 from app.domain.routing_connections import (
@@ -59,6 +60,16 @@ CREATE TABLE IF NOT EXISTS offer_route_references (
 """
 
 
+def _load_relation(row: Any) -> RoutingRelation:
+    """Decode one adapter row into a directed routing relation."""
+    values = dict(row)
+    reference = RouteReference(
+        values.pop("relation_id"), values.pop("revision")
+    )
+    values.pop("cache_key")
+    return RoutingRelation(reference=reference, **values)
+
+
 class SqliteRoutingReadinessStore:
     """Own routing SQL, atomic publication and lease fencing."""
 
@@ -76,30 +87,74 @@ class SqliteRoutingReadinessStore:
 
     def get(self, relation_id: str) -> RoutingRelation | None:
         """Read the currently published revision of a directed relation."""
+        return self.get_many((relation_id,)).get(relation_id)
+
+    def get_many(
+        self, relation_ids: tuple[str, ...]
+    ) -> dict[str, RoutingRelation]:
+        """Read a bounded relation set with one relational query."""
+        if not relation_ids:
+            return {}
         with self.database.connect() as connection:
-            row = connection.execute(
-                "SELECT * FROM routing_relations WHERE relation_id=?",
-                (relation_id,),
-            ).fetchone()
-        if row is None:
-            return None
-        values = dict(row)
-        reference = RouteReference(
-            values.pop("relation_id"), values.pop("revision")
+            rows = connection.execute(
+                "SELECT * FROM routing_relations WHERE relation_id IN "
+                "(SELECT value FROM json_each(?))",
+                (json.dumps(relation_ids),),
+            ).fetchall()
+        return {
+            relation.reference.relation_id: relation
+            for row in rows
+            if (relation := _load_relation(row)) is not None
+        }
+
+    def available_payloads(
+        self, references: tuple[RouteReference, ...]
+    ) -> frozenset[RouteReference]:
+        """Validate a bounded revision set after one payload query."""
+        if not references:
+            return frozenset()
+        expected = {(ref.relation_id, ref.revision): ref for ref in references}
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                "SELECT r.relation_id, r.revision, c.payload FROM "
+                "routing_relations r JOIN route_cache c "
+                "ON c.cache_key=r.cache_key WHERE r.status='ready' AND "
+                "r.relation_id IN (SELECT value FROM json_each(?))",
+                (json.dumps(tuple(uid for uid, _ in expected)),),
+            ).fetchall()
+        return frozenset(
+            expected[key]
+            for row in rows
+            if (key := (str(row[0]), str(row[1]))) in expected
+            and self._valid_payload(str(row[2]))
         )
-        values.pop("cache_key")
-        return RoutingRelation(reference=reference, **values)
 
-    def payload(self, reference: RouteReference) -> RoutePayload | None:
-        """Reject missing, stale or malformed cached route documents."""
-        document = self._payload_document(reference)
-        return decode_route_payload(document) if document is not None else None
+    def connected_references(
+        self, relation_ids: tuple[str, ...]
+    ) -> frozenset[tuple[RouteReference, RouteReference]]:
+        """Read all current connection proofs touching a relation set."""
+        if not relation_ids:
+            return frozenset()
+        document = json.dumps(relation_ids)
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                "SELECT forward_id, forward_revision, reverse_id, "
+                "reverse_revision FROM routing_connection_proofs WHERE "
+                "validation_version=? AND (forward_id IN "
+                "(SELECT value FROM json_each(?)) OR reverse_id IN "
+                "(SELECT value FROM json_each(?)))",
+                (VALIDATION_VERSION, document, document),
+            ).fetchall()
+        return frozenset(
+            (
+                RouteReference(str(row[0]), str(row[1])),
+                RouteReference(str(row[2]), str(row[3])),
+            )
+            for row in rows
+        )
 
-    def payload_available(self, reference: RouteReference) -> bool:
-        """Validate each immutable payload once, detecting any byte change."""
-        document = self._payload_document(reference)
-        if document is None:
-            return False
+    def _valid_payload(self, document: str) -> bool:
+        """Memoize validation by immutable payload digest."""
         digest = sha256(document.encode()).hexdigest()
         if digest not in self._validated_payloads:
             self._validated_payloads[digest] = (
@@ -109,6 +164,11 @@ class SqliteRoutingReadinessStore:
                 self._validated_payloads.popitem(last=False)
         self._validated_payloads.move_to_end(digest)
         return self._validated_payloads[digest]
+
+    def payload_available(self, reference: RouteReference) -> bool:
+        """Validate each immutable payload once, detecting any byte change."""
+        document = self._payload_document(reference)
+        return document is not None and self._valid_payload(document)
 
     def _payload_document(self, reference: RouteReference) -> str | None:
         """Read the exact revision without constructing geometry objects."""
@@ -120,6 +180,11 @@ class SqliteRoutingReadinessStore:
                 (reference.relation_id, reference.revision),
             ).fetchone()
         return row[0] if row else None
+
+    def payload(self, reference: RouteReference) -> RoutePayload | None:
+        """Reject missing, stale or malformed cached route documents."""
+        document = self._payload_document(reference)
+        return decode_route_payload(document) if document is not None else None
 
     def acquire(
         self, subject: str, owner: str, now: float, expires_at: float

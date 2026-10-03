@@ -9,19 +9,23 @@ import httpx
 import pytest
 
 from app import launcher
+from app.repositories.game_database import SqliteGameDatabase
 from app.services.preparation_lease import WORKER_SUBJECT, PreparationLease
 from app.services.preparation_worker import MarketPreparationWorker
 from tests.test_routing_readiness_store import routing_store
 
 
 @pytest.mark.asyncio
+@pytest.mark.supervisor_integration
 async def test_real_supervisor_starts_outside_repository_and_closes_children(
     tmp_path,
     monkeypatch,
     unused_tcp_port,
 ):
+    database_path = tmp_path / "isolated.db"
+    SqliteGameDatabase(database_path).initialize()
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "isolated.db"))
+    monkeypatch.setenv("DB_PATH", str(database_path))
     monkeypatch.setenv("HOST", "127.0.0.1")
     monkeypatch.setenv("PORT", str(unused_tcp_port))
     monkeypatch.setenv("LOG_LEVEL", "WARNING")
@@ -58,7 +62,7 @@ async def test_real_supervisor_starts_outside_repository_and_closes_children(
             # Also reclaim a child if an assertion detects an early exit.
             for child in children:
                 await launcher.stop_child(child)
-    assert all(child.returncode == 0 for child in children)
+    assert [child.returncode for child in children] == [0, 0]
 
 
 @pytest.mark.asyncio
@@ -195,7 +199,9 @@ async def test_supervisor_restarts_only_worker_and_closes_children(
         if calls == 1 and start_failure:
             raise OSError("start failed")
         worker = SimpleNamespace(
-            returncode=1, stdin=Mock(), wait=AsyncMock(return_value=1)
+            returncode=1,
+            stdin=Mock(),
+            wait=AsyncMock(return_value=1),
         )
         workers.append(worker)
         if calls == 2:
@@ -216,7 +222,9 @@ async def test_role_selection_parent_eof_and_runtime_cleanup(monkeypatch):
     monkeypatch.setenv("WFI_MANAGED_CHILD", "1")
     with (
         patch("app.launcher.threading.Thread") as thread,
-        patch("app.launcher.run_runtime", new=AsyncMock()) as runtime,
+        patch(
+            "app.launcher.run_runtime", new=AsyncMock(return_value=0)
+        ) as runtime,
         patch("app.launcher.run_prewarm", new=AsyncMock()) as prewarm,
     ):
         assert await launcher.run_role("runtime") == 0
@@ -230,14 +238,28 @@ async def test_role_selection_parent_eof_and_runtime_cleanup(monkeypatch):
         await launcher.run_role("unknown")
     stop = asyncio.Event()
     loop = Mock()
-    with patch("app.launcher.sys.stdin", SimpleNamespace(buffer=Mock())):
+    with (
+        patch(
+            "app.launcher.sys.stdin",
+            SimpleNamespace(fileno=Mock(return_value=7)),
+        ),
+        patch("app.launcher.os.read") as read,
+    ):
         launcher.parent_eof(loop, stop)
+        read.assert_called_once_with(7, 1)
         loop.call_soon_threadsafe.assert_called_once_with(stop.set)
         loop.call_soon_threadsafe.side_effect = RuntimeError("closed")
         launcher.parent_eof(loop, stop)
+    stop.set()
     server = SimpleNamespace(serve=AsyncMock(), should_exit=False)
     with patch("app.launcher.uvicorn.Server", return_value=server):
-        await launcher.run_runtime(stop)
+        assert await launcher.run_runtime(stop) == 0
+    assert server.should_exit
+    server = SimpleNamespace(
+        serve=AsyncMock(side_effect=SystemExit(3)), should_exit=False
+    )
+    with patch("app.launcher.uvicorn.Server", return_value=server):
+        assert await launcher.run_runtime(asyncio.Event()) == 3
     assert server.should_exit
 
     loop = asyncio.get_running_loop()
@@ -282,3 +304,4 @@ async def test_prewarm_resources_close_when_worker_start_fails(failure):
         runtime.preparation_jobs.ensure.assert_called_once_with("owner", 10)
     client.__aexit__.assert_awaited_once()
     worker.close.assert_awaited_once()
+    runtime.database.close.assert_called_once()

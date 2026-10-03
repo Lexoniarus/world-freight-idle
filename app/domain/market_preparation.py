@@ -58,6 +58,8 @@ class PreparationStore(Protocol):
 
     def next_player(self, now: float) -> str | None: ...
 
+    def has_incomplete(self) -> bool: ...
+
     def finish(
         self,
         user_id: str,
@@ -104,6 +106,21 @@ def required_relations(
             candidate.trade.destination.facility_uid,
         ] = None
     return tuple(pairs)
+
+
+def delivery_relations(
+    candidates: tuple[MarketCandidate, ...],
+) -> tuple[tuple[str, str], ...]:
+    """Return only deduplicated delivery relations for global supply."""
+    return tuple(
+        dict.fromkeys(
+            (
+                candidate.trade.origin.facility_uid,
+                candidate.trade.destination.facility_uid,
+            )
+            for candidate in candidates
+        )
+    )
 
 
 @dataclass(frozen=True, slots=True)

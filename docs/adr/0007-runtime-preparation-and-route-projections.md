@@ -20,10 +20,11 @@ die API bleibt erreichbar. EOF der Supervisor-Pipe fordert geordneten Shutdown
 an, anschließend gelten begrenzte Terminate-/Kill-Fristen. Docker benutzt
 weiterhin den Standardeinstieg.
 
-Beide Prozesse benutzen dieselbe relationale SQLite-Datenbank. Nach erfolgreicher
-Schema-Prüfung gilt WAL, jede Verbindung verwendet `synchronous=FULL` und
-500 ms Lock-Wartezeit. Lesetransaktionen sind explizit und schreibgeschützt.
-Finanzielle Aktionen werden bei Sperrfehlern nicht automatisch wiederholt.
+Beide Prozesse benutzen dieselbe relationale Datenbank. Produktiv ist dies
+PostgreSQL/Supabase; SQLite bleibt auf Tests und Offline-Werkzeuge beschränkt.
+PostgreSQL verwendet native psycopg-Transaktionskontexte, read-only
+Repeatable-Read-Snapshots und den bestehenden Advisory Lock für Schreib-UoWs.
+Finanzielle Aktionen werden bei Datenbankfehlern nicht automatisch wiederholt.
 
 Runtime-Aktionen schreiben nur einen dauerhaften Vorbereitungsbedarf. Wiederholte
 Reads erhalten dieselbe Generation; relevante Änderungen invalidieren sie in
@@ -45,7 +46,11 @@ Die Zweiwegregel bleibt unverändert: fünf Kandidaten je Standort, höchstens
 120 Sekunden Budget. Nachweise gelten maximal 24 Stunden; definitive Fehler
 werden nach einer Stunde, vorübergehende Fehler nach 60 Sekunden erneut fällig.
 Abgeschlossene Bedarfsläufe werden spätestens nach 60 Sekunden auf veränderte
-Nachweise/Angebotsablauf geprüft. Es gibt keinen Weltkatalog-Preload.
+Nachweise/Angebotsablauf geprüft. Es gibt keinen synchronen Weltkatalog-Preload.
+Wenn kein Spielerbedarf offen ist, bereitet derselbe Worker opportunistisch
+genau einen globalen Stadt-/Modell-/Band-Kontext und ein bidirektionales
+Routenpaar pro Runde vor. Neuer Spielerbedarf verdrängt die nächste globale
+Runde; ein bereits begonnenes Paar darf atomar beendet werden.
 
 Typisierte SQLite-Leseports projizieren kompakte aktive Transporte ohne
 Koordinatenarrays. Authentifizierte Geometrieabrufe laden genau einen
@@ -88,6 +93,7 @@ mit Prüfsummen und vollständiger Quellen-/Zielabgleich sind zwingend. Normales
 Settlement rechnet fällige Transporte genau einmal ab. Die Aktivierung einer
 reparierten Kopie bleibt ein getrennter Betriebsschritt mit gestoppten Schreibern.
 
-Die Prozessgrenze benötigt gemeinsamen lokalen Datenbankzugriff. SQLite ist
-weiterhin ein einzelner Writer; das ist keine verteilte Datenbankarchitektur.
+Die Prozessgrenze benötigt gemeinsamen relationalen Datenbankzugriff. Die
+globale Worker-Lease verhindert parallele Providerarbeit auch über Prozesse.
+Der SQLite-Einzelwriter bleibt nur für Test- und Offline-Betrieb relevant.
 Automatisierte Tablet-Browsertests ersetzen keine echte iPad-Abnahme.

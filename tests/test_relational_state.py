@@ -254,6 +254,26 @@ def test_snapshot_envelopes_and_corrupt_records_fail_explicitly(
     )
     repository.save_transport(trip)
     with relational.connect() as connection:
+        transport_row = dict(
+            connection.execute("SELECT * FROM transports").fetchone()
+        )
+        assert (
+            load_transport_record(
+                {
+                    **transport_row,
+                    "departed_at": transport_row["departed_at"] + 5e-6,
+                    "arrives_at": transport_row["arrives_at"] + 5e-6,
+                }
+            )
+            == trip
+        )
+        with pytest.raises(PersistenceError):
+            load_transport_record(
+                {
+                    **transport_row,
+                    "departed_at": transport_row["departed_at"] + 1e-3,
+                }
+            )
         for table, loader, column in (
             ("owned_vehicles", load_vehicle_record, "capacity_tons"),
             ("contract_offers", load_offer_record, "market_model"),

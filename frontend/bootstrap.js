@@ -12,6 +12,7 @@ import { GameState } from "./state.js";
 import { BrowserRouter } from "./navigation.js";
 import { GameApplication } from "./application.js";
 import { AuthController } from "./controllers/auth-controller.js";
+import { SupabaseBrowserAuth } from "./supabase-auth.js";
 import { GameActions } from "./controllers/game-actions.js";
 import { GameSync } from "./controllers/game-sync.js";
 import { ContractMarketController } from "./controllers/contract-market-controller.js";
@@ -30,6 +31,9 @@ export async function bootstrap() {
   const root = requiredElement("#app");
   const redirect = (path) => window.location.replace(path);
   const api = new GameApiClient(globalThis.fetch.bind(globalThis), redirect);
+  const authConfig = await api.request("/auth/config");
+  const supabaseAuth = authConfig.enabled ? new SupabaseBrowserAuth(authConfig) : null;
+  if (supabaseAuth) api.setAccessTokenProvider(() => supabaseAuth.accessToken());
   let application;
   const pagehide = () => {
     reportCleanup([() => application?.destroy(), () => api.destroy()]);
@@ -41,12 +45,12 @@ export async function bootstrap() {
   });
   try {
     if (location.pathname === "/login") {
-      application = new AuthController(root, api, redirect);
+      application = new AuthController(root, api, redirect, supabaseAuth);
     } else {
       const user = await api.request("/auth/me");
       if (api.lifetime.signal.aborted) return;
       root.replaceChildren(renderShell(user));
-      application = createGameApplication(api, user, redirect);
+      application = createGameApplication(api, user, redirect, supabaseAuth);
     }
     await application.start();
   } catch (error) {
@@ -72,7 +76,7 @@ export async function bootstrap() {
  * @param {(path: string) => void} redirect
  * @returns {GameApplication}
  */
-function createGameApplication(api, user, redirect) {
+function createGameApplication(api, user, redirect, supabaseAuth = null) {
   const state = new GameState(api.request);
   // Start the coalesced runtime read while lightweight controllers are wired.
   // GameSync joins this request during start and owns its visible error state.
@@ -174,6 +178,7 @@ function createGameApplication(api, user, redirect) {
     managementInput,
     preferences,
     assets,
+    supabaseAuth,
     redirect,
   });
   return application;

@@ -18,7 +18,14 @@ const turn = () => new Promise((resolve) => setImmediate(resolve));
 test("market requests follow the selected vehicle and discard older vehicle responses", async () => {
   let url = new URL("http://game/contracts?vehicle=first");
   const state = new GameState(async () => {});
-  state.data = { contracts: [], vehicles: [], transports: [] };
+  state.data = {
+    contracts: [],
+    vehicles: [
+      { id: "first", status: "idle" },
+      { id: "second", status: "idle" },
+    ],
+    transports: [],
+  };
   const calls = [];
   const controller = new ContractMarketController({
     state,
@@ -142,9 +149,13 @@ test("runtime publishes while traffic is blocked and shares owner geometry with 
 
 test("identical market and detail polls coalesce; only changed selection invalidates detail", async () => {
   const calls = [];
-  let url = new URL("http://game/contracts/a");
+  let url = new URL("http://game/contracts/a?vehicle=truck");
   const state = new GameState(async () => {});
-  state.data = { contracts: [], vehicles: [], transports: [] };
+  state.data = {
+    contracts: [],
+    vehicles: [{ id: "truck", status: "idle" }],
+    transports: [],
+  };
   const controller = new ContractMarketController({
     state,
     currentUrl: () => url,
@@ -158,7 +169,7 @@ test("identical market and detail polls coalesce; only changed selection invalid
     same = controller.refresh();
   assert.equal(calls.length, 2);
   assert.equal(calls[1].signal.aborted, false);
-  url = new URL("http://game/contracts/b");
+  url = new URL("http://game/contracts/b?vehicle=truck");
   const next = controller.refresh();
   assert.equal(calls.length, 3);
   assert.equal(calls[1].signal.aborted, true);

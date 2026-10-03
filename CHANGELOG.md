@@ -1,5 +1,61 @@
 # Changelog
 
+## Deterministischer und vielfältiger Frachtmarkt – 03.10.2026
+
+- Gewichtete Kandidatenauswahl, Generierungsfahrzeug und Beladung werden aus
+  einem versionierten SHA-256-Kontext reproduzierbar abgeleitet; neue Angebote
+  behalten eindeutige UUIDs.
+- Eine geprüfte Verbindung veröffentlicht sofort einen Auftrag. Weitere Runden
+  bevorzugen neue Relation, Fracht und Zielstadt und wiederholen erst nach
+  struktureller Erschöpfung.
+- Erfolgreiche Publikation entfernt Checkpoints atomar. Abgelaufene Evidenz wird
+  für vorhandenen Bestand revalidiert, ohne dabei Duplikate anzulegen.
+- Stadt-/Modell-Templates werden mengenbasiert und eng gescopt gelesen; nach
+  Providerarbeit entfällt der zweite vollständige Marktsnapshot. Phasendauern
+  sind strukturiert und ohne Kontokennung beobachtbar.
+- Ein ausschließlich manuelles Wartungskommando prüft oder bereinigt frühere
+  ungenutzte Duplikate transaktional mit privatem SHA-256-Archiv. Startup und
+  HTTP führen keine automatische Bereinigung aus.
+
+## Priorisierte globale Marktvorbereitung – 03.10.2026
+
+- Spielergebundene Vorbereitung verarbeitet nur konkrete Idle-Fahrzeuge und
+  die gespeicherten Zielstädte aller aktiven Transporte ab Dispatch.
+- Die bestehende fünfstufige Planung priorisiert sichtbaren Idle-/Zielbestand
+  und beide Reserven. Erst ohne `partial`en Spielerbedarf bereitet ein schmaler
+  globaler Batch eine Stadt-/Modell-/Band-Kombination vor.
+- Globale Runden erzeugen ausschließlich wiederverwendbare Delivery-Vorlagen;
+  echte Anfahrten bleiben konkretem Fahrzeugbedarf vorbehalten.
+- Routingrelationen, Anker, Verbindungsevidenz und Payload-Verfügbarkeit werden
+  pro Runde mengenbasiert gelesen. PostgreSQL verwendet native psycopg-
+  Transaktionskontexte ohne kollidierendes implizites und explizites `BEGIN`.
+- Die lesende Supabase-Abnahme misst 11 ms für 246 Anker und 54 ms für 133
+  Routenpayloads. Die globale Bandzählung benötigt bei 1.761 Vorlagen rund
+  0,74 s und bleibt deshalb ausdrücklich auf die verdrängbare Priorität 3 begrenzt.
+- Der Stadtmarkt lädt und erneuert nur mit gültigem Idle-Fahrzeugscope. Die UI
+  meldet Angebote, Vorbereitung, erschöpfte Coverage und Leermarkt wahrheitsgemäß.
+
+## Supabase-Produktionsruntime – 02.10.2026
+
+- Produktive Spielstände und beide Referenzkataloge verwenden private
+  PostgreSQL-Schemas auf Supabase; SQLite bleibt Tests und Offline-Werkzeugen
+  vorbehalten.
+- Bestehende drei Spielkonten bleiben über eine eng begrenzte same-origin
+  Loginbrücke erreichbar. E-Mail-Zuordnung, scrypt-Passwort und historische
+  kompakte UUID verweisen weiterhin auf denselben Spielstand; Neuregistrierungen
+  bleiben bei Supabase Auth.
+- PostgreSQL-Kompatibilität für Login-Limits sowie migrierte Zeit- und
+  Energiewerte stabilisiert. Echte fachliche Abweichungen werden weiterhin
+  abgelehnt.
+- Python- und Browsertests sind von `.env`, Live-Supabase und produktiven
+  Datenbanken isoliert. Fehlende lokale Kataloge werden für einen frischen
+  Checkout deterministisch als ignorierte synthetische Fixtures erzeugt.
+- Private Schemas entziehen `PUBLIC`, `anon` und `authenticated` alle Rechte.
+  72 Tabellen besitzen RLS; der Start lehnt fehlende RLS-Härtung ab. Drei
+  gemessene Runtime-Fremdschlüsselpfade erhalten gezielte Indizes.
+- Prüfungen und verbleibende Betriebsgrenzen: [Qualitätsbericht](QUALITY_REPORT.md)
+  und [Supabase-Laufzeit](docs/SUPABASE_RUNTIME.md).
+
 ## Befahrbare Standortverbindungen – 27.09.2026
 
 - Jede Anfahrt und Lieferung benötigt echte Truck-Routen in beiden Richtungen
