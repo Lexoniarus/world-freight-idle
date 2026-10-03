@@ -291,8 +291,12 @@ test("opportunities aggregate by UID and selected endpoints retain their exact g
 
 test("list and detail reads publish independently and cancel obsolete detail navigation", async () => {
   const state = new GameState(async () => {});
-  state.data = { contracts: [], vehicles: [], transports: [] };
-  let url = new URL("http://test/contracts/one");
+  state.data = {
+    contracts: [],
+    vehicles: [{ id: "truck", status: "idle" }],
+    transports: [],
+  };
+  let url = new URL("http://test/contracts/one?vehicle=truck");
   const requests = [];
   const market = new ContractMarketController({
     state,
@@ -303,13 +307,15 @@ test("list and detail reads publish independently and cancel obsolete detail nav
   market.ordersVisible = () => true;
   market.start();
   const first = market.refresh();
-  requests.find((row) => row.path === "/contracts").resolve({ contracts: [offer] });
+  requests
+    .find((row) => row.path === "/contracts?vehicle_id=truck")
+    .resolve({ contracts: [offer] });
   await Promise.resolve();
   assert.equal(state.data.contracts[0], offer);
-  url = new URL("http://test/contracts/two");
+  url = new URL("http://test/contracts/two?vehicle=truck");
   const second = market.refresh();
   requests
-    .filter((row) => row.path === "/contracts")
+    .filter((row) => row.path === "/contracts?vehicle_id=truck")
     .forEach((row) => row.resolve({ contracts: [offer] }));
   requests.find((row) => row.path === "/contracts/two").resolve({ ...offer, id: "two" });
   await second;

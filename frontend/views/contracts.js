@@ -76,7 +76,7 @@ export function renderContracts(view) {
     </details>
     <div class="section-toolbar">
       <span>Reale Standorte · simulierte Aufträge</span
-      >${actionButton("refresh-market", [icon("refresh", 17), " Erneuern"], view.busy, "quiet")}
+      >${actionButton("refresh-market", [icon("refresh", 17), " Erneuern"], view.busy || !active, "quiet")}
     </div>
     <div class="card-list">
       ${view.marketLoaded === false ? html`<p role="status">Stadtmarkt wird geladen …</p>` : contracts.length ? contracts.map((contract) => renderContractCard(contract, view.state.vehicles, params)) : emptyState("Keine passenden Aufträge", "Passe die Filter an oder erneuere den Stadtmarkt.")}

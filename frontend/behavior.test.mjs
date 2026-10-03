@@ -855,12 +855,12 @@ test("city market ignores late results after disposal and preserves saved contra
   const notices = [];
   const saved = { ...contract, id: "saved" };
   const state = {
-    data: { contracts: [saved] },
+    data: { contracts: [saved], vehicles: [vehicle] },
     replaceContracts(contracts) {
       this.data.contracts = contracts;
     },
   };
-  const currentUrl = () => new URL("http://test/contracts");
+  const currentUrl = () => new URL("http://test/contracts?vehicle=truck");
 
   let resolve;
   const pendingController = new ContractMarketController({
@@ -929,7 +929,7 @@ test("city market requests have no viewport parameters and removed details prese
   const paths = [];
   let url = new URL("http://test/contracts?bbox=0,0,1,1&zoom=12");
   const state = {
-    data: { contracts: [contract] },
+    data: { contracts: [contract], vehicles: [vehicle] },
     detail: contract,
     replaceContractDetail(value) {
       this.detail = value;
@@ -951,12 +951,56 @@ test("city market requests have no viewport parameters and removed details prese
   controller.start();
   await controller.refresh();
   await controller.forceRefresh();
-  assert.deepEqual(paths, ["/contracts", "/contracts/refresh"]);
+  assert.deepEqual(paths, []);
+  url = new URL("http://test/contracts?vehicle=truck");
+  await controller.refresh();
+  await controller.forceRefresh();
+  assert.deepEqual(paths, ["/contracts?vehicle_id=truck", "/contracts/refresh?vehicle_id=truck"]);
   url = new URL("http://test/contracts/removed");
   await controller.refresh();
   assert.deepEqual(state.data.contracts, [contract]);
   assert.equal(state.detail, null);
   controller.destroy();
+});
+
+test("market refresh reports offers, preparation and prepared empty stock", async () => {
+  const notices = [];
+  let result = {
+    contracts: [contract],
+    preparation: { status: "ready" },
+  };
+  const actions = new GameActions({
+    request: async () => ({}),
+    state: {},
+    panel: { view: { quoting: false } },
+    map: null,
+    contractMarket: { forceRefresh: async () => result },
+    notify: (message) => notices.push(message),
+    navigate() {},
+    refresh: async () => {},
+    logout: async () => {},
+  });
+  await actions.refreshMarket();
+  result = { contracts: [], preparation: { status: "partial" } };
+  await actions.refreshMarket();
+  result = { contracts: [], preparation: { status: "exhausted" } };
+  await actions.refreshMarket();
+  result = { contracts: [], preparation: { status: "ready" } };
+  await actions.refreshMarket();
+  assert.deepEqual(notices, [
+    "1 fahrbare Aufträge verfügbar.",
+    "Aufträge und Straßenverbindungen werden vorbereitet.",
+    "Keine weiteren geprüften Straßenverbindungen verfügbar.",
+    "Der Stadtmarkt ist vorbereitet, aber derzeit leer.",
+  ]);
+  actions.destroy();
+});
+
+test("market refresh stays disabled without an idle vehicle scope", () => {
+  const view = createView("/contracts");
+  const container = document.createElement("div");
+  container.append(renderPanel(view));
+  assert.equal(container.querySelector('[data-action="refresh-market"]').disabled, true);
 });
 
 test("dispatch follows its trip after active-city URL cleanup but preserves newer navigation", async () => {
