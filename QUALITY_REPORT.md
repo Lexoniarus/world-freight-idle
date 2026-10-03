@@ -1,6 +1,6 @@
 # Qualitätsbericht: Supabase-Produktionsruntime
 
-Stand: 02.10.2026. Branch `fix/supabase-runtime-current-head`, Basis
+Stand: 03.10.2026. Branch `fix/supabase-runtime-current-head`, Basis
 `origin/main`. Dieser Abschnitt dokumentiert die aktuelle Abnahme. Alle Berichte
 unterhalb der Trennlinie bleiben als historische Nachweise unverändert erhalten.
 
@@ -25,14 +25,21 @@ Die Backend-Rolle behält den für den Adapter erforderlichen Besitz- und
 Trennung von Domain, Services, Transport und Persistenz sowie die zentrale
 Browser-API in `frontend/api.js`.
 
+Der Marktworker behandelt konkrete Nachfrage strikt vor globalem Vorrat: Idle-
+Fahrzeuge, Zielstädte aktiver Transporte, beide Reserven und erst danach globale
+Stadt-/Modell-/Band-Kontexte. Ein `partial`er Spielerstatus sperrt Priorität 3
+auch während eines Backoffs. Globale Runden prüfen höchstens ein bidirektionales
+Delivery-Paar und veröffentlichen nur gemeinsame Vorlagen; fahrzeugabhängige
+Anfahrten bleiben Priorität 1 und 2 vorbehalten.
+
 ## Automatisierte Abnahme
 
 `.venv/Scripts/python.exe -X utf8 scripts/quality.py` wurde vollständig mit
-Exitcode 0 ausgeführt. Der reale Supervisor-Test bestand separat in 2,70 s. Der
-abgedeckte Hauptlauf meldete **612 bestanden, 1 gezielt ausgelassen**, **100,00 %
-App-Statement-Coverage** bei **7.179 Statements** und 62 Warnungen aus bestehenden
+Exitcode 0 ausgeführt. Der reale Supervisor-Test bestand separat in 1,72 s. Der
+abgedeckte Hauptlauf meldete **614 bestanden, 1 gezielt ausgelassen**, **100,00 %
+App-Statement-Coverage** bei **7.403 Statements** und 62 Warnungen aus bestehenden
 Testabhängigkeiten beziehungsweise Ressourcen-Cleanup. Zusätzlich bestanden
-**120 Frontend-Verhaltenstests**, Ruff, Ruff-Format, mypy für 165 Dateien,
+**122 Frontend-Verhaltenstests**, Ruff, Ruff-Format, mypy für 166 Dateien,
 Pyright, ESLint, Stylelint, Prettier, TypeScript/checkJs, Produktionsbuild und
 compileall.
 
@@ -40,19 +47,37 @@ Der Lauf simulierte einen frischen Checkout ohne lokale Katalogdateien. Ein
 deterministischer Test-Fixture-Builder erzeugte dabei ausschließlich ignorierte,
 synthetische SQLite-Kataloge; `.env` und Live-Supabase blieben deaktiviert.
 
-`npm run test:e2e` meldete **33 bestanden** in 6,5 Minuten. Desktop-, Tablet- und
+`npm run test:e2e` meldete **33 bestanden** in 6,1 Minuten. Desktop-, Tablet- und
 Mobilfälle liefen über die isolierte Browser-Settings-Schicht; der Playwright-
 Server erhält weder `DATABASE_URL` noch Supabase-Konfiguration und griff nicht
 auf Produktionsdaten zu. Kartenregressionsbilder sowie die Live-Aufnahme wurden
-visuell geprüft. Ein `WinError 10054` beim absichtlich abgebrochenen Netzwerkfall
-ist erwartetes Windows-Socket-Cleanup; der zugehörige Test bestand.
+visuell geprüft. Der Stadtmarkt-Screenshot zeigt drei Angebote je Band, den
+Vorbereitungs- und Coverage-Status sowie den fahrzeuggebundenen Refresh ohne
+Layoutüberlagerung.
+
+## Lesende Performanceprüfung des Marktworkers
+
+Die Prüfung am 03.10.2026 verwendete ausschließlich `SELECT` und `EXPLAIN
+(ANALYZE, BUFFERS)`. Es gab keine Provider-, Auth- oder Gameplay-Mutation. Der
+mengenbasierte Read lud 246 Routinganker in 11,04 ms und 133 geprüfte
+Routenpayloads aus einer Auswahl von 250 Relationen in 54,16 ms. Damit wächst
+die SQL-Abfragezahl nicht mit jeder einzelnen Relation.
+
+Die globale Bandzählung gruppierte 1.761 Vorlagen in 180 Bestandsgruppen und
+benötigte 737,93 ms. Dieser bekannte Vollscan bleibt auf die opportunistische
+Priorität 3 begrenzt; drei produktive Spielerstatus waren zum Messzeitpunkt
+`partial`, weshalb der Worker globale Vorbereitung korrekt nicht starten würde.
+Eine zusätzliche Spalte oder Migration wurde entsprechend dem vereinbarten
+Umbau ohne Schemaänderung nicht eingeführt.
 
 ## Live-Verifikation ohne Gameplay-Mutation
 
 Die Remote-Migrationsliste enthält
 `20261002114339_harden_private_schemas`. Der Inhalt entspricht der lokalen,
 bereits angewendeten Migration; sie wurde nicht erneut ausgeführt. Alle **72 von
-72** Anwendungstabellen besitzen RLS. Tabellen- und Funktionsrechte sowie
+72** Anwendungstabellen besitzen RLS; eine erneute lesende Kontrolle am
+03.10.2026 ergab weiterhin **0** öffentlich lesbare Tabellen. Tabellen- und
+Funktionsrechte sowie
 Schema-Usage für `PUBLIC`, `anon` und `authenticated` sind jeweils **0**. Die drei
 gezielten Runtime-FK-Indizes sind vorhanden.
 

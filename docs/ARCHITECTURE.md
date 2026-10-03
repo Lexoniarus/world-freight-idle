@@ -413,9 +413,22 @@ Details und manuelles Verantwortungsreview: [Runtime-Review](RUNTIME_ISOLATION_R
 [ADR 0008](adr/0008-shared-market-stock.md) ergänzt die Runtime-Trennung.
 Die Produktionsverdrahtung verwendet `StockPreparationBatch` mit getrennten
 Bedarfs-, Planungs-, Vorlagen- und Publikationsservices. Sie liest kompakte
-Ankunftsfakten ohne Geometrien und plant spätestens ab dem 60-Minuten-Horizont
-auch Zielstädte. Die reine Dreier-Auswahl bleibt in `MarketSelectionService`.
+Zielfakten ohne Geometrien und plant Zielstädte unmittelbar ab Dispatch.
+Die reine Dreier-Auswahl bleibt in `MarketSelectionService`.
 SQL, Konsistenzgrenzen und Migrationsregeln sind in ADR 0008 benannt.
+
+`MarketPreparationWorker` priorisiert sichtbaren Idle-Bestand, sichtbaren
+Zielstadtbestand, Idle-Reserve und Zielstadtreserve. Nur wenn kein Spielerstatus
+mehr `partial` ist, erhält `GlobalStockPreparationBatch` eine Runde für den
+übrigen Weltvorrat. Er baut Kandidaten nur für einen ausgewählten
+Stadt-/Modell-/Band-Kontext und prüft nur dessen Delivery-Paar. Gemeinsame
+Vorlagen liegen hinter `SqliteMarketTemplateStore`; der persönliche Store
+besitzt weiterhin Ausgabe, Verbrauch und Checkpoints.
+
+`ReadinessView` lädt Relationen, Anker, Verbindungsevidenz und
+Payload-Verfügbarkeit mengenbasiert. Candidate-Readiness und beide Batches
+verwenden denselben Snapshot; die SQL-Zahl wächst daher nicht mit jeder
+einzelnen Relation. Gezielte Provider-/Dispatchpfade behalten Einzelzugriffe.
 
 `StockPublicationService` hält den vollständigen unveränderlichen Bestand für
 den Revisionsvergleich und projiziert davon separat kataloggültige Angebote

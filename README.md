@@ -117,6 +117,11 @@ Straßenendpunkten. Erfolgreiche Nachweise gelten maximal 24 Stunden; definitive
 Fehler werden nach einer Stunde, vorübergehende Fehler nach 60 Sekunden erneut
 vorbereitbar. Details und Wolfsburger Kopie-Abnahme:
 [Verbindungsprüfung](docs/CONNECTED_ROUTING_REVIEW.md).
+Der Marktworker priorisiert Idle-Fahrzeuge, danach die gespeicherten Zielstädte
+aller aktiven Transporte ab Dispatch und deren Reserven. Nur ohne offenen
+Spielerbedarf bereitet er opportunistisch eine globale Stadt-/Modell-/Band-
+Kombination vor. Der Browser lädt und erneuert `/contracts` nur mit einem
+gültigen eigenen Idle-Fahrzeug als Stadtmarktscope.
 Die beiden SQLite-Referenzkataloge werden für Tests und Offline-Arbeit mitgeliefert.
 Lizenz-/Datenherkunft:
 [DATA_SOURCES](docs/DATA_SOURCES.md).

@@ -1,5 +1,23 @@
 # Changelog
 
+## Priorisierte globale Marktvorbereitung – 03.10.2026
+
+- Spielergebundene Vorbereitung verarbeitet nur konkrete Idle-Fahrzeuge und
+  die gespeicherten Zielstädte aller aktiven Transporte ab Dispatch.
+- Die bestehende fünfstufige Planung priorisiert sichtbaren Idle-/Zielbestand
+  und beide Reserven. Erst ohne `partial`en Spielerbedarf bereitet ein schmaler
+  globaler Batch eine Stadt-/Modell-/Band-Kombination vor.
+- Globale Runden erzeugen ausschließlich wiederverwendbare Delivery-Vorlagen;
+  echte Anfahrten bleiben konkretem Fahrzeugbedarf vorbehalten.
+- Routingrelationen, Anker, Verbindungsevidenz und Payload-Verfügbarkeit werden
+  pro Runde mengenbasiert gelesen. PostgreSQL verwendet native psycopg-
+  Transaktionskontexte ohne kollidierendes implizites und explizites `BEGIN`.
+- Die lesende Supabase-Abnahme misst 11 ms für 246 Anker und 54 ms für 133
+  Routenpayloads. Die globale Bandzählung benötigt bei 1.761 Vorlagen rund
+  0,74 s und bleibt deshalb ausdrücklich auf die verdrängbare Priorität 3 begrenzt.
+- Der Stadtmarkt lädt und erneuert nur mit gültigem Idle-Fahrzeugscope. Die UI
+  meldet Angebote, Vorbereitung, erschöpfte Coverage und Leermarkt wahrheitsgemäß.
+
 ## Supabase-Produktionsruntime – 02.10.2026
 
 - Produktive Spielstände und beide Referenzkataloge verwenden private

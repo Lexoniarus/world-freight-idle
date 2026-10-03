@@ -27,7 +27,7 @@ Semantik kommt aus dem Katalog; zusätzliche Waren werden nicht erfunden.
 
 ## Stadtmarkt
 
-Eigene idle OwnedVehicles und angekündigte Ankünfte ab 60 Minuten vor Ankunft
+Eigene idle OwnedVehicles und Zielorte aller aktiven Transporte ab Dispatch
 aktivieren eindeutige Bedarfsstädte anhand city_uid.
 Der gespeicherte Standort-Snapshot hat Vorrang; fehlt er, wird die gespeicherte
 Facility-ID exakt aufgelöst. Alle geeigneten Facilities dieser Städte sind
@@ -51,11 +51,12 @@ Frachtrate ist STANDARD_RATE (0,18) × freight_rate_factor_game.
 ## Coverage und Retention
 
 Die aktuelle Vorratsregel ersetzt die frühere zeitlich begrenzte Stadtdeckung.
-Der Worker hält mindestens zehn vorbereitete Vorlagen je Bedarfsstadt, konkretem
-Modell und verfügbarem Distanzband vor. Alle 14 Modelle werden berücksichtigt;
-fehlende sichtbare Angebote echter Fahrzeuge und bevorstehende Ankünfte haben
-Vorrang. Für das ausgewählte Fahrzeug liefert die API höchstens drei passende,
-fahrbare Angebote je Band. Die Auswahl bleibt ohne Zustandsänderung stabil.
+Der Worker hält mindestens zehn vorbereitete Vorlagen je Stadt, konkretem Modell
+und verfügbarem Distanzband vor. Sichtbare Idle-Angebote, sichtbare Zielstadt-
+Angebote und deren Reserven werden zuerst gefüllt. Erst danach wird der übrige
+globale Vorrat opportunistisch je einzelner Kombination vorbereitet. Für das
+ausgewählte Fahrzeug liefert die API höchstens drei passende, fahrbare Angebote
+je Band. Die Auswahl bleibt ohne Zustandsänderung stabil.
 
 Vorlagen sind gemeinsam, persönliche Angebote und einmalige Verwendung sind
 spielergebunden. Neue persönliche Mengen basieren auf der gespeicherten

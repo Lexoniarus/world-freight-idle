@@ -24,15 +24,19 @@ Der Standard startet und überwacht beide Rollen. Ein beendeter API-Prozess
 beendet auch den Worker. Worker-Ausfälle lassen HTTP weiterlaufen und werden
 mit begrenztem Backoff neu gestartet. Für kontrolliertes Beenden Ctrl+C bzw.
 den Dienstmanager benutzen. Standalone-Rollen müssen beide vom Dienstmanager
-beendet werden. Die Datenbank muss auf einem lokalen Dateisystem liegen, das
-SQLite-WAL korrekt unterstützt. Kein Kopieren einer aktiven `.db` ohne WAL:
-Backups immer über die vorhandene SQLite-Backup-Funktion erstellen.
+beendet werden. Produktiv verwenden beide Rollen dieselbe PostgreSQL-/Supabase-
+Konfiguration. SQLite-WAL und die lokale Backup-Funktion gelten ausschließlich
+für Fixture- und Offline-Betrieb; eine aktive `.db` wird nie roh kopiert.
 
 Mehrere gestartete Worker teilen eine globale Lease (180 Sekunden, Erneuerung
 während Arbeit alle 30 Sekunden); nur deren Besitzer führt Providerarbeit aus.
 Ein verwaister Besitzer kann nach Ablauf ersetzt werden. Bedarf und fertige
 Teilergebnisse bleiben gespeichert. Die API wartet weder beim Start noch beim
-Refresh auf vollständige Märkte. `partial` ist ein bedienbarer Zustand.
+Refresh auf vollständige Märkte. `partial` ist ein bedienbarer Zustand. Der
+Worker verarbeitet zuerst fälligen Spielerbedarf. Ein vorhandener
+`partial`-Status sperrt globale Vorbereitung auch während Retry-Backoff. Erst
+ohne offenen Spielerbedarf wird eine globale Stadt-/Modell-/Band-Kombination
+bearbeitet. Nach einem begonnenen bidirektionalen Paar wird erneut priorisiert.
 
 `market.preparation_failed` / `market.preparation_scheduler_failed` signalisieren
 einen erneut eingeplanten Lauf. `process.prewarm_restart` nennt den Backoff.
@@ -124,7 +128,9 @@ automatisch. Die Alttransport-Reparatur muss bei beschädigten alten Beständen
 vor der Schemaübernahme mit der dafür passenden Version abgeschlossen sein.
 
 `market.stock_published` nennt neue Vorlagen und persönliche Angebote samt
-Bedarfsversion. Die Reserve wächst nur in Bedarfsstädten; unbenutzte Angebote
-bleiben nach Abfahrt bestehen. Fehlende Angebote trotz Reserve können auf
+Bedarfsversion. `market.global_preparation_progress` nennt Prioritätsstufe,
+Stadt-/Modell-/Band-Kontext, Candidate-/Relationszahlen und Phasendauern, aber
+keine Spieleridentität. Unbenutzte Angebote bleiben nach Abfahrt bestehen.
+Fehlende Angebote trotz Reserve können auf
 fehlende Anfahrt/Rückwege, abgelaufene Routingnachweise oder nicht mehr passende
 Katalogdaten hinweisen. Sie werden nicht durch ungeprüfte Angebote ersetzt.

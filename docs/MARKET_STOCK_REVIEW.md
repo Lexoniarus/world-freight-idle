@@ -4,6 +4,50 @@ Stand: 28.09.2026, `feature/frontend-v2`. Grundlage: AGENTS.md,
 CODING_STANDARDS.md und ADR 0008. Abschlusszahlen stehen ausschließlich im
 aktuellen Abschnitt des Qualitätsberichts; Zwischenläufe sind keine Gesamtabnahme.
 
+## Nachtrag 03.10.2026: priorisierte globale Vorbereitung
+
+Der bestehende Marktaufbau wurde weiterverwendet. `MarketDemandResolver`
+projiziert im Spielerpfad nur konkrete Idle- und Zielstadtfahrzeuge;
+`StockPlanningService`, `MarketTemplateService`, `StockPreparationBatch` und
+`StockPublicationService` behalten ihre fachlichen Grenzen. Der neue
+`GlobalStockPreparationBatch` ist ein schmaler Orchestrator ohne Spieler-UoW:
+Er wählt einen globalen Kontext, baut nur dessen Candidates, prüft höchstens
+ein Delivery-Paar und veröffentlicht nur gemeinsame Vorlagen.
+
+`MarketPreparationWorker` besitzt weiterhin Scheduling, Trace und Lease. Seine
+zusätzliche Hintergrundgrenze läuft ausschließlich ohne offenen
+Spielerbedarf. `SqliteMarketTemplateStore` kapselt globales Template-SQL; der
+persönliche Store delegiert dorthin. `ReadinessView` und die beiden Routing-
+Repositories bündeln Relationen, Anker, Proofs und Payload-Verfügbarkeit in
+set-basierten Reads. Domain und Services enthalten weiterhin kein SQL/HTTP.
+
+`ContractMarketController` fordert Listen nur mit einem gültigen eigenen
+Idle-Fahrzeug an. `GameActions` übersetzt ausschließlich das vorhandene
+Refresh-Ergebnis in Meldungen; die View besitzt keinen Request. Alle neuen
+konkreten Core-Callables sind im Manifest mit Gegentests verknüpft. Der
+abschließende Gate- und Browsernachweis steht im aktuellen Qualitätsbericht.
+
+### Verantwortlichkeitsprüfung des Nachtrags
+
+| Geänderte oder neue Callables | Ergebnis des Einzelreviews |
+| --- | --- |
+| `MarketDemandResolver.resolve`, `catalogue` | Trennen konkrete Spielerprojektion und reine Katalogenumeration. Keine Planung, Persistenz oder Providerarbeit. |
+| `delivery_relations`, neue mengenbasierte Portmethoden | Typisierte Projektion beziehungsweise Infrastrukturvertrag ohne SQL oder Ablaufsteuerung. |
+| `SqliteMarketTemplateStore.__init__`, `templates`, `levels`, `add`, `_load_template` | Kapseln ausschließlich globales Template-SQL und Dokumentmapping. Der persönliche Store delegiert, statt die Verantwortung zu duplizieren. |
+| `SqlitePreparationStore.has_incomplete` | Eine set-basierte Statusfrage für den Worker; keine Schedulingentscheidung im Repository. |
+| `SqliteRoutingAnchorRepository.get_many`, `_decode` | Ein mengenbasierter Read und ein einzelner Adapter-Mapper. Keine Readiness- oder Providerentscheidung. |
+| `SqliteRoutingReadinessStore.get_many`, `available_payloads`, `connected_references`, `_valid_payload`, `_load_relation` | Bündeln relationale Evidenz und validieren persistierte Payloads; Ablauf und Kandidatenauswahl bleiben im Service. |
+| `ReadinessView`-Reads, `RoutingReadinessService.reading`, `_preload` | Ein begrenzter konsistenter Lesesnapshot pro Runde; kein zweiter Cache oder eigener Readiness-Dienst. Einzelreads bleiben gezielten Provider-/Dispatchpfaden vorbehalten. |
+| `GlobalStockPreparationBatch.process`, `_next_context`, `_plan`, `_choose`, `_prepare`, `_publish`, `_filled`, `_runnable`, `_result`, `_log` | Schmaler P3-Orchestrator mit injizierten Ports. Jede Hilfsmethode besitzt genau Auswahl, Planung, eine Routenprüfung, Publication Fence, Schedulingprojektion oder strukturiertes Logging als Aufgabe; keine Spieler-UoW und kein SQL. |
+| `MarketPreparationWorker`-Hintergrundzweig und `PreparationLease.run` | Scheduling priorisiert fälligen Spielerbedarf, blockiert P3 bei jedem `partial` und akzeptiert typisiert beide Batch-Ergebnisse. Lease und Batchverantwortung bleiben getrennt. |
+| `PostgresGameDatabase.transaction`, `read_transaction` | Besitzen ausschließlich native psycopg-Transaktionsgrenzen; fachliche Services kennen kein `BEGIN`. |
+| Composition-Root-Erweiterungen in `bootstrap.py` | Erzeugen genau einen gemeinsamen Template-Store und injizieren den globalen Batch. Keine fachliche Entscheidung wurde in die Verdrahtung verschoben. |
+| `ContractMarketController`-Listenreads, `GameActions.refreshMarket`, `renderContracts` | Controller fordert nur gültigen Idle-Fahrzeugscope an, Action meldet das Serverergebnis und View deaktiviert ungültigen Refresh. Views bleiben requestfrei. |
+
+Die Manifest-Architekturprüfung deckt jede neue konkrete Python-Core-Funktion
+mit einem expliziten Gegentest ab. Alle öffentlichen Callables sind typisiert und
+dokumentiert; die Quality-Gates bestätigen PEP 8, 79 Zeichen, mypy und Pyright.
+
 ## Manuelle Prüfung der Verantwortlichkeiten
 
 | Funktionen / Grenze | Inhaltliches Review |
