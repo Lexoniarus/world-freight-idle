@@ -86,6 +86,8 @@ def test_global_lease_fences_expired_and_competing_writers(tmp_path):
     with pytest.raises(ValueError):
         store.renew(key, "a", 10, 9)
     assert store.acquire(key, "a", 10, 20)
+    assert store.holds(key, "a", 11)
+    assert not store.holds(key, "a", 20)
     assert not other.acquire(key, "b", 11, 21)
     assert not other.renew(key, "b", 11, 30)
     assert store.renew(key, "a", 11, 30)

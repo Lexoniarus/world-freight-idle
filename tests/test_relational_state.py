@@ -73,17 +73,26 @@ def test_database_schema_rejects_old_and_unknown_files(tmp_path):
 
 def test_unit_of_work_rolls_back_nested_writes_and_closes(relational):
     unit = SqliteGameUnitOfWork(relational, "alice")
+    events = []
+    relational.after_commit(lambda: events.append("immediate"))
+    assert events == ["immediate"]
     assert unit.repository.get_player() is None
     with unit.transaction():
+        relational.after_commit(lambda: events.append("outer"))
         unit.repository.save_player(PlayerState(100, 0, 0))
         with unit.transaction():
+            relational.after_commit(lambda: events.append("nested"))
             unit.repository.save_player(PlayerState(90, 1, 1))
+        assert events == ["immediate"]
+    assert events == ["immediate", "outer", "nested"]
     assert unit.repository.get_player() == PlayerState(90, 1, 1)
     with pytest.raises(RuntimeError):
         with unit.transaction():
             unit.repository.save_player(PlayerState(1, 5, 5))
+            relational.after_commit(lambda: events.append("rolled-back"))
             with unit.transaction():
                 raise RuntimeError("abort use case")
+    assert "rolled-back" not in events
     assert unit.repository.get_player() == PlayerState(90, 1, 1)
     with pytest.raises(PersistenceError):
         SqliteGameStateRepository(relational, "unknown").save_player(

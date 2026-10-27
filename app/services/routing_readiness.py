@@ -17,7 +17,6 @@ from app.domain.routing_anchor_ports import (
 )
 from app.domain.routing_anchors import (
     NEGATIVE_TTL,
-    POSITIVE_TTL,
     VALIDATION_VERSION,
     RoutingAnchor,
 )
@@ -74,7 +73,6 @@ class RoutingReadinessService:
         self.timeout = min(timeout_seconds, 120)
         self.provider_revision = provider_revision
         self.connections = connections or RoutingConnectionValidator()
-        self.worker_owner: str | None = None
         self._view: ContextVar[ReadinessView | None] = ContextVar(
             "readiness_view", default=None
         )
@@ -161,16 +159,12 @@ class RoutingReadinessService:
         if relation.status == "ready":
             reverse = self.store.get(relation_identity(destination, origin))
             stale = stale or (
-                now - relation.checked_at >= POSITIVE_TTL
-                or reverse is None
+                reverse is None
                 or reverse.status != "ready"
-                or now - reverse.checked_at >= POSITIVE_TTL
                 or reverse.fingerprint != self.fingerprint(destination, origin)
                 or not self.store.connected(
                     relation.reference, reverse.reference
                 )
-                or not self.store.payload_available(relation.reference)
-                or not self.store.payload_available(reverse.reference)
             )
         elif relation.status == "deterministic_failure":
             stale = stale or now - relation.checked_at >= NEGATIVE_TTL
@@ -311,7 +305,6 @@ class RoutingReadinessService:
             now,
             self.provider_identity,
             revision,
-            worker_owner=self.worker_owner,
         ):
             return forward
         return None
@@ -351,8 +344,6 @@ class RoutingReadinessService:
                 provider_message=error.provider_message,
             )
         )
-        if self.store.publish(
-            relation, None, owner, self.clock(), worker_owner=self.worker_owner
-        ):
+        if self.store.publish(relation, None, owner, self.clock()):
             return relation
         return None

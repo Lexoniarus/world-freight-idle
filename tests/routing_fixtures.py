@@ -1,7 +1,5 @@
 """Explicit ready-route setup for authenticated API integration tests."""
 
-from functools import partial
-
 from fastapi.testclient import TestClient
 
 from app.bootstrap import (
@@ -29,13 +27,12 @@ def prepare_client_market(client: TestClient, runtime: GameRuntime) -> None:
 
 
 async def prepare_player_market(runtime: GameRuntime, user_id: str) -> None:
-    """Publish a usable offer through the actual leased stock worker."""
+    """Publish a usable offer through the actual local stock worker."""
     game = build_player_service(runtime, user_id)
     worker = build_preparation_worker(runtime)
-    assert worker.lease is not None
     try:
         for _ in range(4):
-            assert await worker.lease.run(partial(worker.process, user_id))
+            await worker.process(user_id)
             if game.contract_choices(game.list_contracts()):
                 return
         raise AssertionError("Fixture worker did not publish a ready offer.")

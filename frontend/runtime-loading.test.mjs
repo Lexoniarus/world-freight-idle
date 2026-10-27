@@ -15,6 +15,19 @@ const geometry = {
 };
 const turn = () => new Promise((resolve) => setImmediate(resolve));
 
+function freightApi(request) {
+  return {
+    loadFreightOffers: (vehicleId, signal) =>
+      request("/contracts" + (vehicleId ? `?vehicle_id=${vehicleId}` : ""), { signal }),
+    requestFreightRefill: (vehicleId, signal) =>
+      request("/contracts/refresh" + (vehicleId ? `?vehicle_id=${vehicleId}` : ""), {
+        method: "POST",
+        signal,
+      }),
+    loadFreightOffer: (id, signal) => request(`/contracts/${id}`, { signal }),
+  };
+}
+
 test("market requests follow the selected vehicle and discard older vehicle responses", async () => {
   let url = new URL("http://game/contracts?vehicle=first");
   const state = new GameState(async () => {});
@@ -24,8 +37,10 @@ test("market requests follow the selected vehicle and discard older vehicle resp
     state,
     currentUrl: () => url,
     notify() {},
-    request: (path, options) =>
-      new Promise((resolve) => calls.push({ path, resolve, signal: options.signal })),
+    api: freightApi(
+      (path, options) =>
+        new Promise((resolve) => calls.push({ path, resolve, signal: options.signal })),
+    ),
   });
   controller.start();
   const first = controller.refresh();
@@ -140,7 +155,7 @@ test("runtime publishes while traffic is blocked and shares owner geometry with 
   assert.equal(state.routes.values.size, 0);
 });
 
-test("identical market and detail polls coalesce; only changed selection invalidates detail", async () => {
+test("identical detail reads coalesce and only changed selection aborts", async () => {
   const calls = [];
   let url = new URL("http://game/contracts/a");
   const state = new GameState(async () => {});
@@ -149,24 +164,23 @@ test("identical market and detail polls coalesce; only changed selection invalid
     state,
     currentUrl: () => url,
     notify() {},
-    request: (path, options) =>
-      new Promise((resolve) => calls.push({ path, signal: options.signal, resolve })),
+    api: freightApi(
+      (path, options) =>
+        new Promise((resolve) => calls.push({ path, signal: options.signal, resolve })),
+    ),
   });
-  controller.ordersVisible = () => true;
   controller.start();
   const first = controller.refresh(),
     same = controller.refresh();
-  assert.equal(calls.length, 2);
-  assert.equal(calls[1].signal.aborted, false);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].signal.aborted, false);
   url = new URL("http://game/contracts/b");
   const next = controller.refresh();
-  assert.equal(calls.length, 3);
-  assert.equal(calls[1].signal.aborted, true);
-  assert.equal(calls[0].signal.aborted, false);
-  calls[0].resolve({ contracts: [] });
-  calls[2].resolve({ id: "b" });
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].signal.aborted, true);
+  calls[1].resolve({ id: "b" });
   await next;
-  calls[1].resolve({ id: "a" });
+  calls[0].resolve({ id: "a" });
   await Promise.all([first, same]);
   assert.equal(state.contractDetail.id, "b");
   controller.destroy();

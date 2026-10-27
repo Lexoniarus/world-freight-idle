@@ -93,6 +93,11 @@ Market-, Distance-, Scale- und Capability-Profile sind eigene Domainwerte.
 | ContractFactory | Candidate mit separat gewähltem Fahrzeugkontext materialisieren |
 | MarketGenerator | Diese drei Schritte orchestrieren |
 | MarketLifecycleService | Retention, Pruning, Markttransaktion und Projektion der Eignung koordinieren |
+| MarketDemandResolver | Konkrete idle Fahrzeuge und gespeicherte Transportziele projizieren |
+| StockPlanningService | Sichtbare Defizite vor Reserven priorisieren und Vielfalt wählen |
+| MarketTemplateService | Wiederverwendbare Vorlagen zu genau einem Angebot materialisieren |
+| StockPublicationService | Lesesnapshot prüfen und Angebot atomar veröffentlichen |
+| DispatchEligibilityService | Fahrzeug-/Frachtfreigabe und künftige Mitarbeiterfreigabe kapseln |
 | GameService | Spielabläufe koordinieren und Domainregeln delegieren |
 
 Stateful Services und Repository-Grenzen sind injizierte Klassen. Gemeinsame
@@ -244,13 +249,12 @@ Funktionen berechnen getrennt Beladung, Tarif, Einkaufskosten und Auszahlung.
 sie führt keine Katalogabfragen durch. Der minimale NHM-Faktor wird einmal
 je World-Revision bestimmt. `MarketGenerator` bleibt reine Orchestrierung.
 
-Der frühere globale Rebuild über `MarketStartupService` gehört nicht mehr zum
-API-Startpfad. Die API validiert Schema und Referenzen. Der separate Prewarm-
-Einstieg liest vorhandene Profil-IDs über den Store und plant Bedarf ein.
-`MarketPreparationBatchService` und `MarketLifecycleService` veröffentlichen
-anschließend bedarfsgesteuert gegen geprüfte Revisionen (ADR 0007).
-Der ältere explizite Rebuild und seine Regressionstests bleiben vorhanden;
-er wird von keinem Produktionsstart aufgerufen.
+Der frühere globale Rebuild über `MarketStartupService` ist entfernt. Die API
+validiert Schema und Referenzen; der Lifespan-Worker erhält ausschließlich
+durable konkrete Fahrzeugbedarfe. `StockPreparationBatch` und
+`MarketLifecycleService` veröffentlichen bedarfsgesteuert gegen geprüfte
+Revisionen (ADR 0007). Es gibt weder einen Prewarm-Einstieg noch parallele
+Legacy-Batch-/Startup-Strukturen.
 
 `PreferenceService` besitzt Palette/Fallback und Schreibtransaktion;
 `SqlitePreferenceStore` besitzt ausschließlich Account-SQL. Analytics liest
@@ -270,9 +274,10 @@ Beide Referenzkataloge werden beim Serverstart validiert und für die Laufzeit
 als immutable Revision gecacht. `CachedVehicleCatalogue` lädt seinen
 injizierten validierenden Port unter einem Lock einmal erfolgreich; Fehler
 werden nicht gecacht. Ein neuer Katalogstand erfordert einen Serverneustart
-mit erneuter Validierung und globalem Marktneuaufbau. Offline-Werkzeuge lesen
-weiterhin explizit ihren gewählten Katalog. Historische Transporte bleiben
-von neuen Revisionen unabhängig.
+mit erneuter Validierung. Konkrete Fahrzeugmärkte werden bedarfsgesteuert neu
+geprüft; ein globaler Marktneuaufbau findet nicht statt. Offline-Werkzeuge lesen
+weiterhin explizit ihren gewählten Katalog. Historische Transporte bleiben von
+neuen Revisionen unabhängig.
 
 ## Kartenregressionsfix: Darstellungsgrenzen
 
@@ -340,9 +345,9 @@ Die Offer-Dokumentversion 1 und Transport-Dokumentversion 2 bleiben erhalten.
 RoutePayload benennt Straßenkilometer und Providerzeit explizit; Mapping zu
 historischen RouteSnapshot-Feldern erfolgt ohne Migration an der Dispatchgrenze.
 
-Der separate Prewarm-Prozess besitzt den Preparation-Worker und registriert Cleanup
-vor dessen Start. Der API-Lifespan startet keinen Worker und baut keine Maerkte auf.
-Shutdown cancelt und awaited die Worker-Task vor dem HTTP-Client.
+Der FastAPI-Lifespan besitzt genau einen Preparation-Worker und registriert
+Cleanup vor dessen Start. Shutdown cancelt und awaited die Worker-Task vor dem
+HTTP-Client. Durable Bedarfswrites wecken ihn; GET-Requests tun das nicht.
 Eine neue Context-Instanz verhindert geerbte HTTP-Traces und Schreibtransaktionen.
 Globale Relations-/Anchor-Leases begrenzen parallele Arbeit; abgelaufene Leases
 sind übernehmbar, verlorene Schreibrechte verhindern Relationsveröffentlichung.
@@ -364,10 +369,10 @@ Cache-Schlüssel bleiben ausschließlich im Routing-Repository; das bisherige
 Schlüsselformat und Schema bleiben lesbar. Bind und Repository-Ersetzung besitzen
 ihre atomare Grenze und beteiligen sich an einer äußeren Markt-UoW.
 
-`MarketPreparationBatchService` erhält State-Port, Candidate-/Coverage-/Scope-
-Services, Preparation und Refresh injiziert. Sein immutable Plan/Ergebnis trennt
-fachlichen Bedarf vom Worker. Der Worker besitzt Scheduling, Trace, Lifecycle
-und Fehlerschutz des gesamten Durchlaufs einschließlich Status und Finish.
+`StockPreparationBatch` erhält Publikation, Planung und Vorlagenservice
+injiziert. Sein immutable Snapshot/Ergebnis trennt fachlichen Bedarf vom Worker.
+Der Worker besitzt Scheduling, Trace, Lifecycle und Fehlerschutz des gesamten
+Durchlaufs einschließlich Status und Finish.
 Datenbankfehler führen zu abbrechbarem 60-Sekunden-Backoff. Nach externen Awaits
 werden Generation und aktuelle Coverage neu gelesen; alte Ergebnisse sind gefenced.
 
@@ -393,12 +398,13 @@ serverseitige Eignungs-IDs; Views berechnen keine neue Kompatibilität.
 
 ## Runtime-/Vorbereitungsgrenze und kompakte Projektionen
 
-ADR 0007 ersetzt den bisherigen Worker im API-Lifespan. `main.py` startet und
-ueberwacht getrennte Rollen; beide verwenden dieselbe relationale SQLite-Datei
-mit WAL/FULL und 500 ms Lock-Wartezeit. Runtime liest publizierte Offers und
-Coverage; nur der Worker baut Kandidaten ausserhalb des Writers. Persistierte
-Bedarfsversionen, globale Worker-Lease und Routingnachweise sichern kurze
-Publikationstransaktionen ab. Zeitaufwendige Providerarbeit ist kein API-Fallback.
+ADR 0007 trennt Runtime-Reads von Vorbereitung, nicht mehr die Prozesse.
+`main.py` startet einen FastAPI-Prozess; dessen Lifespan besitzt den Worker.
+Beide Pfade verwenden dieselbe relationale SQLite-Datei mit WAL/FULL und 500 ms
+Lock-Wartezeit. Runtime liest publizierte Offers und Coverage; nur der Worker
+baut Kandidaten außerhalb des Writers. Persistierte Bedarfsversionen sowie
+Relations-/Anker-Leases sichern kurze Publikationstransaktionen ab. Zeitaufwendige
+Providerarbeit ist kein API-Fallback.
 
 RuntimeReader liefert typisierte kompakte aktive Transporte direkt aus SQL-
 Skalarprojektionen. Historische Geometrien werden einzeln autorisiert geladen.
@@ -411,16 +417,18 @@ Details und manuelles Verantwortungsreview: [Runtime-Review](RUNTIME_ISOLATION_R
 [ADR 0008](adr/0008-shared-market-stock.md) ergänzt die Runtime-Trennung.
 Die Produktionsverdrahtung verwendet `StockPreparationBatch` mit getrennten
 Bedarfs-, Planungs-, Vorlagen- und Publikationsservices. Sie liest kompakte
-Ankunftsfakten ohne Geometrien und plant spätestens ab dem 60-Minuten-Horizont
-auch Zielstädte. Die reine Dreier-Auswahl bleibt in `MarketSelectionService`.
+Ankunftsfakten ohne Geometrien und plant Zielstädte unmittelbar ab Dispatch.
+Die reine Dreier-Auswahl bleibt in `MarketSelectionService`.
 SQL, Konsistenzgrenzen und Migrationsregeln sind in ADR 0008 benannt.
 
 `StockPublicationService` hält den vollständigen unveränderlichen Bestand für
 den Revisionsvergleich und projiziert davon separat kataloggültige Angebote
 und Vorlagen für Planung/Abdeckung. Veraltete oder frühere Stadtbestände werden
 bewahrt. Normales Polling löst wegen dieser unsichtbaren Bestände keine neue
-Bedarfsversion aus. Nur Zustandsänderungen, Refresh und fällige Wiederprüfung
-fordern weitere Arbeit an. Verbrauch ist Teil der vorhandenen Dispatch-UoW.
+Bedarfsversion aus. Nur Zustandsänderungen und ein ausdrücklicher Refresh
+fordern weitere Arbeit an. Erfolgreiche Relationen bleiben für denselben
+Fingerprint dauerhaft nutzbar; negative Ergebnisse und Anker behalten ihre
+Backoffs. Verbrauch ist Teil der vorhandenen Dispatch-UoW.
 
 Das [manuelle Verantwortungsreview](MARKET_STOCK_REVIEW.md) prüft die konkreten
 Funktionen zusätzlich zu den automatischen Importgrenzen und Manifesttests.

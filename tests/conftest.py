@@ -15,6 +15,7 @@ from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.services.cost_profiles import VehicleCostResolver
+from app.services.dispatch_eligibility import DispatchEligibilityService
 from app.services.dispatch_planning import DispatchPlanningService
 from app.services.game import GameService
 from app.services.market_scope import MarketScopeResolver
@@ -99,6 +100,10 @@ def game(database, catalogue, world_catalogue) -> GameService:
             VehicleCostResolver(catalogue),
             anchors,
             world_catalogue,
+        ),
+        dispatch_eligibility=DispatchEligibilityService(
+            world_catalogue,
+            market.candidates,
         ),
         market=market,
         market_scope=MarketScopeResolver(world_catalogue),

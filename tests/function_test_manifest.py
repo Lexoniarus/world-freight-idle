@@ -344,6 +344,7 @@ FUNCTION_TESTS.update(
 FUNCTION_TESTS.update(
     {
         "app.repositories.game_database.SqliteGameDatabase.__init__": "test_database_schema_rejects_old_and_unknown_files",
+        "app.repositories.game_database.SqliteGameDatabase.after_commit": "test_unit_of_work_rolls_back_nested_writes_and_closes",
         "app.repositories.game_database.SqliteGameDatabase.connect": "test_database_schema_rejects_old_and_unknown_files",
         "app.repositories.game_database.SqliteGameDatabase.initialize": "test_database_schema_rejects_old_and_unknown_files",
         "app.repositories.game_database.SqliteGameDatabase.transaction": "test_unit_of_work_rolls_back_nested_writes_and_closes",
@@ -657,11 +658,6 @@ FUNCTION_TESTS.update(
         "app.domain.tariffs.freight_tariff": "test_tariff_uses_concrete_nhm_and_explicit_maintenance",
         "app.services.cost_profiles.VehicleCostResolver.resolve": "test_tariff_uses_concrete_nhm_and_explicit_maintenance",
         "app.repositories.transport_mapping.load_cost_breakdown": "test_cost_values_reject_invalid_or_inconsistent_components",
-        "app.repositories.market_startup.SqliteMarketStartupStore.transaction": "test_startup_rebuild_is_global_atomic_and_does_not_route",
-        "app.repositories.market_startup.SqliteMarketStartupStore.player_ids": "test_startup_rebuild_is_global_atomic_and_does_not_route",
-        "app.services.market_startup.MarketStartupService.rebuild": "test_startup_rebuild_is_global_atomic_and_does_not_route",
-        "app.bootstrap.build_market_startup": "test_startup_rebuild_is_global_atomic_and_does_not_route",
-        "app.bootstrap.build_market_startup.lifecycle": "test_startup_rebuild_is_global_atomic_and_does_not_route",
         "app.bootstrap.build_preferences": "test_preferences_are_account_scoped_persistent_and_palette_validated",
         "app.repositories.preferences.SqlitePreferenceStore.__init__": "test_preferences_are_account_scoped_persistent_and_palette_validated",
         "app.repositories.preferences.SqlitePreferenceStore.transaction": "test_preferences_are_account_scoped_persistent_and_palette_validated",
@@ -788,13 +784,9 @@ FUNCTION_TESTS.update(
         "app.services.market_preparation.MarketPreparationService._bind_in_transaction": "test_reference_replacement_owns_rollback",
         "app.services.market_preparation.MarketPreparationService._ready_candidates": "test_vehicle_readiness_requires_approach_and_excludes_stale",
         "app.services.market_preparation.MarketPreparationService.demand_state": "test_exhausted_negative_demand_requeues_after_revision",
-        "app.services.market_preparation.MarketPreparationService.preparable_candidates": "test_worker_completes_vehicle_gaps_and_exhausts_failed_approaches",
+        "app.services.market_preparation.MarketPreparationService.preparable_candidates": "test_publication_revision_change_and_concurrent_arrival_are_fenced",
         "app.services.market_preparation.MarketPreparationService.ready_candidates": "test_vehicle_readiness_requires_approach_and_excludes_stale",
         "app.services.market_preparation.MarketPreparationService.ready_context": "test_vehicle_readiness_requires_approach_and_excludes_stale",
-        "app.services.preparation_batch.MarketPreparationBatchService.__init__": "test_worker_completes_vehicle_gaps_and_exhausts_failed_approaches",
-        "app.services.preparation_batch.MarketPreparationBatchService._ready": "test_worker_completes_vehicle_gaps_and_exhausts_failed_approaches",
-        "app.services.preparation_batch.MarketPreparationBatchService.plan": "test_worker_completes_vehicle_gaps_and_exhausts_failed_approaches",
-        "app.services.preparation_batch.MarketPreparationBatchService.process": "test_departure_during_preparation_cannot_publish_stale_vehicle_coverage",
         "app.services.preparation_worker.MarketPreparationWorker._iteration": "test_worker_recovers_entire_iteration",
         "app.services.vehicle_coverage.VehicleCoverageService.diagnose": "test_shared_planned_offers_cover_identical_vehicles_once",
         "app.services.vehicle_coverage.VehicleCoverageService.extend": "test_vehicle_coverage_fills_small_vehicle_after_city_is_full",
@@ -836,7 +828,7 @@ FUNCTION_TESTS.update(
         "app.services.routing_connections.RoutingConnectionValidator._search": "test_search_budget_is_transient_and_successful_direct_path_is_certified",
         "app.services.routing_connections.RoutingConnectionValidator._route": "test_no_direction_is_published_without_matching_return_geometry",
         "app.services.routing_connections.RoutingConnectionValidator._anchor": "test_wolfsburg_real_candidates_recover_without_changing_facility",
-        "app.repositories.routing_readiness.SqliteRoutingReadinessStore.connected": "test_cache_versions_ttls_and_broken_reverse_evidence",
+        "app.repositories.routing_readiness.SqliteRoutingReadinessStore.connected": "test_route_certificates_outlive_payloads_but_versions_invalidate",
         "app.repositories.routing_readiness.SqliteRoutingReadinessStore.publish_connection": "test_connection_publication_rolls_back_both_directions_and_anchors",
     }
 )
@@ -857,24 +849,17 @@ FUNCTION_TESTS.update(
         "app.bootstrap.build_runtime_view": "test_runtime_reads_exclude_geometry_and_keep_private_energy",
         "app.bootstrap.build_transport_repair": "test_repair_rejects_unknown_damage_and_removes_failed_outputs",
         "app.domain.runtime_views.RuntimeTransport.__post_init__": "test_runtime_projection_rejects_corrupt_scalars_without_reading_history",
-        "app.launcher.parent_eof": "test_role_selection_parent_eof_and_runtime_cleanup",
-        "app.launcher.run_prewarm": "test_prewarm_resources_close_when_worker_start_fails",
-        "app.launcher.run_role": "test_role_selection_parent_eof_and_runtime_cleanup",
-        "app.launcher.run_runtime": "test_role_selection_parent_eof_and_runtime_cleanup",
-        "app.launcher.start_child": "test_child_creation_and_bounded_shutdown",
-        "app.launcher.stop_child": "test_child_creation_and_bounded_shutdown",
-        "app.launcher.supervise": "test_supervisor_restarts_only_worker_and_closes_children",
         "app.repositories.game_database.SqliteGameDatabase.read_transaction": "test_wal_read_snapshot_rejects_writes_and_resets_after_failure",
         "app.repositories.game_state.SqliteGameUnitOfWork.read_transaction": "test_runtime_never_builds_candidates_and_worker_plans_outside_writer",
         "app.repositories.market_preparation.SqlitePreparationStore.diagnostics": "test_durable_demand_coalesces_and_fences_stale_diagnostics",
         "app.repositories.market_preparation.SqlitePreparationStore.ensure": "test_durable_demand_coalesces_and_fences_stale_diagnostics",
         "app.repositories.market_preparation.SqlitePreparationStore.invalidate": "test_durable_demand_coalesces_and_fences_stale_diagnostics",
         "app.repositories.market_preparation.SqlitePreparationStore.publish_diagnostics": "test_durable_demand_coalesces_and_fences_stale_diagnostics",
-        "app.repositories.routing_readiness.SqliteRoutingReadinessStore._payload_document": "test_payload_validation_cache_detects_changes_and_worker_fences_failure",
-        "app.repositories.routing_readiness.SqliteRoutingReadinessStore.holds": "test_payload_validation_cache_detects_changes_and_worker_fences_failure",
-        "app.repositories.routing_readiness.SqliteRoutingReadinessStore.payload_available": "test_payload_validation_cache_detects_changes_and_worker_fences_failure",
+        "app.repositories.routing_readiness.SqliteRoutingReadinessStore._payload_document": "test_payload_validation_cache_detects_changes",
+        "app.repositories.routing_readiness.SqliteRoutingReadinessStore.holds": "test_payload_validation_cache_detects_changes",
+        "app.repositories.routing_readiness.SqliteRoutingReadinessStore.payload_available": "test_payload_validation_cache_detects_changes",
         "app.repositories.routing_readiness.SqliteRoutingReadinessStore.read_transaction": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
-        "app.repositories.routing_readiness.decode_route_payload": "test_payload_validation_cache_detects_changes_and_worker_fences_failure",
+        "app.repositories.routing_readiness.decode_route_payload": "test_payload_validation_cache_detects_changes",
         "app.repositories.runtime_views.SqliteRuntimeReader.__init__": "test_runtime_reads_exclude_geometry_and_keep_private_energy",
         "app.repositories.runtime_views.SqliteRuntimeReader.geometry": "test_runtime_reads_exclude_geometry_and_keep_private_energy",
         "app.repositories.runtime_views.SqliteRuntimeReader.read": "test_runtime_reads_exclude_geometry_and_keep_private_energy",
@@ -897,24 +882,12 @@ FUNCTION_TESTS.update(
         "app.services.market_lifecycle.MarketLifecycleService._publication_evidence": "test_publication_revision_change_and_concurrent_arrival_are_fenced",
         "app.services.market_lifecycle.MarketLifecycleService.published": "test_runtime_never_builds_candidates_and_worker_plans_outside_writer",
         "app.services.market_preparation.MarketPreparationService.request": "test_durable_demand_coalesces_and_fences_stale_diagnostics",
-        "app.services.preparation_batch.MarketPreparationBatchService._plan_snapshot": "test_worker_completes_vehicle_gaps_and_exhausts_failed_approaches",
-        "app.services.preparation_lease.PreparationLease.__init__": "test_worker_lease_excludes_competitors_and_cancels_on_loss",
-        "app.services.preparation_lease.PreparationLease._heartbeat": "test_worker_lease_excludes_competitors_and_cancels_on_loss",
-        "app.services.preparation_lease.PreparationLease.claim": "test_worker_lease_excludes_competitors_and_cancels_on_loss",
-        "app.services.preparation_lease.PreparationLease.close": "test_worker_lease_excludes_competitors_and_cancels_on_loss",
-        "app.services.preparation_lease.PreparationLease.owned": "test_worker_lease_excludes_competitors_and_cancels_on_loss",
-        "app.services.preparation_lease.PreparationLease.run": "test_worker_lease_excludes_competitors_and_cancels_on_loss",
         "app.services.routing_readiness.RoutingReadinessService._current": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
         "app.services.routing_readiness.RoutingReadinessService.reading": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
         "app.services.runtime_views.RuntimeViewService.read": "test_runtime_reads_exclude_geometry_and_keep_private_energy",
         "app.services.vehicle_coverage.trade_key": "test_shared_planned_offers_cover_identical_vehicles_once",
     }
 )
-
-FUNCTION_TESTS["app.launcher.execute_role"] = (
-    "test_role_selection_parent_eof_and_runtime_cleanup"
-)
-
 
 FUNCTION_TESTS.update(
     {
@@ -941,12 +914,12 @@ FUNCTION_TESTS.update(
         "app.repositories.market_stock_upgrade.MarketStockUpgradeRepository._validate": "test_market_upgrade_rejects_unknown_schema_and_rolls_back_bad_output",
         "app.repositories.market_stock_upgrade.MarketStockUpgradeRepository.inspect": "test_market_upgrade_preserves_source_history_and_only_converts_live_offers",
         "app.repositories.market_stock_upgrade.MarketStockUpgradeRepository.upgrade_to": "test_market_upgrade_preserves_source_history_and_only_converts_live_offers",
-        "app.services.market_demand.MarketDemandResolver.resolve": "test_arrival_stock_starts_at_horizon_without_early_settlement",
+        "app.services.market_demand.MarketDemandResolver.resolve": "test_destination_stock_starts_at_dispatch_without_early_settlement",
         "app.services.market_selection.MarketSelectionService.select": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
         "app.services.market_templates.MarketTemplateService.materialize": "test_templates_are_shared_but_consumption_is_once_per_account",
         "app.services.stock_planning.StockPlanningService.choose": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
         "app.services.stock_planning.StockPlanningService.order": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
-        "app.services.stock_planning.StockPlanningService.targets": "test_all_catalogue_models_get_reserves_without_overloading_small_truck",
+        "app.services.stock_planning.StockPlanningService.targets": "test_demand_models_and_owned_capacity_remain_separate",
         "app.services.stock_planning.StockTarget.key": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
         "app.services.stock_preparation.StockPreparationBatch._ready": "test_partial_connection_resumes_after_restart_and_never_releases_early",
         "app.services.stock_preparation.StockPreparationBatch._result": "test_stale_evidence_reuses_offers_and_backoff_never_releases_stock",
@@ -957,5 +930,52 @@ FUNCTION_TESTS.update(
         "app.services.stock_publication.StockPublicationService.publish": "test_reserve_replacement_and_publication_failure_keep_atomic_state",
         "app.services.stock_publication.StockPublicationService.read": "test_catalogue_changes_block_old_supply_without_deleting_terms",
         "app.services.stock_publication.StockPublicationService.unchanged": "test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance",
+    }
+)
+
+FUNCTION_TESTS.update(
+    {
+        "app.launcher.run": (
+            "test_single_process_launcher_handles_interactive_cancellation"
+        ),
+        "app.launcher.run_application": (
+            "test_single_process_launcher_owns_uvicorn_lifecycle"
+        ),
+        "app.repositories.market_preparation.SqlitePreparationStore.set_notifier": (
+            "test_durable_demand_coalesces_and_fences_stale_diagnostics"
+        ),
+        "app.repositories.market_stock.SqliteMarketStockStore.scoped_templates": (
+            "test_stock_policy_selection_and_corrupt_storage_are_rejected"
+        ),
+        "app.repositories.market_templates.SqliteMarketTemplateStore.__init__": (
+            "test_stock_policy_selection_and_corrupt_storage_are_rejected"
+        ),
+        "app.repositories.market_templates.SqliteMarketTemplateStore.add": (
+            "test_stock_policy_selection_and_corrupt_storage_are_rejected"
+        ),
+        "app.repositories.market_templates.SqliteMarketTemplateStore.initialize": (
+            "test_stock_policy_selection_and_corrupt_storage_are_rejected"
+        ),
+        "app.repositories.market_templates.SqliteMarketTemplateStore.scoped_templates": (
+            "test_stock_policy_selection_and_corrupt_storage_are_rejected"
+        ),
+        "app.repositories.market_templates.SqliteMarketTemplateStore.templates": (
+            "test_stock_policy_selection_and_corrupt_storage_are_rejected"
+        ),
+        "app.services.deterministic_market_random.DeterministicMarketRandom.fraction": (
+            "test_deterministic_market_random_is_stable_and_rejects_bad_choices"
+        ),
+        "app.services.deterministic_market_random.DeterministicMarketRandom.weighted_index": (
+            "test_deterministic_market_random_is_stable_and_rejects_bad_choices"
+        ),
+        "app.services.dispatch_eligibility.DispatchEligibilityService.validate": (
+            "test_vehicle_readiness_requires_approach_and_excludes_stale"
+        ),
+        "app.services.preparation_worker.MarketPreparationWorker.wake": (
+            "test_worker_fills_ready_market_and_owns_shutdown"
+        ),
+        "app.services.stock_planning.StockPlanningService.preferred": (
+            "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work"
+        ),
     }
 )

@@ -1935,18 +1935,26 @@ separate Betriebsschritte. Implementierung und tatsaechlicher Abnahmestand:
 
 ## Gemeinsamer Auftragsvorrat (28.09.2026)
 
-Das ausgewählte Fahrzeug erhält genau drei fahrbare Angebote je Streckentyp,
-sofern genügend geprüfter Bestand verfügbar ist. Der gemeinsame Hintergrundvorrat
-hält mindestens zehn Vorlagen je Bedarfsstadt, konkretem Modell und Band; jede
-Vorlage ist einmal je Spieler verwendbar. Die drei sichtbaren gehören zu diesen
-zehn. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen Angebote nutzen.
+Das ausgewählte Fahrzeug erhält bis zu drei fahrbare Angebote je Streckentyp,
+sofern genügend geprüfter Bestand verfügbar ist. Der persistente Vorrat wird
+nur für konkrete eigene idle Fahrzeuge und gespeicherte Ziele aktiver
+Transporte aufgebaut. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen
+Angebote nutzen; gemeinsame Vorlagen bleiben spielerübergreifend verwendbar.
 
 Ungenutzte Vorlagen und Angebote verfallen nicht zeitlich und bleiben bei Abfahrt
 und Rückkehr erhalten. Ein Verbrauch lässt gespeicherte Reserve sofort nachrücken;
-der Worker füllt nach. Bedarf entsteht im Stand und ab 60 Minuten vor gespeicherter
-Ankunft. Fehlende Hin-/Rückwege, veraltete Prüfnachweise oder unbrauchbare
-Katalogbezüge geben keine Angebote frei. Alle 14 Modelle werden in Bedarfsstädten
-berücksichtigt, tatsächlich wartende Fahrzeuge zuerst.
+der Worker füllt nach. Zielbedarf entsteht direkt bei Dispatch. Fehlende Hin-/
+Rückwege oder unbrauchbare Katalogbezüge geben keine Angebote frei. Erfolgreiche
+Relationen werden für denselben Fingerprint dauerhaft wiederverwendet. Unbenutzte
+Katalogmodelle und Städte werden nicht global vorbereitet.
+
+Account, eigenes Spielerunternehmen und öffentliche Referenzunternehmen bleiben
+getrennte Modelle. Das künftige `PlayerCompany`-Aggregat besitzt Flotte, eigene
+Depots und später Beschäftigungsverhältnisse. Fahrer-/Mitarbeiterverfügbarkeit
+beeinflusst die Dispatch-Freigabe, nicht die Markterzeugung; der aktuelle
+`DispatchEligibilityService` ist dafür der vorbereitete Seam. Arbeitsmarkt,
+Verträge, Schichten, Qualifikationen und Löhne bleiben bis zum Roadmap-Review
+offen und werden in diesem Refactor nicht vorgetäuscht.
 
 Die Schemaübernahme nach 1.2.0 ist ein expliziter Offline-Schritt mit Backup und
 neuer Ausgabe. Live-Aktivierung ist nicht Teil von Commit/Push. Verbindliche

@@ -34,6 +34,8 @@ in TESTING.md; die Gesamt-M1-Abnahme bleibt bis zum Backend-Ausbau offen.
 - [x] Ruff/Format mit 79 Zeichen; Architekturabnahme wird gesondert dokumentiert.
 - [ ] Öffentlicher Produktionsbetrieb/Hosting (separater Meilenstein).
 - [ ] Global begrenzter gemeinsamer Markt.
+- [ ] Roadmap-Entscheidung zu Fahrer/Mitarbeitern und Arbeitsmarkt; die
+      Dispatch-Grenze ist vorbereitet, das Fachmodell aber nicht implementiert.
 
 ## M1-Teilumfang – API-getriebener Road-Freight-Kern
 
@@ -154,6 +156,16 @@ und deren verfügbare Distanzbänder. Mengen verwenden gespeicherte Kapazität
 und NHM-Load-Factors; reale Warenbelege bleiben von simulierten Aufträgen
 getrennt. Historische payload_band-Werte bleiben ausschließlich lesbar.
 Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
+
+### Architekturziel für den folgenden Unternehmensausbau
+
+- Account bleibt Authentitäts-/Präferenzgrenze, nicht Firmenaggregate.
+- `PlayerCompany` wird Eigentümer von Flotte, Depots und später Employment.
+- Öffentliche World-Facilities werden nicht als eigene Depots umgedeutet.
+- Marktangebot bleibt unabhängig von Personal; Fahrer-/Schichtregeln werden
+  beim Dispatch über die vorhandene `DispatchEligibilityService`-Grenze geprüft.
+- Vor Implementierung werden Aggregat, Repository-Port, Migration und
+  M1-/Folgemeilenstein-Zuordnung im Roadmap-Review entschieden.
 
 ## Abnahme – gemeinsamer Live-Verkehr
 
@@ -302,8 +314,8 @@ Auf Basis `5d7ff77` im bestehenden `feature/frontend-v2` umgesetzt: Freigabe
 jeder Lieferung und Anfahrt erst mit echten Hin- und Rückwegen und passenden
 Endpunkten. Automatische Kandidatensuche höchstens 1.000 Meter, fünf Kandidaten
 je Standort, 25 Paare und 120 Sekunden. Gemeinsame Leases und atomare
-Veröffentlichung; versionierte Nachweise mit Wiederprüfung nach 24 Stunden,
-einer Stunde bei definitiven Fehlern beziehungsweise 60 Sekunden bei Störungen.
+Veröffentlichung; erfolgreiche Relationen bleiben für denselben Fingerprint
+wiederverwendbar. Definitive Fehler und Störungen behalten begrenzte Backoffs.
 
 Wolfsburger LKW auf isolierter Spielstandkopie regulär disponiert; Ankunft und
 Folgeauftrag geprüft. Zehn begrenzte Live-Provideranfragen insgesamt. Backup vorhanden, echter
@@ -330,18 +342,18 @@ separate Betriebsschritte. Implementierung und tatsaechlicher Abnahmestand:
 
 ## Gemeinsamer Auftragsvorrat (28.09.2026)
 
-Das ausgewählte Fahrzeug erhält genau drei fahrbare Angebote je Streckentyp,
-sofern genügend geprüfter Bestand verfügbar ist. Der gemeinsame Hintergrundvorrat
-hält mindestens zehn Vorlagen je Bedarfsstadt, konkretem Modell und Band; jede
-Vorlage ist einmal je Spieler verwendbar. Die drei sichtbaren gehören zu diesen
-zehn. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen Angebote nutzen.
+Das ausgewählte Fahrzeug erhält bis zu drei fahrbare Angebote je Streckentyp,
+sofern genügend geprüfter Bestand verfügbar ist. Der persistente Vorrat wird
+nur für konkrete eigene idle Fahrzeuge und gespeicherte Ziele aktiver
+Transporte aufgebaut. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen
+Angebote nutzen; gemeinsame Vorlagen bleiben spielerübergreifend verwendbar.
 
 Ungenutzte Vorlagen und Angebote verfallen nicht zeitlich und bleiben bei Abfahrt
 und Rückkehr erhalten. Ein Verbrauch lässt gespeicherte Reserve sofort nachrücken;
-der Worker füllt nach. Bedarf entsteht im Stand und ab 60 Minuten vor gespeicherter
-Ankunft. Fehlende Hin-/Rückwege, veraltete Prüfnachweise oder unbrauchbare
-Katalogbezüge geben keine Angebote frei. Alle 14 Modelle werden in Bedarfsstädten
-berücksichtigt, tatsächlich wartende Fahrzeuge zuerst.
+der Worker füllt nach. Zielbedarf entsteht direkt bei Dispatch. Fehlende Hin-/
+Rückwege oder unbrauchbare Katalogbezüge geben keine Angebote frei. Erfolgreiche
+Relationen werden für denselben Fingerprint dauerhaft wiederverwendet. Unbenutzte
+Katalogmodelle und Städte werden nicht global vorbereitet.
 
 Die Schemaübernahme nach 1.2.0 ist ein expliziter Offline-Schritt mit Backup und
 neuer Ausgabe. Live-Aktivierung ist nicht Teil von Commit/Push. Verbindliche

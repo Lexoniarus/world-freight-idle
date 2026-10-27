@@ -100,6 +100,23 @@ Waren-/Distanzprofile, die Frachtrate einen NHM-Faktor auf 0,18 €/km/t.
 Unterschiedliche Facilities derselben Stadt dürfen handeln. Quote und Dispatch
 verlangen ein geeignetes Fahrzeug. Details: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).
 
+## Vorbereitete Grenze für Unternehmen, Depots und Mitarbeiter
+
+Account/Anmeldung, öffentliche Referenzunternehmen und das künftige eigene
+Spielerunternehmen sind drei verschiedene Konzepte. Das geplante
+`PlayerCompany`-Aggregat wird Flotte, eigene Depots und Beschäftigungsverhältnisse
+besitzen. Ein Depot bestimmt künftige Stationierung und operative Kapazität;
+öffentliche Facilities bleiben Abhol-/Lieferorte und werden dadurch nicht zu
+Besitz.
+
+Der heutige Frachtmarkt erzeugt Angebot ausschließlich aus Fahrzeugstandort,
+Zielort und technischer Eignung. Künftige Fahrer- oder Mitarbeiterverfügbarkeit
+ändert nicht den Marktpool, sondern die Dispatch-Freigabe. Dafür kapselt
+`DispatchEligibilityService` bereits die Fahrzeugfreigabe hinter einer
+injizierten Servicegrenze. Arbeitsmarkt, Verträge, Schichten, Qualifikationen
+und Löhne sind noch nicht implementiert; ihr genauer MVP-Zeitpunkt wird im
+separaten Roadmap-Review entschieden.
+
 ## Gemeinsamer Live-Verkehr
 
 Aktive Straßentransporte angemeldeter Spieler werden als minimale öffentliche
@@ -122,7 +139,7 @@ auch wenn die Einfärbung eines Fahrzeugs auf kleinem Kartenmaßstab dezent ist.
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.2.0) und
 WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
@@ -236,9 +253,9 @@ echte Hin- und Rückwege mit vier passenden Straßenendpunkten (Toleranz 10 Mete
 Erst dann veröffentlicht sie die gewählten Anker und beide Richtungen atomar.
 Bis zu fünf reale Straßenkandidaten je Standort dürfen höchstens 1.000 Meter
 von der ursprünglichen Facility entfernt liegen. Fehlschläge veröffentlichen
-keinen Auftrag. Die Wiederprüfung erfolgt nach Nachfrage; erfolgreiche
-Nachweise verfallen nach 24 Stunden, definitive Fehler nach einer Stunde und
-vorübergehende Providerfehler nach 60 Sekunden.
+keinen Auftrag. Erfolgreiche Relationsnachweise bleiben für denselben
+Provider-/Welt-/Anker-Fingerprint wiederverwendbar; definitive Fehler und
+vorübergehende Providerfehler behalten ihre begrenzten Wiederholungsfristen.
 Quote und Dispatch laden vorbereitete Routen. Die Fahrzeug-Journey ergänzt
 Geschwindigkeit, Energie und Pausen; Facility-Anzeigekoordinaten bleiben erhalten.
 
@@ -295,18 +312,18 @@ separate Betriebsschritte. Implementierung und tatsaechlicher Abnahmestand:
 
 ## Gemeinsamer Auftragsvorrat (28.09.2026)
 
-Das ausgewählte Fahrzeug erhält genau drei fahrbare Angebote je Streckentyp,
-sofern genügend geprüfter Bestand verfügbar ist. Der gemeinsame Hintergrundvorrat
-hält mindestens zehn Vorlagen je Bedarfsstadt, konkretem Modell und Band; jede
-Vorlage ist einmal je Spieler verwendbar. Die drei sichtbaren gehören zu diesen
-zehn. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen Angebote nutzen.
+Das ausgewählte Fahrzeug erhält bis zu drei fahrbare Angebote je Streckentyp,
+sofern genügend geprüfter Bestand verfügbar ist. Der persistente Vorrat wird
+nur für konkrete eigene idle Fahrzeuge und gespeicherte Ziele aktiver
+Transporte aufgebaut. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen
+Angebote nutzen; gemeinsame Vorlagen bleiben spielerübergreifend verwendbar.
 
 Ungenutzte Vorlagen und Angebote verfallen nicht zeitlich und bleiben bei Abfahrt
 und Rückkehr erhalten. Ein Verbrauch lässt gespeicherte Reserve sofort nachrücken;
-der Worker füllt nach. Bedarf entsteht im Stand und ab 60 Minuten vor gespeicherter
-Ankunft. Fehlende Hin-/Rückwege, veraltete Prüfnachweise oder unbrauchbare
-Katalogbezüge geben keine Angebote frei. Alle 14 Modelle werden in Bedarfsstädten
-berücksichtigt, tatsächlich wartende Fahrzeuge zuerst.
+der Worker füllt nach. Zielbedarf entsteht direkt bei Dispatch. Fehlende Hin-/
+Rückwege oder unbrauchbare Katalogbezüge geben keine Angebote frei. Erfolgreiche
+Relationen werden für denselben Fingerprint dauerhaft wiederverwendet. Unbenutzte
+Katalogmodelle und Städte werden nicht global vorbereitet.
 
 Die Schemaübernahme nach 1.2.0 ist ein expliziter Offline-Schritt mit Backup und
 neuer Ausgabe. Live-Aktivierung ist nicht Teil von Commit/Push. Verbindliche

@@ -42,7 +42,6 @@ class RoutingReadinessStore(Protocol):
         payload: RoutePayload | None,
         owner: str,
         now: float,
-        worker_owner: str | None = None,
     ) -> bool: ...
 
     def connected(
@@ -61,7 +60,6 @@ class RoutingReadinessStore(Protocol):
         now: float,
         provider: str,
         provider_revision: str | None,
-        worker_owner: str | None = None,
     ) -> bool: ...
 
     def append_attempt(self, attempt: RoutingAttempt) -> None: ...

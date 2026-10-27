@@ -469,8 +469,12 @@ for (const [device, viewport] of [["desktop", {width:1440,height:900}], ["mobile
     await page.screenshot({path:screenshot(`energy-${device}`),animations:"disabled"});
     await expect(page.locator("[data-phase-trip]")).toHaveText("Fracht unterwegs");
     expect(await image.evaluate(node => node.isConnected)).toBeTruthy();
-    const fleet = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
-    expect(fleet[0].energy_level).toBeGreaterThan(10);
+    await expect
+      .poll(async () => {
+        const fleet = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
+        return fleet[0].energy_level;
+      })
+      .toBeGreaterThan(10);
     if (!(await page.getByRole("button", {name: "Abmelden"}).isVisible())) await page.getByRole("button", {name: "Mehr", exact: true}).click();
     await page.getByRole("button", {name:"Abmelden"}).click();
     // Stay logged out past the authoritative arrival; no background settlement job.

@@ -18,6 +18,35 @@ import { GameApplication } from "./application.js";
 import { money, number } from "./format.js";
 import { formatDuration } from "./time.js";
 
+function freightApi(request) {
+  return {
+    loadFreightOffers: (vehicleId, signal) =>
+      request("/contracts" + (vehicleId ? `?vehicle_id=${vehicleId}` : ""), { signal }),
+    requestFreightRefill: (vehicleId, signal) =>
+      request("/contracts/refresh" + (vehicleId ? `?vehicle_id=${vehicleId}` : ""), {
+        method: "POST",
+        signal,
+      }),
+    loadFreightOffer: (id, signal) => request(`/contracts/${id}`, { signal }),
+    quoteFreightOffer: (id, vehicleId, signal) =>
+      request(`/contracts/${id}/quote`, {
+        method: "POST",
+        signal,
+        body: JSON.stringify({ vehicle_id: vehicleId }),
+      }),
+    dispatchFreightOffer: (id, vehicleId) =>
+      request(`/contracts/${id}/accept`, {
+        method: "POST",
+        body: JSON.stringify({ vehicle_id: vehicleId }),
+      }),
+    purchaseVehicle: (modelId) =>
+      request("/fleet/purchase", {
+        method: "POST",
+        body: JSON.stringify({ model_id: modelId }),
+      }),
+  };
+}
+
 const hub = {
   id: "berlin",
   city_uid: "city-berlin",
@@ -246,8 +275,10 @@ test("late quotes neither replace a new selection nor clear its busy state", asy
   const pending = [];
   const actions = new GameActions({
     panel,
-    request: (_path, options) =>
-      new Promise((resolve) => pending.push({ resolve, signal: options.signal })),
+    api: freightApi(
+      (_path, options) =>
+        new Promise((resolve) => pending.push({ resolve, signal: options.signal })),
+    ),
     map: null,
   });
   const first = actions.calculateQuote();
@@ -275,10 +306,10 @@ test("uncertain write responses refresh server state instead of repeating the wr
   const messages = [];
   const actions = new GameActions({
     panel,
-    request: async () => {
+    api: freightApi(async () => {
       writes++;
       throw new Error("lost response");
-    },
+    }),
     notify: (message) => messages.push(message),
     state: {
       afterMutation: async () => {
@@ -608,10 +639,10 @@ test("uncertain writes wait for old polls then read a fresh snapshot", async () 
     panel,
     state,
     notify() {},
-    request: async () => {
+    api: freightApi(async () => {
       writes++;
       throw new Error("response lost after commit");
-    },
+    }),
   });
   const poll = state.refresh();
   const mutation = actions.handle("buy", "iveco_sway_500");
@@ -636,7 +667,9 @@ test("vehicle changes invalidate pending quotes and preserve the selected vehicl
     panel,
     map: null,
     notify() {},
-    request: (_path, options) => new Promise((resolve) => pending.push({ resolve, options })),
+    api: freightApi(
+      (_path, options) => new Promise((resolve) => pending.push({ resolve, options })),
+    ),
   });
   const first = actions.calculateQuote();
   actions.selectVehicle("second");
@@ -739,10 +772,12 @@ test("city market ignores late results after disposal and preserves saved contra
   let resolve;
   const pendingController = new ContractMarketController({
     state,
-    request: () =>
-      new Promise((done) => {
-        resolve = done;
-      }),
+    api: freightApi(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    ),
     notify: (message) => notices.push(message),
     currentUrl,
   });
@@ -755,9 +790,9 @@ test("city market ignores late results after disposal and preserves saved contra
 
   const live = new ContractMarketController({
     state,
-    request: async () => {
+    api: freightApi(async () => {
       throw new Error("503");
-    },
+    }),
     notify: (message) => notices.push(message),
     currentUrl,
   });
@@ -816,11 +851,11 @@ test("city market requests have no viewport parameters and removed details prese
     state,
     currentUrl: () => url,
     notify: () => {},
-    request: async (path) => {
+    api: freightApi(async (path) => {
       paths.push(path);
       if (path === "/contracts/removed") throw Object.assign(new Error("removed"), { status: 404 });
       return { contracts: [contract] };
-    },
+    }),
   });
   controller.start();
   await controller.refresh();
@@ -841,7 +876,7 @@ test("dispatch follows its trip after active-city URL cleanup but preserves newe
     const paths = [];
     const actions = new GameActions({
       panel,
-      request: async () => ({ id: "started" }),
+      api: freightApi(async () => ({ id: "started" })),
       notify() {},
       navigate: (path) => paths.push(path),
       state: {

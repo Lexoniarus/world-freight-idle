@@ -4,12 +4,12 @@ import asyncio
 import logging
 from collections.abc import Callable
 from contextvars import Context
-from functools import partial
 from typing import Protocol
 
-from app.domain.market_preparation import PreparationStore
-from app.services.preparation_batch import PreparationBatchResult
-from app.services.preparation_lease import PreparationLease
+from app.domain.market_preparation import (
+    PreparationBatchResult,
+    PreparationStore,
+)
 from app.tracing import background_trace
 
 LOGGER = logging.getLogger(__name__)
@@ -29,19 +29,35 @@ class MarketPreparationWorker:
         jobs: PreparationStore,
         batches: Callable[[str], PreparationBatch],
         clock: Callable[[], float],
-        lease: PreparationLease | None = None,
     ) -> None:
         """Inject scheduling storage and player lifecycle composition."""
         self.jobs = jobs
         self.batches = batches
         self.clock = clock
-        self.lease = lease
         self._task: asyncio.Task[None] | None = None
+        self._wake = asyncio.Event()
+        self._loop: asyncio.AbstractEventLoop | None = None
+
+    def wake(self) -> None:
+        """Signal newly committed work without polling the database."""
+        if self._loop is None:
+            self._wake.set()
+            return
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+        if current_loop is self._loop:
+            self._wake.set()
+        else:
+            self._loop.call_soon_threadsafe(self._wake.set)
 
     async def start(self) -> None:
         """Start exactly one owned loop in a fresh context."""
         if self._task is not None:
             raise RuntimeError("Preparation worker already started.")
+        self._loop = asyncio.get_running_loop()
+        self.wake()
         self._task = asyncio.create_task(self._run(), context=Context())
         await asyncio.sleep(0)
         if self._task.done():
@@ -49,46 +65,45 @@ class MarketPreparationWorker:
 
     async def close(self) -> None:
         """Cancel and await owned work before provider resources close."""
-        try:
-            if self._task is not None:
-                task, self._task = self._task, None
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-        finally:
-            if self.lease is not None:
-                self.lease.close()
+        if self._task is not None:
+            task, self._task = self._task, None
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+            finally:
+                self._loop = None
 
     async def _run(self) -> None:
-        """Recover the complete iteration, including scheduler failures."""
+        """Drain due work after events, with a slow retry safety timer."""
         while True:
             try:
-                await self._iteration()
+                try:
+                    await asyncio.wait_for(self._wake.wait(), timeout=60)
+                except TimeoutError:
+                    pass
+                self._wake.clear()
+                while await self._iteration():
+                    await asyncio.sleep(0)
             except Exception:
                 LOGGER.exception(
                     "Market preparation scheduler failed",
                     extra={"event": "market.preparation_scheduler_failed"},
                 )
                 await asyncio.sleep(60)
-            await asyncio.sleep(0)
 
-    async def _iteration(self) -> None:
+    async def _iteration(self) -> bool:
         """Run one due job in its own trace and persist retry state."""
         user_id = self.jobs.next_player(self.clock())
         if user_id is None:
-            await asyncio.sleep(1)
-            return
+            return False
         status = self.jobs.status(user_id)
         if status is None:
-            return
+            return True
         with background_trace(status.preparation_id):
             try:
-                if self.lease is None:
-                    await self.process(user_id)
-                elif not await self.lease.run(partial(self.process, user_id)):
-                    await asyncio.sleep(1)
+                await self.process(user_id)
             except Exception:
                 LOGGER.exception(
                     "Market preparation batch failed",
@@ -104,6 +119,7 @@ class MarketPreparationWorker:
                     self.clock() + 60,
                     self.clock(),
                 )
+        return True
 
     async def process(self, user_id: str) -> None:
         """Execute a typed batch and persist its fenced scheduling result."""

@@ -2,6 +2,7 @@
 
 import json
 import uuid
+from collections.abc import Callable
 from dataclasses import asdict
 
 from app.domain.market import VehicleCoverageDiagnostic
@@ -15,6 +16,7 @@ class SqlitePreparationStore:
     def __init__(self, database: SqliteGameDatabase) -> None:
         """Initialize additive infrastructure before opening game work."""
         self.database = database
+        self._notify: Callable[[], None] | None = None
         with database.connect() as conn:
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS market_preparations ("
@@ -30,22 +32,17 @@ class SqlitePreparationStore:
                 "payload TEXT NOT NULL)"
             )
 
+    def set_notifier(self, notify: Callable[[], None]) -> None:
+        """Wake the lifespan worker after a durable demand write."""
+        self._notify = notify
+
     def ensure(self, user_id: str, now: float) -> None:
-        """Coalesce reads while making expired or absent demand runnable."""
+        """Create absent demand without reopening a completed job."""
         status = self.status(user_id)
         if status is None:
             with self.database.transaction():
                 if self.status(user_id) is None:
                     self.invalidate(user_id, now)
-        elif status.status != "partial" and (
-            status.next_retry_at is None or status.next_retry_at <= now
-        ):
-            with self.database.connect() as conn:
-                conn.execute(
-                    "UPDATE market_preparations SET status='partial' "
-                    "WHERE user_id=? AND generation=?",
-                    (user_id, status.generation),
-                )
 
     def invalidate(self, user_id: str, now: float) -> None:
         """Fence a changed player's inputs using a new durable revision."""
@@ -103,6 +100,8 @@ class SqlitePreparationStore:
                 "WHERE market_preparations.generation<>excluded.generation",
                 (user_id, uuid.uuid4().hex, generation, now),
             )
+        if self._notify is not None:
+            self.database.after_commit(self._notify)
 
     def status(self, user_id: str) -> PreparationStatus | None:
         """Read the bound player's public preparation projection."""
@@ -119,8 +118,8 @@ class SqlitePreparationStore:
         with self.database.connect() as conn:
             row = conn.execute(
                 "SELECT user_id FROM market_preparations "
-                "WHERE (status='partial' AND next_retry_at IS NULL) "
-                "OR next_retry_at<=? "
+                "WHERE status='partial' AND (next_retry_at IS NULL "
+                "OR next_retry_at<=?) "
                 "ORDER BY updated_at, user_id LIMIT 1",
                 (now,),
             ).fetchone()

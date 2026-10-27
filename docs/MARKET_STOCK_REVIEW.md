@@ -73,3 +73,26 @@ Code, Tests und Dokumentation dürfen nach vollständiger lokaler Abnahme auf
 den beauftragten Branch gepusht werden. Ein Live-Schemawechsel bleibt ein
 gesonderter Betriebsschritt mit gestoppten Schreibern und frischem Backup,
 siehe [Betriebsanleitung](RUNTIME_OPERATIONS.md).
+
+## Nachtrag 27.10.2026: lokale bedarfsgesteuerte Runtime
+
+Die damalige Zwei-Prozess- und globale Vorratsarchitektur ist historisch. Das
+aktuelle Review bestätigt folgende Verantwortungen:
+
+| Baustein | Aktuelle einzelne Verantwortung |
+| --- | --- |
+| `MarketDemandResolver` | Nur konkrete idle Fahrzeuge und gespeicherte Ziele aktiver Transporte projizieren |
+| `StockPlanningService` | Sichtbare Defizite vor Reserven ordnen; Vielfalt und deterministische Auswahl ohne I/O |
+| `MarketTemplateService` | Genau eine passende Vorlage/Offer-Einheit materialisieren |
+| `SqliteMarketTemplateStore` | Gemeinsame unveränderliche Vorlagen mit exakten set-basierten Scope-Reads persistieren |
+| `SqliteMarketStockStore` | Persönliche Bindungen, Verbrauch, Ankünfte, Cursor und Checkpoints persistieren |
+| `StockPublicationService` | Snapshot außerhalb des Writers bilden und atomar gegen aktuelle Fakten publizieren |
+| `StockPreparationBatch` | Eine konkrete Relation/Runde orchestrieren; keine Worker- oder Provider-Lifecycle-Verantwortung |
+| `MarketPreparationWorker` | Durable Jobs ereignisgesteuert planen, Trace/Backoff und Task-Lifecycle besitzen |
+| `DispatchEligibilityService` | Fahrzeug-/Frachtfreigabe kapseln und später Mitarbeiterverfügbarkeit aufnehmen |
+| `ContractMarketController` | Fahrzeuggebundene Liste oder Detail laden; Requests besitzen/abbrechen, nie pollen |
+
+Legacy-Preparation-Batch, Startup-Rebuild, Prozesssupervisor und globale
+Worker-Lease wurden entfernt, statt als parallele Strukturen weiterzulaufen.
+Neue/geänderte konkrete Python-Callables besitzen Manifest-Gegentests. Die
+historischen Tabellen oben bleiben als Review des damaligen Stands erhalten.

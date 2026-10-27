@@ -208,7 +208,9 @@ abgelaufene Angebote werden ausgeschlossen. Historische Transport-JSONs bleiben
 bytegetreu. Vorgehen: [Betrieb](RUNTIME_OPERATIONS.md).
 
 `market_templates` enthält globale Modell-/Stadtvorlagen mit immutablem
-Erzeugungssnapshot. `market_offer_templates` ordnet persönliche Offers zu;
+Erzeugungssnapshot und wird ausschließlich durch
+`SqliteMarketTemplateStore` gelesen/geschrieben.
+`market_offer_templates` ordnet persönliche Offers zu;
 `market_template_uses` enthält die dauerhafte Verwendung je Account/Vorlage.
 Beide besitzen eindeutige Spieler-/Vorlagenschlüssel. Angebot, Verbrauch,
 Finanzen und Transport committen gemeinsam. Ein Offer-Löschen entfernt nur
@@ -220,4 +222,5 @@ angefangene Handelsbeziehungen. Alle Tabellen liegen in derselben WAL-Datenbank.
 Bedarfsankünfte werden aus indexierten aktiven Transporten mit skalarem
 Ziel-/Zeitpunktzugriff gelesen, ohne Routenarrays in Python zu laden.
 Die API liest vorhandene Offers; Refill und Kandidatenbildung gehören zum
-separaten Worker. Alter Bestand außerhalb aktueller Bedarfsstädte bleibt erhalten.
+Lifespan-Worker. GETs erzeugen keine Jobs. Alter Bestand außerhalb aktueller
+Bedarfsstädte bleibt erhalten, löst aber keine globale Vorbereitung aus.

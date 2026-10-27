@@ -6,15 +6,11 @@ from app.domain.contracts import ContractOffer
 from app.domain.errors import PersistenceError
 from app.domain.market_stock import MarketArrival, PreparedTemplate, TradeKey
 from app.repositories.game_database import SqliteGameDatabase
-from app.repositories.snapshot_mapping import load_location, load_offer
-from app.repositories.state_snapshots import decode_snapshot, encode_snapshot
+from app.repositories.market_templates import SqliteMarketTemplateStore
+from app.repositories.snapshot_mapping import load_location
+from app.repositories.state_snapshots import encode_snapshot
 
 STOCK_SCHEMA = (
-    "CREATE TABLE IF NOT EXISTS market_templates ("
-    "template_id TEXT PRIMARY KEY, city_uid TEXT NOT NULL, "
-    "model_id TEXT NOT NULL, offer_snapshot TEXT NOT NULL)",
-    "CREATE INDEX IF NOT EXISTS templates_scope "
-    "ON market_templates(city_uid, model_id)",
     "CREATE TABLE IF NOT EXISTS market_offer_templates ("
     "user_id TEXT NOT NULL, contract_id TEXT NOT NULL, "
     "template_id TEXT NOT NULL REFERENCES market_templates(template_id), "
@@ -43,10 +39,12 @@ class SqliteMarketStockStore:
         """Inject existing storage; schema creation belongs to startup."""
         self.database = database
         self.user_id = user_id
+        self.template_store = SqliteMarketTemplateStore(database)
 
     @staticmethod
     def initialize(database: SqliteGameDatabase) -> None:
         """Create additive stock infrastructure before serving requests."""
+        SqliteMarketTemplateStore.initialize(database)
         with database.transaction(), database.connect() as db:
             for statement in STOCK_SCHEMA:
                 db.execute(statement)
@@ -54,27 +52,14 @@ class SqliteMarketStockStore:
     def templates(
         self, cities: tuple[str, ...]
     ) -> tuple[PreparedTemplate, ...]:
-        """Read only templates within the demanded city identities."""
-        with self.database.connect() as db:
-            rows = db.execute(
-                "SELECT * FROM market_templates WHERE city_uid IN "
-                "(SELECT value FROM json_each(?)) ORDER BY rowid",
-                (json.dumps(cities),),
-            ).fetchall()
-        try:
-            return tuple(
-                PreparedTemplate(
-                    row["template_id"],
-                    row["model_id"],
-                    row["city_uid"],
-                    load_offer(
-                        decode_snapshot("offer", row["offer_snapshot"])
-                    ),
-                )
-                for row in rows
-            )
-        except (ValueError, TypeError, KeyError) as exc:
-            raise PersistenceError("Auftragsvorlage nicht lesbar.") from exc
+        """Delegate player-independent reads to the template repository."""
+        return self.template_store.templates(cities)
+
+    def scoped_templates(
+        self, scopes: tuple[tuple[str, str], ...]
+    ) -> tuple[PreparedTemplate, ...]:
+        """Delegate exact city/model reads to global template storage."""
+        return self.template_store.scoped_templates(scopes)
 
     def used(self) -> frozenset[str]:
         """Read this account's permanent consumption ledger."""
@@ -101,17 +86,8 @@ class SqliteMarketStockStore:
             )
 
     def add(self, template: PreparedTemplate) -> None:
-        """Insert immutable supply in the caller's publication transaction."""
-        with self.database.connect() as db:
-            db.execute(
-                "INSERT INTO market_templates VALUES (?, ?, ?, ?)",
-                (
-                    template.template_id,
-                    template.city_uid,
-                    template.model_id,
-                    encode_snapshot("offer", template.offer),
-                ),
-            )
+        """Delegate global supply writes to the template repository."""
+        self.template_store.add(template)
 
     def issue(self, template_id: str, offer: ContractOffer) -> None:
         """Atomically issue a private snapshot only for an unused template."""
@@ -160,16 +136,16 @@ class SqliteMarketStockStore:
                     (self.user_id, row[0], now),
                 )
 
-    def arrivals(self, until: float) -> tuple[MarketArrival, ...]:
-        """Project pending destination facts without deserializing roads."""
+    def arrivals(self) -> tuple[MarketArrival, ...]:
+        """Project every active destination without deserializing roads."""
         with self.database.connect() as db:
             rows = db.execute(
                 "SELECT transport_id, vehicle_id, arrives_at, "
                 "destination_facility_uid, json_extract(transport_snapshot, "
                 "'$.data.destination') AS destination FROM transports "
-                "WHERE user_id=? AND status='active' AND arrives_at<=? "
+                "WHERE user_id=? AND status='active' "
                 "ORDER BY arrives_at, transport_id",
-                (self.user_id, until),
+                (self.user_id,),
             ).fetchall()
         result = []
         try:

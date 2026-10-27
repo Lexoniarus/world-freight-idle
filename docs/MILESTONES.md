@@ -49,6 +49,12 @@ fahrzeugbezogene Spiel-Kilometerkosten. Konstanter Verbrauch, 10 % Reserve,
 Geschwindigkeitsgrenze und automatische Energiehalte sind als erste Simulation
 umgesetzt. Geplant bleiben Last-/Wettereinflüsse, Stationssuche, Ladekurven,
 Alter, Wartung, zusätzliche Depots, Leerfahrten und Rückfracht.
+Nach eigenständigem Spielerunternehmen und Depotmodell folgt ein explizites
+Fahrer-/Mitarbeitermodell mit Arbeitsmarkt, Beschäftigungsvertrag,
+Qualifikation, Schicht/Verfügbarkeit und Lohn. Ob dieser Teil noch in den
+MVP-Umfang rückt, wird im nächsten Roadmap-Review entschieden. Der aktuelle
+Refactor bereitet nur die Dispatch-Freigabe als injizierten Seam vor und
+implementiert weder Personal noch einen Arbeitsmarkt vorzeitig.
 
 ## M4 – Multiplayer Economy
 
@@ -137,7 +143,7 @@ Die gemeinsame Asset-Zuordnung und Modellordner ändern keine Spielmechanik.
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.2.0) und
 WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
@@ -241,8 +247,8 @@ Auf Basis `5d7ff77` im bestehenden `feature/frontend-v2` umgesetzt: Freigabe
 jeder Lieferung und Anfahrt erst mit echten Hin- und Rückwegen und passenden
 Endpunkten. Automatische Kandidatensuche höchstens 1.000 Meter, fünf Kandidaten
 je Standort, 25 Paare und 120 Sekunden. Gemeinsame Leases und atomare
-Veröffentlichung; versionierte Nachweise mit Wiederprüfung nach 24 Stunden,
-einer Stunde bei definitiven Fehlern beziehungsweise 60 Sekunden bei Störungen.
+Veröffentlichung; erfolgreiche Relationen bleiben für denselben Fingerprint
+wiederverwendbar. Definitive Fehler und Störungen behalten begrenzte Backoffs.
 
 Wolfsburger LKW auf isolierter Spielstandkopie regulär disponiert; Ankunft und
 Folgeauftrag geprüft. Zehn begrenzte Live-Provideranfragen insgesamt. Backup vorhanden, echter
@@ -269,18 +275,18 @@ separate Betriebsschritte. Implementierung und tatsaechlicher Abnahmestand:
 
 ## Gemeinsamer Auftragsvorrat (28.09.2026)
 
-Das ausgewählte Fahrzeug erhält genau drei fahrbare Angebote je Streckentyp,
-sofern genügend geprüfter Bestand verfügbar ist. Der gemeinsame Hintergrundvorrat
-hält mindestens zehn Vorlagen je Bedarfsstadt, konkretem Modell und Band; jede
-Vorlage ist einmal je Spieler verwendbar. Die drei sichtbaren gehören zu diesen
-zehn. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen Angebote nutzen.
+Das ausgewählte Fahrzeug erhält bis zu drei fahrbare Angebote je Streckentyp,
+sofern genügend geprüfter Bestand verfügbar ist. Der persistente Vorrat wird
+nur für konkrete eigene idle Fahrzeuge und gespeicherte Ziele aktiver
+Transporte aufgebaut. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen
+Angebote nutzen; gemeinsame Vorlagen bleiben spielerübergreifend verwendbar.
 
 Ungenutzte Vorlagen und Angebote verfallen nicht zeitlich und bleiben bei Abfahrt
 und Rückkehr erhalten. Ein Verbrauch lässt gespeicherte Reserve sofort nachrücken;
-der Worker füllt nach. Bedarf entsteht im Stand und ab 60 Minuten vor gespeicherter
-Ankunft. Fehlende Hin-/Rückwege, veraltete Prüfnachweise oder unbrauchbare
-Katalogbezüge geben keine Angebote frei. Alle 14 Modelle werden in Bedarfsstädten
-berücksichtigt, tatsächlich wartende Fahrzeuge zuerst.
+der Worker füllt nach. Zielbedarf entsteht direkt bei Dispatch. Fehlende Hin-/
+Rückwege oder unbrauchbare Katalogbezüge geben keine Angebote frei. Erfolgreiche
+Relationen werden für denselben Fingerprint dauerhaft wiederverwendet. Unbenutzte
+Katalogmodelle und Städte werden nicht global vorbereitet.
 
 Die Schemaübernahme nach 1.2.0 ist ein expliziter Offline-Schritt mit Backup und
 neuer Ausgabe. Live-Aktivierung ist nicht Teil von Commit/Push. Verbindliche

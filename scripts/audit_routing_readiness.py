@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.bootstrap import (  # noqa: E402
     build_game_runtime,
-    build_preparation_worker,
     build_routing_audit,
 )
 from app.config import Settings  # noqa: E402
@@ -60,24 +59,17 @@ async def run(args: argparse.Namespace) -> None:
         assert readiness is not None
         pairs = tuple(routing_inventory(world, args.city))
         if args.prewarm:
-            lease = build_preparation_worker(runtime).lease
-            assert lease is not None
 
             async def prepare() -> None:
-                """Share exclusive provider ownership with regular workers."""
+                """Prepare bounded relations through repository leases."""
                 for origin, destination in pairs:
                     await readiness.prepare(origin, destination)
 
             try:
                 with background_trace("cli-routing-prewarm"):
-                    if not await lease.run(prepare):
-                        raise RuntimeError(
-                            "Preparation worker already active."
-                        )
+                    await prepare()
             except RequestBudgetExceeded as error:
                 print(str(error), file=sys.stderr)
-            finally:
-                lease.close()
         focused = tuple(
             f.facility_uid
             for f in world.facilities

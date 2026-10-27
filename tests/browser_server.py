@@ -1,21 +1,19 @@
 """Isolated browser-test server; never used by the production entry point."""
 
-import asyncio
-import subprocess
-import sys
+import os
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from fastapi import Depends
 
 from app.api.v1.dependencies import get_game_service
+from app.bootstrap import build_game_runtime
 from app.config import Settings
 from app.domain.energy import EnergyProfile
-from app.launcher import stop_child
 from app.main import create_app, lifespan
-from app.repositories.market_startup import SqliteMarketStartupStore
 from app.services.game import GameService
 from tests.conftest import (
     FakeRouter,
@@ -23,9 +21,14 @@ from tests.conftest import (
 )
 
 temporary = TemporaryDirectory(prefix="world-freight-browser-")
+external_database = os.getenv("WFI_BROWSER_DB_PATH")
 settings = replace(
     Settings.from_env(),
-    db_path=Path(temporary.name) / "test.db",
+    db_path=(
+        Path(external_database)
+        if external_database
+        else Path(temporary.name) / "test.db"
+    ),
     game_time_scale=900,
 )
 app = create_app(settings)
@@ -33,27 +36,18 @@ app = create_app(settings)
 
 @asynccontextmanager
 async def browser_lifespan(application):
-    async with lifespan(application):
-        application.state.game.router = FakeRouter()
-        application.state.game.anchors = FakeRoutingAnchorResolver()
-        application.state.game.readiness.router = application.state.game.router
-        application.state.game.readiness.anchors = (
-            application.state.game.anchors
-        )
-        worker = await asyncio.create_subprocess_exec(
-            sys.executable,
-            "-m",
-            "tests.browser_worker",
-            str(settings.db_path),
-            stdin=asyncio.subprocess.PIPE,
-            creationflags=(
-                subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-            ),
-        )
-        try:
+    def test_runtime(active_settings, client):
+        runtime = build_game_runtime(active_settings, client)
+        runtime.router = FakeRouter()
+        runtime.anchors = FakeRoutingAnchorResolver()
+        assert runtime.readiness is not None
+        runtime.readiness.router = runtime.router
+        runtime.readiness.anchors = runtime.anchors
+        return runtime
+
+    with patch("app.main.build_game_runtime", side_effect=test_runtime):
+        async with lifespan(application):
             yield
-        finally:
-            await stop_child(worker)
     temporary.cleanup()
 
 
@@ -68,7 +62,14 @@ def pause_previous_test_profiles() -> dict:
     assert jobs is not None
     now = runtime.clock()
     with runtime.database.transaction():
-        for owner in SqliteMarketStartupStore(runtime.database).player_ids():
+        with runtime.database.connect() as connection:
+            owners = tuple(
+                row[0]
+                for row in connection.execute(
+                    "SELECT user_id FROM player_states ORDER BY user_id"
+                )
+            )
+        for owner in owners:
             jobs.invalidate(owner, now)
             status = jobs.status(owner)
             assert status is not None

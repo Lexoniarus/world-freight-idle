@@ -20,7 +20,7 @@ from app.domain.results import (
 from app.domain.routes import DispatchRoutePlan
 from app.domain.state_ports import GameUnitOfWork
 from app.domain.transports import ActiveTransport
-from app.domain.world_scopes import WorldScope
+from app.services.dispatch_eligibility import DispatchEligibilityService
 from app.services.dispatch_planning import DispatchPlanningService
 from app.services.fleet import (
     create_starter_vehicle,
@@ -48,6 +48,7 @@ class GameService:
         market_scope: MarketScopeResolver,
         clock: Callable[[], float],
         dispatch_planning: DispatchPlanningService,
+        dispatch_eligibility: DispatchEligibilityService,
         time_scale: float = 1.0,
         preparation: MarketPreparationService | None = None,
         market_selection: MarketSelectionService | None = None,
@@ -58,6 +59,7 @@ class GameService:
         self.world = world
         self.router = router
         self.dispatch_planning = dispatch_planning
+        self.dispatch_eligibility = dispatch_eligibility
         self.market = market
         self.time_scale = max(0.001, time_scale)
         self.catalogue = catalogue
@@ -411,20 +413,7 @@ class GameService:
         contract: ContractOffer,
     ) -> None:
         """Delegate vehicle-specific dispatch invariants to the entity."""
-        if vehicle.location is None:
-            vehicle.restore_location(
-                WorldScope(self.world.read())
-                .facility(vehicle.facility_uid)
-                .location_snapshot()
-            )
-        vehicle.validate_dispatch(
-            contract.mode,
-            contract.origin.city.city_uid,
-            contract.tons,
-        )
-        fleet = self.market.candidates.resolve_fleet((vehicle,))
-        if not self.market.candidates.eligible_ids(contract, fleet):
-            raise ValueError("Transportklasse oder Fahrzeuggröße passt nicht.")
+        self.dispatch_eligibility.validate(vehicle, contract)
 
     def _build_trip(
         self,

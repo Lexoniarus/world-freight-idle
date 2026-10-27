@@ -1,4 +1,61 @@
-# Qualitätsbericht: gemeinsamer Vorrat und schnelle Runtime
+# Qualitätsbericht: lokaler bedarfsgesteuerter Frachtpool
+
+Stand: 27.10.2026. Branch `refactor/local-market-pool`, Basis aktuelles lokales
+`main`. Dieser Abschnitt ist der aktuelle Prüfstand; die folgenden Berichte sind
+historische Abnahmen früherer Architekturen.
+
+## Aktuelles Verhalten und Review
+
+Die lokale Runtime besitzt einen Lifespan-Worker. Reads bleiben rein lesend;
+Zustandsänderungen und ausdrücklicher Refresh schreiben Bedarf und wecken ihn.
+Vorbereitet werden nur konkrete idle Fahrzeuge und Zielorte aktiver Transporte.
+Erfolgreiche Relationsnachweise und Vorlagen werden wiederverwendet. Pro Runde
+wird höchstens ein persönliches Angebot publiziert; Auswahl und Konditionen sind
+kontextgebunden deterministisch, Identitäten bleiben neu.
+
+Entfernt wurden Prozesssupervisor, getrennte Prewarm-Rolle, globale Worker-Lease,
+Startup-Markt-Rebuild, paralleler Legacy-Batch und globale Katalogversorgung.
+`SqliteMarketTemplateStore` besitzt gemeinsame Vorlagen;
+`SqliteMarketStockStore` besitzt persönliche Bindung/Verwendung/Checkpoints.
+`DispatchEligibilityService` kapselt die Dispatch-Freigabe als späteren
+Mitarbeiter-Seam. Domain und Services importieren weiterhin kein SQL/HTTP;
+Views führen keine Requests aus.
+
+Der abschließende Lauf von `.venv/Scripts/python.exe -X utf8
+scripts/quality.py` ist mit Exitcode 0 bestanden: **579 Python-Tests**,
+**100,00 % app-Statement-Coverage** (6.620 von 6.620 Statements),
+**117 Frontend-Verhaltenstests** sowie Ruff, Formatierung, mypy, Pyright,
+ESLint, Stylelint, Prettier, checkJs, Produktionsbuild und compileall. Die
+Python-Suite benötigte 11 Minuten 2 Sekunden. Architektur- und
+Funktionsmanifestprüfungen sind Teil dieses Laufs.
+
+`npm run test:e2e`: **33 bestanden** in 7,8 Minuten. Die Suite lief gegen
+einen isolierten lokalen Einprozess-Server mit lokaler Datenbank und lokalem
+Routing-Fixture. Marktaufbau, sichtbare Einzelpublikation, Refresh,
+Fahrzeugfilter, Desktop/Mobil, Offline-Ankunft und Kartenregressionen sind
+abgedeckt. Der Energie-Gegentest wartet an der Client-/Server-Zeitgrenze auf
+den tatsächlichen Zustandsübergang, statt eine unmittelbare Momentaufnahme zu
+behaupten. Absichtlich abgebrochene Browserrequests können unter Windows den
+bekannten `WinError 10054` im Socket-Cleanup protokollieren; die zugehörigen
+Fehlerpfade bestehen.
+
+Der manuelle Start `python main.py` wurde mit einer isolierten lokalen
+SQLite-Datei geprüft. Startup und Lifespan waren erfolgreich,
+`/api/v1/system/health` antwortete mit HTTP 200, und der Server fuhr nach
+Ctrl+C vollständig herunter. Der Browser-Plugin war nicht verfügbar; deshalb
+wurde die vorhandene lokale Playwright-Konfiguration verwendet.
+
+Beim Browserlauf wurde eine echte Benachrichtigungsrace sichtbar: Ein
+Thread-weckender Callback konnte vor dem äußeren Datenbank-Commit laufen und
+den noch unsichtbaren Job verpassen. Nach-Commit-Callbacks gehören nun der
+lokalen Unit-of-Work-Grenze; Rollbacks verwerfen sie, und der Worker weckt den
+fremden Eventloop threadsicher. Die vorhandenen `ResourceWarning`-Hinweise
+entstehen vor allem in absichtlich beschädigten Katalog-/SQLite-Testfällen und
+bleiben als Testhygiene sichtbar; kein Test oder Gate wurde dafür ausgenommen.
+
+---
+
+# Historischer Qualitätsbericht: gemeinsamer Vorrat und schnelle Runtime
 
 Stand: 28.09.2026. Branch `feature/frontend-v2`, Basis `d11034f`.
 Die folgenden Abschnitte vor der Trennlinie gelten für den aktuellen Gesamtstand.

@@ -35,6 +35,7 @@ def relational_game(game, tmp_path):
             game.dispatch_planning.anchors,
             game.world,
         ),
+        dispatch_eligibility=game.dispatch_eligibility,
         market=game.market,
         catalogue=game.catalogue,
         market_scope=game.market_scope,

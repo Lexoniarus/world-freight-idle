@@ -1,11 +1,10 @@
 import { LatestRequest } from "../state.js";
-import { requiredElement } from "../ui/dom.js";
 
 /** Execute game use cases; views only emit action names and resource IDs. */
 export class GameActions {
-  /** @param {{focus?: import("./map-focus-controller.js").MapFocusController, request: import('../types.js').RequestJson, state: import("../state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../types.js").GameMap | null, contractMarket: import("./contract-market-controller.js").ContractMarketController, notify: import('../types.js').Notify, navigate: import('../types.js').Navigate, refresh: () => Promise<void>, logout: () => Promise<void>}} dependencies */
+  /** @param {{focus?: import("./map-focus-controller.js").MapFocusController, api: import('../api.js').GameApiClient, state: import("../state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../types.js").GameMap | null, contractMarket: import("./contract-market-controller.js").ContractMarketController, notify: import('../types.js').Notify, navigate: import('../types.js').Navigate, refresh: () => Promise<void>, logout: () => Promise<void>}} dependencies */
   constructor({
-    request,
+    api,
     state,
     panel,
     map,
@@ -17,7 +16,7 @@ export class GameActions {
     focus,
   }) {
     this.focus = focus;
-    this.request = request;
+    this.api = api;
     this.state = state;
     this.panel = panel;
     this.map = map;
@@ -93,16 +92,12 @@ export class GameActions {
   async calculateQuote() {
     if (this.disposed || this.panel.view.busy || !this.panel.view.selectedVehicle) return;
     const contractId = this.panel.view.url.pathname.split("/").at(-1);
-    const vehicleId = this.panel.view.selectedVehicle || null;
+    const vehicleId = this.panel.view.selectedVehicle;
     const request = this.quoteRequest.start();
     this.panel.view.quoting = true;
     this.panel.render();
     try {
-      const quote = await this.request("/contracts/" + contractId + "/quote", {
-        method: "POST",
-        signal: request.signal,
-        body: JSON.stringify({ vehicle_id: vehicleId }),
-      });
+      const quote = await this.api.quoteFreightOffer(contractId, vehicleId, request.signal);
       if (!request.isCurrent() || vehicleId !== (this.panel.view.selectedVehicle || null)) return;
       this.panel.view.quote = quote;
       this.map?.setPreview(quote);
@@ -150,10 +145,7 @@ export class GameActions {
    * @returns {Promise<void>}
    */
   async purchaseVehicle(modelId) {
-    await this.request("/fleet/purchase", {
-      method: "POST",
-      body: JSON.stringify({ model_id: modelId }),
-    });
+    await this.api.purchaseVehicle(modelId);
     if (!this.disposed) this.notify("Dein neuer Lkw ist in Berlin Westhafen einsatzbereit.");
   }
   /** Dispatch the selected vehicle and follow the resulting transport.
@@ -162,12 +154,9 @@ export class GameActions {
   async dispatchTransport() {
     const route = this.panel.view.url;
     const contractId = this.panel.view.url.pathname.split("/").at(-1);
-    const choice = /** @type {HTMLSelectElement} */ (requiredElement("#vehicle-choice"));
-    if (!this.panel.view.quote || this.panel.view.quote.vehicle_id !== choice.value) return;
-    const trip = await this.request("/contracts/" + contractId + "/accept", {
-      method: "POST",
-      body: JSON.stringify({ vehicle_id: choice.value }),
-    });
+    const vehicleId = this.panel.view.selectedVehicle;
+    if (!this.panel.view.quote || this.panel.view.quote.vehicle_id !== vehicleId) return;
+    const trip = await this.api.dispatchFreightOffer(contractId, vehicleId);
     if (this.disposed) return;
     this.notify("Transport gestartet. Gute Fahrt!");
     await this.state.afterMutation();
@@ -179,8 +168,16 @@ export class GameActions {
    * @returns {Promise<void>}
    */
   async refreshMarket() {
+    const before = this.state.data?.contracts?.length ?? 0;
     await this.contractMarket.forceRefresh();
-    if (!this.disposed) this.notify("Neue Aufträge sind verfügbar.");
+    if (this.disposed) return;
+    const after = this.state.data?.contracts?.length ?? 0;
+    const status = this.state.data?.market_preparation?.status;
+    if (after > before) this.notify("Neue Aufträge sind verfügbar.");
+    else if (status === "partial") this.notify("Weitere Aufträge werden vorbereitet.");
+    else if (status === "exhausted")
+      this.notify("Für diesen Fahrzeugmarkt sind derzeit keine weiteren Aufträge verfügbar.");
+    else this.notify("Der Fahrzeugmarkt ist bereits vollständig vorbereitet.");
   }
   /** Invalidate pending quotes and suppress late action results.
    * @returns {void}

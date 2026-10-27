@@ -14,7 +14,7 @@ from app.services.economy_audit import summarize_economy
 from app.services.preparation_worker import MarketPreparationWorker
 from tests.test_market_preparation import (
     bind_preparation,
-    make_batch,
+    make_stock_batch,
     require_value,
 )
 
@@ -134,9 +134,9 @@ async def test_worker_vanished_job_and_start_failure():
 
 
 @pytest.mark.asyncio
-async def test_batch_exhaustion_and_generation_change(game, database):
+async def test_batch_exhausts_deterministic_route_failures(game, database):
     preparation = bind_preparation(game, database)
-    batch = make_batch(game, preparation)
+    batch = make_stock_batch(game, preparation)
     # Bound the structural pool so exhausting it is deterministic and fast.
     owned = game.state_repository.list_vehicles()
     fleet = game.market.candidates.resolve_fleet(owned)
@@ -148,6 +148,7 @@ async def test_batch_exhaustion_and_generation_change(game, database):
     error.category = "no_path"
     preparation.readiness.router = AsyncMock()
     preparation.readiness.router.route.side_effect = error
+    preparation.request()
     result = await batch.process()
     for _ in range(10):
         result = await batch.process()
@@ -155,18 +156,6 @@ async def test_batch_exhaustion_and_generation_change(game, database):
             break
     assert result.status == "exhausted"
     assert game.list_contracts() == []
-    plan = batch.plan()
-    with patch.object(
-        batch,
-        "plan",
-        side_effect=[
-            plan,
-            replace(plan, generation="changed", exhausted=False),
-        ],
-    ):
-        changed = await batch.process()
-    assert changed.generation == plan.generation
-    assert changed.status == "partial"
 
 
 def test_economy_audit_is_typed_and_reproducible():

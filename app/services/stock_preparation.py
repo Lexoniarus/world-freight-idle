@@ -3,9 +3,11 @@
 from dataclasses import dataclass, replace
 
 from app.domain.market import MarketCandidate
-from app.domain.market_preparation import required_relations
+from app.domain.market_preparation import (
+    PreparationBatchResult,
+    required_relations,
+)
 from app.services.market_templates import MarketTemplateService
-from app.services.preparation_batch import PreparationBatchResult
 from app.services.stock_planning import StockPlanningService, StockTarget
 from app.services.stock_publication import (
     StockPublicationService,
@@ -34,8 +36,6 @@ class StockPreparationBatch:
                 snapshot.candidates,
                 snapshot.ready,
                 snapshot.usable_offers,
-                snapshot.usable_templates,
-                snapshot.used,
             )
             selected = self._select(snapshot, targets)
             waiting = selected is None and self._waiting(targets)
@@ -51,36 +51,29 @@ class StockPreparationBatch:
             if not self.publication.guard():
                 return self._result(snapshot, "partial", 1)
             stock.checkpoint(target.key, trade_key(candidate))
-        if not self._ready(snapshot, candidate):
+        ready = self._ready(snapshot, candidate)
+        if not ready:
             await prep.prepare_batch(
                 (candidate,),
                 (target.demand.vehicle,),
                 limit=1,
             )
-            current = self.publication.read()
-            if (
-                current.owned != snapshot.owned
-                or current.offers != snapshot.offers
-                or current.arrivals != snapshot.arrivals
-                or current.status != snapshot.status
-                or current.reference != snapshot.reference
-            ):
-                return self._result(current, "partial", 0)
-            snapshot = current
+            if not self.publication.unchanged(snapshot):
+                return self._result(snapshot, "partial", 0)
+            newly_ready = prep.ready_candidates((candidate,))
+            ready = bool(newly_ready)
             fresh = self.planning.targets(
                 snapshot.demands,
                 snapshot.candidates,
-                snapshot.ready,
+                tuple((*snapshot.ready, *newly_ready)),
                 snapshot.usable_offers,
-                snapshot.usable_templates,
-                snapshot.used,
             )
             remaining = next((t for t in fresh if t.key == target.key), None)
             if remaining is None:
                 self.publication.publish(snapshot, (), ())
                 return self._result(snapshot, "partial", 0)
             target = remaining
-        if self._ready(snapshot, candidate):
+        if ready:
             templates, issued = self.templates.materialize(
                 snapshot.usable_templates,
                 snapshot.used,

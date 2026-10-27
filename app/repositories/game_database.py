@@ -3,7 +3,7 @@
 import logging
 import re
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import closing, contextmanager
 from contextvars import ContextVar
 from pathlib import Path
@@ -21,6 +21,9 @@ class SqliteGameDatabase:
         self.path = path
         self._active: ContextVar[sqlite3.Connection | None] = ContextVar(
             "game_transaction", default=None
+        )
+        self._after_commit: ContextVar[list[Callable[[], None]] | None] = (
+            ContextVar("game_after_commit", default=None)
         )
 
     @contextmanager
@@ -69,17 +72,33 @@ class SqliteGameDatabase:
         if self._active.get() is not None:
             yield
             return
+        callbacks: list[Callable[[], None]] = []
+        committed = False
         with self.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             token = self._active.set(connection)
+            callback_token = self._after_commit.set(callbacks)
             try:
                 yield
                 connection.commit()
+                committed = True
             except BaseException:
                 connection.rollback()
                 raise
             finally:
                 self._active.reset(token)
+                self._after_commit.reset(callback_token)
+        if committed:
+            for callback in callbacks:
+                callback()
+
+    def after_commit(self, callback: Callable[[], None]) -> None:
+        """Run a side effect only after the surrounding write is durable."""
+        callbacks = self._after_commit.get()
+        if callbacks is None:
+            callback()
+        else:
+            callbacks.append(callback)
 
     def initialize(self) -> None:
         """Create a fresh schema or require the exact supported revision."""

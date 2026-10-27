@@ -280,25 +280,34 @@ async def test_connection_deadline_is_transient_for_direct_planning(case):
 
 
 @pytest.mark.asyncio
-async def test_cache_versions_ttls_and_broken_reverse_evidence(case):
+async def test_route_certificates_outlive_payloads_but_versions_invalidate(
+    case,
+):
     first = await case.service.prepare(WOLF, STENDAL)
     assert first.status == "ready"
-    for sql in [
+    for sql in (
         "UPDATE routing_connection_proofs SET validation_version='old'",
         "UPDATE routing_relations SET fingerprint='legacy-locate'",
-        "DELETE FROM route_cache WHERE cache_key IN (SELECT cache_key FROM routing_relations WHERE origin_uid='"
-        + STENDAL
-        + "')",
-        "DELETE FROM routing_relations WHERE origin_uid='" + STENDAL + "'",
-    ]:
+    ):
         with case.db.connect() as conn:
             conn.execute(sql)
         assert case.service.current(WOLF, STENDAL).status == "stale"
         assert (await case.service.prepare(WOLF, STENDAL)).status == "ready"
-    case.clock[0] += POSITIVE_TTL
-    assert case.service.current(WOLF, STENDAL).status == "stale"
-    assert (await case.service.prepare(WOLF, STENDAL)).status == "ready"
-    case.clock[0] += POSITIVE_TTL
+    with case.db.connect() as conn:
+        conn.execute(
+            "DELETE FROM route_cache WHERE cache_key IN "
+            "(SELECT cache_key FROM routing_relations "
+            "WHERE origin_uid=?)",
+            (WOLF,),
+        )
+    assert case.service.current(WOLF, STENDAL).status == "ready"
+    with pytest.raises(ValueError, match="vorbereitet"):
+        case.service.load(WOLF, STENDAL)
+    case.clock[0] += POSITIVE_TTL * 2
+    assert case.service.current(WOLF, STENDAL).status == "ready"
+    with case.db.connect() as conn:
+        conn.execute("DELETE FROM routing_connection_proofs")
+        conn.execute("DELETE FROM routing_relations")
     error = RoutingError("no road")
     error.category = "no_path"
     case.service.router = SimpleNamespace(route=AsyncMock(side_effect=error))

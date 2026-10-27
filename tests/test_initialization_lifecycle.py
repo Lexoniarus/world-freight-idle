@@ -94,6 +94,7 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
     clients = [
         SimpleNamespace(aclose=AsyncMock()),
     ]
+    worker = SimpleNamespace(start=AsyncMock(), close=AsyncMock())
     app = FastAPI()
     app.state.settings = SimpleNamespace(request_timeout_seconds=1)
     error = RuntimeError("injected failure")
@@ -133,6 +134,9 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
                 side_effect=error if failure == "preferences" else None,
             )
         )
+        patches.enter_context(
+            patch("app.main.build_preparation_worker", return_value=worker)
+        )
         if failure == "world":
             runtime_factory.return_value.world.read.side_effect = error
         if failure == "catalogue":
@@ -151,3 +155,6 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
                         raise error
     expected = [0] if failure == "first-client" else [1]
     assert [client.aclose.await_count for client in clients] == expected
+    reached_worker = failure in {"none", "body", "close-first"}
+    assert worker.start.await_count == int(reached_worker)
+    assert worker.close.await_count == int(reached_worker)

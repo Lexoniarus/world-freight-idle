@@ -1,5 +1,30 @@
 # Changelog
 
+## Lokaler bedarfsgesteuerter Frachtpool – 27.10.2026
+
+- Supabase-/PostgreSQL-Laufzeit verworfen; `python main.py` startet wieder eine
+  lokale SQLite-Runtime mit genau einem Lifespan-Worker.
+- GET, Runtime-Polling und Kartennavigation erzeugen keine Marktjobs oder
+  Provideraufrufe. Fachliche Writes wecken den Worker ereignisgesteuert.
+- Vorbereitung gilt nur konkreten idle Fahrzeugen und ab Dispatch deren
+  Zielstädten. Weltweiter Katalog-Preload, 60-Minuten-Schwelle und periodisches
+  Wiederöffnen fertiger Jobs entfernt.
+- Erfolgreiche Routenrelationen bleiben für denselben Fingerprint dauerhaft
+  wiederverwendbar. Fehlende Geometrie wird erst beim exakten Load abgewiesen.
+- Deterministische gewichtete Marktbedingungen bei weiterhin eindeutigen IDs;
+  pro Runde genau ein Angebot und Vielfalt vor Wiederholung.
+- Gemeinsame Vorlagen in ein eigenes Repository extrahiert; Legacy-Batch,
+  Startup-Rebuild, globale Worker-Lease und Prozesssupervisor entfernt.
+- Frontend-HTTP läuft über `GameApiClient`; der Scheduler pollt keinen Markt.
+  `DispatchEligibilityService` bildet den Seam für den späteren Mitarbeiter-
+  und Fahrerbedarf, ohne diesen vorzeitig zu implementieren.
+- Marktbedarf weckt den Lifespan-Worker erst nach erfolgreichem äußeren
+  Datenbank-Commit und threadsicher im besitzenden Eventloop; Rollbacks
+  erzeugen keine Phantomarbeit und ein frühes Wake-up geht nicht verloren.
+- Flottenfilter reagieren unmittelbar auf Eingaben. Der Browser-Gegentest für
+  Energiepausen synchronisiert den tatsächlichen Serverzustand an der
+  Client-/Server-Zeitgrenze, ohne die Energiesemantik abzuschwächen.
+
 ## Befahrbare Standortverbindungen – 27.09.2026
 
 - Jede Anfahrt und Lieferung benötigt echte Truck-Routen in beiden Richtungen

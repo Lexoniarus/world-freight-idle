@@ -125,25 +125,17 @@ class MarketLifecycleService:
             )
 
     def published(self, *, refresh: bool = False) -> list[ContractOffer]:
-        """Serve usable publication and coalesce demand without generation."""
+        """Serve retained stock; only an explicit refresh writes demand."""
         if self.preparation is None:
             return self.refresh(force=refresh)
-        self.preparation.request()
+        if refresh:
+            self.preparation.request(changed=True)
         with self.unit_of_work.read_transaction():
             owned = self.unit_of_work.repository.list_vehicles()
             fleet = self.generator.candidates.resolve_fleet(owned)
-            offers = self.unit_of_work.repository.list_offers()
             retained = self._retained(
                 self.scope.resolve(owned), fleet, self.clock()
             )
-            status = self.preparation.jobs.status(self.preparation.user_id)
-        missing = self.preparation.stock is None and len(retained) != len(
-            offers
-        )
-        if (refresh or missing) and (
-            status is not None and status.status != "partial"
-        ):
-            self.preparation.request(changed=True)
         return list(retained)
 
     def prune_in_transaction(self) -> None:
@@ -207,7 +199,7 @@ class MarketLifecycleService:
             if self.preparation is None:
                 self.refresh()
             else:
-                self.preparation.request()
+                self.preparation.request(changed=True)
         except Exception:
             LOGGER.exception(
                 "Post-commit market refill failed",

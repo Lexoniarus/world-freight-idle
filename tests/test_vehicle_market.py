@@ -6,10 +6,11 @@ from unittest.mock import patch
 import pytest
 
 from app.domain.contracts import ContractOffer
+from app.services.dispatch_eligibility import DispatchEligibilityService
 from app.services.market_scope import MarketScopeResolver
 from app.services.vehicle_coverage import vehicle_candidates, vehicle_offers
 from tests.test_market import city_market as city_market
-from tests.test_market_preparation import bind_preparation, make_batch
+from tests.test_market_preparation import bind_preparation, make_stock_batch
 
 
 def test_vehicle_coverage_fills_small_vehicle_after_city_is_full(city_market):
@@ -73,6 +74,9 @@ def vehicle_game(game, city_market, database):
     game.market_scope = MarketScopeResolver(world)
     game.market_lifecycle.generator = market
     game.market_lifecycle.scope = game.market_scope
+    game.dispatch_eligibility = DispatchEligibilityService(
+        world, market.candidates
+    )
     preparation = bind_preparation(game, database)
     return game, preparation
 
@@ -113,17 +117,22 @@ async def test_vehicle_readiness_requires_approach_and_excludes_stale(
     assert game.contract_choices(offers, fleet[0].vehicle_id)
     with patch.object(
         readiness.store,
-        "payload_available",
-        wraps=readiness.store.payload_available,
+        "payload",
+        wraps=readiness.store.payload,
     ) as payload:
         payload.side_effect = lambda ref: (
-            False if ref == approach.reference else payload._mock_wraps(ref)
+            None if ref == approach.reference else payload._mock_wraps(ref)
         )
         scoped = game.contract_choices(offers, fleet[0].vehicle_id)
-        assert all(
-            item.offer.origin.facility_uid == fleet[0].facility_uid
+        assert any(
+            item.offer.origin.facility_uid != fleet[0].facility_uid
             for item in scoped
         )
+        with pytest.raises(ValueError, match="vorbereitet"):
+            readiness.load(
+                fleet[0].facility_uid,
+                remote.trade.origin.facility_uid,
+            )
     readiness.provider_identity = "changed"
     assert game.contract_choices(offers, fleet[0].vehicle_id) == ()
     with pytest.raises(ValueError, match="vorbereitet"):
@@ -133,84 +142,6 @@ async def test_vehicle_readiness_requires_approach_and_excludes_stale(
         )
     with pytest.raises(ValueError, match="Fahrzeug"):
         game.contract_choices(offers, "foreign")
-
-
-@pytest.mark.asyncio
-async def test_worker_completes_vehicle_gaps_and_exhausts_failed_approaches(
-    vehicle_game,
-):
-    game, preparation = vehicle_game
-    batch = make_batch(game, preparation)
-    first = await batch.process()
-    for _ in range(10):
-        first = await batch.process()
-        if first.status == "ready":
-            break
-    assert first.status == "ready"
-    vehicle = game.get_vehicle("truck")
-    original = game.list_contracts()
-    assert len(original) == 9
-    # Keep the large offers but shrink this owned vehicle's capacity.
-    vehicle._capacity_tons = 1
-    game.state_repository.save_vehicle(vehicle)
-    result = await batch.process()
-    for _ in range(10):
-        result = await batch.process()
-        if result.status == "ready":
-            break
-    assert result.status == "ready"
-    assert all(
-        item.offer.tons <= 1
-        for item in game.contract_choices(game.list_contracts(), "truck")
-    )
-    # Simulate a deterministic failure for every remaining approach.
-    readiness = preparation.readiness
-    existing = readiness.current
-
-    def failed(origin, destination):
-        relation = existing(origin, destination)
-        if origin == vehicle.facility_uid and destination == "origin-b":
-            assert relation is not None
-            return replace(
-                relation,
-                status="deterministic_failure",
-                failure_category="no_path",
-            )
-        return relation
-
-    with patch.object(readiness, "current", side_effect=failed):
-        result = await batch.process()
-        for _ in range(3):
-            result = await batch.process()
-        assert result.status == "exhausted"
-        diagnostic = game.vehicle_coverage()[0]
-        assert diagnostic.unmet_facilities == ("origin-b",)
-        assert all(
-            item.offer.origin.facility_uid == vehicle.facility_uid
-            for item in game.contract_choices(game.list_contracts(), "truck")
-        )
-
-
-@pytest.mark.asyncio
-async def test_departure_during_preparation_cannot_publish_stale_vehicle_coverage(
-    vehicle_game,
-):
-    game, preparation = vehicle_game
-    batch = make_batch(game, preparation)
-
-    async def departure(*args, **kwargs):
-        vehicle = game.get_vehicle("truck")
-        vehicle.start_trip()
-        game.state_repository.save_vehicle(vehicle)
-        return True, None
-
-    with patch.object(preparation, "prepare_batch", side_effect=departure):
-        result = await batch.process()
-    assert result.status == "partial"
-    assert game.list_contracts() == []
-    assert game.vehicle_coverage() == ()
-    with pytest.raises(ValueError, match="Fahrzeug"):
-        game.contract_choices([], "truck")
 
 
 def test_two_vehicle_projection_uses_authoritative_sets(vehicle_game):
@@ -260,8 +191,9 @@ async def test_vehicle_projection_api_enforces_owned_idle_selection(
     from app.api.v1.contracts import list_contracts, refresh_contracts
 
     game, preparation = vehicle_game
-    batch = make_batch(game, preparation)
-    for _ in range(10):
+    batch = make_stock_batch(game, preparation)
+    preparation.request()
+    for _ in range(100):
         result = await batch.process()
         if result.status == "ready":
             break

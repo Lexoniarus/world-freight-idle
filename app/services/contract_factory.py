@@ -12,6 +12,9 @@ from app.domain.market import MarketCandidate
 from app.domain.market_calculations import biased_load_factor, shipment_tons
 from app.domain.market_terms import OfferMarketContext
 from app.domain.tariffs import freight_tariff
+from app.services.deterministic_market_random import (
+    DeterministicMarketRandom,
+)
 from app.simulation import STANDARD_RATE
 
 
@@ -23,24 +26,43 @@ class ContractFactory:
     cargo_system: ClassVar[str] = "NHM2026"
 
     rng: random.Random
+    deterministic: DeterministicMarketRandom = DeterministicMarketRandom()
 
     def build(
         self,
         candidate: MarketCandidate,
         now: float,
+        deterministic_context: str | None = None,
     ) -> ContractOfferSnapshot:
         """Create one typed immutable simulated contract snapshot."""
         option = candidate.trade
-        selected = self.rng.choices(
-            candidate.vehicles,
-            weights=[v.suitability for v in candidate.vehicles],
-            k=1,
-        )[0].vehicle
+        if deterministic_context is None:
+            selected = self.rng.choices(
+                candidate.vehicles,
+                weights=[v.suitability for v in candidate.vehicles],
+                k=1,
+            )[0].vehicle
+            load_draw = self.rng.random()
+            offer_id = str(uuid.UUID(int=self.rng.getrandbits(128)))
+        else:
+            vehicle_index = self.deterministic.weighted_index(
+                tuple(v.vehicle.vehicle_id for v in candidate.vehicles),
+                tuple(v.suitability for v in candidate.vehicles),
+                deterministic_context,
+                "vehicle",
+            )
+            selected = candidate.vehicles[vehicle_index].vehicle
+            load_draw = self.deterministic.fraction(
+                deterministic_context,
+                "load-factor",
+                selected.vehicle_id,
+            )
+            offer_id = str(uuid.uuid4())
         load = candidate.distance_profile
         tons = shipment_tons(
             selected.capacity_tons,
             biased_load_factor(
-                load.load_factor_min, load.load_factor_max, self.rng.random()
+                load.load_factor_min, load.load_factor_max, load_draw
             ),
         )
         profile = candidate.profile
@@ -67,7 +89,7 @@ class ContractFactory:
             else "documented"
         )
         return ContractOfferSnapshot(
-            id=str(uuid.UUID(int=self.rng.getrandbits(128))),
+            id=offer_id,
             market_model=self.model_id,
             cargo_system=self.cargo_system,
             origin=origin.location_snapshot(),

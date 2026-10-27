@@ -1,19 +1,17 @@
 """Runtime demand, short transactions and publication fences under races."""
 
-import sqlite3
 from dataclasses import replace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 from app.domain.errors import PersistenceError
 from app.domain.market import VehicleCoverageDiagnostic
 from app.domain.routing_readiness import RoutePayload
+from app.repositories.market_preparation import SqlitePreparationStore
 from app.repositories.routing_readiness import decode_route_payload
-from app.services.preparation_lease import WORKER_SUBJECT
 from tests.test_market_preparation import (
     bind_preparation,
-    make_batch,
     require_value,
 )
 from tests.test_routing_readiness_store import ready_relation, routing_store
@@ -39,16 +37,22 @@ def test_wal_read_snapshot_rejects_writes_and_resets_after_failure(database):
 def test_durable_demand_coalesces_and_fences_stale_diagnostics(game, database):
     preparation = bind_preparation(game, database)
     jobs = preparation.jobs
+    assert isinstance(jobs, SqlitePreparationStore)
+    notify = Mock()
+    jobs.set_notifier(notify)
     assert jobs.diagnostics("test-owner") == ()
     preparation.request()
+    notify.assert_called_once_with()
     first = jobs.status("test-owner")
     assert first is not None
     preparation.request()
+    assert notify.call_count == 1
     assert jobs.status("test-owner") == first
     diagnostic = VehicleCoverageDiagnostic("v", "city", 1, (1, 0, 0), (), ())
     jobs.publish_diagnostics("test-owner", first.generation, (diagnostic,))
     assert jobs.diagnostics("test-owner") == (diagnostic,)
     preparation.request(changed=True)
+    assert notify.call_count == 2
     second = jobs.status("test-owner")
     assert second is not None and second.generation != first.generation
     jobs.publish_diagnostics("test-owner", first.generation, ())
@@ -59,8 +63,8 @@ def test_durable_demand_coalesces_and_fences_stale_diagnostics(game, database):
     jobs.ensure("test-owner", 19)
     assert jobs.next_player(19) is None
     jobs.ensure("test-owner", 20)
-    assert require_value(jobs.status("test-owner")).status == "partial"
-    assert jobs.next_player(20) == "test-owner"
+    assert require_value(jobs.status("test-owner")).status == "ready"
+    assert jobs.next_player(20) is None
     jobs.finish("test-owner", second.generation, "partial", 30, 20)
     jobs.ensure("test-owner", 21)
     assert jobs.next_player(21) is None
@@ -70,7 +74,7 @@ def test_durable_demand_coalesces_and_fences_stale_diagnostics(game, database):
 def test_runtime_never_builds_candidates_and_worker_plans_outside_writer(
     game, database
 ):
-    preparation = bind_preparation(game, database)
+    bind_preparation(game, database)
     with patch.object(
         type(game.market.candidates),
         "build",
@@ -89,30 +93,6 @@ def test_runtime_never_builds_candidates_and_worker_plans_outside_writer(
         game.ensure_initial_state()
         game.reconcile_arrival()
         game.list_contracts()
-    original = type(game.market.candidates).build
-
-    def build(service, *args):
-        # A separate connection can acquire the writer during candidate CPU work.
-        with sqlite3.connect(database.path, timeout=0) as concurrent:
-            concurrent.execute("BEGIN IMMEDIATE")
-            concurrent.rollback()
-        return original(service, *args)
-
-    with patch.object(type(game.market.candidates), "build", build):
-        make_batch(game, preparation).plan()
-    generation = require_value(
-        preparation.jobs.status("test-owner")
-    ).generation
-    with patch.object(
-        type(game.market), "generate", wraps=game.market.generate
-    ) as generate:
-        game.market_lifecycle.publication_guard = lambda: False
-        assert game.refresh_market() == []
-        generate.assert_called_once()
-    assert (
-        require_value(preparation.jobs.status("test-owner")).generation
-        == generation
-    )
 
 
 @pytest.mark.asyncio
@@ -133,13 +113,6 @@ async def test_readiness_read_view_reuses_facts_but_never_crosses_publication(
             assert readiness.fingerprint(*pair) == readiness.fingerprint(*pair)
         assert readiness.current(*pair) is None
         assert get.call_count == 2
-    readiness.worker_owner = "worker"
-    # Losing global ownership prevents either direction from being published.
-    assert await readiness.prepare(*pair) is None
-    assert readiness.current(*pair) is None
-    assert readiness.store.acquire(
-        WORKER_SUBJECT, "worker", game.now(), game.now() + 180
-    )
     assert require_value(await readiness.prepare(*pair)).status == "ready"
     with readiness.reading():
         assert require_value(readiness.current(*pair)).status == "ready"
@@ -147,7 +120,7 @@ async def test_readiness_read_view_reuses_facts_but_never_crosses_publication(
     assert require_value(readiness.current(*pair)).status == "stale"
 
 
-def test_payload_validation_cache_detects_changes_and_worker_fences_failure(
+def test_payload_validation_cache_detects_changes(
     tmp_path,
 ):
     database, store = routing_store(tmp_path)
@@ -155,11 +128,7 @@ def test_payload_validation_cache_detects_changes_and_worker_fences_failure(
     payload = RoutePayload(((1, 2), (3, 4)), 5, 6, "provider")
     assert not store.payload_available(relation.reference)
     assert store.acquire(relation.reference.relation_id, "pair", 10, 30)
-    assert not store.publish(
-        relation, payload, "pair", 11, worker_owner="worker"
-    )
-    assert store.acquire(WORKER_SUBJECT, "worker", 10, 30)
-    assert store.publish(relation, payload, "pair", 11, worker_owner="worker")
+    assert store.publish(relation, payload, "pair", 11)
     with patch(
         "app.repositories.routing_readiness.decode_route_payload",
         wraps=decode_route_payload,
@@ -176,14 +145,6 @@ def test_payload_validation_cache_detects_changes_and_worker_fences_failure(
     assert len(store._validated_payloads) == 2048
     assert decode_route_payload("[]") is None
     assert decode_route_payload("invalid") is None
-    store.release(WORKER_SUBJECT, "worker")
-    assert not store.publish(
-        replace(relation, status="deterministic_failure"),
-        None,
-        "pair",
-        12,
-        worker_owner="worker",
-    )
 
 
 @pytest.mark.asyncio
@@ -270,35 +231,30 @@ async def test_publication_revision_change_and_concurrent_arrival_are_fenced(
     candidates = game.market.candidates.build(
         game.market_scope.resolve(game.state_repository.list_vehicles()), fleet
     )
+    candidate = next(
+        item
+        for item in candidates
+        if item.vehicles[0].vehicle.facility_uid
+        != item.trade.origin.facility_uid
+    )
+    with patch.object(preparation.readiness, "current", return_value=None):
+        assert preparation.preparable_candidates((candidate,)) == (candidate,)
+
+    def failed_approach(origin, destination):
+        relation = ready_relation()
+        if origin == candidate.trade.origin.facility_uid:
+            return None
+        return replace(relation, status="deterministic_failure")
+
+    with patch.object(
+        preparation.readiness,
+        "current",
+        side_effect=failed_approach,
+    ):
+        assert preparation.preparable_candidates((candidate,)) == ()
     with patch.object(
         preparation.readiness,
         "current",
         return_value=replace(ready_relation(), status="deterministic_failure"),
     ):
         assert preparation.preparable_candidates(candidates) == ()
-
-
-def test_two_process_roles_can_initialize_the_same_empty_file(tmp_path):
-    from concurrent.futures import ThreadPoolExecutor
-    from threading import Barrier
-
-    from app.repositories.game_database import SqliteGameDatabase
-
-    ready = Barrier(2)
-    path = tmp_path / "shared.db"
-
-    def initialize():
-        ready.wait(timeout=5)
-        SqliteGameDatabase(path).initialize()
-
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        futures = [executor.submit(initialize) for _ in range(2)]
-        for future in futures:
-            future.result(timeout=5)
-    with SqliteGameDatabase(path).connect() as connection:
-        assert (
-            connection.execute("SELECT COUNT(*) FROM game_schema").fetchone()[
-                0
-            ]
-            == 1
-        )

@@ -15,9 +15,10 @@ freigegebener öffentlicher Produktionsdienst.
 - Registrierung, Anmeldung, getrennte persistente Profile und Lieferungsrangliste.
 - Aufträge auswählen, Fahrzeug disponieren, parallele Transporte verfolgen,
   Offline-Ankünfte abrechnen und die Flotte erweitern.
-- Drei fahrbare Angebote je Streckentyp und ausgewähltem LKW; gemeinsamer
-  Hintergrundvorrat mit mindestens zehn Vorlagen je Bedarfsstadt/Modell/Band.
-  Jede Vorlage ist einmal je Spieler nutzbar. Angebote verfallen nicht zeitlich.
+- Drei fahrbare Angebote je Streckentyp und ausgewähltem LKW; ein lokaler,
+  persistenter Vorrat wird ausschließlich für eigene idle Fahrzeuge und die
+  Zielorte bereits gestarteter Transporte aufgefüllt. Geprüfte Vorlagen und
+  Routen werden wiederverwendet. Angebote verfallen nicht zeitlich.
 - 14 DB-Fahrzeugmodelle mit Kaufpreis, Nutzlast, Reputationsfreigabe und
   Kilometerkosten sowie Energieprofilen und Höchstgeschwindigkeit; lokale
   Karten-, Front- und Seitenbilder für alle Modelle.
@@ -108,9 +109,10 @@ Fehlende/defekte Katalogdaten ergeben 503 bei Katalog/Kauf oder erster Startflot
 bestehende Fahrzeuge bleiben nutzbar. Spielstände und Backups gehören nicht ins Git.
 
 Anfahrt und Lieferung benötigen geprüfte Hin- und Rückwege mit passenden
-Straßenendpunkten. Erfolgreiche Nachweise gelten maximal 24 Stunden; definitive
-Fehler werden nach einer Stunde, vorübergehende Fehler nach 60 Sekunden erneut
-vorbereitbar. Details und Wolfsburger Kopie-Abnahme:
+Straßenendpunkten. Ein erfolgreicher Relationsnachweis bleibt für denselben
+Provider-/Welt-Fingerprint wiederverwendbar; ein Listenabruf prüft die Geometrie
+nicht erneut. Facility-Anker und negative Ergebnisse besitzen weiterhin ihre
+begrenzten Wiederholungsfristen. Details und Wolfsburger Kopie-Abnahme:
 [Verbindungsprüfung](docs/CONNECTED_ROUTING_REVIEW.md).
 Nur die beiden Referenz-Katalogdateien werden mitgeliefert. Lizenz-/Datenherkunft:
 [DATA_SOURCES](docs/DATA_SOURCES.md).
@@ -256,22 +258,23 @@ Details: [Routenarchitektur](docs/ARCHITECTURE.md) und
 
 Mengen bevorzugen hohe Auslastung innerhalb der World-Profile. NHM-Mindestfracht
 und tatsächliche Wartung/Energieeinkäufe sind getrennt gespeichert. Der
-Vorbereitungsprozess veröffentlicht offene Märkte bedarfsgesteuert und atomar
+Lifespan-Worker veröffentlicht offene Märkte bedarfsgesteuert und atomar
 für eigene idle-Städte. Firmenfarben sind accountbezogen persistent; Kartenfahrzeuge
 und Analytics besitzen konsistente Darstellung. Details: [Economy v2](docs/ECONOMY_V2.md).
 
 
 Nach diesem Update den Spielserver neu starten: Der API-Start validiert beide
-Kataloge; der separate Worker veröffentlicht Angebote mit aktuellen Tarif-Snapshots.
+Kataloge; der Lifespan-Worker veröffentlicht Angebote mit aktuellen Tarif-Snapshots.
 Bereits laufende und abgeschlossene Transporte behalten ihre Konditionen.
 
 
-## Getrennte Runtime und Vorbereitung
+## Lokale Runtime und bedarfsgesteuerte Vorbereitung
 
-`python main.py` startet API und Prewarm in getrennten ueberwachten Prozessen.
-Alternativ `python main.py --role runtime` bzw. `--role prewarm` mit derselben
-Konfiguration. Der API-Start baut keine vollstaendigen Maerkte auf. Spielstand,
-Flotte, Markt, Verkehr und Routengeometrien laden unabhaengig.
+`python main.py` startet genau einen FastAPI-Prozess. Dessen Lifespan besitzt
+genau einen abbrechbaren Marktworker. Dauerhafte Bedarfseinträge wecken ihn;
+HTTP-GET, Runtime-Polling und Kartenbewegungen erzeugen weder Marktjobs noch
+Provideraufrufe. Spielstand, Flotte, Markt, Verkehr und Routengeometrien laden
+unabhängig. Es gibt keinen Weltkatalog-Preload und keine zweite Worker-Rolle.
 Die Zweiweg-Routingregel bleibt erhalten. Offline-Reparatur erzeugt ausschliesslich
 neue gepruefte Kopien; ein Push aktiviert keine Live-Datenbank.
 [Betrieb und Reparatur](docs/RUNTIME_OPERATIONS.md),

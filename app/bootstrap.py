@@ -32,7 +32,6 @@ from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.leaderboard import SqliteLeaderboardReader
 from app.repositories.legacy_game_import import LegacyGameImporter
 from app.repositories.market_preparation import SqlitePreparationStore
-from app.repositories.market_startup import SqliteMarketStartupStore
 from app.repositories.market_stock import SqliteMarketStockStore
 from app.repositories.market_stock_upgrade import MarketStockUpgradeRepository
 from app.repositories.preferences import SqlitePreferenceStore
@@ -52,6 +51,7 @@ from app.repositories.world_geography import WorldGeographyRepository
 from app.services.analytics import AnalyticsService
 from app.services.contract_factory import ContractFactory
 from app.services.cost_profiles import VehicleCostResolver
+from app.services.dispatch_eligibility import DispatchEligibilityService
 from app.services.dispatch_planning import DispatchPlanningService
 from app.services.economy_audit import EconomyAuditService
 from app.services.fleet import FleetService
@@ -61,14 +61,11 @@ from app.services.market import MarketGenerator
 from app.services.market_candidates import MarketCandidateService
 from app.services.market_coverage import MarketCoverageService
 from app.services.market_demand import MarketDemandResolver
-from app.services.market_lifecycle import MarketLifecycleService
 from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_selection import MarketSelectionService
-from app.services.market_startup import MarketStartupService
 from app.services.market_templates import MarketTemplateService
 from app.services.preferences import PreferenceService
-from app.services.preparation_lease import PreparationLease
 from app.services.preparation_worker import MarketPreparationWorker
 from app.services.profile_maintenance import ProfileMaintenanceService
 from app.services.routing_anchors import RoutingAnchorResolver
@@ -221,6 +218,10 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
             runtime.world,
             preparation,
         ),
+        dispatch_eligibility=DispatchEligibilityService(
+            runtime.world,
+            runtime.market.candidates,
+        ),
         market=runtime.market,
         catalogue=runtime.catalogue,
         market_scope=runtime.market_scope,
@@ -369,33 +370,6 @@ def build_market_generator(
     )
 
 
-def build_market_startup(runtime: GameRuntime) -> MarketStartupService:
-    """Wire existing profiles to a shared outer transaction."""
-
-    def lifecycle(user_id: str) -> MarketLifecycleService:
-        """Bind market-only operations without initializing or settling."""
-        preparation = build_market_preparation(runtime, user_id)
-        return MarketLifecycleService(
-            SqliteGameUnitOfWork(runtime.database, user_id),
-            runtime.market,
-            runtime.market_scope,
-            runtime.clock,
-            preparation,
-            selection=(
-                MarketSelectionService(preparation.policy)
-                if preparation
-                else None
-            ),
-        )
-
-    return MarketStartupService(
-        SqliteMarketStartupStore(runtime.database),
-        runtime.world,
-        runtime.catalogue,
-        lifecycle,
-    )
-
-
 def build_preferences(runtime: GameRuntime) -> PreferenceService:
     """Assemble account cosmetics separately from game snapshots."""
     return PreferenceService(SqlitePreferenceStore(runtime.database))
@@ -422,8 +396,6 @@ def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
     """Assemble owned preparation without initializing player state."""
     assert runtime.preparation_jobs is not None
     assert runtime.readiness is not None
-    lease = PreparationLease(runtime.readiness.store, runtime.clock)
-    runtime.readiness.worker_owner = lease.owner
 
     def batch(user_id: str) -> StockPreparationBatch:
         """Compose one player's preparation without changing state."""
@@ -435,7 +407,7 @@ def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
                 runtime.market,
                 preparation,
                 MarketDemandResolver(runtime.market.candidates),
-                lease.owned,
+                lambda: True,
             ),
             StockPlanningService(preparation.policy),
             MarketTemplateService(
@@ -443,9 +415,13 @@ def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
             ),
         )
 
-    return MarketPreparationWorker(
-        runtime.preparation_jobs, batch, runtime.clock, lease
+    worker = MarketPreparationWorker(
+        runtime.preparation_jobs,
+        batch,
+        runtime.clock,
     )
+    runtime.preparation_jobs.set_notifier(worker.wake)
+    return worker
 
 
 def build_routing_audit(runtime: GameRuntime) -> SqliteRoutingAudit:

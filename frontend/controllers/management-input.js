@@ -17,6 +17,14 @@ export class ManagementInput {
   start() {
     const options = { signal: this.lifetime.signal };
     this.page.addEventListener("change", (event) => this.change(event), options);
+    this.page.addEventListener(
+      "input",
+      (event) => {
+        const target = event.target;
+        if (target instanceof HTMLInputElement && target.type === "search") this.change(event);
+      },
+      options,
+    );
     this.page.addEventListener("click", (event) => this.click(event), options);
   }
   /** Translate management input changes into controller actions.

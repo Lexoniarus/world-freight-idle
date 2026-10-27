@@ -2,6 +2,30 @@
 
 Status: angenommen, 28.09.2026. Ergänzt ADR 0007.
 
+## Änderung vom 27.10.2026
+
+Der Vorrat ist weiterhin persistent und Vorlagen bleiben spielerübergreifend
+wiederverwendbar. Aktiv vorbereitet werden aber ausschließlich konkrete eigene
+Fahrzeugbedarfe: zuerst sichtbarer Bestand für idle Fahrzeuge, danach sichtbarer
+Bestand am gespeicherten Ziel aktiver Transporte, anschließend deren Reserven.
+Zielbedarf besteht unmittelbar ab Dispatch. Die frühere 60-Minuten-Schwelle und
+eine Grundversorgung aller Katalogmodelle entfallen. Es gibt keine globale
+dritte Eskalationsstufe und keinen Weltmarkt-Scan.
+
+Eine Runde veröffentlicht genau ein persönliches Angebot. Bereits vorhandene
+Vorlagen und erfolgreiche Relationsnachweise werden ohne Provideraufruf erneut
+verwendet. Auswahl, Fahrzeugkontext und Beladungsfaktor sind mit einem
+versionierten SHA-256-Kontext deterministisch; neue Angebots- und Vorlagen-IDs
+bleiben eindeutig. Gleichwertige Kandidaten bevorzugen Vielfalt bei Relation,
+Frachtart und Ziel. GET und periodische Browserreads füllen den Pool nicht auf.
+
+`SqliteMarketTemplateStore` besitzt ausschließlich gemeinsame Vorlagen;
+`SqliteMarketStockStore` besitzt persönliche Bindungen, Verbrauch, Cursor und
+Checkpoints. Der Lifespan-Worker wird durch dauerhafte Bedarfswrites geweckt.
+Die nachfolgende Erstentscheidung bleibt historisch lesbar; Aussagen zu allen
+Katalogmodellen, 60 Minuten, globaler Lease und 24-Stunden-Erfolgsablauf sind
+durch diese Änderung ersetzt.
+
 ## Entscheidung
 
 Die Auswahl umfasst höchstens drei fahrbare Angebote pro Entfernungsklasse

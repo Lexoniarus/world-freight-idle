@@ -34,6 +34,17 @@ class PreparationStatus:
     next_retry_at: float | None
 
 
+@dataclass(frozen=True, slots=True)
+class PreparationBatchResult:
+    """Return one bounded refill round's durable scheduling facts."""
+
+    generation: str
+    status: str
+    retry_at: float | None
+    structural_count: int
+    relation_states: tuple[tuple[str, int], ...]
+
+
 class PreparationStore(Protocol):
     """Persist fair, resumable player demand on the relational runtime."""
 

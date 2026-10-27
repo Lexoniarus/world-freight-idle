@@ -1,13 +1,10 @@
-"""Resolve current, arriving and catalogue demand without vehicle mutation."""
+"""Resolve current and arriving vehicle demand without vehicle mutation."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from app.domain.economics import VehicleCostProfile
 from app.domain.game import OwnedVehicle
-from app.domain.market import MarketVehicle
 from app.domain.market_compatibility import planning_vehicle
-from app.domain.market_profiles import vehicle_scale_for_segment
 from app.domain.market_stock import MarketArrival, MarketDemand
 from app.services.market_candidates import MarketCandidateService
 
@@ -24,7 +21,7 @@ class MarketDemandResolver:
         arrivals: tuple[MarketArrival, ...],
         now: float,
     ) -> tuple[MarketDemand, ...]:
-        """Project idle and pending arrival demand, then missing models."""
+        """Project concrete idle and destination demand only."""
         models = {
             model.id: model
             for model in self.candidates.catalogue.list_models()
@@ -49,36 +46,10 @@ class MarketDemandResolver:
                     arrival.transport_id,
                 )
             )
-        cities = {d.vehicle.city_uid: d.vehicle.facility_uid for d in result}
-        for city, facility in sorted(cities.items()):
-            for model in models.values():
-                if model.mode != "truck":
-                    continue
-                result.append(
-                    MarketDemand(
-                        MarketVehicle(
-                            f"catalogue:{city}:{model.id}",
-                            model.id,
-                            city,
-                            model.mode,
-                            model.capacity_tons,
-                            vehicle_scale_for_segment(model.segment),
-                            model.transport_capabilities,
-                            VehicleCostProfile(
-                                model.maintenance_eur_per_1000_km / 1000
-                            ),
-                            model.energy,
-                            facility,
-                        ),
-                        now,
-                        catalogue_only=True,
-                    )
-                )
         return tuple(
             sorted(
                 result,
                 key=lambda d: (
-                    d.catalogue_only,
                     d.vehicle.capacity_tons,
                     d.vehicle.vehicle_id,
                 ),

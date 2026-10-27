@@ -165,7 +165,6 @@ class SqliteRoutingReadinessStore:
         payload: RoutePayload | None,
         owner: str,
         now: float,
-        worker_owner: str | None = None,
     ) -> bool:
         """Atomically fence the writer and publish metrics with readiness."""
         if (relation.status == "ready") != (payload is not None):
@@ -177,10 +176,6 @@ class SqliteRoutingReadinessStore:
             else None
         )
         with self.database.transaction(), self.database.connect() as conn:
-            if worker_owner is not None and not self.holds(
-                "worker:market-preparation", worker_owner, now
-            ):
-                return False
             lease = conn.execute(
                 "SELECT 1 FROM routing_leases "
                 "WHERE subject=? AND owner=? AND expires_at>?",
@@ -268,16 +263,11 @@ class SqliteRoutingReadinessStore:
         now: float,
         provider: str,
         provider_revision: str | None,
-        worker_owner: str | None = None,
     ) -> bool:
         """Atomically fence anchors, both geometries and their shared proof."""
         anchors = self.anchors
         start, end = forward.origin_uid, forward.destination_uid
         with self.database.transaction(), self.database.connect() as conn:
-            if worker_owner is not None and not self.holds(
-                "worker:market-preparation", worker_owner, now
-            ):
-                return False
             for subject in connection_leases(start, end):
                 if (
                     conn.execute(

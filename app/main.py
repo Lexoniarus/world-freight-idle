@@ -15,6 +15,7 @@ from app.api.v1.router import build_v1_router
 from app.bootstrap import (
     build_game_runtime,
     build_preferences,
+    build_preparation_worker,
 )
 from app.config import Settings
 from app.domain.errors import (
@@ -50,6 +51,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.preferences = build_preferences(app.state.game)
         app.state.game.world.read()
         app.state.game.catalogue.list_models()
+        worker = build_preparation_worker(app.state.game)
+        resources.push_async_callback(worker.close)
+        app.state.preparation_worker = worker
+        await worker.start()
         yield
 
 

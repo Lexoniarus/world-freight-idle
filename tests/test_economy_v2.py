@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.bootstrap import build_market_startup, build_preferences
+from app.bootstrap import build_preferences
 from app.domain.analytics_labels import vehicle_labels
 from app.domain.company_colors import COMPANY_COLORS, player_color
 from app.domain.economics import (
@@ -169,38 +169,6 @@ async def test_dispatch_stores_costs_and_preserves_tariff_for_vehicle_choice(
             vehicle,
             1,
         )
-
-
-def test_startup_rebuild_is_global_atomic_and_does_not_route(
-    runtime, game, database
-):
-    startup = build_market_startup(runtime)
-    original = game.state_repository.list_offers()
-    with database.connect() as connection:
-        connection.execute(
-            "INSERT INTO users VALUES ('z-owner', 'Second', 'hash', 0)"
-        )
-        connection.execute(
-            "INSERT INTO player_states VALUES ('z-owner', 1000, 0, 0)"
-        )
-    real_factory = startup.lifecycle
-
-    def fail_second(owner):
-        if owner == "z-owner":
-            raise ValueError("second owner failure")
-        return real_factory(owner)
-
-    with patch.object(startup, "lifecycle", side_effect=fail_second):
-        with pytest.raises(ValueError, match="second owner"):
-            startup.rebuild()
-    assert game.state_repository.list_offers() == original
-    with patch.object(
-        runtime.router, "route", side_effect=AssertionError("No routing")
-    ):
-        startup.rebuild()
-    assert game.state_repository.list_offers() != original
-    assert not real_factory("z-owner").unit_of_work.repository.list_vehicles()
-    assert not real_factory("z-owner").unit_of_work.repository.list_offers()
 
 
 def test_preferences_are_account_scoped_persistent_and_palette_validated(

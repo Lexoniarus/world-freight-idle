@@ -17,6 +17,19 @@ import { renderVehicleImage } from "./ui/vehicle-image.js";
 import { html } from "./ui/dom.js";
 import { renderChart } from "./ui/charts.js";
 
+function freightApi(request) {
+  return {
+    loadFreightOffers: (vehicleId, signal) =>
+      request("/contracts" + (vehicleId ? `?vehicle_id=${vehicleId}` : ""), { signal }),
+    requestFreightRefill: (vehicleId, signal) =>
+      request("/contracts/refresh" + (vehicleId ? `?vehicle_id=${vehicleId}` : ""), {
+        method: "POST",
+        signal,
+      }),
+    loadFreightOffer: (id, signal) => request(`/contracts/${id}`, { signal }),
+  };
+}
+
 const berlin = {
   city_uid: "a",
   city: "Same Name",
@@ -292,28 +305,26 @@ test("opportunities aggregate by UID and selected endpoints retain their exact g
 test("list and detail reads publish independently and cancel obsolete detail navigation", async () => {
   const state = new GameState(async () => {});
   state.data = { contracts: [], vehicles: [], transports: [] };
-  let url = new URL("http://test/contracts/one");
+  let url = new URL("http://test/contracts");
   const requests = [];
   const market = new ContractMarketController({
     state,
-    request: (path) => new Promise((resolve) => requests.push({ path, resolve })),
+    api: freightApi((path) => new Promise((resolve) => requests.push({ path, resolve }))),
     notify: () => {},
     currentUrl: () => url,
   });
-  market.ordersVisible = () => true;
   market.start();
-  const first = market.refresh();
-  requests.find((row) => row.path === "/contracts").resolve({ contracts: [offer] });
-  await Promise.resolve();
+  const list = market.refresh();
+  requests[0].resolve({ contracts: [offer] });
+  await list;
   assert.equal(state.data.contracts[0], offer);
+  url = new URL("http://test/contracts/one");
+  const first = market.refresh();
   url = new URL("http://test/contracts/two");
   const second = market.refresh();
-  requests
-    .filter((row) => row.path === "/contracts")
-    .forEach((row) => row.resolve({ contracts: [offer] }));
   requests.find((row) => row.path === "/contracts/two").resolve({ ...offer, id: "two" });
   await second;
-  requests[1].resolve({ ...offer, id: "one" });
+  requests.find((row) => row.path === "/contracts/one").resolve({ ...offer, id: "one" });
   await first;
   assert.equal(state.contractDetail.id, "two");
   assert.equal(state.data.contracts[0], offer);

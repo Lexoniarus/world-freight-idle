@@ -1,6 +1,8 @@
 """Separate structural candidates from publication-ready market work."""
 
+import logging
 from collections.abc import Callable
+from time import perf_counter
 
 from app.domain.contracts import ContractOffer
 from app.domain.market import MarketCandidate, MarketVehicle
@@ -17,6 +19,8 @@ from app.domain.routing_readiness import RouteReference
 from app.domain.state_ports import TransactionBoundary
 from app.services.routing_readiness import RoutingReadinessService
 from app.services.vehicle_coverage import restrict_candidate
+
+LOGGER = logging.getLogger(__name__)
 
 
 class MarketPreparationService:
@@ -214,6 +218,7 @@ class MarketPreparationService:
         count = 0
         waiting = False
         retry_at = None
+        started = perf_counter()
         for origin, destination in pairs:
             current = self.readiness.current(origin, destination)
             if current and current.status in {
@@ -230,7 +235,9 @@ class MarketPreparationService:
                 retry_at = min(retry_at or current.retry_at, current.retry_at)
                 continue
             if count >= limit:
-                return False, self.clock()
+                waiting = True
+                retry_at = self.clock()
+                break
             count += 1
             result = await self.readiness.prepare(origin, destination)
             if result is None or result.status == "transient_failure":
@@ -239,4 +246,15 @@ class MarketPreparationService:
                     result.retry_at if result else None
                 ) or self.clock() + 1
                 retry_at = min(retry_at or next_try, next_try)
+        LOGGER.info(
+            "Market routing preparation phase completed",
+            extra={
+                "event": "market.provider_phase",
+                "data": {
+                    "relation_count": len(pairs),
+                    "provider_request_count": count,
+                    "provider_ms": round((perf_counter() - started) * 1000, 3),
+                },
+            },
+        )
         return not waiting, retry_at

@@ -134,6 +134,25 @@ Routing erneut; ein veränderter Energiecheckpoint verhindert Teilabrechnungen.
 - Pflichtfahrzeug HTTP 422, serverseitige eligible_vehicle_ids, Auswahlwechsel,
   entfernte Angebote und verspätete Antworten. Browser-Pan/Zoom ohne Marktread.
 
+Zusätzliche Kosten-/Read-Gegenproben vom 27.10.2026:
+
+- Wiederholte Markt- und Runtime-GETs schreiben keinen Bedarf, bauen keine
+  Candidates und laden keine Routenpayloads.
+- Nur fachliche Zustandsänderungen oder ein ausdrücklicher Refresh wecken den
+  Lifespan-Worker; abgeschlossene Jobs werden nicht zeitgesteuert neu geöffnet.
+- Erfolgreiche Relationen bleiben über Zeit- und Prozessgrenzen für denselben
+  Fingerprint verwendbar. Eine fehlende Payload scheitert erst beim exakten
+  Quote-/Dispatch-Load und erzeugt keinen stillen Providerfallback.
+- Gleicher Kontext und Kandidatenbestand ergeben dieselbe gewichtete Auswahl,
+  Fahrzeugwahl und Tonnage; Angebots-IDs bleiben verschieden. Ungültige oder
+  doppelte Gewichtsmengen werden abgelehnt.
+- Zielstadtbedarf entsteht direkt bei Dispatch. Globale Katalogmodelle oder
+  Städte ohne eigenes konkretes Fahrzeug werden nicht vorbereitet.
+- Exakte Stadt-/Modell-Templatequeries bleiben set-basiert; gemeinsame Vorlagen
+  und persönliche Bindungen besitzen getrennte Repository-Verantwortung.
+- Der Browser lädt `/contracts` nur im Fahrzeugmarkt. Der periodische Scheduler
+  pollt Runtime und gegebenenfalls Ranglistendetails, niemals den Markt.
+
 Das manuelle Review jeder geänderten Core-Funktion steht im Qualitätsbericht
 und im zugehörigen [SRP-Review](MARKET_V2_REVIEW.md). Die dortigen Befunde sind
 zusätzlich zum expliziten Function-Test-Manifest erforderlich.
@@ -306,22 +325,24 @@ Abnahmen. Fuer den Runtime-Umbau sind `python scripts/quality.py`, 100 % app-
 Statement-Coverage und `npm run test:e2e` vor Commit/Push vorgeschrieben.
 Keine abgesenkten Coverage-Schwellen, keine uebersprungenen Pflichtpruefungen.
 Neue Gegentests, Browserisolation und reproduzierbare Leistungsmessung stehen
-im [Runtime-Review](RUNTIME_ISOLATION_REVIEW.md). Der Browserserver startet seinen
-Fixture-Worker als eigenen Prozess. Testprofile frueherer unabhaengiger Faelle
+im [Runtime-Review](RUNTIME_ISOLATION_REVIEW.md). Der Browserserver startet den
+Lifespan-Worker mit injizierten Fake-Providern im gleichen isolierten Prozess.
+Testprofile früherer unabhängiger Fälle
 werden im Scheduler gefencet; mehrere Profile desselben Falls bleiben aktiv.
 Provider werden gemockt, Playwright prueft Desktop, Mobil und Tablet. Das ist
 keine echte iPad-Abnahme. Live-Reparaturen sind kein Teil der Testsuite.
 
 ## Gemeinsame Vorlagen und stabile Dreier-Auswahl
 
-`test_market_stock.py` prüft drei sichtbare Angebote, zehn vorbereitete
-Alternativen, 14 Modellkontexte, gespeicherte abweichende Kapazität, zwei
+`test_market_stock.py` prüft drei sichtbare Angebote, konkrete Reserven,
+gespeicherte abweichende Kapazität, zwei
 unabhängige Spieler, einmalige Verwendung, parallele Dispatches, finanziellen
-Rollback und sofortiges Nachrücken. Abfahrt, Zeitablauf, Route-TTL, Providerfehler,
-Lease-/Flottenänderungen und Katalogänderungen dürfen keinen Bestand löschen
+Rollback und sofortiges Nachrücken. Abfahrt, Zeitablauf, Providerfehler,
+Relations-/Flottenänderungen und Katalogänderungen dürfen keinen Bestand löschen
 oder ungeprüfte Angebote veröffentlichen. Teilweise Verbindungsvorbereitung
 wird nach neuem Repository-Kontext aus dem gespeicherten Checkpoint fortgesetzt.
-Ankünfte aktivieren Bedarf am 60-Minuten-Rand ohne vorzeitiges Settlement.
+Aktive Transporte aktivieren ihr Ziel direkt ab Dispatch ohne vorzeitiges
+Settlement. Unbenutzte Katalogmodelle erzeugen keinen Vorbereitungslauf.
 
 `test_market_stock_upgrade.py` prüft vollständigen Quellen-/Zielabgleich,
 unveränderte Quelle/Historie, gültige Altangebote ohne Ablauf und Ausschluss

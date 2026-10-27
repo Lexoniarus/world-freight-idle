@@ -116,11 +116,10 @@ function createGameApplication(api, user, redirect) {
   const sync = new GameSync({ state, panel, map, notify });
   const contractMarket = new ContractMarketController({
     state,
-    request: api.request,
+    api,
     notify,
     currentUrl: () => view.url,
   });
-  contractMarket.ordersVisible = () => layers.effective().orders;
   const managementInput = new ManagementInput({
     page: document,
     view,
@@ -133,7 +132,7 @@ function createGameApplication(api, user, redirect) {
   const focus = new MapFocusController({ state, view, map });
   const actions = new GameActions({
     focus,
-    request: api.request,
+    api,
     state,
     panel,
     map,
@@ -146,7 +145,6 @@ function createGameApplication(api, user, redirect) {
   const scheduler = new RefreshScheduler({
     refresh: async () => {
       await sync.refreshGameState();
-      await contractMarket.refresh();
       if (view.url.pathname === "/leaderboard") await panel.loadDetails();
     },
     updateProgress: () => sync.updateProgress(),

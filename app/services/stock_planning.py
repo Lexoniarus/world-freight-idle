@@ -1,6 +1,6 @@
 """Prioritize finite market deficits independently of provider execution."""
 
-from collections import Counter, defaultdict
+from collections import defaultdict
 from dataclasses import dataclass
 
 from app.domain.contracts import ContractOffer
@@ -12,6 +12,10 @@ from app.domain.market_stock import (
     StockPolicy,
     TradeKey,
 )
+from app.services.deterministic_market_random import (
+    DeterministicMarketRandom,
+)
+from app.services.market_coverage import CityCoverage
 from app.services.vehicle_coverage import (
     restrict_candidate,
     trade_key,
@@ -49,6 +53,7 @@ class StockPlanningService:
     """Rank real deficits, preserving deterministic fair group rotation."""
 
     policy: StockPolicy
+    random: DeterministicMarketRandom = DeterministicMarketRandom()
 
     def targets(
         self,
@@ -56,16 +61,11 @@ class StockPlanningService:
         candidates: tuple[MarketCandidate, ...],
         ready: tuple[MarketCandidate, ...],
         offers: tuple[ContractOffer, ...],
-        templates: tuple[PreparedTemplate, ...],
-        used: frozenset[str] = frozenset(),
     ) -> tuple[StockTarget, ...]:
-        """Count actual compatible offers, or shared catalogue-only supply."""
+        """Count actual compatible offers for concrete vehicle demand."""
         by_vehicle: dict[str, list[MarketCandidate]] = defaultdict(list)
         ready_by_vehicle: dict[str, list[MarketCandidate]] = defaultdict(list)
         offers_by_city: dict[str, list[ContractOffer]] = defaultdict(list)
-        templates_by_model: dict[tuple[str, str], list[ContractOffer]] = (
-            defaultdict(list)
-        )
         for candidate in candidates:
             for compatible in candidate.vehicles:
                 by_vehicle[compatible.vehicle.vehicle_id].append(
@@ -78,34 +78,12 @@ class StockPlanningService:
                 )
         for offer in offers:
             offers_by_city[offer.origin.city.city_uid].append(offer)
-        active_models: dict[tuple[str, str], int] = {}
-        for demand in demands:
-            if not demand.catalogue_only:
-                key = (demand.vehicle.city_uid, demand.vehicle.model_id)
-                active_models[key] = min(
-                    active_models.get(key, 4),
-                    3 if demand.transport_id else 2,
-                )
-        for template in templates:
-            if (
-                template.city_uid,
-                template.model_id,
-            ) in active_models and template.template_id in used:
-                continue
-            templates_by_model[template.city_uid, template.model_id].append(
-                template.offer
-            )
         result = []
         for demand in demands:
             vehicle = demand.vehicle
             pool = tuple(by_vehicle[vehicle.vehicle_id])
-            retained = (
-                templates_by_model[vehicle.city_uid, vehicle.model_id]
-                if demand.catalogue_only
-                else offers_by_city[vehicle.city_uid]
-            )
             eligible = vehicle_offers(
-                tuple(retained),
+                tuple(offers_by_city[vehicle.city_uid]),
                 vehicle,
                 tuple(ready_by_vehicle[vehicle.vehicle_id]),
             )
@@ -121,9 +99,7 @@ class StockPlanningService:
                 if not choices or count >= self.policy.reserve_per_band:
                     continue
                 priority = (
-                    active_models.get((vehicle.city_uid, vehicle.model_id), 4)
-                    if demand.catalogue_only
-                    else (1 if demand.transport_id else 0)
+                    (1 if demand.transport_id else 0)
                     if count < self.policy.visible_per_band
                     else (3 if demand.transport_id else 2)
                 )
@@ -175,20 +151,58 @@ class StockPlanningService:
         )
         if existing is not None:
             return existing
-        counts = Counter(
-            (
-                t.offer.origin.facility_uid,
-                t.offer.destination.facility_uid,
-                t.offer.cargo.nhm_row_id,
+        preferred = self.preferred(target, templates)
+        identities = tuple(
+            "\x1e".join(map(str, trade_key(candidate)))
+            for candidate in preferred
+        )
+        index = self.random.weighted_index(
+            identities,
+            tuple(candidate.weight for candidate in preferred),
+            target.key,
+            target.priority,
+            target.count,
+            "candidate",
+        )
+        return preferred[index]
+
+    def preferred(
+        self,
+        target: StockTarget,
+        templates: tuple[PreparedTemplate, ...],
+    ) -> tuple[MarketCandidate, ...]:
+        """Return the least represented relation, cargo and destination."""
+        coverage = CityCoverage()
+        for template in templates:
+            offer = template.offer
+            context = offer.market_context
+            if (
+                template.city_uid != target.demand.vehicle.city_uid
+                or template.model_id != target.demand.vehicle.model_id
+                or context is None
+                or context.distance_band != target.band
+            ):
+                continue
+            coverage.record(
+                offer.origin.facility_uid,
+                offer.destination.facility_uid,
+                offer.cargo.nhm_row_id,
+                offer.destination.city.city_uid,
+                context.distance_band,
             )
-            for t in templates
-            if t.model_id == target.demand.vehicle.model_id
+        preferred_rank = min(coverage.rank(c) for c in target.choices)
+        ranked = tuple(
+            candidate
+            for candidate in target.choices
+            if coverage.rank(candidate) == preferred_rank
         )
-        return min(
-            target.choices,
-            key=lambda c: (
-                counts[trade_key(c)],
-                -c.weight,
-                trade_key(c),
-            ),
-        )
+        unique: dict[TradeKey, MarketCandidate] = {}
+        for candidate in ranked:
+            key = trade_key(candidate)
+            current = unique.get(key)
+            if current is None or (candidate.weight, repr(candidate)) > (
+                current.weight,
+                repr(current),
+            ):
+                unique[key] = candidate
+        return tuple(unique[key] for key in sorted(unique))
