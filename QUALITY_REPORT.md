@@ -21,19 +21,30 @@ Startup-Markt-Rebuild, paralleler Legacy-Batch und globale Katalogversorgung.
 Mitarbeiter-Seam. Domain und Services importieren weiterhin kein SQL/HTTP;
 Views führen keine Requests aus.
 
+Marktlisten und Refresh benötigen ein konkretes eigenes idle Fahrzeug. Ohne
+gültigen Scope sendet der Browser keine Marktanfrage; der HTTP-Vertrag lehnt
+fehlendes `vehicle_id` mit 422 ab. Das Verantwortungsreview trennt außerdem in
+`ContractFactory` Ziehung, Konditionsableitung und Snapshot-Bau sowie in
+`StockPublicationService` autoritativen Read, Projektion, Readiness-Snapshot,
+Publikationsplan und gefencten Commit. Die Helper halten nur lokale
+Zwischenwerte ihrer bestehenden Klasse und eröffnen weder neue Daten- noch
+Providerpfade.
+
 Der abschließende Lauf von `.venv/Scripts/python.exe -X utf8
-scripts/quality.py` ist mit Exitcode 0 bestanden: **579 Python-Tests**,
-**100,00 % app-Statement-Coverage** (6.620 von 6.620 Statements),
+scripts/quality.py` ist mit Exitcode 0 bestanden: **585 Python-Tests**,
+**100,00 % app-Statement-Coverage** (6.669 von 6.669 Statements),
 **117 Frontend-Verhaltenstests** sowie Ruff, Formatierung, mypy, Pyright,
 ESLint, Stylelint, Prettier, checkJs, Produktionsbuild und compileall. Die
-Python-Suite benötigte 11 Minuten 2 Sekunden. Architektur- und
+Python-Suite benötigte 11 Minuten 30 Sekunden. Architektur- und
 Funktionsmanifestprüfungen sind Teil dieses Laufs.
 
-`npm run test:e2e`: **33 bestanden** in 7,8 Minuten. Die Suite lief gegen
+`npm run test:e2e`: **33 bestanden** in 7,7 Minuten. Die Suite lief gegen
 einen isolierten lokalen Einprozess-Server mit lokaler Datenbank und lokalem
 Routing-Fixture. Marktaufbau, sichtbare Einzelpublikation, Refresh,
 Fahrzeugfilter, Desktop/Mobil, Offline-Ankunft und Kartenregressionen sind
-abgedeckt. Der Energie-Gegentest wartet an der Client-/Server-Zeitgrenze auf
+abgedeckt. Marktlisten werden im Browsertest je Fahrzeug angefragt; nur der
+gezielte Mehrfahrzeug-Kostentest liest anschließend die Detailprojektion. Der
+Energie-Gegentest wartet an der Client-/Server-Zeitgrenze auf
 den tatsächlichen Zustandsübergang, statt eine unmittelbare Momentaufnahme zu
 behaupten. Absichtlich abgebrochene Browserrequests können unter Windows den
 bekannten `WinError 10054` im Socket-Cleanup protokollieren; die zugehörigen

@@ -90,13 +90,13 @@ Market-, Distance-, Scale- und Capability-Profile sind eigene Domainwerte.
 | TradeNetwork | Globale NHM-Zielindizes und lazy Origin-Relationen |
 | MarketCandidateService | Distanz, Warenprofile und Fahrzeugkompatibilität |
 | MarketCoverageService | Retention anrechnen und Coverage-Auswahl planen |
-| ContractFactory | Candidate mit separat gewähltem Fahrzeugkontext materialisieren |
+| ContractFactory | Ziehung, Konditionsableitung und Snapshot-Erzeugung getrennt orchestrieren |
 | MarketGenerator | Diese drei Schritte orchestrieren |
 | MarketLifecycleService | Retention, Pruning, Markttransaktion und Projektion der Eignung koordinieren |
 | MarketDemandResolver | Konkrete idle Fahrzeuge und gespeicherte Transportziele projizieren |
 | StockPlanningService | Sichtbare Defizite vor Reserven priorisieren und Vielfalt wählen |
 | MarketTemplateService | Wiederverwendbare Vorlagen zu genau einem Angebot materialisieren |
-| StockPublicationService | Lesesnapshot prüfen und Angebot atomar veröffentlichen |
+| StockPublicationService | Lesefakten, Planung und gefencten atomaren Commit koordinieren |
 | DispatchEligibilityService | Fahrzeug-/Frachtfreigabe und künftige Mitarbeiterfreigabe kapseln |
 | GameService | Spielabläufe koordinieren und Domainregeln delegieren |
 
@@ -128,8 +128,11 @@ GameState verhindert überlappende Reads. Nach unsicheren Schreibantworten folgt
 nach älteren Reads zwingend ein frischer Read; Mutationen werden nicht wiederholt.
 
 ContractMarketController besitzt die Stadtmarktanfragen. Pan und Zoom lösen
-keine Marktanfragen aus; Flotten-/Spielaktionen und Refresh aktualisieren sie. Standortmarker entstehen aus eigener
-Flotte, Transport-Snapshots und der aktuellen Auftragsscheibe. Spielerfarben
+keine Marktanfragen aus. Ohne ausgewähltes eigenes idle Fahrzeug wird weder
+gelesen noch ein Refill angefordert; der Backendvertrag verlangt deshalb stets
+`vehicle_id`. Flotten-/Spielaktionen und Refresh aktualisieren nur diesen
+Fahrzeugmarkt. Standortmarker entstehen aus eigener Flotte,
+Transport-Snapshots und der aktuellen Auftragsscheibe. Spielerfarben
 und öffentliche Transporte bleiben von privaten Wirtschaftsangaben getrennt.
 World Wrapping, Clustering, Tastatur, mobile Panels und Reduced Motion bleiben.
 
@@ -429,6 +432,15 @@ Bedarfsversion aus. Nur Zustandsänderungen und ein ausdrücklicher Refresh
 fordern weitere Arbeit an. Erfolgreiche Relationen bleiben für denselben
 Fingerprint dauerhaft nutzbar; negative Ergebnisse und Anker behalten ihre
 Backoffs. Verbrauch ist Teil der vorhandenen Dispatch-UoW.
+
+Innerhalb des Services sind der kurze autoritative Read, die reine
+Bedarfsprojektion, der mengenbasierte Readiness-Read, die Snapshot-Montage,
+der Publikationsplan und der gefencte Commit benannte Phasen. Dadurch bleiben
+SQL und Providerzugriffe in ihren vorhandenen Ports; der Service eröffnet
+weder eine zweite Marktstruktur noch Einzelabfragen je Relation. Analog trennt
+`ContractFactory` die Zufallsziehung von Konditionsableitung und immutablem
+Snapshot. Der nichtdeterministische Pfad behält seine bisherige RNG-Reihenfolge;
+der deterministische Pfad erzeugt weiterhin je Angebot eine neue UUID.
 
 Das [manuelle Verantwortungsreview](MARKET_STOCK_REVIEW.md) prüft die konkreten
 Funktionen zusätzlich zu den automatischen Importgrenzen und Manifesttests.

@@ -18,6 +18,12 @@
 - Frontend-HTTP läuft über `GameApiClient`; der Scheduler pollt keinen Markt.
   `DispatchEligibilityService` bildet den Seam für den späteren Mitarbeiter-
   und Fahrerbedarf, ohne diesen vorzeitig zu implementieren.
+- Marktlisten und Refresh verlangen jetzt ein konkretes eigenes idle Fahrzeug.
+  Ohne gültigen Scope sendet der Browser keine Anfrage und meldet keinen
+  angeblichen Refresh-Erfolg; der HTTP-Vertrag antwortet ohne `vehicle_id` 422.
+- `ContractFactory` trennt Ziehung, Konditionen und Snapshot-Erzeugung.
+  `StockPublicationService` trennt autoritativen Read, Projektion,
+  Publikationsplan und gefencten Commit, ohne neue SQL- oder Providerpfade.
 - Marktbedarf weckt den Lifespan-Worker erst nach erfolgreichem äußeren
   Datenbank-Commit und threadsicher im besitzenden Eventloop; Rollbacks
   erzeugen keine Phantomarbeit und ein frühes Wake-up geht nicht verloren.

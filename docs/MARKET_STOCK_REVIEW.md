@@ -84,15 +84,21 @@ aktuelle Review bestätigt folgende Verantwortungen:
 | `MarketDemandResolver` | Nur konkrete idle Fahrzeuge und gespeicherte Ziele aktiver Transporte projizieren |
 | `StockPlanningService` | Sichtbare Defizite vor Reserven ordnen; Vielfalt und deterministische Auswahl ohne I/O |
 | `MarketTemplateService` | Genau eine passende Vorlage/Offer-Einheit materialisieren |
+| `ContractFactory.build`, `_draw_offer`, `_derive_terms`, `_build_snapshot` | Ziehung, wirtschaftliche Ableitung und immutable Persistenzabbildung bleiben getrennt; stabile Kontexte ändern keine Konditionen, Angebots-IDs bleiben neu |
 | `SqliteMarketTemplateStore` | Gemeinsame unveränderliche Vorlagen mit exakten set-basierten Scope-Reads persistieren |
 | `SqliteMarketStockStore` | Persönliche Bindungen, Verbrauch, Ankünfte, Cursor und Checkpoints persistieren |
-| `StockPublicationService` | Snapshot außerhalb des Writers bilden und atomar gegen aktuelle Fakten publizieren |
+| `StockPublicationService._read_inputs`, `_resolve_demand`, `_read_readiness`, `_assemble_snapshot` | Kurzen autoritativen Read von reiner Projektion und mengenbasiertem Readiness-Read trennen; keine Relation öffnet einen eigenen Spieler-Read |
+| `StockPublicationService._build_publication_plan`, `_commit_publication` | Coverage und Bindungen vor der Schreibtransaktion berechnen; erst nach vollständigem Fence atomar veröffentlichen |
 | `StockPreparationBatch` | Eine konkrete Relation/Runde orchestrieren; keine Worker- oder Provider-Lifecycle-Verantwortung |
 | `MarketPreparationWorker` | Durable Jobs ereignisgesteuert planen, Trace/Backoff und Task-Lifecycle besitzen |
 | `DispatchEligibilityService` | Fahrzeug-/Frachtfreigabe kapseln und später Mitarbeiterverfügbarkeit aufnehmen |
-| `ContractMarketController` | Fahrzeuggebundene Liste oder Detail laden; Requests besitzen/abbrechen, nie pollen |
+| `ContractMarketController` | Ohne gültiges eigenes idle Fahrzeug keine Liste und keinen Refresh laden; fahrzeuggebundene Requests besitzen/abbrechen, nie pollen |
 
 Legacy-Preparation-Batch, Startup-Rebuild, Prozesssupervisor und globale
 Worker-Lease wurden entfernt, statt als parallele Strukturen weiterzulaufen.
 Neue/geänderte konkrete Python-Callables besitzen Manifest-Gegentests. Die
 historischen Tabellen oben bleiben als Review des damaligen Stands erhalten.
+Die neuen Helper sind keine zweite Fachschicht: Sie halten ausschließlich
+Zwischenwerte ihrer jeweiligen bestehenden Klasse. Gegenproben prüfen jede
+Grenze einzeln; SQL bleibt in Repositories, HTTP im API-/Frontend-Adapter und
+Routing im injizierten Readiness-Service.

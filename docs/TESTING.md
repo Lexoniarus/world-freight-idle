@@ -132,7 +132,9 @@ Routing erneut; ein veränderter Energiecheckpoint verhindert Teilabrechnungen.
   gestarteten Transport, Refill-Schreibfehler rollt ausschließlich neue Offers
   zurück. Späterer Refresh führt keinen zweiten Dispatch aus.
 - Pflichtfahrzeug HTTP 422, serverseitige eligible_vehicle_ids, Auswahlwechsel,
-  entfernte Angebote und verspätete Antworten. Browser-Pan/Zoom ohne Marktread.
+  entfernte Angebote und verspätete Antworten. Ohne eigenes idle Fahrzeug
+  entstehen weder Listen- noch Refresh-Requests; Browser-Pan/Zoom bleibt ohne
+  Marktread.
 
 Zusätzliche Kosten-/Read-Gegenproben vom 27.10.2026:
 
@@ -146,6 +148,9 @@ Zusätzliche Kosten-/Read-Gegenproben vom 27.10.2026:
 - Gleicher Kontext und Kandidatenbestand ergeben dieselbe gewichtete Auswahl,
   Fahrzeugwahl und Tonnage; Angebots-IDs bleiben verschieden. Ungültige oder
   doppelte Gewichtsmengen werden abgelehnt.
+- Eigene Gegentests decken Ziehung, Konditionsableitung und Snapshot-Bau sowie
+  autoritativen Read, Bedarfsprojektion, Readiness-Snapshot, Publikationsplan
+  und gefencten Commit ab. Alle Helper stehen im Function-Test-Manifest.
 - Zielstadtbedarf entsteht direkt bei Dispatch. Globale Katalogmodelle oder
   Städte ohne eigenes konkretes Fahrzeug werden nicht vorbereitet.
 - Exakte Stadt-/Modell-Templatequeries bleiben set-basiert; gemeinsame Vorlagen
