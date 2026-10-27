@@ -164,7 +164,18 @@ FUNCTION_TESTS = {
     "app.domain.game.OwnedVehicle.start_trip": "test_owned_vehicle_domain_rules",
     "app.domain.game.OwnedVehicle.arrive": "test_owned_vehicle_domain_rules",
     "app.domain.game.OwnedVehicle.apply_model": "test_owned_vehicle_domain_rules",
-    "app.services.contract_factory.ContractFactory.build": "test_materialization_snapshots_profile_terms_and_validates_context",
+    "app.services.contract_factory.ContractFactory.build": (
+        "test_materialization_snapshots_profile_terms_and_validates_context"
+    ),
+    "app.services.contract_factory.ContractFactory._draw_offer": (
+        "test_contract_factory_draw_is_context_stable_with_fresh_identity"
+    ),
+    "app.services.contract_factory.ContractFactory._derive_terms": (
+        "test_contract_factory_derives_terms_from_selected_vehicle"
+    ),
+    "app.services.contract_factory.ContractFactory._build_snapshot": (
+        "test_contract_factory_snapshots_catalogue_evidence"
+    ),
     "app.services.trade_network.TradeNetwork.__init__": "test_reference_cache_and_empty_origin_relations",
     "app.services.trade_network.TradeNetwork._build_trade_options": "test_reference_cache_and_empty_origin_relations",
     "app.services.trade_network.TradeNetwork._index_inbound_profiles": "test_reference_cache_and_empty_origin_relations",

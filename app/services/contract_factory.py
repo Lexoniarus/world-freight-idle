@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from app.domain.contracts import ContractOfferSnapshot
-from app.domain.market import MarketCandidate
+from app.domain.market import MarketCandidate, MarketVehicle
 from app.domain.market_calculations import biased_load_factor, shipment_tons
 from app.domain.market_terms import OfferMarketContext
 from app.domain.tariffs import freight_tariff
@@ -16,6 +16,23 @@ from app.services.deterministic_market_random import (
     DeterministicMarketRandom,
 )
 from app.simulation import STANDARD_RATE
+
+
+@dataclass(frozen=True, slots=True)
+class OfferDraw:
+    """Hold the independently drawn vehicle, load and offer identity."""
+
+    vehicle: MarketVehicle
+    load_factor: float
+    offer_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class OfferTerms:
+    """Hold derived shipment quantity and its pricing context."""
+
+    tons: float
+    context: OfferMarketContext
 
 
 @dataclass(slots=True)
@@ -35,7 +52,16 @@ class ContractFactory:
         deterministic_context: str | None = None,
     ) -> ContractOfferSnapshot:
         """Create one typed immutable simulated contract snapshot."""
-        option = candidate.trade
+        draw = self._draw_offer(candidate, deterministic_context)
+        terms = self._derive_terms(candidate, draw)
+        return self._build_snapshot(candidate, now, draw, terms)
+
+    def _draw_offer(
+        self,
+        candidate: MarketCandidate,
+        deterministic_context: str | None,
+    ) -> OfferDraw:
+        """Draw one vehicle, load factor and fresh offer identity."""
         if deterministic_context is None:
             selected = self.rng.choices(
                 candidate.vehicles,
@@ -58,11 +84,19 @@ class ContractFactory:
                 selected.vehicle_id,
             )
             offer_id = str(uuid.uuid4())
+        return OfferDraw(selected, load_draw, offer_id)
+
+    def _derive_terms(
+        self, candidate: MarketCandidate, draw: OfferDraw
+    ) -> OfferTerms:
+        """Derive shipment quantity and tariff facts from one draw."""
         load = candidate.distance_profile
         tons = shipment_tons(
-            selected.capacity_tons,
+            draw.vehicle.capacity_tons,
             biased_load_factor(
-                load.load_factor_min, load.load_factor_max, load_draw
+                load.load_factor_min,
+                load.load_factor_max,
+                draw.load_factor,
             ),
         )
         profile = candidate.profile
@@ -70,17 +104,29 @@ class ContractFactory:
             load.distance_band,
             candidate.estimated_distance_km,
             profile.transport_class,
-            selected.scale,
-            selected.capacity_tons,
+            draw.vehicle.scale,
+            draw.vehicle.capacity_tons,
             profile.value_eur_per_t,
             round(tons * profile.value_eur_per_t),
             freight_tariff(
-                selected.cost_profile,
-                selected.energy,
+                draw.vehicle.cost_profile,
+                draw.vehicle.energy,
                 profile.freight_rate_factor_game,
                 candidate.reference_nhm_factor,
             ),
         )
+        return OfferTerms(tons, context)
+
+    def _build_snapshot(
+        self,
+        candidate: MarketCandidate,
+        now: float,
+        draw: OfferDraw,
+        terms: OfferTerms,
+    ) -> ContractOfferSnapshot:
+        """Persist catalogue evidence and derived terms in one snapshot."""
+        option = candidate.trade
+        profile = candidate.profile
         origin = option.origin
         destination = option.destination
         cargo_basis = (
@@ -89,7 +135,7 @@ class ContractFactory:
             else "documented"
         )
         return ContractOfferSnapshot(
-            id=offer_id,
+            id=draw.offer_id,
             market_model=self.model_id,
             cargo_system=self.cargo_system,
             origin=origin.location_snapshot(),
@@ -107,9 +153,9 @@ class ContractFactory:
             destination_cargo_evidence=option.destination_cargo,
             cargo_basis=cargo_basis,
             trade_match_type=option.match_type,
-            tons=tons,
+            tons=terms.tons,
             payload_band="",
-            market_context=context,
+            market_context=terms.context,
             rate_eur_per_km_ton=STANDARD_RATE
             * profile.freight_rate_factor_game,
             created_at=now,
