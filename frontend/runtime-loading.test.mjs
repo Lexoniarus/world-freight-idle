@@ -18,9 +18,9 @@ const turn = () => new Promise((resolve) => setImmediate(resolve));
 function freightApi(request) {
   return {
     loadFreightOffers: (vehicleId, signal) =>
-      request("/contracts" + (vehicleId ? `?vehicle_id=${vehicleId}` : ""), { signal }),
+      request(`/contracts?vehicle_id=${vehicleId}`, { signal }),
     requestFreightRefill: (vehicleId, signal) =>
-      request("/contracts/refresh" + (vehicleId ? `?vehicle_id=${vehicleId}` : ""), {
+      request(`/contracts/refresh?vehicle_id=${vehicleId}`, {
         method: "POST",
         signal,
       }),
@@ -31,7 +31,14 @@ function freightApi(request) {
 test("market requests follow the selected vehicle and discard older vehicle responses", async () => {
   let url = new URL("http://game/contracts?vehicle=first");
   const state = new GameState(async () => {});
-  state.data = { contracts: [], vehicles: [], transports: [] };
+  state.data = {
+    contracts: [],
+    vehicles: [
+      { id: "first", status: "idle" },
+      { id: "second", status: "idle" },
+    ],
+    transports: [],
+  };
   const calls = [];
   const controller = new ContractMarketController({
     state,

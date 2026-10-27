@@ -308,7 +308,7 @@ class GameService:
     def market_presentation(
         self,
         offers: Sequence[ContractOffer],
-        vehicle_id: str | None = None,
+        vehicle_id: str,
     ) -> MarketPresentation:
         """Read authorized offers and diagnostics in one local transaction."""
         with self.unit_of_work.read_transaction():
@@ -316,7 +316,7 @@ class GameService:
             coverage = tuple(
                 item
                 for item in self.vehicle_coverage()
-                if vehicle_id is None or item.vehicle_id == vehicle_id
+                if item.vehicle_id == vehicle_id
             )
             return MarketPresentation(
                 contracts, coverage, self.preparation_status()

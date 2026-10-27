@@ -45,12 +45,15 @@ async function register(page, {waitForMap = true} = {}) {
   return username;
 }
 
-async function readyContracts(page, vehicleIds = [], matches = () => true) {
+async function readyContracts(page, vehicleIds = ["truck_01"], matches = () => true) {
   let contracts;
+  const vehicleId = vehicleIds[0] ?? "truck_01";
   await expect
     .poll(
       async () => {
-        const body = await (await page.request.get("/api/v1/contracts")).json();
+        const body = await (await page.request.get(
+          "/api/v1/contracts?vehicle_id=" + encodeURIComponent(vehicleId),
+        )).json();
         contracts = body.contracts;
         return contracts.some(
           (item) =>
@@ -219,8 +222,11 @@ test("parallel trips persist across navigation and map controls work without reb
   expect(purchase.ok()).toBeTruthy();
   const fleet = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
   for (const vehicle of fleet) {
-    await page.request.post("/api/v1/contracts/refresh", { headers });
-    const contracts = await readyContracts(page);
+    await page.request.post(
+      "/api/v1/contracts/refresh?vehicle_id=" + encodeURIComponent(vehicle.id),
+      { headers },
+    );
+    const contracts = await readyContracts(page, [vehicle.id]);
     const contract = contracts.find((item) => item.eligible_vehicle_ids.includes(vehicle.id));
     const dispatch = await page.request.post("/api/v1/contracts/" + contract.id + "/accept", { headers, data: { vehicle_id: vehicle.id } });
     expect(dispatch.ok()).toBeTruthy();
@@ -421,7 +427,9 @@ test("facility identities, lazy market scope and catalogue outages preserve the 
   expect(localJobs.every(job => ["documented", "derived"].includes(job.cargo_basis))).toBeTruthy();
   expect(localJobs.every(job => job.cargo_evidence)).toBeTruthy();
 
-  const viewportJobs = (await (await page.request.get("/api/v1/contracts?bbox=8,48,15,54&zoom=7")).json()).contracts;
+  const viewportJobs = (await (await page.request.get(
+    "/api/v1/contracts?vehicle_id=truck_01&bbox=8,48,15,54&zoom=7",
+  )).json()).contracts;
   expect(viewportJobs).toEqual(localJobs);
 
   await openVehicleMarket(page);

@@ -169,8 +169,8 @@ export class GameActions {
    */
   async refreshMarket() {
     const before = this.state.data?.contracts?.length ?? 0;
-    await this.contractMarket.forceRefresh();
-    if (this.disposed) return;
+    const refreshed = await this.contractMarket.forceRefresh();
+    if (this.disposed || !refreshed) return;
     const after = this.state.data?.contracts?.length ?? 0;
     const status = this.state.data?.market_preparation?.status;
     if (after > before) this.notify("Neue Aufträge sind verfügbar.");

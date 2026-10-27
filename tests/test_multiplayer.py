@@ -344,9 +344,9 @@ def test_auth_api_and_private_game_resources(tmp_path):
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 26000
         )
         prepare_client_market(client, app.state.game)
-        alice_contract = client.get("/api/v1/contracts").json()["contracts"][
-            0
-        ]["id"]
+        alice_contract = client.get(
+            "/api/v1/contracts?vehicle_id=truck_01"
+        ).json()["contracts"][0]["id"]
         assert (
             client.post(
                 "/api/v1/auth/register", json={**body, "username": "Bob"}
@@ -362,7 +362,9 @@ def test_auth_api_and_private_game_resources(tmp_path):
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 175000
         )
         prepare_client_market(client, app.state.game)
-        contract = client.get("/api/v1/contracts").json()["contracts"][0]
+        contract = client.get("/api/v1/contracts?vehicle_id=truck_01").json()[
+            "contracts"
+        ][0]
         trip = client.post(
             f"/api/v1/contracts/{contract['id']}/accept",
             json={"vehicle_id": "truck_01"},

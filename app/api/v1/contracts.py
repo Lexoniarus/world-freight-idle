@@ -24,7 +24,7 @@ ROUTING_FAILURE_DETAIL = "Straßenroute konnte nicht berechnet werden."
 
 @router.get("")
 def list_contracts(
-    vehicle_id: str | None = None,
+    vehicle_id: str,
     game: GameService = Depends(get_game_service),
 ) -> dict:
     """Return the active idle-vehicle city markets."""
@@ -32,7 +32,7 @@ def list_contracts(
 
 
 def project_market(
-    game: GameService, offers: list[ContractOffer], vehicle_id: str | None
+    game: GameService, offers: list[ContractOffer], vehicle_id: str
 ) -> dict:
     """Translate authorized offer projections and vehicle coverage to HTTP."""
     try:
@@ -102,7 +102,7 @@ async def accept_contract(
 
 @router.post("/refresh")
 def refresh_contracts(
-    vehicle_id: str | None = None,
+    vehicle_id: str,
     game: GameService = Depends(get_game_service),
 ) -> dict:
     """Regenerate only the current active city markets."""

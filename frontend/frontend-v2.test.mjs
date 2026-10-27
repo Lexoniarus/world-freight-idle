@@ -20,9 +20,9 @@ import { renderChart } from "./ui/charts.js";
 function freightApi(request) {
   return {
     loadFreightOffers: (vehicleId, signal) =>
-      request("/contracts" + (vehicleId ? `?vehicle_id=${vehicleId}` : ""), { signal }),
+      request(`/contracts?vehicle_id=${vehicleId}`, { signal }),
     requestFreightRefill: (vehicleId, signal) =>
-      request("/contracts/refresh" + (vehicleId ? `?vehicle_id=${vehicleId}` : ""), {
+      request(`/contracts/refresh?vehicle_id=${vehicleId}`, {
         method: "POST",
         signal,
       }),
@@ -304,8 +304,12 @@ test("opportunities aggregate by UID and selected endpoints retain their exact g
 
 test("list and detail reads publish independently and cancel obsolete detail navigation", async () => {
   const state = new GameState(async () => {});
-  state.data = { contracts: [], vehicles: [], transports: [] };
-  let url = new URL("http://test/contracts");
+  state.data = {
+    contracts: [],
+    vehicles: [{ id: "truck", status: "idle" }],
+    transports: [],
+  };
+  let url = new URL("http://test/contracts?vehicle=truck");
   const requests = [];
   const market = new ContractMarketController({
     state,

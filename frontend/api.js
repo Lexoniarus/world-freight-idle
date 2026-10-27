@@ -82,13 +82,13 @@ export class GameApiClient {
 
   /** Load the scoped offer pool for one owned idle vehicle. */
   loadFreightOffers(vehicleId, signal) {
-    const query = vehicleId ? "?vehicle_id=" + encodeURIComponent(vehicleId) : "";
+    const query = "?vehicle_id=" + encodeURIComponent(vehicleId);
     return this.request("/contracts" + query, { signal });
   }
 
   /** Enqueue only the missing stock for one owned idle vehicle. */
   requestFreightRefill(vehicleId, signal) {
-    const query = vehicleId ? "?vehicle_id=" + encodeURIComponent(vehicleId) : "";
+    const query = "?vehicle_id=" + encodeURIComponent(vehicleId);
     return this.request("/contracts/refresh" + query, { method: "POST", signal });
   }
 

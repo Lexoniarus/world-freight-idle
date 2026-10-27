@@ -56,7 +56,7 @@ class FakeGame:
             AvailableContract(offer, ("truck_01",)) for offer in offers
         )
 
-    def market_presentation(self, offers, vehicle_id=None):
+    def market_presentation(self, offers, vehicle_id):
         from app.domain.results import MarketPresentation
 
         return MarketPresentation(
@@ -190,20 +190,26 @@ def test_v1_resource_endpoints_and_error_mapping(tmp_path: Path, game):
         app.dependency_overrides[get_game_service] = lambda: FakeGame(game)
         client.headers["X-Freight-Request"] = "1"
         assert client.get("/api/v1/dashboard").status_code == 200
-        assert client.get("/api/v1/contracts").json()["preparation"] == {
+        assert client.get("/api/v1/contracts").status_code == 422
+        assert client.get("/api/v1/contracts?vehicle_id=truck_01").json()[
+            "preparation"
+        ] == {
             "preparation_id": "preparation1",
             "generation": "generation1",
             "status": "partial",
             "next_retry_at": 30,
         }
         assert (
-            client.get("/api/v1/contracts?bbox=13,52,14,53&zoom=7").json()[
-                "contracts"
-            ][0]["id"]
+            client.get(
+                "/api/v1/contracts?vehicle_id=truck_01&bbox=13,52,14,53&zoom=7"
+            ).json()["contracts"][0]["id"]
             == "c1"
         )
         assert (
-            client.get("/api/v1/contracts?bbox=bad&zoom=7").status_code == 200
+            client.get(
+                "/api/v1/contracts?vehicle_id=truck_01&bbox=bad&zoom=7"
+            ).status_code
+            == 200
         )
         assert client.get("/api/v1/contracts/c1").json()["id"] == "c1"
         assert client.get("/api/v1/contracts/missing").status_code == 404
@@ -259,15 +265,16 @@ def test_v1_resource_endpoints_and_error_mapping(tmp_path: Path, game):
             ).status_code
             == 502
         )
+        assert client.post("/api/v1/contracts/refresh").status_code == 422
         assert (
-            client.post("/api/v1/contracts/refresh").json()["contracts"][0][
-                "id"
-            ]
+            client.post(
+                "/api/v1/contracts/refresh?vehicle_id=truck_01"
+            ).json()["contracts"][0]["id"]
             == "fresh"
         )
         assert (
             client.post(
-                "/api/v1/contracts/refresh?bbox=bad&zoom=7"
+                "/api/v1/contracts/refresh?vehicle_id=truck_01&bbox=bad&zoom=7"
             ).status_code
             == 200
         )
@@ -348,7 +355,7 @@ def test_market_reference_errors_have_explicit_http_responses(tmp_path, game):
             ),
         ):
             with patch.object(game, "list_contracts", side_effect=error):
-                response = client.get("/api/v1/contracts")
+                response = client.get("/api/v1/contracts?vehicle_id=truck_01")
             assert response.status_code == status
             assert message in response.json()["detail"]
             assert "private" not in response.text

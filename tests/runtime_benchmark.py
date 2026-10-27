@@ -89,7 +89,7 @@ async def main() -> None:
                     raise RuntimeError("Benchmark runtime did not start")
                 for token in tokens:
                     response = await client.post(
-                        "/api/v1/contracts/refresh",
+                        "/api/v1/contracts/refresh?vehicle_id=truck_01",
                         headers={"Cookie": "freight_session=" + token},
                     )
                     response.raise_for_status()

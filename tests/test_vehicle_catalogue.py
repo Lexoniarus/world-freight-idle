@@ -258,7 +258,9 @@ def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
         prepare_client_market(client, app.state.game)
         contract = next(
             item
-            for item in client.get("/api/v1/contracts").json()["contracts"]
+            for item in client.get(
+                "/api/v1/contracts?vehicle_id=truck_01"
+            ).json()["contracts"]
             if item["origin_hub_id"] == BERLIN_UID
         )
         url = f"/api/v1/contracts/{contract['id']}/quote"

@@ -21,9 +21,9 @@ import { formatDuration } from "./time.js";
 function freightApi(request) {
   return {
     loadFreightOffers: (vehicleId, signal) =>
-      request("/contracts" + (vehicleId ? `?vehicle_id=${vehicleId}` : ""), { signal }),
+      request(`/contracts?vehicle_id=${vehicleId}`, { signal }),
     requestFreightRefill: (vehicleId, signal) =>
-      request("/contracts/refresh" + (vehicleId ? `?vehicle_id=${vehicleId}` : ""), {
+      request(`/contracts/refresh?vehicle_id=${vehicleId}`, {
         method: "POST",
         signal,
       }),
@@ -762,12 +762,16 @@ test("city market ignores late results after disposal and preserves saved contra
   const notices = [];
   const saved = { ...contract, id: "saved" };
   const state = {
-    data: { contracts: [saved] },
+    data: {
+      contracts: [saved],
+      vehicles: [{ id: "truck", status: "idle" }],
+      transports: [],
+    },
     replaceContracts(contracts) {
       this.data.contracts = contracts;
     },
   };
-  const currentUrl = () => new URL("http://test/contracts");
+  const currentUrl = () => new URL("http://test/contracts?vehicle=truck");
 
   let resolve;
   const pendingController = new ContractMarketController({
@@ -833,12 +837,12 @@ test("shipment quantities preserve hundredths for light vehicle selection", () =
   assert.doesNotMatch(container.textContent, /1,2 Tonnen/);
 });
 
-test("city market requests have no viewport parameters and removed details preserve the list", async () => {
+test("city markets require an idle vehicle and preserve the list after a removed detail", async () => {
   const { ContractMarketController } = await import("./controllers/contract-market-controller.js");
   const paths = [];
   let url = new URL("http://test/contracts?bbox=0,0,1,1&zoom=12");
   const state = {
-    data: { contracts: [contract] },
+    data: { contracts: [contract], vehicles: [], transports: [] },
     detail: contract,
     replaceContractDetail(value) {
       this.detail = value;
@@ -859,8 +863,13 @@ test("city market requests have no viewport parameters and removed details prese
   });
   controller.start();
   await controller.refresh();
-  await controller.forceRefresh();
-  assert.deepEqual(paths, ["/contracts", "/contracts/refresh"]);
+  assert.equal(await controller.forceRefresh(), false);
+  assert.deepEqual(paths, []);
+  state.data.vehicles = [{ id: "truck", status: "idle" }];
+  url = new URL("http://test/contracts?vehicle=truck&bbox=0,0,1,1&zoom=12");
+  await controller.refresh();
+  assert.equal(await controller.forceRefresh(), true);
+  assert.deepEqual(paths, ["/contracts?vehicle_id=truck", "/contracts/refresh?vehicle_id=truck"]);
   url = new URL("http://test/contracts/removed");
   await controller.refresh();
   assert.deepEqual(state.data.contracts, [contract]);
