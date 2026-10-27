@@ -200,6 +200,65 @@ async def test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance
     assert game.state_repository.list_offers() == ()
 
 
+def test_stock_publication_read_phases_preserve_one_snapshot(stock_game):
+    """Keep authoritative reads, demand and readiness in explicit phases."""
+    _, prep, batch = stock_game
+    publication = batch.publication
+    now = prep.clock()
+    inputs = publication._read_inputs()
+    projection = publication._resolve_demand(inputs, now)
+    assert prep.stock is not None
+    templates = prep.stock.scoped_templates(projection.template_scopes)
+    candidates = publication.market.candidates.build(
+        projection.cities,
+        tuple(demand.vehicle for demand in projection.demands),
+    )
+    ready, evidence = publication._read_readiness(candidates)
+    snapshot = publication._assemble_snapshot(
+        inputs,
+        projection,
+        candidates,
+        ready,
+        templates,
+        evidence,
+        now,
+    )
+    assert snapshot.owned == inputs.owned
+    assert snapshot.demands == projection.demands
+    assert snapshot.candidates == candidates
+    assert snapshot.ready == ready
+    assert snapshot.evidence == evidence
+    assert snapshot.template_scopes == projection.template_scopes
+
+
+def test_stock_publication_plan_contains_coverage_and_routes(stock_game):
+    """Calculate coverage and route bindings before the writer opens."""
+    _, _, batch = stock_game
+    publication = batch.publication
+    snapshot = publication.read()
+    plan = publication._build_publication_plan(snapshot, ())
+    assert plan.offers == snapshot.offers
+    assert len(plan.coverage) == len(
+        [demand for demand in snapshot.demands if not demand.transport_id]
+    )
+    assert {offer_id for offer_id, _ in plan.bindings} <= {
+        offer.id for offer in plan.offers
+    }
+
+
+def test_stock_publication_commit_is_fenced_and_atomic(stock_game):
+    """Reject stale plans and commit unchanged plans as one unit."""
+    _, _, batch = stock_game
+    publication = batch.publication
+    snapshot = publication.read()
+    plan = publication._build_publication_plan(snapshot, ())
+    original_guard = publication.guard
+    publication.guard = lambda: False
+    assert not publication._commit_publication(snapshot, (), (), plan)
+    publication.guard = original_guard
+    assert publication._commit_publication(snapshot, (), (), plan)
+
+
 def test_stock_policy_selection_and_corrupt_storage_are_rejected(
     stock_game, database
 ):

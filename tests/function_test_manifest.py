@@ -941,6 +941,24 @@ FUNCTION_TESTS.update(
         "app.services.stock_publication.StockPublicationService.publish": "test_reserve_replacement_and_publication_failure_keep_atomic_state",
         "app.services.stock_publication.StockPublicationService.read": "test_catalogue_changes_block_old_supply_without_deleting_terms",
         "app.services.stock_publication.StockPublicationService.unchanged": "test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance",
+        "app.services.stock_publication.StockPublicationService._read_inputs": (
+            "test_stock_publication_read_phases_preserve_one_snapshot"
+        ),
+        "app.services.stock_publication.StockPublicationService._resolve_demand": (
+            "test_stock_publication_read_phases_preserve_one_snapshot"
+        ),
+        "app.services.stock_publication.StockPublicationService._read_readiness": (
+            "test_stock_publication_read_phases_preserve_one_snapshot"
+        ),
+        "app.services.stock_publication.StockPublicationService._assemble_snapshot": (
+            "test_stock_publication_read_phases_preserve_one_snapshot"
+        ),
+        "app.services.stock_publication.StockPublicationService._build_publication_plan": (
+            "test_stock_publication_plan_contains_coverage_and_routes"
+        ),
+        "app.services.stock_publication.StockPublicationService._commit_publication": (
+            "test_stock_publication_commit_is_fenced_and_atomic"
+        ),
     }
 )
 
