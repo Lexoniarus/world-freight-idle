@@ -47,14 +47,30 @@ async function register(page, {waitForMap = true} = {}) {
 
 async function readyContracts(page, vehicleIds = ["truck_01"], matches = () => true) {
   let contracts;
-  const vehicleId = vehicleIds[0] ?? "truck_01";
   await expect
     .poll(
       async () => {
-        const body = await (await page.request.get(
-          "/api/v1/contracts?vehicle_id=" + encodeURIComponent(vehicleId),
-        )).json();
-        contracts = body.contracts;
+        const scopedContracts = await Promise.all(
+          vehicleIds.map(async (vehicleId) => {
+            const response = await page.request.get(
+              "/api/v1/contracts?vehicle_id=" + encodeURIComponent(vehicleId),
+            );
+            return (await response.json()).contracts;
+          }),
+        );
+        contracts = [
+          ...new Map(scopedContracts.flat().map((contract) => [contract.id, contract])).values(),
+        ];
+        if (vehicleIds.length > 1) {
+          contracts = await Promise.all(
+            contracts.map(async (contract) => {
+              const response = await page.request.get(
+                "/api/v1/contracts/" + encodeURIComponent(contract.id),
+              );
+              return response.json();
+            }),
+          );
+        }
         return contracts.some(
           (item) =>
             matches(item) && vehicleIds.every((id) => item.eligible_vehicle_ids.includes(id)),
@@ -445,7 +461,7 @@ test("facility identities, lazy market scope and catalogue outages preserve the 
     status: 503,
     json: { detail: "Weltkatalog derzeit nicht verfügbar." },
   }));
-  await page.getByRole("link", { name: "Aufträge", exact: true }).click();
+  await page.getByRole("link", { name: "Stadtmarkt öffnen" }).click();
   await expect(page.locator("#toasts")).toContainText("Weltkatalog derzeit nicht verfügbar");
   await page.getByRole("link", { name: "Flotte", exact: true }).click();
   await expect(page.locator(".vehicle-card")).toContainText("Berlin Westhafen");
