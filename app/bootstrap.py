@@ -60,7 +60,6 @@ from app.services.game import GameService
 from app.services.map_locations import MapLocationService
 from app.services.market import MarketGenerator
 from app.services.market_candidates import MarketCandidateService
-from app.services.market_coverage import MarketCoverageService
 from app.services.market_demand import MarketDemandResolver
 from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
@@ -362,12 +361,10 @@ def build_market_generator(
     catalogue: VehicleCatalogue,
 ) -> MarketGenerator:
     """Inject independent candidate, coverage and materialization services."""
-    coverage = MarketCoverageService(rng)
     return MarketGenerator(
         MarketCandidateService(world, catalogue),
-        coverage,
         ContractFactory(rng),
-        VehicleCoverageService(coverage),
+        VehicleCoverageService(),
     )
 
 

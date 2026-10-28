@@ -15,7 +15,7 @@ from app.domain.market_stock import (
 from app.services.deterministic_market_random import (
     DeterministicMarketRandom,
 )
-from app.services.market_coverage import CityCoverage
+from app.services.market_diversity import MarketDiversity
 from app.services.vehicle_coverage import (
     restrict_candidate,
     trade_key,
@@ -172,7 +172,7 @@ class StockPlanningService:
         templates: tuple[PreparedTemplate, ...],
     ) -> tuple[MarketCandidate, ...]:
         """Return the least represented relation, cargo and destination."""
-        coverage = CityCoverage()
+        coverage = MarketDiversity()
         for template in templates:
             offer = template.offer
             context = offer.market_context
@@ -188,7 +188,6 @@ class StockPlanningService:
                 offer.destination.facility_uid,
                 offer.cargo.nhm_row_id,
                 offer.destination.city.city_uid,
-                context.distance_band,
             )
         preferred_rank = min(coverage.rank(c) for c in target.choices)
         ranked = tuple(

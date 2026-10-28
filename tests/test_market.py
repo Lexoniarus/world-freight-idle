@@ -237,64 +237,37 @@ def test_candidate_compatibility_and_weighting_are_separate(city_market):
         market_vehicle(owned, model, owned.location)
 
 
-def test_city_coverage_preserves_ids_and_never_invents_relations(city_market):
-    market, owned, fleet, world, _ = city_market
-    cities = (owned.location.city.city_uid,)
-    offers, diagnostics = market.generate(1000, cities, fleet)
-    assert len(offers) == 9
-    assert (
-        diagnostics[0].covered_facilities
-        == diagnostics[0].eligible_facilities
-        == 2
+def test_market_diversity_counts_only_persisted_offer_dimensions(city_market):
+    from app.services.market_diversity import MarketDiversity
+
+    market, owned, fleet, _, _ = city_market
+    candidates = market.candidates.build(
+        (owned.location.city.city_uid,), fleet
     )
-    assert diagnostics[0].distance_counts == (3, 3, 3)
-    assert diagnostics[0].unmet_bands == ()
-    assert {o.origin.facility_uid for o in offers} == {"origin-a", "origin-b"}
-    assert len({o.id for o in offers}) == 9
-    assert all(
-        o.market_model == "nhm_v2" and o.cargo_system == "NHM2026"
-        for o in offers
+    candidate = candidates[0]
+    diversity = MarketDiversity()
+    assert diversity.rank(candidate) == (0, 0, 0)
+    trade = candidate.trade
+    diversity.record(
+        trade.origin.facility_uid,
+        trade.destination.facility_uid,
+        trade.cargo.nhm_row_id,
+        trade.destination.address.city.city_uid,
     )
-    assert all(
-        o.origin.facility_uid != o.destination.facility_uid for o in offers
-    )
-    assert any(o.destination.city.city_uid not in cities for o in offers)
-    assert market.generate(1001, cities, fleet, offers)[0] == offers
-    assert market.generate(1001, (), (), ())[0] == ()
-    network = market.candidates._network
-    assert set(network._options_by_origin) <= {
-        "origin-a",
-        "origin-b",
-        "inbound-only",
-    }
-    candidates = market.candidates.build(cities, fleet)
-    long_only = tuple(
-        c for c in candidates if c.distance_profile.distance_band == "long"
-    )[:1]
-    plan = market.coverage.plan(cities, long_only, ())
-    assert len(plan.selected) == 3
-    assert plan.diagnostics[0].unmet_bands == ("short", "medium")
-    empty = market.coverage.plan(cities, (), ())
-    assert empty.selected == ()
-    assert empty.diagnostics[0].unmet_bands == ("short", "medium", "long")
-    more_origins = tuple(
-        replace(
-            long_only[0],
-            trade=replace(
-                long_only[0].trade,
-                origin=replace(long_only[0].trade.origin, facility_uid=str(i)),
-            ),
-        )
-        for i in range(12)
-    )
-    assert len(market.coverage.plan(cities, more_origins, ()).selected) == 12
+    assert diversity.rank(candidate) == (1, 1, 1)
 
 
 def test_materialization_snapshots_profile_terms_and_validates_context(
     city_market,
 ):
     market, owned, fleet, _, _ = city_market
-    offers, _ = market.generate(1000, (owned.location.city.city_uid,), fleet)
+    candidates = market.candidates.build(
+        (owned.location.city.city_uid,), fleet
+    )
+    offers = tuple(
+        ContractOffer.from_snapshot(market.factory.build(candidate, 1000))
+        for candidate in candidates[:9]
+    )
     for offer in offers:
         context = offer.market_context
         assert offer.expires_at is None
@@ -376,7 +349,10 @@ def test_retention_requires_structure_and_actual_vehicle_compatibility(
     city_market,
 ):
     market, owned, fleet, world, _ = city_market
-    offer = market.generate(1000, (owned.location.city.city_uid,), fleet)[0][0]
+    candidate = market.candidates.build(
+        (owned.location.city.city_uid,), fleet
+    )[0]
+    offer = ContractOffer.from_snapshot(market.factory.build(candidate, 1000))
     assert market.candidates.structurally_current(offer)
     assert market.candidates.eligible_ids(offer, fleet) == (owned.id,)
     assert not market.candidates.eligible_ids(

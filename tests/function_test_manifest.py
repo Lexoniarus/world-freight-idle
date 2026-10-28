@@ -180,7 +180,6 @@ FUNCTION_TESTS = {
     "app.services.trade_network.TradeNetwork._build_trade_options": "test_reference_cache_and_empty_origin_relations",
     "app.services.trade_network.TradeNetwork._index_inbound_profiles": "test_reference_cache_and_empty_origin_relations",
     "app.services.trade_network.TradeNetwork.options_for": "test_reference_cache_and_empty_origin_relations",
-    "app.services.market.MarketGenerator.generate": "test_city_coverage_preserves_ids_and_never_invents_relations",
     "app.services.market_scope.MarketScopeResolver.resolve": "test_city_scope_uses_only_distinct_idle_city_identities",
     "app.tracing.TraceIdMiddleware.dispatch": "test_trace_id_middleware_propagates_header_and_context",
     "app.tracing.get_trace_id": "test_get_trace_id_default",
@@ -599,7 +598,7 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.bootstrap.build_market_generator": "test_city_coverage_preserves_ids_and_never_invents_relations",
+        "app.bootstrap.build_market_generator": "test_market_diversity_counts_only_persisted_offer_dimensions",
         "app.domain.game.OwnedVehicle.reposition_within_city": "test_reposition_rejects_busy_other_city_and_missing_location",
         "app.domain.market_calculations.distance_band": "test_distance_and_tonnage_are_deterministic_and_bounded",
         "app.domain.market_calculations.great_circle_km": "test_distance_and_tonnage_are_deterministic_and_bounded",
@@ -622,12 +621,8 @@ FUNCTION_TESTS.update(
         "app.services.market_candidates.MarketCandidateService._candidate": "test_candidate_compatibility_and_weighting_are_separate",
         "app.services.market_candidates.MarketCandidateService.eligible_ids": "test_retention_requires_structure_and_actual_vehicle_compatibility",
         "app.services.market_candidates.MarketCandidateService.structurally_current": "test_retention_requires_structure_and_actual_vehicle_compatibility",
-        "app.services.market_coverage.CityCoverage.record": "test_city_coverage_preserves_ids_and_never_invents_relations",
-        "app.services.market_coverage.CityCoverage.rank": "test_city_coverage_preserves_ids_and_never_invents_relations",
-        "app.services.market_coverage.CityCoverage.add_candidate": "test_city_coverage_preserves_ids_and_never_invents_relations",
-        "app.services.market_coverage.MarketCoverageService.plan": "test_city_coverage_preserves_ids_and_never_invents_relations",
-        "app.services.market_coverage.MarketCoverageService._plan_city": "test_city_coverage_preserves_ids_and_never_invents_relations",
-        "app.services.market_coverage.MarketCoverageService._select": "test_city_coverage_preserves_ids_and_never_invents_relations",
+        "app.services.market_diversity.MarketDiversity.record": "test_market_diversity_counts_only_persisted_offer_dimensions",
+        "app.services.market_diversity.MarketDiversity.rank": "test_market_diversity_counts_only_persisted_offer_dimensions",
         "app.services.market_lifecycle.MarketLifecycleService.refresh": "test_retention_filters_without_writing_during_market_reads",
         "app.services.market_lifecycle.MarketLifecycleService._retained": "test_retention_filters_without_writing_during_market_reads",
         "app.services.market_lifecycle.MarketLifecycleService._store": "test_dispatch_prunes_without_starting_market_generation",
@@ -799,11 +794,10 @@ FUNCTION_TESTS.update(
         "app.services.market_preparation.MarketPreparationService.ready_candidates": "test_vehicle_readiness_requires_approach_and_excludes_stale",
         "app.services.market_preparation.MarketPreparationService.ready_context": "test_vehicle_readiness_requires_approach_and_excludes_stale",
         "app.services.preparation_worker.MarketPreparationWorker._iteration": "test_worker_recovers_entire_iteration",
-        "app.services.vehicle_coverage.VehicleCoverageService.diagnose": "test_shared_planned_offers_cover_identical_vehicles_once",
-        "app.services.vehicle_coverage.VehicleCoverageService.extend": "test_vehicle_coverage_fills_small_vehicle_after_city_is_full",
-        "app.services.vehicle_coverage.restrict_candidate": "test_vehicle_coverage_fills_small_vehicle_after_city_is_full",
-        "app.services.vehicle_coverage.vehicle_candidates": "test_shared_planned_offers_cover_identical_vehicles_once",
-        "app.services.vehicle_coverage.vehicle_offers": "test_vehicle_coverage_fills_small_vehicle_after_city_is_full",
+        "app.services.vehicle_coverage.VehicleCoverageService.diagnose": "test_shared_materialized_offers_cover_identical_vehicles_once",
+        "app.services.vehicle_coverage.restrict_candidate": "test_vehicle_coverage_reports_only_materialized_vehicle_stock",
+        "app.services.vehicle_coverage.vehicle_candidates": "test_shared_materialized_offers_cover_identical_vehicles_once",
+        "app.services.vehicle_coverage.vehicle_offers": "test_vehicle_coverage_reports_only_materialized_vehicle_stock",
     }
 )
 
@@ -902,7 +896,7 @@ FUNCTION_TESTS.update(
         "app.services.routing_readiness.RoutingReadinessService.reading": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
         "app.services.routing_readiness.RoutingReadinessService._preload": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
         "app.services.runtime_views.RuntimeViewService.read": "test_runtime_reads_exclude_geometry_and_keep_private_energy",
-        "app.services.vehicle_coverage.trade_key": "test_shared_planned_offers_cover_identical_vehicles_once",
+        "app.services.vehicle_coverage.trade_key": "test_shared_materialized_offers_cover_identical_vehicles_once",
     }
 )
 

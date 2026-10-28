@@ -1,11 +1,13 @@
 """Vehicle-ready coverage shares offers and never substitutes city totals."""
 
 from dataclasses import replace
+from itertools import cycle, islice
 from unittest.mock import patch
 
 import pytest
 
 from app.domain.contracts import ContractOffer
+from app.domain.market import MarketCandidate
 from app.services.dispatch_eligibility import DispatchEligibilityService
 from app.services.market_scope import MarketScopeResolver
 from app.services.vehicle_coverage import vehicle_candidates, vehicle_offers
@@ -13,39 +15,61 @@ from tests.test_market import city_market as city_market
 from tests.test_market_preparation import bind_preparation, make_stock_batch
 
 
-def test_vehicle_coverage_fills_small_vehicle_after_city_is_full(city_market):
+def select_three_per_distance_band(
+    candidates: tuple[MarketCandidate, ...],
+) -> tuple[MarketCandidate, ...]:
+    """Repeat valid relations only when a band has fewer than three."""
+    selected = []
+    for band in ("short", "medium", "long"):
+        choices = tuple(
+            candidate
+            for candidate in candidates
+            if candidate.distance_profile.distance_band == band
+        )
+        selected.extend(islice(cycle(choices), 3))
+    return tuple(selected)
+
+
+def test_vehicle_coverage_reports_only_materialized_vehicle_stock(city_market):
     market, owned, fleet, _, _ = city_market
     city = owned.location.city.city_uid
     large = fleet[0]
     small = replace(large, vehicle_id="small", capacity_tons=1)
-    original, _ = market.generate(1, (city,), fleet)
-    assert len(original) == 9
-    assert not any(offer.tons <= 1 for offer in original)
     fleet = (large, small)
     candidates = market.candidates.build((city,), fleet)
-    offers, _ = market.generate(2, (city,), fleet, original)
+    pool = vehicle_candidates(candidates, small)
+    selected = select_three_per_distance_band(pool)
+    offers = tuple(
+        ContractOffer.from_snapshot(
+            market.factory.build(candidate, 2, f"small:{index}")
+        )
+        for index, candidate in enumerate(selected)
+    )
     usable = vehicle_offers(offers, small, candidates)
     assert len(usable) == 9
     assert all(offer.tons <= 1 for offer in usable)
-    assert len(offers) == 18
-    assert market.generate(3, (city,), fleet, offers)[0] == offers
     diagnostic = market.vehicle_coverage.diagnose(
         small, candidates, candidates, offers
     )
     assert diagnostic.distance_counts == (3, 3, 3)
     assert diagnostic.unmet_bands == ()
     assert diagnostic.unmet_facilities == ()
-    assert len(vehicle_offers(offers, large, candidates)) == 18
+    assert len(vehicle_offers(offers, large, candidates)) == 9
 
 
-def test_shared_planned_offers_cover_identical_vehicles_once(city_market):
+def test_shared_materialized_offers_cover_identical_vehicles_once(city_market):
     market, owned, fleet, _, _ = city_market
     other = replace(fleet[0], vehicle_id="other")
     fleet = (*fleet, other)
     city = owned.location.city.city_uid
-    offers, _ = market.generate(1, (city,), fleet)
     candidates = market.candidates.build((city,), fleet)
-    assert len(offers) == 9
+    selected = select_three_per_distance_band(candidates)
+    offers = tuple(
+        ContractOffer.from_snapshot(
+            market.factory.build(candidate, 1, f"shared:{index}")
+        )
+        for index, candidate in enumerate(selected)
+    )
     assert all(len(vehicle_offers(offers, v, candidates)) == 9 for v in fleet)
     assert (
         vehicle_candidates(candidates, replace(other, vehicle_id="absent"))
@@ -54,7 +78,12 @@ def test_shared_planned_offers_cover_identical_vehicles_once(city_market):
     short = tuple(
         c for c in candidates if c.distance_profile.distance_band == "short"
     )
-    partial, _ = market.generate(2, (city,), fleet, (), short)
+    partial = tuple(
+        ContractOffer.from_snapshot(
+            market.factory.build(candidate, 2, f"short:{index}")
+        )
+        for index, candidate in enumerate(short[:3])
+    )
     diagnostic = market.vehicle_coverage.diagnose(
         other, candidates, short, partial
     )
