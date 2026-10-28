@@ -13,7 +13,9 @@ sein. Das vollständige Gate und E2E sind vor der abschließenden Integration
 verbindlich. Tests werden nicht übersprungen oder abgeschwächt. Jeder konkrete
 Core-Callable inklusive Konstruktor und verschachtelter Funktion erhält einen
 expliziten Gegentest in tests/function_test_manifest.py. Protokolldeklarationen
-werden strukturell ausgenommen.
+werden strukturell ausgenommen. Das Gate weist zusätzlich die 20 langsamsten
+Python-Testphasen aus, damit Laufzeitregressionen nicht hinter der grünen
+Gesamtsumme verschwinden.
 
 ## Verhalten und Grenzen
 
@@ -58,6 +60,15 @@ Mock-Routing und lokalen Tiles auf Port 8011. Öffentliche OSM-Tiles werden nich
 automatisiert vorgeladen. Der Lauf umfasst Registrierung, Anmeldung, Kauf,
 parallele Transporte, Offline-Ankunft, Rangliste, Mehrspielerkarte, Bildstabilität,
 Deep Links, Fehlerfälle und Tastaturbedienung.
+
+Transportzeit wird im isolierten Browserserver über eine injizierte Testuhr
+fortgeschaltet. Tests warten weder auf reale Fahrtzeiten noch passiv auf den
+nächsten Poll, sondern lösen die vorhandene Runtime-Synchronisierung aus. Die
+Uhr und ihr Testendpunkt existieren ausschließlich in `tests.browser_server`;
+Produktionsstart und Produktionszeitquelle bleiben unverändert. Browserfälle
+sollen eine einzelne Verantwortung prüfen und im Regelfall unter zehn Sekunden
+bleiben; Überschreitungen werden im Qualitätslauf ausgewiesen und nicht durch
+höhere Timeouts verdeckt.
 
 Desktop 1440 × 900, Mobilansicht 390 × 844 und Reduced Motion werden geprüft.
 PLAYWRIGHT_CHANNEL wählt den Browser; PYTHON_EXECUTABLE den Interpreter.

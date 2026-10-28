@@ -25,35 +25,50 @@ Views führen keine Requests aus.
 Marktlisten und Refresh benötigen ein konkretes eigenes idle Fahrzeug. Ohne
 gültigen Scope sendet der Browser keine Marktanfrage; der HTTP-Vertrag lehnt
 fehlendes `vehicle_id` mit 422 ab. Das Verantwortungsreview trennt außerdem in
-`ContractFactory` Ziehung, Konditionsableitung und Snapshot-Bau sowie in
-`StockPublicationService` autoritativen Read, Projektion, Readiness-Snapshot,
-Publikationsplan und gefencten Commit. Die Helper halten nur lokale
-Zwischenwerte ihrer bestehenden Klasse und eröffnen weder neue Daten- noch
-Providerpfade. `MarketComponents` ist nur noch die explizite Composition-Grenze;
-`PlayerMarketPreparation` besitzt den spielergebundenen Vorbereitungszustand.
+`ContractFactory` Ziehung, Konditionsableitung und Snapshot-Bau. Der
+`StockSnapshotReader` besitzt autoritativen Read, Bedarfsprojektion, Readiness
+und Snapshot-Montage; der `StockPublicationService` ausschließlich Plan und
+Commit. Die Helper halten nur lokale Zwischenwerte ihrer bestehenden Klasse
+und eröffnen weder neue Daten- noch Providerpfade. `MarketComponents` ist nur
+noch die explizite Composition-Grenze. Spielerbedarf, Routenfakten und
+Stock-Abhängigkeiten liegen getrennt in `PlayerMarketDemandService`,
+`PlayerMarketRouteService` und `PlayerMarketStockContext`.
+
+`GameService` ist eine delegierende Spielfassade. `PlayerInitializationService`
+besitzt Anlage und Reset, `TransportDispatchService` Quote und Dispatch und
+`TransportSettlementService` Ankunft und Auszahlung. Dadurch liegen Lookup,
+Validierung, Trip-Bau, Preisberechnung und Commit nicht mehr neben fachfremden
+Read-/Reset-Abläufen in einer einzelnen Klasse.
+
 Der Scheduler wählt ausschließlich fällige `partial`-Jobs. Ein neues Fahrzeug
 wird in begrenzten Einzelrunden bis zu drei sichtbaren und zehn gespeicherten
 Angeboten je Distanzband versorgt; ein `ready`-Job wird nicht erneut ausgewählt.
 
 Der abschließende Lauf von `.venv/Scripts/python.exe -X utf8
-scripts/quality.py` ist mit Exitcode 0 bestanden: **585 Python-Tests**,
-**100,00 % app-Statement-Coverage** (6.605 von 6.605 Statements),
+scripts/quality.py` ist mit Exitcode 0 bestanden: **593 Python-Tests**,
+**100,00 % app-Statement-Coverage** (6.796 von 6.796 Statements),
 **118 Frontend-Verhaltenstests** sowie Ruff, Formatierung, mypy, Pyright,
 ESLint, Stylelint, Prettier, checkJs, Produktionsbuild und compileall. Die
-Python-Suite benötigte 20 Minuten 35 Sekunden. Architektur- und
-Funktionsmanifestprüfungen sind Teil dieses Laufs.
+Python-Suite benötigte 16 Minuten 55 Sekunden. Der langsamste einzelne
+Python-Test lief 9,56 Sekunden; kein Python-Test überschritt zehn Sekunden.
+Architektur- und Funktionsmanifestprüfungen sind Teil dieses Laufs.
 
-`npm run test:e2e`: **33 bestanden** in 7,6 Minuten. Die Suite lief gegen
+`npm run test:e2e`: **36 bestanden** in 3,7 Minuten. Die Suite lief gegen
 einen isolierten lokalen Einprozess-Server mit lokaler Datenbank und lokalem
 Routing-Fixture. Marktaufbau, sichtbare Einzelpublikation, Refresh,
 Fahrzeugfilter, Desktop/Mobil, Offline-Ankunft und Kartenregressionen sind
 abgedeckt. Marktlisten werden im Browsertest je Fahrzeug angefragt; nur der
 gezielte Mehrfahrzeug-Kostentest liest anschließend die Detailprojektion. Der
-Energie-Gegentest wartet an der Client-/Server-Zeitgrenze auf
-den tatsächlichen Zustandsübergang, statt eine unmittelbare Momentaufnahme zu
-behaupten. Absichtlich abgebrochene Browserrequests können unter Windows den
-bekannten `WinError 10054` im Socket-Cleanup protokollieren; die zugehörigen
-Fehlerpfade bestehen.
+Energie-Gegentest schaltet die isolierte Serverzeit vor und synchronisiert die
+Runtime gezielt, statt reale Fahrt- oder Pollzeiten abzuwarten. Kartenlebenszyklus,
+parallele Transporte, Energieanzeige und Offline-Abrechnung sind getrennte
+Fälle. Drei vollständige Integrationsketten benötigen auf dem Windows-Host
+11,0 bis 11,7 Sekunden; alle übrigen Browserfälle bleiben unter zehn Sekunden.
+Diese Laufzeit wird sichtbar akzeptiert, weil sie echte Registrierung,
+Marktvorbereitung, Routing und Dispatch umfasst und nicht durch direkte Test-SQL
+oder höhere Timeouts kaschiert wird. Absichtlich abgebrochene Browserrequests
+können unter Windows den bekannten `WinError 10054` im Socket-Cleanup
+protokollieren; die zugehörigen Fehlerpfade bestehen.
 
 Der manuelle Start `python main.py` wurde mit einer neuen temporären lokalen
 SQLite-Datei und lokalen, unerreichbaren Dummy-Provider-URLs geprüft. Startup

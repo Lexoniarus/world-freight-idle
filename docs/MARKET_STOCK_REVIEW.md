@@ -113,13 +113,16 @@ produktive Ablauf besitzt nun genau diese Kette:
 
 1. `MarketLifecycleService.published` liest vorhandene persönliche Angebote
    und schreibt nur bei ausdrücklichem Refresh eine neue Bedarfsversion.
-2. `PlayerMarketPreparation` besitzt Bedarf, Offer-Routenbindungen und die
-   begrenzte Routenprüfung für genau einen Spieler.
-3. `MarketPreparationWorker` plant ausschließlich fällige `partial`-Jobs.
-4. `StockPreparationBatch` wählt einen konkreten Fehlbestand und höchstens eine
+2. `PlayerMarketDemandService` besitzt Bedarfsversion, Status und Diagnose;
+   `PlayerMarketRouteService` besitzt Offer-Bindungen und Routenfakten.
+3. `PlayerMarketStockContext` benennt persönlichen Bestand, gemeinsame
+   Vorlagen und Policy, ohne eine weitere Ablaufklasse einzuführen.
+4. `MarketPreparationWorker` plant ausschließlich fällige `partial`-Jobs.
+5. `StockPreparationBatch` wählt einen konkreten Fehlbestand und höchstens eine
    neue Relation pro Runde.
-5. `StockPublicationService` liest, plant und veröffentlicht mit Fence.
-6. `SqliteMarketTemplateStore` und `SqlitePlayerMarketStockStore` besitzen
+6. `StockSnapshotReader` liest und montiert einen unveränderlichen Snapshot;
+   `StockPublicationService` plant und veröffentlicht ihn mit Fence.
+7. `SqliteMarketTemplateStore` und `SqlitePlayerMarketStockStore` besitzen
    getrennte globale beziehungsweise spielerbezogene SQL-Verantwortung.
 
 `MarketComponents` ist eine reine, ehrlich benannte Composition-Struktur für
@@ -128,6 +131,14 @@ Generierungsmethode. `VehicleLocationResolver` besitzt Standortauflösung;
 `DispatchEligibilityService` prüft nur Eignung und bleibt der vorbereitete Seam
 für eine spätere Mitarbeiter-/Fahrerfreigabe. Das Mitarbeitermodell selbst wird
 nicht vorweggenommen.
+
+`GameService` ist nur noch die stabile Spielfassade. Erstanlage und Reset
+gehören `PlayerInitializationService`, Quote und Dispatch dem
+`TransportDispatchService`, Ankunft und Auszahlung dem
+`TransportSettlementService`. Der Dispatch-Service besitzt klar benannte
+Schritte für Lookup, Validierung, Trip-Bau, Preisberechnung und Commit; die
+Fassade dupliziert diese Regeln nicht. Sämtliche neuen konkreten Callables sind
+im Function-Test-Manifest einzeln gegengeprüft.
 
 Im Frontend übersetzt `MapSelectionController` typisierte Kartenobjektauswahl
 in Navigation. `WorldMap` kennt keine URL-Ziele. `PanelView` verwendet konkrete

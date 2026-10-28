@@ -29,11 +29,12 @@ durch diese Änderung ersetzt.
 ## Entscheidung
 
 Die Auswahl umfasst höchstens drei fahrbare Angebote pro Entfernungsklasse
-und ausgewähltem Fahrzeug. Der Worker hält mindestens zehn Vorlagen pro
-Bedarfsstadt, Katalogmodell und strukturell verfügbarem Band vor. Alle 14
-Truckmodelle werden berücksichtigt; tatsächliche Fahrzeugbedarfe haben Vorrang.
-Die drei sichtbaren Angebote gehören zum Vorrat, sie kommen nicht zusätzlich
-zu zehn Reservierungen hinzu. Fehlende geprüfte Straßen werden nicht erfunden.
+und ausgewähltem Fahrzeug. Der Worker hält für tatsächliche eigene Fahrzeuge
+und gespeicherte Zielstädte bis zu zehn vorbereitete Angebote pro strukturell
+verfügbarem Band vor. Katalogmodelle ohne konkreten Spielerbedarf lösen keine
+Vorbereitung aus. Die drei sichtbaren Angebote gehören zum Vorrat, sie kommen
+nicht zusätzlich zu zehn Reservierungen hinzu. Fehlende geprüfte Straßen
+werden nicht erfunden.
 
 Globale Vorlagen beschreiben Modell, Handelsbeziehung und Erzeugungsgrundlage.
 Persönliche Angebote erhalten eigene IDs und unveränderliche Mengen/Tarife aus
@@ -57,9 +58,12 @@ Zehn ist eine Untergrenze, keine globale Begrenzung oder Löschregel.
 | `StockPlanningService` | Defizite, Prioritäten und stabile Rotation; keine Seiteneffekte |
 | `MarketTemplateService` | Wiederverwendung und Materialisierung passender unveränderlicher Angebote |
 | `MarketSelectionService` | Stabile Dreier-Projektion bereits vorbereiteter Angebote ohne Providerarbeit |
-| `PlayerMarketPreparation` | Spielerbedarf, Offer-Routenbindungen und begrenzte Routenprüfung über injizierte Ports |
+| `PlayerMarketDemandService` | Bedarfsversion, Status und veröffentlichte Coverage-Diagnose eines Spielers |
+| `PlayerMarketRouteService` | Mengenbasierter Read von Offer-Bindungen und wiederverwendbaren Routenfakten |
+| `PlayerMarketStockContext` | Explizite Zusammenstellung von persönlichem Bestand, gemeinsamen Vorlagen und Policy |
 | `StockPreparationBatch` | Eine Verbindung pro Spielerrunde, Wiederaufnahme und Orchestrierung |
-| `StockPublicationService` | Lesesnapshot, Revisionsvergleich und atomare Veröffentlichung |
+| `StockSnapshotReader` | Kurzer autoritativer Read und unveränderliche Planungsprojektion |
+| `StockPublicationService` | Revisions-Fence, Publikationsplan und atomare Veröffentlichung |
 | `SqliteMarketTemplateStore` | SQL ausschließlich für spielerübergreifend wiederverwendbare Vorlagen |
 | `SqlitePlayerMarketStockStore` | SQL für persönliche Zuordnung/Verwendung, kompakte Ankünfte, Cursor und Checkpoints |
 | `MarketStockUpgradeRepository` | Ausschließlich explizite Offline-Übernahme nach 1.2.0 |

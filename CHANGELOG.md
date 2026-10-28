@@ -13,6 +13,13 @@
   lesen nur publizierten Bestand; Refresh invalidiert ausdrücklich den Job.
 - `MarketComponents` benennt die verbleibende Composition-Grenze ohne eine
   nicht vorhandene Generierungszuständigkeit vorzutäuschen.
+- Spielerbedarf, Routenfakten und Stock-Abhängigkeiten sind in
+  `PlayerMarketDemandService`, `PlayerMarketRouteService` und
+  `PlayerMarketStockContext` getrennt. Der Composition Root bündelt sie nur.
+- `StockSnapshotReader` besitzt autoritativen Read, Bedarfsprojektion und
+  Readiness-Snapshot; `StockPublicationService` besitzt nur Plan und Commit.
+- `GameService` ist eine schmale Fassade. Initialisierung, Dispatch und
+  Settlement liegen in drei injizierten Services mit eigenen Gegenproben.
 - Kartenobjektauswahl und Navigation sind durch einen eigenen Controller
   getrennt; Frontend-Viewzustände besitzen konkrete JSDoc-Slices statt `any`.
 - Referenzunternehmen heißen in Domain und API-internen Typen ausdrücklich
@@ -21,6 +28,11 @@
 - Überholte Mischtests für entfernte Kompatibilitätspfade wurden durch
   fokussierte Gegenproben der echten Worker-, Stock- und Readiness-Grenzen
   ersetzt. Es wurden keine Supabase- oder Live-Providerzugriffe ausgeführt.
+- Browsertests schalten Fahrtzeit über eine isolierte Testuhr fort. Passive
+  15- bis 55-Sekunden-Warteannahmen wurden durch explizite Synchronisierung
+  ersetzt. Überladene Mehrfahrzeug-, Karten-, Energie- und Offline-Fälle sind
+  nach beobachtbarer Verantwortung getrennt; echte Integrationslaufzeit wird
+  ausgewiesen statt durch höhere Timeouts oder direkte Test-SQL kaschiert.
 
 ## Lokaler bedarfsgesteuerter Frachtpool – 27.10.2026
 

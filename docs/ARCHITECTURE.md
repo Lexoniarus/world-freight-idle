@@ -117,12 +117,18 @@ Market-, Distance-, Scale- und Capability-Profile sind eigene Domainwerte.
 | MarketComponents | Candidate-, Factory- und Coverage-Diagnose explizit bündeln; keine Generierungsmethode |
 | MarketLifecycleService | Retention, Pruning, Markttransaktion und Projektion der Eignung koordinieren |
 | MarketDemandResolver | Konkrete idle Fahrzeuge und gespeicherte Transportziele projizieren |
-| PlayerMarketPreparation | Spielerbedarf, Offer-Routenbindungen und begrenzte Routenprüfung kapseln |
+| PlayerMarketDemandService | Bedarfsversion, Status und atomare Coverage-Diagnose eines Spielers besitzen |
+| PlayerMarketRouteService | Offer-Bindungen und mengenbasiert gelesene Routenfakten anwenden und begrenzt vorbereiten |
+| PlayerMarketStockContext | Persönlichen Bestand, gemeinsame Vorlagen und Stock-Policy explizit bündeln |
 | StockPlanningService | Sichtbare Defizite vor Reserven priorisieren und Vielfalt wählen |
 | MarketTemplateService | Wiederverwendbare Vorlagen zu genau einem Angebot materialisieren |
-| StockPublicationService | Lesefakten, Planung und gefencten atomaren Commit koordinieren |
+| StockSnapshotReader | Autoritative Inputs, Bedarf und Readiness zu einem unveränderlichen Snapshot montieren |
+| StockPublicationService | Publikationsplan und gefencten atomaren Commit koordinieren |
 | DispatchEligibilityService | Fahrzeug-/Frachtfreigabe und künftige Mitarbeiterfreigabe kapseln |
-| GameService | Spielabläufe koordinieren und Domainregeln delegieren |
+| PlayerInitializationService | Erstanlage und Reset eines Spielers transaktional besitzen |
+| TransportDispatchService | Quote, Revalidierung und atomaren Dispatch besitzen |
+| TransportSettlementService | Fällige Transporte genau einmal abrechnen und Spielerstatus lesen |
+| GameService | HTTP-nahe Spielfassade und reine Read-Orchestrierung bereitstellen |
 
 Stateful Services und Repository-Grenzen sind injizierte Klassen. Gemeinsame
 reine Funktionen prüfen Fahrzeugklasse/Scale; Haversine, Band, Gewichtung und
@@ -249,7 +255,8 @@ Traffic noch Leaderboard.
 
 `DispatchPlanningService` lädt vorbereitete globale Straßenrelationen. Er lädt
 A → B optional und B → C vor der Schreibtransaktion und komponiert die reine
-Fahrt- und Preisplanung. `GameService` koordiniert Revalidierung und Persistenz.
+Fahrt- und Preisplanung. `TransportDispatchService` koordiniert Revalidierung
+und Persistenz; `GameService` delegiert nur den öffentlichen Anwendungsfall.
 Der vollständige immutable Start-Snapshot muss nach Routing und unmittelbar
 vor Commit mit dem aktuellen Fahrzeugcheckpoint übereinstimmen.
 
@@ -450,20 +457,21 @@ Ankunftsfakten ohne Geometrien und plant Zielstädte unmittelbar ab Dispatch.
 Die reine Dreier-Auswahl bleibt in `MarketSelectionService`.
 SQL, Konsistenzgrenzen und Migrationsregeln sind in ADR 0008 benannt.
 
-`StockPublicationService` hält den vollständigen unveränderlichen Bestand für
-den Revisionsvergleich und projiziert davon separat kataloggültige Angebote
-und Vorlagen für Planung/Abdeckung. Veraltete oder frühere Stadtbestände werden
-bewahrt. Normales Polling löst wegen dieser unsichtbaren Bestände keine neue
-Bedarfsversion aus. Nur Zustandsänderungen und ein ausdrücklicher Refresh
-fordern weitere Arbeit an. Erfolgreiche Relationen bleiben für denselben
-Fingerprint dauerhaft nutzbar; negative Ergebnisse und Anker behalten ihre
-Backoffs. Verbrauch ist Teil der vorhandenen Dispatch-UoW.
+`StockSnapshotReader` hält den vollständigen unveränderlichen Bestand für den
+Revisionsvergleich und projiziert davon separat kataloggültige Angebote und
+Vorlagen für Planung/Abdeckung. `StockPublicationService` erhält diesen
+Snapshot und besitzt nur Publikationsplan und gefencten Commit. Veraltete oder
+frühere Stadtbestände werden bewahrt. Normales Polling löst wegen dieser
+unsichtbaren Bestände keine neue Bedarfsversion aus. Nur Zustandsänderungen und
+ein ausdrücklicher Refresh fordern weitere Arbeit an. Erfolgreiche Relationen
+bleiben für denselben Fingerprint dauerhaft nutzbar; negative Ergebnisse und
+Anker behalten ihre Backoffs. Verbrauch ist Teil der vorhandenen Dispatch-UoW.
 
-Innerhalb des Services sind der kurze autoritative Read, die reine
-Bedarfsprojektion, der mengenbasierte Readiness-Read, die Snapshot-Montage,
-der Publikationsplan und der gefencte Commit benannte Phasen. Dadurch bleiben
-SQL und Providerzugriffe in ihren vorhandenen Ports; der Service eröffnet
-weder eine zweite Marktstruktur noch Einzelabfragen je Relation. Analog trennt
+Kurzer autoritativer Read, reine Bedarfsprojektion, mengenbasierter
+Readiness-Read und Snapshot-Montage liegen im `StockSnapshotReader`;
+Publikationsplan und gefencter Commit im `StockPublicationService`. Dadurch
+bleiben SQL und Providerzugriffe in ihren vorhandenen Ports; keine Grenze
+eröffnet eine zweite Marktstruktur oder Einzelabfragen je Relation. Analog trennt
 `ContractFactory` die Zufallsziehung von Konditionsableitung und immutablem
 Snapshot. Der nichtdeterministische Pfad behält seine bisherige RNG-Reihenfolge;
 der deterministische Pfad erzeugt weiterhin je Angebot eine neue UUID.
