@@ -89,7 +89,7 @@ entbindet öffentliche Komponenten nicht von ihren Parameterverträgen.
 
 WorldCatalogue-Regeln: Domain-Port und unveränderliche Referenzmodelle, SQL
 ausschließlich im Repository, konkrete Verdrahtung im Composition Root.
-Game-Core/MarketGenerator importieren weder SQL noch Katalogadapter oder
+Game-Core/`MarketComponents` importieren weder SQL noch Katalogadapter oder
 Seed-Daten. UUIDs und vollständige Snapshots sichern historische Aufträge.
 Neue konkrete Core-Callables, einschließlich Pflege/Migration, unterliegen
 Manifest, explizitem Gegentest, Pyright/mypy und 100 % Statement-Coverage.

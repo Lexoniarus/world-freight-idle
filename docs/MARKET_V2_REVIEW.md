@@ -1,5 +1,10 @@
 # Market v2: Einzelreview der Core-Funktionen
 
+> Historischer Review. `GameService.refresh_market` und
+> `MarketGenerator.generate` wurden am 28.10.2026 nach der vollständigen
+> Umstellung auf den lokalen Stock-Worker entfernt. Der aktuelle Review steht
+> in [MARKET_STOCK_REVIEW.md](MARKET_STOCK_REVIEW.md).
+
 Stand: 25.09.2026, Vergleich mit main `75e3d8a`. Jede unten aufgeführte neue
 oder im Verhalten geänderte konkrete Funktion wurde anhand ihres Körpers
 auf Zweck, Schicht, Abhängigkeiten und Seiteneffekte geprüft. Automatisch

@@ -1,5 +1,12 @@
 # Frontend-v2: Einzelreview der Verantwortungen
 
+> Historischer Funktionsbestand vom 23.–28.09.2026. Seit dem lokalen Refactor
+> vom 27./28.10.2026 sind `MarketStartupService`, `MarketGenerator.generate`,
+> `MarketCoverageService` und die genannten Startup-Repositories entfernt.
+> Der aktuelle Verantwortungsnachtrag steht in
+> [MARKET_STOCK_REVIEW.md](MARKET_STOCK_REVIEW.md); historische Tabellen werden
+> als damaliger Prüfnachweis nicht rückwirkend umgeschrieben.
+
 Vergleichsbasis: erhaltener lokaler Commit `548336f`. Review vom 25.09.2026.
 Jede unten aufgeführte Funktion wurde im Quelltext auf Zweck, Schicht,
 Abhängigkeiten und Seiteneffekte geprüft. Grüne Tests und Funktionslänge

@@ -1,5 +1,27 @@
 # Changelog
 
+## Zuständigkeitsrefactor der lokalen Runtime – 28.10.2026
+
+- Dispatch-Eignung ist eine reine Prüfung; die Standortauflösung liegt in einem
+  eigenen injizierten Service und mutiert keine Fahrzeuge während der Prüfung.
+- Routing-Relationen, Anker und Verbindungsevidenz werden pro Planungsrunde
+  mengenbasiert gelesen statt je Candidate erneut aus SQLite abgefragt.
+- Gemeinsame Vorlagen und persönlicher Spielerbestand besitzen getrennte
+  Repository-Ports und konkrete SQLite-Adapter.
+- Der synchrone Marktgenerator, request-seitige Publikationsvorbereitung und
+  die mehrdeutige `refresh_market`-Kompatibilität wurden entfernt. HTTP-Reads
+  lesen nur publizierten Bestand; Refresh invalidiert ausdrücklich den Job.
+- `MarketComponents` benennt die verbleibende Composition-Grenze ohne eine
+  nicht vorhandene Generierungszuständigkeit vorzutäuschen.
+- Kartenobjektauswahl und Navigation sind durch einen eigenen Controller
+  getrennt; Frontend-Viewzustände besitzen konkrete JSDoc-Slices statt `any`.
+- Referenzunternehmen heißen in Domain und API-internen Typen ausdrücklich
+  `ReferenceCompany`; Spielerfirma, Depots und Mitarbeiter bleiben getrennte
+  kommende Aggregate.
+- Überholte Mischtests für entfernte Kompatibilitätspfade wurden durch
+  fokussierte Gegenproben der echten Worker-, Stock- und Readiness-Grenzen
+  ersetzt. Es wurden keine Supabase- oder Live-Providerzugriffe ausgeführt.
+
 ## Lokaler bedarfsgesteuerter Frachtpool – 27.10.2026
 
 - Supabase-/PostgreSQL-Laufzeit verworfen; `python main.py` startet wieder eine

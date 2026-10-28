@@ -123,14 +123,15 @@ Routing erneut; ein veränderter Energiecheckpoint verhindert Teilabrechnungen.
   endliche Werte, positive Preise, Unit-Weights und Load-Factor-Grenzen.
 - City-UID-Scope, Same-City-Relationen, fehlender Standort-Snapshot, explizite
   Modellauflösung, lazy Origin-Indizes und Generierung ohne Router.
-- Exakte Distanzgrenzen, Facility-/Band-Coverage, geplante Angebote mitzählen,
-  Vielfalt und Wiederholungen, Tonnage und gespeicherte Konditionen.
+- Exakte Distanzgrenzen, materialisierte Fahrzeug-/Band-Coverage,
+  deterministische Vielfalt und dokumentierter Wiederholungsfallback, Tonnage
+  und gespeicherte Konditionen.
 - Maximalwert für Candidate-Gewicht und getrennte gewichtete Fahrzeugwahl.
 - Retention nach Flottenänderung, V1-Verwerfen, Ankunft, historische Snapshots.
 - Same-City-Reposition, konkurrierender Dispatch und vollständiger Rollback.
-- Refill erst nach Dispatch-Commit; separate SQLite-Verbindung beobachtet den
-  gestarteten Transport, Refill-Schreibfehler rollt ausschließlich neue Offers
-  zurück. Späterer Refresh führt keinen zweiten Dispatch aus.
+- Dispatch committen Transport und Offer-Verbrauch atomar. Erst der danach
+  geschriebene Bedarf weckt den Worker; ein späterer Refresh führt weder
+  synchrone Generierung noch einen zweiten Dispatch aus.
 - Pflichtfahrzeug HTTP 422, serverseitige eligible_vehicle_ids, Auswahlwechsel,
   entfernte Angebote und verspätete Antworten. Ohne eigenes idle Fahrzeug
   entstehen weder Listen- noch Refresh-Requests; Browser-Pan/Zoom bleibt ohne

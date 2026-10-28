@@ -1,5 +1,10 @@
 # Reviewkorrekturen und Vehicle-Ready: Einzelreview
 
+> Historischer Review des damaligen Implementierungsstands. Die dort
+> inventarisierten Generator-, Coverage- und `prepare_publication`-Callables
+> existieren im lokalen Stock-Worker seit 28.10.2026 nicht mehr. Aktuelle
+> Besitzer und Gegenproben: [MARKET_STOCK_REVIEW.md](MARKET_STOCK_REVIEW.md).
+
 Stand: 27.09.2026; Basis `e49e5fa`. Direkter bestehender Arbeitsbranch.
 Status: implementiert / gezielte Prüfungen bestanden / Gesamtabnahme offen.
 

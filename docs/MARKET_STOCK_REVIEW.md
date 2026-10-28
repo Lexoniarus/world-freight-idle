@@ -86,7 +86,7 @@ aktuelle Review bestätigt folgende Verantwortungen:
 | `MarketTemplateService` | Genau eine passende Vorlage/Offer-Einheit materialisieren |
 | `ContractFactory.build`, `_draw_offer`, `_derive_terms`, `_build_snapshot` | Ziehung, wirtschaftliche Ableitung und immutable Persistenzabbildung bleiben getrennt; stabile Kontexte ändern keine Konditionen, Angebots-IDs bleiben neu |
 | `SqliteMarketTemplateStore` | Gemeinsame unveränderliche Vorlagen mit exakten set-basierten Scope-Reads persistieren |
-| `SqliteMarketStockStore` | Persönliche Bindungen, Verbrauch, Ankünfte, Cursor und Checkpoints persistieren |
+| `SqlitePlayerMarketStockStore` | Persönliche Bindungen, Verbrauch, Ankünfte, Cursor und Checkpoints persistieren |
 | `StockPublicationService._read_inputs`, `_resolve_demand`, `_read_readiness`, `_assemble_snapshot` | Kurzen autoritativen Read von reiner Projektion und mengenbasiertem Readiness-Read trennen; keine Relation öffnet einen eigenen Spieler-Read |
 | `StockPublicationService._build_publication_plan`, `_commit_publication` | Coverage und Bindungen vor der Schreibtransaktion berechnen; erst nach vollständigem Fence atomar veröffentlichen |
 | `StockPreparationBatch` | Eine konkrete Relation/Runde orchestrieren; keine Worker- oder Provider-Lifecycle-Verantwortung |
@@ -102,3 +102,36 @@ Die neuen Helper sind keine zweite Fachschicht: Sie halten ausschließlich
 Zwischenwerte ihrer jeweiligen bestehenden Klasse. Gegenproben prüfen jede
 Grenze einzeln; SQL bleibt in Repositories, HTTP im API-/Frontend-Adapter und
 Routing im injizierten Readiness-Service.
+
+## Nachtrag 28.10.2026: eindeutige Besitzer und entfernte Doppelpfade
+
+`MarketCoverageService`, `MarketGenerator.generate`,
+`MarketPreparationService.prepare_publication`, `preparable_candidates` und
+`GameService.refresh_market` waren nach Einführung des lokalen Stock-Workers
+nur noch Kompatibilitäts- beziehungsweise Testpfade. Sie sind entfernt. Der
+produktive Ablauf besitzt nun genau diese Kette:
+
+1. `MarketLifecycleService.published` liest vorhandene persönliche Angebote
+   und schreibt nur bei ausdrücklichem Refresh eine neue Bedarfsversion.
+2. `PlayerMarketPreparation` besitzt Bedarf, Offer-Routenbindungen und die
+   begrenzte Routenprüfung für genau einen Spieler.
+3. `MarketPreparationWorker` plant ausschließlich fällige `partial`-Jobs.
+4. `StockPreparationBatch` wählt einen konkreten Fehlbestand und höchstens eine
+   neue Relation pro Runde.
+5. `StockPublicationService` liest, plant und veröffentlicht mit Fence.
+6. `SqliteMarketTemplateStore` und `SqlitePlayerMarketStockStore` besitzen
+   getrennte globale beziehungsweise spielerbezogene SQL-Verantwortung.
+
+`MarketComponents` ist eine reine, ehrlich benannte Composition-Struktur für
+Candidate-Service, Factory und Coverage-Diagnose. Sie besitzt keine
+Generierungsmethode. `VehicleLocationResolver` besitzt Standortauflösung;
+`DispatchEligibilityService` prüft nur Eignung und bleibt der vorbereitete Seam
+für eine spätere Mitarbeiter-/Fahrerfreigabe. Das Mitarbeitermodell selbst wird
+nicht vorweggenommen.
+
+Im Frontend übersetzt `MapSelectionController` typisierte Kartenobjektauswahl
+in Navigation. `WorldMap` kennt keine URL-Ziele. `PanelView` verwendet konkrete
+Zustandsslices; die Firmenansicht heißt `company-dashboard.js`, während
+`ReferenceCompany` die Katalogfirma eindeutig von der künftigen Spielerfirma
+trennt. Diese Vorbereitung schafft Erweiterungspunkte für Firma, Depot und
+Mitarbeiter, ohne zweite Zustandsbesitzer anzulegen.

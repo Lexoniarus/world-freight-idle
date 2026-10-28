@@ -113,11 +113,11 @@ Market-, Distance-, Scale- und Capability-Profile sind eigene Domainwerte.
 | MarketScopeResolver | Stabile City-UIDs eigener idle Fahrzeuge |
 | TradeNetwork | Globale NHM-Zielindizes und lazy Origin-Relationen |
 | MarketCandidateService | Distanz, Warenprofile und Fahrzeugkompatibilität |
-| MarketCoverageService | Retention anrechnen und Coverage-Auswahl planen |
 | ContractFactory | Ziehung, Konditionsableitung und Snapshot-Erzeugung getrennt orchestrieren |
-| MarketGenerator | Diese drei Schritte orchestrieren |
+| MarketComponents | Candidate-, Factory- und Coverage-Diagnose explizit bündeln; keine Generierungsmethode |
 | MarketLifecycleService | Retention, Pruning, Markttransaktion und Projektion der Eignung koordinieren |
 | MarketDemandResolver | Konkrete idle Fahrzeuge und gespeicherte Transportziele projizieren |
+| PlayerMarketPreparation | Spielerbedarf, Offer-Routenbindungen und begrenzte Routenprüfung kapseln |
 | StockPlanningService | Sichtbare Defizite vor Reserven priorisieren und Vielfalt wählen |
 | MarketTemplateService | Wiederverwendbare Vorlagen zu genau einem Angebot materialisieren |
 | StockPublicationService | Lesefakten, Planung und gefencten atomaren Commit koordinieren |
@@ -126,9 +126,10 @@ Market-, Distance-, Scale- und Capability-Profile sind eigene Domainwerte.
 
 Stateful Services und Repository-Grenzen sind injizierte Klassen. Gemeinsame
 reine Funktionen prüfen Fahrzeugklasse/Scale; Haversine, Band, Gewichtung und
-Tonnage bleiben kleine typisierte Funktionen. Der Generator kennt keine
-Filterdetails, Coverage-Schleifen, SQL oder Transaktionen. Coverage liefert
-einen immutable Plan und Diagnosen, keine materialisierten Angebote.
+Tonnage bleiben kleine typisierte Funktionen. `MarketComponents` ist nur eine
+ehrlich benannte Composition-Grenze. Auswahl liegt in `StockPlanningService`,
+Materialisierung in `MarketTemplateService`, Diagnostik in
+`VehicleCoverageService`; SQL und Transaktionen bleiben außerhalb davon.
 
 Routing findet vor der Dispatch-Schreibtransaktion statt. Danach werden alle
 veränderlichen Voraussetzungen einschließlich Abfahrtscheckpoint erneut
@@ -274,7 +275,8 @@ Das Funktionsreview steht in [DISPATCH_APPROACH_REVIEW.md](DISPATCH_APPROACH_REV
 Funktionen berechnen getrennt Beladung, Tarif, Einkaufskosten und Auszahlung.
 `ContractFactory` bekommt immutable Kosten-/Energiekontexte im Candidate;
 sie führt keine Katalogabfragen durch. Der minimale NHM-Faktor wird einmal
-je World-Revision bestimmt. `MarketGenerator` bleibt reine Orchestrierung.
+je World-Revision bestimmt. `MarketComponents` besitzt selbst keine
+Orchestrierungs- oder Generierungsmethode.
 
 Der frühere globale Rebuild über `MarketStartupService` ist entfernt. Die API
 validiert Schema und Referenzen; der Lifespan-Worker erhält ausschließlich
@@ -360,7 +362,7 @@ Schreibtransaktionen aus; erst danach wird das Ergebnis gespeichert.
 ## Global Routing Readiness
 
 MarketCandidateService bleibt strukturell routerfrei. Market Preparation liegt
-zwischen Candidate-Erzeugung und Coverage/Materialisierung; MarketGenerator
+zwischen Candidate-Erzeugung und Planung/Materialisierung; `MarketComponents`
 orchestriert keine Providerrequests. Auch partial Markets veröffentlichen
 **ausschließlich route-ready Offers**.
 

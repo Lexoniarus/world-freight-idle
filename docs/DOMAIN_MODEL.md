@@ -1,6 +1,6 @@
 # Domänenmodell
 
-Stand: 25.09.2026. Dieses Dokument beschreibt die implementierte Struktur.
+Stand: 28.10.2026. Dieses Dokument beschreibt die implementierte Struktur.
 Entscheidungsgründe stehen in ADR 0005/0006, Fortschrittshistorie in
 [der archivierten Refactor-Chronik](archive/REFACTOR_EXECUTION.md).
 Domainobjekte kennen keine Persistenzformate.
@@ -48,8 +48,10 @@ wechselt nur von active nach settled und bewahrt den Settlement-Zeitpunkt.
 Country besitzt Code und Namen. City besitzt dauerhaft gespeicherte city_uid,
 Namen, Country und optionale Region. Address komponiert City mit Straße,
 Hausnummer und Postleitzahl. Coordinates validiert endliche WGS84-Werte.
-Facility komponiert Address/Coordinates, Company-Bezug, Quellen und Warenprofile.
-Eine Company kann Facilities in mehreren Städten und Ländern besitzen.
+Facility komponiert Address/Coordinates, `ReferenceCompany`-Bezug, Quellen und
+Warenprofile. Eine `ReferenceCompany` kann Facilities in mehreren Städten und
+Ländern besitzen. Sie ist eine Katalogreferenz, nicht die spätere
+`PlayerCompany` mit Depots, Abteilungen oder Mitarbeitern.
 
 NhmProduct beschreibt Warenidentität und die gespeicherte NHM-Hierarchie.
 FacilityNhmProfile komponiert ein Produkt mit input/output/both, Confidence,
@@ -103,7 +105,8 @@ MarketVehicle hält aufgelöstes Modell, Stadt und gespeicherte Kaufkapazität;
 CompatibleVehicle ergänzt den positiven Eignungswert. TradeOption repräsentiert
 nur die NHM-Handelsrelation. MarketCandidate komponiert Relation, Profile,
 Haversine-Distanz, kompatible Kontexte und positives Auswahlgewicht.
-CoveragePlan enthält ausgewählte Candidates und CoverageDiagnostic je Stadt.
+VehicleCoverageDiagnostic beschreibt ausschließlich den bereits materialisierten,
+für ein konkretes Fahrzeug nutzbaren Bestand; es plant keine Angebote.
 OfferMarketContext hält die unveränderlichen V2-Generierungskonditionen.
 
 OwnedVehicle.restore_location ergänzt ausschließlich einen fehlenden Snapshot
@@ -185,8 +188,8 @@ individuell approach-bereite Fahrzeugkontexte. `VehicleCoverageDiagnostic`
 enthält Fahrzeug/Stadt, tatsächliche Angebotszahl, Bandzählungen und fehlende
 Bänder/Facilities. Teilbare Offers bleiben im Spielerpool; keine Reservierung
 für das Generierungsfahrzeug. Die tatsächliche Tonnage muss zum gewählten
-Fahrzeug passen. Coverage-Planung begrenzt den Generierungskontext auf garantiert
-passende Kapazitäten, ohne Profile, Verteilung oder Tarif zu verändern.
+Fahrzeug passen. `StockPlanningService` plant Defizite; die Diagnose zählt nur
+tatsächlich publizierte Angebote und erzeugt weder Candidate noch Vertrag.
 
 `MarketPresentation` bündelt Angebotsprojektionen, Vehicle-Coverage und
 Preparation-Status aus einem konsistenten lokalen Lesekontext. `partial` enthält

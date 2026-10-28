@@ -4,6 +4,12 @@
 
 # Routing Readiness: Einzelreview
 
+> `MarketStartupService`, `prepare_publication` und der synchrone
+> Generatorpfad wurden im lokalen Refactor entfernt. Die aktuelle Worker- und
+> Stock-Verantwortung steht in
+> [MARKET_STOCK_REVIEW.md](MARKET_STOCK_REVIEW.md). Die folgenden Tabellen
+> bleiben historischer Prüfnachweis.
+
 Stand: 27.09.2026. Basis `df40e7c800d21ac4187912fc9a81a6e08e1349bb`.
 Status: implementiert / vollständige lokale Quality- und E2E-Gates bestanden.
 

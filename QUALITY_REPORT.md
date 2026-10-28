@@ -1,6 +1,6 @@
 # Qualitätsbericht: lokaler bedarfsgesteuerter Frachtpool
 
-Stand: 27.10.2026. Branch `refactor/local-market-pool`, Basis aktuelles lokales
+Stand: 28.10.2026. Branch `refactor/local-market-pool`, Basis aktuelles lokales
 `main`. Dieser Abschnitt ist der aktuelle Prüfstand; die folgenden Berichte sind
 historische Abnahmen früherer Architekturen.
 
@@ -16,7 +16,8 @@ kontextgebunden deterministisch, Identitäten bleiben neu.
 Entfernt wurden Prozesssupervisor, getrennte Prewarm-Rolle, globale Worker-Lease,
 Startup-Markt-Rebuild, paralleler Legacy-Batch und globale Katalogversorgung.
 `SqliteMarketTemplateStore` besitzt gemeinsame Vorlagen;
-`SqliteMarketStockStore` besitzt persönliche Bindung/Verwendung/Checkpoints.
+`SqlitePlayerMarketStockStore` besitzt persönliche
+Bindung/Verwendung/Checkpoints.
 `DispatchEligibilityService` kapselt die Dispatch-Freigabe als späteren
 Mitarbeiter-Seam. Domain und Services importieren weiterhin kein SQL/HTTP;
 Views führen keine Requests aus.
@@ -28,17 +29,21 @@ fehlendes `vehicle_id` mit 422 ab. Das Verantwortungsreview trennt außerdem in
 `StockPublicationService` autoritativen Read, Projektion, Readiness-Snapshot,
 Publikationsplan und gefencten Commit. Die Helper halten nur lokale
 Zwischenwerte ihrer bestehenden Klasse und eröffnen weder neue Daten- noch
-Providerpfade.
+Providerpfade. `MarketComponents` ist nur noch die explizite Composition-Grenze;
+`PlayerMarketPreparation` besitzt den spielergebundenen Vorbereitungszustand.
+Der Scheduler wählt ausschließlich fällige `partial`-Jobs. Ein neues Fahrzeug
+wird in begrenzten Einzelrunden bis zu drei sichtbaren und zehn gespeicherten
+Angeboten je Distanzband versorgt; ein `ready`-Job wird nicht erneut ausgewählt.
 
 Der abschließende Lauf von `.venv/Scripts/python.exe -X utf8
 scripts/quality.py` ist mit Exitcode 0 bestanden: **585 Python-Tests**,
-**100,00 % app-Statement-Coverage** (6.669 von 6.669 Statements),
-**117 Frontend-Verhaltenstests** sowie Ruff, Formatierung, mypy, Pyright,
+**100,00 % app-Statement-Coverage** (6.605 von 6.605 Statements),
+**118 Frontend-Verhaltenstests** sowie Ruff, Formatierung, mypy, Pyright,
 ESLint, Stylelint, Prettier, checkJs, Produktionsbuild und compileall. Die
-Python-Suite benötigte 11 Minuten 30 Sekunden. Architektur- und
+Python-Suite benötigte 20 Minuten 35 Sekunden. Architektur- und
 Funktionsmanifestprüfungen sind Teil dieses Laufs.
 
-`npm run test:e2e`: **33 bestanden** in 7,7 Minuten. Die Suite lief gegen
+`npm run test:e2e`: **33 bestanden** in 7,6 Minuten. Die Suite lief gegen
 einen isolierten lokalen Einprozess-Server mit lokaler Datenbank und lokalem
 Routing-Fixture. Marktaufbau, sichtbare Einzelpublikation, Refresh,
 Fahrzeugfilter, Desktop/Mobil, Offline-Ankunft und Kartenregressionen sind
@@ -50,19 +55,21 @@ behaupten. Absichtlich abgebrochene Browserrequests können unter Windows den
 bekannten `WinError 10054` im Socket-Cleanup protokollieren; die zugehörigen
 Fehlerpfade bestehen.
 
-Der manuelle Start `python main.py` wurde mit einer isolierten lokalen
-SQLite-Datei geprüft. Startup und Lifespan waren erfolgreich,
-`/api/v1/system/health` antwortete mit HTTP 200, und der Server fuhr nach
-Ctrl+C vollständig herunter. Der Browser-Plugin war nicht verfügbar; deshalb
-wurde die vorhandene lokale Playwright-Konfiguration verwendet.
+Der manuelle Start `python main.py` wurde mit einer neuen temporären lokalen
+SQLite-Datei und lokalen, unerreichbaren Dummy-Provider-URLs geprüft. Startup
+und Lifespan waren erfolgreich, `/api/v1/system/health` antwortete mit HTTP 200,
+und der Application-Shutdown wurde nach Ctrl+C vollständig abgeschlossen. Die
+vollständige Browserabnahme verwendete die vorhandene lokale
+Playwright-Konfiguration.
 
 Beim Browserlauf wurde eine echte Benachrichtigungsrace sichtbar: Ein
 Thread-weckender Callback konnte vor dem äußeren Datenbank-Commit laufen und
 den noch unsichtbaren Job verpassen. Nach-Commit-Callbacks gehören nun der
 lokalen Unit-of-Work-Grenze; Rollbacks verwerfen sie, und der Worker weckt den
-fremden Eventloop threadsicher. Die vorhandenen `ResourceWarning`-Hinweise
-entstehen vor allem in absichtlich beschädigten Katalog-/SQLite-Testfällen und
-bleiben als Testhygiene sichtbar; kein Test oder Gate wurde dafür ausgenommen.
+fremden Eventloop threadsicher. Die 59 vorhandenen Warnungen stammen
+überwiegend aus absichtlich beschädigten Katalog-/SQLite-Testfällen; hinzu
+kommt die bekannte Starlette/httpx-Deprecation. Sie bleiben als Testhygiene
+sichtbar, und kein Test oder Gate wurde dafür ausgenommen.
 
 ---
 

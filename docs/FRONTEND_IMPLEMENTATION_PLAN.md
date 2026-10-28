@@ -74,7 +74,7 @@ F04 soweit die erste responsive Navigation betroffen ist.
 ## 2. Verwaltungsansichten und gemeinsame Komponenten
 
 **Grundlage:** `frontend/views/fleet.js`, `shop.js`, `contracts.js`,
-`transports.js`, `company.js`, `ranking.js`; `frontend/ui/data-table.js`,
+`transports.js`, `company-dashboard.js`, `ranking.js`; `frontend/ui/data-table.js`,
 `components.js`, `vehicle-image.js`; `frontend/panels.js` und
 `frontend/controllers/panel-controller.js`.
 
@@ -94,7 +94,8 @@ kanonische Assetbestand bleibt Grundlage des visuellen Reviews.
 
 ## 3. Kontextgebundene Fahrzeug-Informationsbubble
 
-**Grundlage:** `frontend/map/world-map.js` und seine Auswahlereignisse;
+**Grundlage:** `frontend/map/world-map.js` und seine typisierten
+`object-selected`-Ereignisse; `frontend/controllers/map-selection-controller.js`,
 `frontend/map/selection.js`, Navigation, Zustands- und Action-Controller.
 Eine eigene zustandsbehaftete UI-Komponente für die Bubble ist **vorgeschlagen**,
 noch nicht als bestehendes Modul zu verstehen.

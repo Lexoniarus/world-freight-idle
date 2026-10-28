@@ -20,7 +20,7 @@ bleiben eindeutig. Gleichwertige Kandidaten bevorzugen Vielfalt bei Relation,
 Frachtart und Ziel. GET und periodische Browserreads füllen den Pool nicht auf.
 
 `SqliteMarketTemplateStore` besitzt ausschließlich gemeinsame Vorlagen;
-`SqliteMarketStockStore` besitzt persönliche Bindungen, Verbrauch, Cursor und
+`SqlitePlayerMarketStockStore` besitzt persönliche Bindungen, Verbrauch, Cursor und
 Checkpoints. Der Lifespan-Worker wird durch dauerhafte Bedarfswrites geweckt.
 Die nachfolgende Erstentscheidung bleibt historisch lesbar; Aussagen zu allen
 Katalogmodellen, 60 Minuten, globaler Lease und 24-Stunden-Erfolgsablauf sind
@@ -53,22 +53,26 @@ Zehn ist eine Untergrenze, keine globale Begrenzung oder Löschregel.
 | Baustein | Aufgabe |
 | --- | --- |
 | `StockPolicy`, `PreparedTemplate`, `MarketDemand`, `MarketArrival` | Typisierte Regeln, Bestand und Planungskontexte ohne SQL/HTTP |
-| `MarketDemandResolver` | Idle-Standorte und gespeicherte Ziele ab 60 Minuten vor Ankunft; keine Auszahlung/Fahrzeugbewegung |
+| `MarketDemandResolver` | Idle-Standorte und gespeicherte Ziele unmittelbar ab Dispatch; keine Auszahlung/Fahrzeugbewegung |
 | `StockPlanningService` | Defizite, Prioritäten und stabile Rotation; keine Seiteneffekte |
 | `MarketTemplateService` | Wiederverwendung und Materialisierung passender unveränderlicher Angebote |
 | `MarketSelectionService` | Stabile Dreier-Projektion bereits vorbereiteter Angebote ohne Providerarbeit |
+| `PlayerMarketPreparation` | Spielerbedarf, Offer-Routenbindungen und begrenzte Routenprüfung über injizierte Ports |
 | `StockPreparationBatch` | Eine Verbindung pro Spielerrunde, Wiederaufnahme und Orchestrierung |
 | `StockPublicationService` | Lesesnapshot, Revisionsvergleich und atomare Veröffentlichung |
-| `SqliteMarketStockStore` | SQL für globale Vorlagen, persönliche Zuordnung/Verwendung, kompakte Ankünfte und Checkpoints |
+| `SqliteMarketTemplateStore` | SQL ausschließlich für spielerübergreifend wiederverwendbare Vorlagen |
+| `SqlitePlayerMarketStockStore` | SQL für persönliche Zuordnung/Verwendung, kompakte Ankünfte, Cursor und Checkpoints |
 | `MarketStockUpgradeRepository` | Ausschließlich explizite Offline-Übernahme nach 1.2.0 |
 
-Der bestehende Worker besitzt Scheduling, Trace und globale Lease. Die
+Der bestehende Lifespan-Worker besitzt Scheduling und Trace; Paar- und
+Anker-Leases schützen ausschließlich konkrete Providerarbeit. Die
 Zusammensetzung erfolgt in `app/bootstrap.py`. Die Produktions-Runtime baut
 keine Kandidaten und ruft keine Routingprovider auf. Der Marktcontroller fragt
 die serverseitige Fahrzeugauswahl ab; Views besitzen keine eigenen Requests.
 
-Reihenfolge: fehlende sichtbare Angebote wartender Fahrzeuge, Grundversorgung
-angekündigter Ankünfte, Reserve für aktuelle Bedarfe, übrige Modelle. Gleichrangige
+Reihenfolge: fehlende sichtbare Angebote idle Fahrzeuge, sichtbare Angebote
+angekündigter Ankünfte, danach deren Reserven. Andere Katalogmodelle ohne
+konkretes eigenes Fahrzeug werden nicht vorbereitet. Gleichrangige
 Kontexte rotieren über persistierte Schlüssel; teilweise geprüfte Relationen
 bleiben nachvollziehbar. Andere fällige Spieler erhalten nach einer Verbindung
 wieder Gelegenheit. Deterministische Fehler und Providerbackoff blockieren
@@ -82,8 +86,9 @@ Vorlagen, Verbrauch, Weltkatalog und verwendete Routingnachweise erneut geprüft
 Veraltete Arbeit wird verworfen. Einmalige Verwendung ist zusätzlich durch
 einen eindeutigen `(user_id, template_id)`-Schlüssel abgesichert.
 
-Straßennachweise bleiben zeitlich begrenzt: 24 Stunden bei Erfolg, eine Stunde
-bei endgültigem Fehler, 60 Sekunden bei Providerstörung. Ungültige Nachweise
+Erfolgreiche Straßennachweise bleiben für denselben Fingerprint dauerhaft
+verwendbar. Endgültige Fehler werden nach einer Stunde, Providerstörungen nach
+60 Sekunden erneut prüfbar. Ungültige Nachweise
 verbergen Angebote bis zur erneuten Prüfung, ohne ihre Konditionen zu löschen.
 Katalogseitig unbrauchbare Angebote/Vorlagen zählen nicht zur Versorgung.
 Die bestehende bidirektionale Prüfung (fünf Kandidaten, 1 km, zehn Meter,

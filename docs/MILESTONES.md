@@ -237,7 +237,7 @@ ein Offer darf mehrere Fahrzeuge versorgen.
 ## Truck Routing Anchors – 26.09.2026
 
 Scope: globale, spielerunabhängige Truck-Routing-Anker zwischen immutable
-WorldCatalogue und Valhalla-Routing. MarketGenerator, Economy v2, Tonnage,
+WorldCatalogue und Valhalla-Routing. Marktkomponenten, Economy v2, Tonnage,
 Firmenfarben, Fahrzeugassets, Gruppierung und Kartenmarker bleiben unverändert.
 
 Abnahme: `python scripts/quality.py`, `npm run test:e2e` und
