@@ -3,6 +3,30 @@
 Stand: 25.09.2026. Die Anwendung besitzt genau eine relationale Laufzeit.
 UI First, native ES-Module, FastAPI und `python main.py` bleiben Grundlage.
 
+## Geplanter Frontend-Ausbau vom 28.10.2026
+
+[Gesamtkonzept](FRONTEND_CONCEPT.md) und
+[Umsetzungsplan](FRONTEND_IMPLEMENTATION_PLAN.md) ergänzen die folgende
+Ist-Architektur um ein noch nicht implementiertes Zielbild:
+
+- Shell, Design-Tokens, HUD und gemeinsame UI-Komponenten tragen die
+  Gestaltungsänderung. Vorhandene Zustands- und API-Verantwortung bleibt erhalten.
+- Die geplante Fahrzeugbubble erhält eine eigene UI-Verantwortung für
+  Darstellung und Lebenszyklus. Der Kartenrenderer liefert Verankerung und
+  Auswahl; fachliche Freigaben bleiben bei ihren bestehenden Verantwortlichen.
+- Vektordaten und Gelände/Heightmap werden über die Karten-/Providergrenze
+  eingebunden. Gebäude-, Material- und Fahrzeugrenderer verwenden dieselbe
+  Höhenbasis und verändern weder die Routengeometrie noch die Simulation.
+- Asset-Zuordnung, Farbmasken, Animation, Trefferflächen und Gruppierung
+  bleiben explizite Integrationsgrenzen der räumlichen Fahrzeugdarstellung.
+- Eigene Firma, Depot und Mitarbeiter werden als fachliche Erweiterungen
+  umgesetzt, bevor die Oberfläche entsprechende wirksame Aktionen anbietet.
+
+Die getrennten Vorschauen sind keine zusätzliche produktive Laufzeit. Neue
+Rendererabhängigkeiten, Quellen und vorgeschlagene Komponenten sind vor ihrem
+jeweiligen Schnitt im Architekturreview zu entscheiden. Diese Dokumentation
+ändert keinen Frontend- oder Backendcode und meldet keinen neuen Abnahmestand.
+
 ## Schichten und Zuständigkeiten
 
 - `app/domain`: Entities, unveränderliche Werte, historische Snapshots und

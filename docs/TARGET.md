@@ -1,5 +1,29 @@
 # Ziel- und Abnahmedokumentation
 
+## Geplante Abnahme der neuen Frontend-Zielrichtung
+
+Stand: 28.10.2026. Grundlage sind [Gesamtkonzept](FRONTEND_CONCEPT.md) und
+[Umsetzungsplan](FRONTEND_IMPLEMENTATION_PLAN.md). Die folgenden Punkte sind
+neue, noch offene Ziele; sie ersetzen keine bisherigen Funktionsnachweise.
+
+- [ ] Bestätigte Grafikrichtung, Firmenidentität und kompakter HUD im echten
+      Frontend mit vorhandenen Daten, Navigation und Fehlerzuständen.
+- [ ] Einheitliche Verwaltungsansichten mit kompakten vergleichbaren Listen,
+      Details und direkter Rückkehr zur erhaltenen Kartenansicht.
+- [ ] Am Lkw verankerte Informationsbubble mit korrekten Zustandsaktionen;
+      Mitarbeiterdaten erst nach Einführung des entsprechenden Fachmodells.
+- [ ] Reale Vektorgeometrien, Gelände aus Höhendaten/Heightmap und gemeinsame
+      Höhenbasis für Gebäude, Straßen, Fahrzeuge und Informationsdarstellung.
+- [ ] Abgenommene Materialvarianten und Zoomübergänge bei dokumentierter
+      Datengrundlage, Nutzung und Attribution ohne doppelte Gebäudeoberflächen.
+- [ ] Ein räumliches Fahrzeugmodell mit passenden Ansichten, Farbe,
+      Bewegung, Auswahl, Gruppierung und geprüfter Laufzeit.
+- [ ] Firmen-/Depot-/Personalansichten erst mit echten fachlichen Zuständen
+      und separat abgenommenen Regeln; keine Vorschauwerte im Produkt.
+
+Offene Fragen F01–F11 stehen in den jeweiligen Konzeptabschnitten. Die
+Dokumentation selbst ist kein Nachweis für einen dieser Implementierungspunkte.
+
 ## M1-Teilumfang – Mehrspielergrundlage
 
 Maßgeblich ist `GOAL.md`, Abschnitt 35. Der Gesamt-MVP ist noch offen:

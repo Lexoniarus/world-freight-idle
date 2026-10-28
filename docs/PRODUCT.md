@@ -7,6 +7,21 @@ Ansichten innerhalb derselben Kartenanwendung. Aufträge, Shop, Flotte,
 Tracking und Rangliste nutzen das vorhandene Backend. Satellitenbilder,
 eigene Depots und Spielerunternehmen folgen nach der Frontend-Abnahme.
 
+## Bestätigtes Frontend-Zielbild vom 28.10.2026
+
+Das [Gesamtkonzept aus dem Interview](FRONTEND_CONCEPT.md) beschreibt den
+Aufstieg vom Einzel-Lkw-Unternehmer zum Transportmogul mit Karte als
+Hauptoberfläche, eigener Firmen-CI und polierter Retro-Comicgestaltung.
+Firma, mitwachsende Zentrale, Mitarbeiter mit festen Porträts und Entwicklung,
+Verwaltung sowie reale Geografie mit Heightmap gehören zum Zielbild.
+
+Der [Umsetzungsplan](FRONTEND_IMPLEMENTATION_PLAN.md) beginnt am vorhandenen
+Spielrahmen und verwendet echte Spielzustände. Eigenständige Firma, Depots
+und Personal bleiben fachliche Ausbauschritte. Diese Dokumentation erklärt
+weder ihre Implementierung noch eine Erweiterung oder Erfüllung der M1-Abnahme.
+Noch zu entscheidende Produkt- und Gestaltungsfragen stehen bei den jeweiligen
+Themen im Gesamtkonzept.
+
 ## Produktidee
 
 World Freight Idle ist ein browserbasiertes Echtzeit-Idle-Transportspiel auf realer Geografie. Der Spieler schaut wenige Male am Tag hinein, nimmt Frachtaufträge an, weist Fahrzeuge zu und verfolgt Fahrzeuge live auf einer Weltkarte. Die Zeit läuft in realer Zeit weiter, auch wenn der Browser geschlossen ist.

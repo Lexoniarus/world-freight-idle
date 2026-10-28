@@ -1,8 +1,25 @@
 # Frontend v2 – Map-First-Logistik-Tycoon
 
-Stand: 25.09.2026. Dieser implementierte Stand hat Vorrang vor der unten
-archivierten langfristigen Designvision. Keine neuen Depots, Satelliten,
-Fahrzeugmodelle, Assets oder Spielregeln gehören zu diesem Ausbau.
+## Bestätigte Zielrichtung vom 28.10.2026
+
+Das [Frontend-Gesamtkonzept](FRONTEND_CONCEPT.md) hält das Designinterview
+einschließlich getroffener Entscheidungen und offener Fragen fest. Es ist
+der Gestaltungsmaßstab für den nächsten Ausbau des gesamten Frontends.
+Der [schrittweise Umsetzungsplan](FRONTEND_IMPLEMENTATION_PLAN.md) ordnet
+Spielrahmen, Verwaltung, Lkw-Bubble, Kartenfundament mit Heightmap,
+räumliche Fahrzeuge sowie Firma/Personal den vorhandenen Modulen zu.
+
+Diese Zielrichtung ist noch nicht implementiert. Die folgenden Abschnitte
+beschreiben den bisherigen Frontend-v2-Stand; Graphit-/Marinegestaltung und
+Panelmaße sind keine erneute Festlegung gegen das neue Zielbild. Die unten
+archivierte ältere Designvision bleibt historisch. Funktionale Datenregeln
+und Abnahmestände gelten bis zu einem ausdrücklich umgesetzten Schnitt weiter.
+
+## Bisheriger Implementierungsstand
+
+Stand der folgenden Frontend-v2-Beschreibung: 25.09.2026. Neue Depots,
+Satelliten, Fahrzeugmodelle, Assets oder Spielregeln waren nicht Teil dieses
+damaligen Ausbaus. Die neue Dokumentation startet noch keinen weiteren Ausbau.
 
 > Map first, management second. Die reale Welt bleibt das zentrale Spielbrett.
 

@@ -3,6 +3,26 @@
 Nummerierung und Zielumfang folgen GOAL.md, Abschnitt 37.
 Einzelne vorgezogene Funktionen bedeuten nicht, dass ein Meilenstein fertig ist.
 
+## Geplanter Frontend-Ausbau nach dem Designinterview
+
+Stand: 28.10.2026. [Gesamtkonzept](FRONTEND_CONCEPT.md) und
+[Umsetzungsplan](FRONTEND_IMPLEMENTATION_PLAN.md) sind auf
+`refactor/local-market-pool` als Teil des Refactor-Plans dokumentiert.
+Die geplante Reihenfolge lautet:
+
+1. Echter Spielrahmen, Designsystem und HUD mit vorhandenem Spielzustand.
+2. Bestehende Verwaltungsansichten und gemeinsame Komponenten.
+3. Kontextgebundene Lkw-Informationsbubble.
+4. Kartenfundament: Vektoren, 3D-Gebäude, Gelände/Heightmap, danach Materialien.
+5. Räumliche Fahrzeuge: zuerst ein Modell, danach kontrollierter Ausbau.
+6. Eigene Firma, mitwachsende Zentrale, Depots und Mitarbeiter als Spielfunktionen.
+
+Diese sechs Schritte sind geplant, nicht umgesetzt oder abgenommen. Die
+Fragen F01–F11 sind vor dem jeweils betroffenen Schnitt zu entscheiden.
+Insbesondere bleibt die Zuordnung des frühen Mitarbeiterübergangs zu MVP
+oder Folgemeilensteinen offen. Die nachstehenden M0–M8-Abnahmestände werden
+durch das Interview und die getrennten Vorschauen nicht verändert.
+
 ## M0 – Foundation
 
 Vorhanden: Modulstruktur, OOP, PEP 8/Ruff, Tests, Function-Test-Manifest,
