@@ -18,6 +18,7 @@ from app.services.market_templates import MarketTemplateService
 from app.services.stock_planning import StockPlanningService
 from app.services.stock_preparation import StockPreparationBatch
 from app.services.stock_publication import StockPublicationService
+from app.services.stock_snapshot import StockSnapshotReader
 from tests.test_market import city_market as city_market
 from tests.test_vehicle_market import vehicle_game as vehicle_game
 
@@ -33,15 +34,21 @@ def stock_game(vehicle_game, database):
         preparation.policy
     )
     preparation.request()
+    demand = MarketDemandResolver(game.market.candidates)
     publication = StockPublicationService(
         game.unit_of_work,
         game.market,
         preparation,
-        MarketDemandResolver(game.market.candidates),
         lambda: True,
     )
     batch = StockPreparationBatch(
         publication,
+        StockSnapshotReader(
+            game.unit_of_work,
+            game.market,
+            preparation,
+            demand,
+        ),
         StockPlanningService(preparation.policy),
         MarketTemplateService(
             game.market.factory, preparation.policy, preparation.clock
@@ -140,8 +147,12 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
     other.request()
     assert other.stock is not None
     second = StockPreparationBatch(
-        StockPublicationService(
-            unit, game.market, other, batch.publication.demand, lambda: True
+        StockPublicationService(unit, game.market, other, lambda: True),
+        StockSnapshotReader(
+            unit,
+            game.market,
+            other,
+            batch.snapshots.demand,
         ),
         batch.planning,
         batch.templates,
@@ -187,7 +198,7 @@ async def test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance
     stock_game,
 ):
     game, prep, batch = stock_game
-    snapshot = batch.publication.read()
+    snapshot = batch.snapshots.read()
     batch.publication.guard = lambda: False
     assert (await batch.process()).status == "partial"
     assert game.state_repository.list_offers() == ()
@@ -210,18 +221,18 @@ async def test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance
 def test_stock_publication_read_phases_preserve_one_snapshot(stock_game):
     """Keep authoritative reads, demand and readiness in explicit phases."""
     _, prep, batch = stock_game
-    publication = batch.publication
+    reader = batch.snapshots
     now = prep.clock()
-    inputs = publication._read_inputs()
-    projection = publication._resolve_demand(inputs, now)
+    inputs = reader.read_inputs()
+    projection = reader.resolve_demand(inputs, now)
     assert prep.stock is not None
     templates = prep.templates.scoped_templates(projection.template_scopes)
-    candidates = publication.market.candidates.build(
+    candidates = reader.market.candidates.build(
         projection.cities,
         tuple(demand.vehicle for demand in projection.demands),
     )
-    ready, evidence = publication._read_readiness(candidates)
-    snapshot = publication._assemble_snapshot(
+    ready, evidence = reader.read_readiness(candidates)
+    snapshot = reader.assemble(
         inputs,
         projection,
         candidates,
@@ -244,7 +255,7 @@ def test_structural_candidates_are_reused_until_fleet_context_changes(
     """Reuse expensive trade projections without freezing changed demand."""
     game, _, batch = stock_game
     candidates = game.market.candidates
-    snapshot = batch.publication.read()
+    snapshot = batch.snapshots.read()
     cities = tuple(sorted({d.vehicle.city_uid for d in snapshot.demands}))
     fleet = tuple(d.vehicle for d in snapshot.demands)
     first = candidates.build(cities, fleet)
@@ -258,7 +269,7 @@ def test_stock_publication_plan_contains_coverage_and_routes(stock_game):
     """Calculate coverage and route bindings before the writer opens."""
     _, _, batch = stock_game
     publication = batch.publication
-    snapshot = publication.read()
+    snapshot = batch.snapshots.read()
     plan = publication._build_publication_plan(snapshot, ())
     assert plan.offers == snapshot.offers
     assert len(plan.coverage) == len(
@@ -273,7 +284,7 @@ def test_stock_publication_commit_is_fenced_and_atomic(stock_game):
     """Reject stale plans and commit unchanged plans as one unit."""
     _, _, batch = stock_game
     publication = batch.publication
-    snapshot = publication.read()
+    snapshot = batch.snapshots.read()
     plan = publication._build_publication_plan(snapshot, ())
     original_guard = publication.guard
     publication.guard = lambda: False
@@ -292,7 +303,7 @@ def test_stock_policy_selection_and_corrupt_storage_are_rejected(
     for invalid in (True, 3.5, float("inf")):
         with pytest.raises(ValueError):
             replace(StockPolicy(), reserve_per_band=invalid)
-    snapshot = batch.publication.read()
+    snapshot = batch.snapshots.read()
     offer = ContractOffer.from_snapshot(
         game.market.factory.build(snapshot.candidates[0], 1)
     )
@@ -362,7 +373,7 @@ def test_stock_policy_selection_and_corrupt_storage_are_rejected(
 def test_complete_stock_target_does_not_materialize_another_offer(stock_game):
     """Keep a satisfied band from creating redundant templates."""
     _, _, batch = stock_game
-    snapshot = batch.publication.read()
+    snapshot = batch.snapshots.read()
     target = batch.planning.targets(
         snapshot.demands,
         snapshot.candidates,
@@ -387,7 +398,7 @@ def test_complete_stock_target_does_not_materialize_another_offer(stock_game):
 async def test_refill_rechecks_target_after_preparing_a_route(stock_game):
     """Fence publication when another writer satisfies the selected band."""
     _, _, batch = stock_game
-    snapshot = batch.publication.read()
+    snapshot = batch.snapshots.read()
     targets = batch.planning.targets(
         snapshot.demands,
         snapshot.candidates,
@@ -406,7 +417,7 @@ def test_deterministic_market_random_is_stable_and_rejects_bad_choices(
 ):
     """Keep market terms reproducible without reusing offer identities."""
     game, _, batch = stock_game
-    candidate = batch.publication.read().candidates[0]
+    candidate = batch.snapshots.read().candidates[0]
     first = game.market.factory.build(candidate, 10, "stable-context")
     second = game.market.factory.build(candidate, 10, "stable-context")
     assert first.id != second.id
@@ -433,7 +444,7 @@ def test_contract_factory_draw_is_context_stable_with_fresh_identity(
 ):
     """Keep vehicle and load draws stable while identities remain unique."""
     game, _, batch = stock_game
-    candidate = batch.publication.read().candidates[0]
+    candidate = batch.snapshots.read().candidates[0]
     factory = game.market.factory
     first = factory._draw_offer(candidate, "stable-draw")
     second = factory._draw_offer(
@@ -448,7 +459,7 @@ def test_contract_factory_draw_is_context_stable_with_fresh_identity(
 def test_contract_factory_derives_terms_from_selected_vehicle(stock_game):
     """Bind quantity and economics to the selected vehicle facts."""
     game, _, batch = stock_game
-    candidate = batch.publication.read().candidates[0]
+    candidate = batch.snapshots.read().candidates[0]
     draw = game.market.factory._draw_offer(candidate, "stable-terms")
     terms = game.market.factory._derive_terms(candidate, draw)
     assert 0 < terms.tons <= draw.vehicle.capacity_tons
@@ -464,7 +475,7 @@ def test_contract_factory_derives_terms_from_selected_vehicle(stock_game):
 def test_contract_factory_snapshots_catalogue_evidence(stock_game):
     """Persist the chosen identity, terms and source evidence together."""
     game, _, batch = stock_game
-    candidate = batch.publication.read().candidates[0]
+    candidate = batch.snapshots.read().candidates[0]
     factory = game.market.factory
     draw = factory._draw_offer(candidate, "stable-snapshot")
     terms = factory._derive_terms(candidate, draw)
@@ -507,7 +518,7 @@ async def test_destination_stock_starts_at_dispatch_without_early_settlement(
     clock = [trip.departed_at + 1]
     game.now = prep.clock = lambda: clock[0]
     batch.templates.clock = prep.clock
-    snapshot = batch.publication.read()
+    snapshot = batch.snapshots.read()
     arriving = next(d for d in snapshot.demands if d.transport_id)
     assert arriving.transport_id == trip.id
     assert arriving.vehicle.facility_uid == trip.destination.facility_uid
@@ -571,7 +582,7 @@ def test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work(
     from app.services.vehicle_coverage import trade_key
 
     game, prep, batch = stock_game
-    snapshot = batch.publication.read()
+    snapshot = batch.snapshots.read()
     candidate = snapshot.candidates[0]
     demand = snapshot.demands[0]
     supplied = StockTarget(demand, "short", 1, 0, (candidate,), 7)
@@ -599,7 +610,7 @@ async def test_failed_approaches_and_changed_publication_do_not_create_ready_off
     from app.domain.market_preparation import required_relations
 
     game, prep, batch = stock_game
-    snapshot = batch.publication.read()
+    snapshot = batch.snapshots.read()
     error = RoutingError("no way")
     error.category = "no_path"
     with patch.object(
@@ -635,7 +646,7 @@ async def test_arrival_projection_rejects_inconsistent_locations_and_idle_vehicl
     vehicle = game.get_vehicle("truck")
     vehicle.arrive(trip.destination)
     with pytest.raises(ValueError, match="enroute"):
-        batch.publication.demand.resolve((vehicle,), arrivals, now)
+        batch.snapshots.demand.resolve((vehicle,), arrivals, now)
     with database.connect() as db:
         db.execute("UPDATE transports SET destination_facility_uid='wrong'")
     with pytest.raises(PersistenceError, match="Ankunft"):
@@ -689,7 +700,7 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
         len([t for t in templates if t.template_id not in prep.stock.used()])
         >= 30
     )
-    snapshot = batch.publication.read()
+    snapshot = batch.snapshots.read()
     original_ready = prep.readiness.ready
     reads = 0
 
@@ -736,7 +747,7 @@ def test_demand_models_and_owned_capacity_remain_separate(stock_game):
         replace(model, id="train", mode="rail"),
     )
     with patch.object(catalogue, "list_models", return_value=models):
-        demands = batch.publication.demand.resolve((vehicle,), (), 1)
+        demands = batch.snapshots.demand.resolve((vehicle,), (), 1)
     assert {d.vehicle.model_id for d in demands} == {model.id}
     assert demands[0].vehicle.capacity_tons == vehicle.capacity_tons
 
@@ -749,7 +760,7 @@ async def test_partial_connection_resumes_after_restart_and_never_releases_early
     from app.services.vehicle_coverage import trade_key
 
     game, prep, batch = stock_game
-    snapshot = batch.publication.read()
+    snapshot = batch.snapshots.read()
     target = next(
         t
         for t in batch.planning.targets(
@@ -797,7 +808,7 @@ async def test_catalogue_changes_block_old_supply_without_deleting_terms(
     with patch.object(
         game.market.candidates, "structurally_current", return_value=False
     ):
-        snapshot = batch.publication.read()
+        snapshot = batch.snapshots.read()
         assert not snapshot.usable_offers
         assert not snapshot.usable_templates
         assert snapshot.offers == saved
@@ -821,7 +832,7 @@ async def test_catalogue_changes_block_old_supply_without_deleting_terms(
     )
     with patch.object(catalogue, "list_models", return_value=models):
         assert game.list_contracts() == []
-        snapshot = batch.publication.read()
+        snapshot = batch.snapshots.read()
         assert snapshot.ready and not snapshot.usable_offers
         assert not snapshot.usable_templates
         for _ in range(30):

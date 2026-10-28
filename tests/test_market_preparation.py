@@ -27,6 +27,7 @@ from app.services.routing_readiness import RoutingReadinessService
 from app.services.stock_planning import StockPlanningService
 from app.services.stock_preparation import StockPreparationBatch
 from app.services.stock_publication import StockPublicationService
+from app.services.stock_snapshot import StockSnapshotReader
 from tests.conftest import FakeRouter, FakeRoutingAnchorResolver
 
 T = TypeVar("T")
@@ -49,13 +50,19 @@ def make_stock_batch(game, preparation):
     game.market_lifecycle.selection = MarketSelectionService(
         preparation.policy
     )
+    demand = MarketDemandResolver(game.market.candidates)
     return StockPreparationBatch(
         StockPublicationService(
             game.unit_of_work,
             game.market,
             preparation,
-            MarketDemandResolver(game.market.candidates),
             lambda: True,
+        ),
+        StockSnapshotReader(
+            game.unit_of_work,
+            game.market,
+            preparation,
+            demand,
         ),
         StockPlanningService(preparation.policy),
         MarketTemplateService(

@@ -11,8 +11,8 @@ from app.services.market_templates import MarketTemplateService
 from app.services.stock_planning import StockPlanningService, StockTarget
 from app.services.stock_publication import (
     StockPublicationService,
-    StockSnapshot,
 )
+from app.services.stock_snapshot import StockSnapshot, StockSnapshotReader
 from app.services.vehicle_coverage import trade_key
 
 
@@ -21,6 +21,7 @@ class StockPreparationBatch:
     """Orchestrate selection, one provider relation and fenced publication."""
 
     publication: StockPublicationService
+    snapshots: StockSnapshotReader
     planning: StockPlanningService
     templates: MarketTemplateService
 
@@ -29,7 +30,7 @@ class StockPreparationBatch:
         prep = self.publication.preparation
         stock = prep.stock
         assert stock is not None
-        snapshot = self.publication.read()
+        snapshot = self.snapshots.read()
         pairs = required_relations(snapshot.candidates)
         with prep.readiness.reading(pairs):
             targets = self.planning.targets(

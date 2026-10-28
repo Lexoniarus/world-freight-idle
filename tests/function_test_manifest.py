@@ -934,18 +934,18 @@ FUNCTION_TESTS.update(
         "app.services.stock_preparation.StockPreparationBatch._waiting": "test_stale_evidence_reuses_offers_and_backoff_never_releases_stock",
         "app.services.stock_preparation.StockPreparationBatch.process": "test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance",
         "app.services.stock_publication.StockPublicationService.publish": "test_reserve_replacement_and_publication_failure_keep_atomic_state",
-        "app.services.stock_publication.StockPublicationService.read": "test_catalogue_changes_block_old_supply_without_deleting_terms",
+        "app.services.stock_snapshot.StockSnapshotReader.read": "test_catalogue_changes_block_old_supply_without_deleting_terms",
         "app.services.stock_publication.StockPublicationService.unchanged": "test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance",
-        "app.services.stock_publication.StockPublicationService._read_inputs": (
+        "app.services.stock_snapshot.StockSnapshotReader.read_inputs": (
             "test_stock_publication_read_phases_preserve_one_snapshot"
         ),
-        "app.services.stock_publication.StockPublicationService._resolve_demand": (
+        "app.services.stock_snapshot.StockSnapshotReader.resolve_demand": (
             "test_stock_publication_read_phases_preserve_one_snapshot"
         ),
-        "app.services.stock_publication.StockPublicationService._read_readiness": (
+        "app.services.stock_snapshot.StockSnapshotReader.read_readiness": (
             "test_stock_publication_read_phases_preserve_one_snapshot"
         ),
-        "app.services.stock_publication.StockPublicationService._assemble_snapshot": (
+        "app.services.stock_snapshot.StockSnapshotReader.assemble": (
             "test_stock_publication_read_phases_preserve_one_snapshot"
         ),
         "app.services.stock_publication.StockPublicationService._build_publication_plan": (

@@ -74,6 +74,7 @@ from app.services.runtime_views import RuntimeViewService
 from app.services.stock_planning import StockPlanningService
 from app.services.stock_preparation import StockPreparationBatch
 from app.services.stock_publication import StockPublicationService
+from app.services.stock_snapshot import StockSnapshotReader
 from app.services.vehicle_coverage import VehicleCoverageService
 
 
@@ -400,13 +401,20 @@ def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
         """Compose one player's preparation without changing state."""
         preparation = build_player_market_preparation(runtime, user_id)
         assert preparation is not None
+        unit = SqliteGameUnitOfWork(runtime.database, user_id)
+        demand = MarketDemandResolver(runtime.market.candidates)
         return StockPreparationBatch(
             StockPublicationService(
-                SqliteGameUnitOfWork(runtime.database, user_id),
+                unit,
                 runtime.market,
                 preparation,
-                MarketDemandResolver(runtime.market.candidates),
                 lambda: True,
+            ),
+            StockSnapshotReader(
+                unit,
+                runtime.market,
+                preparation,
+                demand,
             ),
             StockPlanningService(preparation.policy),
             MarketTemplateService(
