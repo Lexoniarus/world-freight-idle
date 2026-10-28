@@ -22,7 +22,7 @@ import { MobileSheet } from "./controllers/mobile-sheet.js";
 import { Notifications } from "./controllers/notifications.js";
 import { RefreshScheduler } from "./controllers/refresh-scheduler.js";
 import { DeferredMap } from "./map/deferred-map.js";
-import { createBasemap } from "./map/provider.js";
+import { createRasterBasemap } from "./map/provider.js";
 import { renderShell } from "./views/shell.js";
 import { html, requiredElement } from "./ui/dom.js";
 
@@ -189,7 +189,7 @@ async function createWorldMap(notify, now, loadAsset, assets) {
     now,
     loadAsset,
     assets,
-    provider: createBasemap(),
+    provider: createRasterBasemap(),
     reducedMotion: () => reducedMotion.matches,
     isHidden: () => document.hidden,
     viewport: () => ({

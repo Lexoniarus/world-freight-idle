@@ -1,5 +1,5 @@
 /** Provider boundary: overlay code never depends on a tile vendor. */
-export class BasemapProvider {
+export class RasterBasemapProvider {
   /** @param {{tiles: string[], attribution: string, minZoom?: number, maxZoom?: number}} options */
   constructor({ tiles, attribution, minZoom = 0, maxZoom = 19 }) {
     this.tiles = tiles;
@@ -30,9 +30,9 @@ export class BasemapProvider {
 }
 
 /** @param {Record<string, string>} [env]
- * @returns {BasemapProvider} */
-export function createBasemap(env = import.meta.env) {
-  return new BasemapProvider({
+ * @returns {RasterBasemapProvider} */
+export function createRasterBasemap(env = import.meta.env) {
+  return new RasterBasemapProvider({
     tiles: [env.VITE_MAP_TILE_URL || "https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
     attribution:
       env.VITE_MAP_ATTRIBUTION ||

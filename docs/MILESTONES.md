@@ -52,7 +52,7 @@ ausgenommen und folgen später als SatelliteTileProvider. Karten-POIs
 sind zunächst Basiskarteninhalt. Spielerunternehmen und eigene Depots brauchen
 weiterhin echte Spielzustände und werden nicht als vorhanden simuliert.
 
-Der aktuelle Hub ist ein öffentlicher Frachtstandort, kein gekauftes Depot.
+Der aktuelle Standort ist ein öffentlicher Frachtstandort, kein gekauftes Depot.
 
 ## M2 – Real Economy Data
 

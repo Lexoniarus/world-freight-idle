@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { prepareRoute, routePosition, nearestLongitude, eligibleVehicles } from "./geometry.js";
 import { GameState, LatestRequest } from "./state.js";
-import { BasemapProvider, createBasemap } from "./map/provider.js";
+import { RasterBasemapProvider, createRasterBasemap } from "./map/provider.js";
 import { renderPanel } from "./panels.js";
 
 test("short antimeridian route and nearest world copy remain continuous", () => {
@@ -104,9 +104,9 @@ test("outdated detail requests abort and cannot publish results", () => {
 });
 
 test("raster providers replace URLs and attribution without changing overlays", () => {
-  const source = createBasemap({}).style().sources.basemap;
+  const source = createRasterBasemap({}).style().sources.basemap;
   assert.equal(source.tiles[0], "https://tile.openstreetmap.org/{z}/{x}/{y}.png");
-  const custom = new BasemapProvider({
+  const custom = new RasterBasemapProvider({
     tiles: ["/local/{z}/{x}/{y}"],
     attribution: "Test",
     maxZoom: 12,

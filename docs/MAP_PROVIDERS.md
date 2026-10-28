@@ -3,7 +3,7 @@
 ## Verbindliche M1-Entscheidung: OSM statt Satelliten
 
 MapLibre GL JS 6.10.0 rendert die interaktive Karte mit horizontalem World
-Wrapping. Der BasemapProvider erzeugt Rasterquellen, Darstellung, Attribution
+Wrapping. Der RasterBasemapProvider erzeugt Rasterquellen, Darstellung, Attribution
 und Zoomgrenzen. Spiellayer haben eigene GeoJSON-Quellen. WorldCatalogue-Koordinaten
 und Valhalla-Truck-Routing bleiben unabhängig von der Hintergrundkarte.
 

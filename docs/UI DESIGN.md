@@ -146,7 +146,7 @@ UTC, nicht der Zeitpunkt des späteren Logins. Details: [API](API.md),
 > M1 nutzt MapLibre GL JS mit OSM-Standardkarte: reale Straßen, Orte,
 > Gebäude und POIs, freies Pan/Zoom und horizontales World Wrapping.
 > Die unten beschriebene Satellitenvision ist ein späterer Ausbau und
-> keine M1-Voraussetzung. Ein BasemapProvider trennt Renderer und Quelle;
+> keine M1-Voraussetzung. Ein RasterBasemapProvider trennt Renderer und Quelle;
 > später kann ein SatelliteTileProvider ergänzt werden.
 > Implementiert: dunkelblauer/goldgelber Tycoon-HUD, lokale Barlow-/Inter-
 > Schriften, Kontextpanels, mobile Sheets, eigene Routen-/Fahrzeug-/

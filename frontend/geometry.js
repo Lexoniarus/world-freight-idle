@@ -103,7 +103,7 @@ export function eligibleVehicles(vehicles, contract) {
 }
 
 /** Match a stable facility UID or an explicitly retained old URL alias.
- * @param {import('./types.js').Hub} facility
+ * @param {import('./types.js').FacilityLocation} facility
  * @param {string | null} identifier
  * @returns {boolean} */
 export function matchesFacility(facility, identifier) {

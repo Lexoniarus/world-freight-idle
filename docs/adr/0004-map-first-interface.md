@@ -7,7 +7,7 @@ Satelliten-Pflicht für M1. Gesamt-M1 inklusive Unternehmen/Depots bleibt offen.
 
 Zuerst die Oberfläche auf dem bestehenden Backend fertigstellen.
 MapLibre GL JS rendert die OSM-Standardkarte. Satellitenbilder folgen später.
-Ein BasemapProvider kapselt Style, Tiles, Attribution und Zoomgrenzen.
+Ein RasterBasemapProvider kapselt Style, Tiles, Attribution und Zoomgrenzen.
 Ein zukünftiger SatelliteTileProvider erfüllt dieselbe Schnittstelle.
 
 Native ES-Module und Vite bündeln Worker, Bibliotheken und Schriften lokal.
