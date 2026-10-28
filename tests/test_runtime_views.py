@@ -11,9 +11,15 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.api.v1.dependencies import get_current_user, get_vehicle_catalogue
-from app.api.v1.runtime import parse_route_reference, route_reference
+from app.api.v1.runtime import (
+    parse_route_reference,
+    project_runtime,
+    route_reference,
+)
 from app.bootstrap import build_runtime_reader, build_runtime_view
+from app.domain.energy import EnergyProfile
 from app.domain.errors import PersistenceError
+from app.domain.journeys import plan_journey
 from app.domain.routes import DispatchRoutePlan
 from app.main import create_app
 from app.repositories.runtime_views import (
@@ -53,6 +59,27 @@ def test_runtime_reads_exclude_geometry_and_keep_private_energy(
     ):
         view = service.read()
         public = reader.traffic(active_trip.departed_at)
+    transport = view.state.transports[0]
+    journey = plan_journey(
+        transport.distance_km,
+        transport.routing_duration_seconds,
+        80,
+        EnergyProfile("diesel", "l", 100, 20, 10, 0.1),
+        100,
+        1,
+    )
+    metered = replace(
+        transport,
+        journey=journey,
+        arrives_at=transport.departed_at + journey.duration_seconds,
+    )
+    metered_view = replace(
+        view,
+        state=replace(view.state, transports=(metered,)),
+        server_time=transport.departed_at + 1,
+    )
+    projected = project_runtime(metered_view, "test-owner", runtime.catalogue)
+    assert projected["vehicles"][0]["energy_level"] < 100
     assert view.state.transports[0].id == active_trip.id
     assert public[0].coordinates == ()
     assert public[0].distance_km == active_trip.route.distance_km

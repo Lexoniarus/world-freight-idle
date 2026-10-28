@@ -154,6 +154,7 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
         for _ in range(15):
             if (await second.process()).status == "ready":
                 break
+    assert other.templates is not None
     assert other.templates.templates((templates[0].city_uid,)) == templates
     common = next(
         iter(prep.stock.bindings().keys() & other.stock.bindings().keys())

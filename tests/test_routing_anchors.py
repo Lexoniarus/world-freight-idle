@@ -26,6 +26,18 @@ class MemoryAnchorStore:
     ) -> RoutingAnchor | None:
         return self.items.get((facility_uid, routing_profile))
 
+    def get_many(
+        self,
+        facility_uids: tuple[str, ...],
+        routing_profile: str,
+    ) -> dict[str, RoutingAnchor]:
+        return {
+            facility_uid: anchor
+            for facility_uid in facility_uids
+            if (anchor := self.items.get((facility_uid, routing_profile)))
+            is not None
+        }
+
     def put(self, anchor: RoutingAnchor) -> None:
         self.items[(anchor.facility_uid, anchor.routing_profile)] = anchor
 

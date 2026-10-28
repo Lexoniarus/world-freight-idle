@@ -270,6 +270,7 @@ def test_materialization_snapshots_profile_terms_and_validates_context(
     )
     for offer in offers:
         context = offer.market_context
+        assert context is not None
         assert offer.expires_at is None
         assert offer.payload_band == ""
         assert offer.rate_eur_per_km_ton == pytest.approx(0.18 * 1.4)
@@ -281,6 +282,8 @@ def test_materialization_snapshots_profile_terms_and_validates_context(
         )
         assert context.generated_capacity_tons == owned.capacity_tons
     first = offers[0]
+    first_context = first.market_context
+    assert first_context is not None
     for changes in (
         {"distance_band": "invalid"},
         {"transport_class": "bad"},
@@ -290,7 +293,7 @@ def test_materialization_snapshots_profile_terms_and_validates_context(
         {"cargo_value_eur": -1},
     ):
         with pytest.raises(ValueError):
-            replace(first.market_context, **changes)
+            replace(first_context, **changes)
     with pytest.raises(ValueError):
         replace(first, market_context=None)
     with pytest.raises(ValueError):
@@ -300,7 +303,7 @@ def test_materialization_snapshots_profile_terms_and_validates_context(
     with pytest.raises(ValueError):
         replace(
             first,
-            market_context=replace(first.market_context, cargo_value_eur=1),
+            market_context=replace(first_context, cargo_value_eur=1),
         )
     historical = replace(first, market_model="nhm_v1", market_context=None)
     assert historical.market_context is None
@@ -353,6 +356,8 @@ def test_retention_requires_structure_and_actual_vehicle_compatibility(
         (owned.location.city.city_uid,), fleet
     )[0]
     offer = ContractOffer.from_snapshot(market.factory.build(candidate, 1000))
+    context = offer.market_context
+    assert context is not None
     assert market.candidates.structurally_current(offer)
     assert market.candidates.eligible_ids(offer, fleet) == (owned.id,)
     assert not market.candidates.eligible_ids(
@@ -361,9 +366,7 @@ def test_retention_requires_structure_and_actual_vehicle_compatibility(
     assert not market.candidates.eligible_ids(
         replace(
             offer,
-            market_context=replace(
-                offer.market_context, transport_class="special"
-            ),
+            market_context=replace(context, transport_class="special"),
         ),
         fleet,
     )
@@ -378,9 +381,7 @@ def test_retention_requires_structure_and_actual_vehicle_compatibility(
     assert not market.candidates.structurally_current(
         replace(
             offer,
-            market_context=replace(
-                offer.market_context, transport_class="special"
-            ),
+            market_context=replace(context, transport_class="special"),
         )
     )
     assert not market.candidates.structurally_current(

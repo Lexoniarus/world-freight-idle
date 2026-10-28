@@ -100,6 +100,8 @@ async def test_readiness_read_view_reuses_facts_but_never_crosses_publication(
 ):
     preparation = bind_preparation(game, database)
     readiness = preparation.readiness
+    assert readiness.store.get_many(()) == {}
+    assert readiness.anchor_store.get_many((), "truck") == {}
     offer = game.state_repository.list_offers()[0]
     pair = offer.origin.facility_uid, offer.destination.facility_uid
     with (

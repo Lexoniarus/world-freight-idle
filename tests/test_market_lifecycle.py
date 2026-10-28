@@ -1,7 +1,7 @@
 """Market v2 dispatch atomicity, refill isolation and history regression."""
 
 from dataclasses import replace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -72,6 +72,12 @@ async def test_dispatch_commits_before_background_market_refill(game):
     game.list_contracts()
     assert game.state_repository.list_active_transports() == (trip,)
     assert game._get_player().cash == cash - trip.operating_cost_eur
+    preparation = Mock()
+    preparation.request.side_effect = RuntimeError("refill failed")
+    game.market_lifecycle.preparation = preparation
+    game.market_lifecycle.refill_after_commit()
+    preparation.request.assert_called_once_with(changed=True)
+    game.market_lifecycle.preparation = None
 
 
 async def test_dispatch_prunes_stock_without_generation_api(game):

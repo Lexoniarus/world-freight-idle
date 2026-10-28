@@ -44,15 +44,13 @@ class MarketLifecycleService:
 
     def prune_in_transaction(self) -> None:
         """Prune within the caller's dispatch transaction, without refill."""
-        if self.preparation is not None and self.preparation.stock is not None:
+        if self.preparation is not None:
             self.preparation.request(changed=True)
             return
         owned = self.unit_of_work.repository.list_vehicles()
         cities = self.scope.resolve(owned)
         fleet = self.market.candidates.resolve_fleet(owned)
         self._store(self._retained(cities, fleet, self.clock()))
-        if self.preparation is not None:
-            self.preparation.request(changed=True)
 
     def _retained(
         self,
@@ -86,16 +84,9 @@ class MarketLifecycleService:
 
     def _store(self, offers: tuple[ContractOffer, ...]) -> None:
         """Persist changed offers inside the caller-owned transaction."""
-        with (
-            self.preparation.readiness.reading()
-            if self.preparation is not None
-            else nullcontext()
-        ):
-            repository = self.unit_of_work.repository
-            if offers != repository.list_offers():
-                repository.replace_offers(offers)
-            if self.preparation is not None:
-                self.preparation.bind(offers)
+        repository = self.unit_of_work.repository
+        if offers != repository.list_offers():
+            repository.replace_offers(offers)
 
     def refill_after_commit(self) -> None:
         """Keep a committed trip successful even when separate refill fails."""

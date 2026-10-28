@@ -15,6 +15,7 @@ from app.services.cost_profiles import VehicleCostResolver
 from app.services.dispatch_planning import DispatchPlanningService
 from app.services.fleet import FleetService
 from app.services.game import GameService
+from tests.conftest import seed_test_offers
 
 
 @pytest.fixture
@@ -57,6 +58,7 @@ async def test_relational_game_use_cases_preserve_atomic_settlement(
     game.ensure_initial_state()
     purchased = project_vehicle(fleet.purchase("iveco_sway_500"))
     assert len(game.state_repository.list_vehicles()) == 2
+    seed_test_offers(game)
     offers = [project_contract(value) for value in game.list_contracts()]
     trip = project_transport(
         await game.dispatch(offers[0]["id"], purchased["id"])
@@ -83,6 +85,7 @@ async def test_relational_dispatch_rolls_back_all_mutations(
 ):
     game = relational_game
     game.ensure_initial_state()
+    seed_test_offers(game)
     offer = [project_contract(value) for value in game.list_contracts()][0]
     player = game.state_repository.get_player()
     vehicles = game.state_repository.list_vehicles()

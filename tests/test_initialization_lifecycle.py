@@ -50,11 +50,10 @@ def test_initialization_direct_failure_is_atomic(
     assert player.cash == (123 if existing_player else 175000)
 
 
-def test_initialization_defers_market_generation(game):
+def test_initialization_creates_no_market_stock(game):
     game.state_repository.reset()
-    with patch.object(type(game.market), "generate") as generate:
-        game.ensure_initial_state()
-    generate.assert_not_called()
+    assert not hasattr(game.market, "generate")
+    game.ensure_initial_state()
     assert game.state_repository.list_offers() == ()
 
 
@@ -64,11 +63,11 @@ def test_reset_failure_restores_deleted_state(game):
     vehicles = repository.list_vehicles()
     offers = repository.list_offers()
     with patch.object(
-        type(game.market),
-        "generate",
-        side_effect=RuntimeError("market failed"),
+        game.catalogue,
+        "list_models",
+        side_effect=CatalogueError("catalogue failed"),
     ):
-        with pytest.raises(RuntimeError):
+        with pytest.raises(CatalogueError):
             project_state(game.reset())
     assert repository.get_player() == player
     assert repository.list_vehicles() == vehicles
