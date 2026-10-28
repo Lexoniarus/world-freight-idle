@@ -173,7 +173,8 @@ class StockPublicationService:
     ) -> tuple[tuple[MarketCandidate, ...], tuple[RelationDemandState, ...]]:
         """Read reusable route evidence for one candidate collection."""
         prep = self.preparation
-        with prep.readiness.reading():
+        pairs = required_relations(candidates)
+        with prep.readiness.reading(pairs):
             ready = prep.ready_candidates(candidates)
             evidence = tuple(
                 prep.demand_state(*pair) for pair in required_relations(ready)
@@ -294,7 +295,14 @@ class StockPublicationService:
             for d in snapshot.demands
             if d.transport_id is None
         )
-        with prep.readiness.reading():
+        pairs = tuple(
+            (
+                offer.origin.facility_uid,
+                offer.destination.facility_uid,
+            )
+            for offer in offers
+        )
+        with prep.readiness.reading(pairs):
             bindings = tuple(
                 (offer.id, reference)
                 for offer in offers
@@ -321,7 +329,14 @@ class StockPublicationService:
         stock = prep.stock
         assert stock is not None
         by_id = {offer.id: offer for offer in plan.offers}
-        with self.unit.transaction(), prep.readiness.reading():
+        pairs = tuple(
+            (
+                by_id[offer_id].origin.facility_uid,
+                by_id[offer_id].destination.facility_uid,
+            )
+            for offer_id, _ in plan.bindings
+        )
+        with self.unit.transaction(), prep.readiness.reading(pairs):
             if not self.unchanged(snapshot):
                 return False
             # References outside current demand must also remain current.

@@ -20,6 +20,10 @@ class RoutingReadinessStore(Protocol):
 
     def get(self, relation_id: str) -> RoutingRelation | None: ...
 
+    def get_many(
+        self, relation_ids: tuple[str, ...]
+    ) -> dict[str, RoutingRelation]: ...
+
     def payload(self, reference: RouteReference) -> RoutePayload | None: ...
 
     def payload_available(self, reference: RouteReference) -> bool: ...
@@ -49,6 +53,11 @@ class RoutingReadinessStore(Protocol):
         forward: RouteReference,
         reverse: RouteReference,
     ) -> bool: ...
+
+    def connected_many(
+        self,
+        pairs: tuple[tuple[RouteReference, RouteReference], ...],
+    ) -> frozenset[tuple[RouteReference, RouteReference]]: ...
 
     def publish_connection(
         self,

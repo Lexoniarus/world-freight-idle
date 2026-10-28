@@ -103,19 +103,40 @@ async def test_readiness_read_view_reuses_facts_but_never_crosses_publication(
     readiness = preparation.readiness
     offer = game.state_repository.list_offers()[0]
     pair = offer.origin.facility_uid, offer.destination.facility_uid
-    with patch.object(
-        readiness.store, "get", wraps=readiness.store.get
-    ) as get:
-        with readiness.reading(), readiness.reading():
+    with (
+        patch.object(readiness.store, "get", wraps=readiness.store.get) as get,
+        patch.object(
+            readiness.store,
+            "get_many",
+            wraps=readiness.store.get_many,
+        ) as get_many,
+    ):
+        with readiness.reading((pair,)), readiness.reading((pair,)):
             assert readiness.current(*pair) is None
             assert readiness.current(*pair) is None
-            get.assert_called_once()
+            get.assert_not_called()
+            get_many.assert_called_once()
             assert readiness.fingerprint(*pair) == readiness.fingerprint(*pair)
         assert readiness.current(*pair) is None
-        assert get.call_count == 2
+        get.assert_called_once()
     assert require_value(await readiness.prepare(*pair)).status == "ready"
-    with readiness.reading():
-        assert require_value(readiness.current(*pair)).status == "ready"
+    with (
+        patch.object(
+            readiness.store,
+            "connected",
+            wraps=readiness.store.connected,
+        ) as connected,
+        patch.object(
+            readiness.store,
+            "connected_many",
+            wraps=readiness.store.connected_many,
+        ) as connected_many,
+    ):
+        with readiness.reading((pair,)):
+            assert require_value(readiness.current(*pair)).status == "ready"
+            assert require_value(readiness.current(*pair)).status == "ready"
+        connected.assert_not_called()
+        connected_many.assert_called_once()
     readiness.provider_identity = "changed"
     assert require_value(readiness.current(*pair)).status == "stale"
 

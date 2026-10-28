@@ -119,7 +119,7 @@ class MarketLifecycleService:
                 if vehicle.vehicle_id in eligible
                 and vehicle.facility_uid != origin
             )
-        with self.preparation.readiness.reading():
+        with self.preparation.readiness.reading(tuple(sorted(pairs))):
             return tuple(
                 self.preparation.demand_state(*pair) for pair in sorted(pairs)
             )

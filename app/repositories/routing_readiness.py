@@ -5,6 +5,7 @@ from collections import OrderedDict
 from contextlib import AbstractContextManager
 from dataclasses import asdict
 from hashlib import sha256
+from sqlite3 import Row
 
 from app.domain.routing_anchors import VALIDATION_VERSION, RoutingAnchor
 from app.domain.routing_connections import (
@@ -81,8 +82,29 @@ class SqliteRoutingReadinessStore:
                 "SELECT * FROM routing_relations WHERE relation_id=?",
                 (relation_id,),
             ).fetchone()
-        if row is None:
-            return None
+        return self._relation(row) if row is not None else None
+
+    def get_many(
+        self, relation_ids: tuple[str, ...]
+    ) -> dict[str, RoutingRelation]:
+        """Read a bounded relation collection with one set-based query."""
+        if not relation_ids:
+            return {}
+        placeholders = ",".join("?" for _ in relation_ids)
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM routing_relations WHERE relation_id IN ("
+                f"{placeholders})",
+                relation_ids,
+            ).fetchall()
+        relations = (self._relation(row) for row in rows)
+        return {
+            relation.reference.relation_id: relation for relation in relations
+        }
+
+    @staticmethod
+    def _relation(row: Row) -> RoutingRelation:
+        """Decode one database row into immutable routing evidence."""
         values = dict(row)
         reference = RouteReference(
             values.pop("relation_id"), values.pop("revision")
@@ -252,6 +274,40 @@ class SqliteRoutingReadinessStore:
                 ),
             ).fetchone()
         return row is not None
+
+    def connected_many(
+        self,
+        pairs: tuple[tuple[RouteReference, RouteReference], ...],
+    ) -> frozenset[tuple[RouteReference, RouteReference]]:
+        """Read shared proofs for requested revision pairs in one query."""
+        if not pairs:
+            return frozenset()
+        relation_ids = tuple(
+            sorted(
+                {reference.relation_id for pair in pairs for reference in pair}
+            )
+        )
+        placeholders = ",".join("?" for _ in relation_ids)
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                "SELECT forward_id, forward_revision, reverse_id, "
+                "reverse_revision FROM routing_connection_proofs WHERE "
+                "validation_version=? AND (forward_id IN ("
+                f"{placeholders}) OR reverse_id IN ({placeholders}))",
+                (VALIDATION_VERSION, *relation_ids, *relation_ids),
+            ).fetchall()
+        available = {
+            frozenset(
+                (
+                    RouteReference(str(row[0]), str(row[1])),
+                    RouteReference(str(row[2]), str(row[3])),
+                )
+            )
+            for row in rows
+        }
+        return frozenset(
+            pair for pair in pairs if frozenset(pair) in available
+        )
 
     def publish_connection(
         self,

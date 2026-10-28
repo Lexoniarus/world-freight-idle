@@ -73,11 +73,9 @@ class MarketPreparationService:
         candidates: tuple[MarketCandidate, ...],
     ) -> tuple[MarketCandidate, ...]:
         """Expose only candidates with a usable delivery and vehicle start."""
-        with self.readiness.reading():
-            states = tuple(
-                self.demand_state(*pair)
-                for pair in required_relations(candidates)
-            )
+        pairs = required_relations(candidates)
+        with self.readiness.reading(pairs):
+            states = tuple(self.demand_state(*pair) for pair in pairs)
             return self._ready_candidates(candidates, states)
 
     def _ready_candidates(
@@ -123,11 +121,9 @@ class MarketPreparationService:
         candidates: tuple[MarketCandidate, ...],
     ) -> tuple[MarketCandidate, ...]:
         """Skip deterministic delivery or approach failures during planning."""
-        with self.readiness.reading():
-            states = {
-                pair: self.readiness.current(*pair)
-                for pair in required_relations(candidates)
-            }
+        pairs = required_relations(candidates)
+        with self.readiness.reading(pairs):
+            states = {pair: self.readiness.current(*pair) for pair in pairs}
             result = []
             for candidate in candidates:
                 origin = candidate.trade.origin.facility_uid
