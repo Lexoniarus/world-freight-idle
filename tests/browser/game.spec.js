@@ -288,25 +288,27 @@ test("stale quote cannot overwrite a new panel; failures and session expiry are 
   await expect(page).toHaveURL(/login/);
 });
 
-test("parallel trips persist across navigation and map controls work without rebuilding the canvas", async ({
-  page,
-}) => {
+test("parallel trips persist across navigation", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await register(page);
+  await register(page, { waitForMap: false });
   const headers = { "X-Freight-Request": "1" };
+  const initialFleet = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
   const purchase = await page.request.post("/api/v1/fleet/purchase", {
     headers,
-    data: { model_id: "iveco_sway_500" },
+    data: { model_id: initialFleet[0].model_id },
   });
   expect(purchase.ok()).toBeTruthy();
   const fleet = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
-  for (const vehicle of fleet) {
-    await page.request.post(
-      "/api/v1/contracts/refresh?vehicle_id=" + encodeURIComponent(vehicle.id),
-      { headers },
-    );
-    const contracts = await readyContracts(page, [vehicle.id]);
-    const contract = contracts.find((item) => item.eligible_vehicle_ids.includes(vehicle.id));
+  await page.request.post(
+    "/api/v1/contracts/refresh?vehicle_id=" + encodeURIComponent(fleet[0].id),
+    { headers },
+  );
+  const contracts = await readyContracts(
+    page,
+    fleet.map((vehicle) => vehicle.id),
+  );
+  for (const [index, vehicle] of fleet.entries()) {
+    const contract = contracts[index];
     const dispatch = await page.request.post("/api/v1/contracts/" + contract.id + "/accept", {
       headers,
       data: { vehicle_id: vehicle.id },
@@ -315,9 +317,18 @@ test("parallel trips persist across navigation and map controls work without reb
   }
   await page.goto("/transports");
   await expect(page.locator(".job-card")).toHaveCount(2);
+  await page.getByRole("link", { name: "Flotte", exact: true }).click();
+  await page.getByRole("link", { name: "Transporte", exact: true }).click();
+  await expect(page.locator(".job-card")).toHaveCount(2);
+});
+
+test("map controls survive navigation without rebuilding the canvas", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await register(page);
+  await page.goto("/fleet");
   await expect(page.locator("#world-map")).toHaveAttribute("aria-busy", "false");
   const originalCanvas = await page.locator(".maplibregl-canvas").elementHandle();
-  await page.getByRole("link", { name: "Flotte", exact: true }).click();
+  await page.getByRole("link", { name: "Aufträge", exact: true }).click();
   expect(await originalCanvas.evaluate((element) => element.isConnected)).toBeTruthy();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Flotte zentrieren" }).click();
@@ -624,38 +635,39 @@ test("facility identities, lazy market scope and catalogue outages preserve the 
   await expect(page.locator(".vehicle-card")).toContainText("Berlin Westhafen");
 });
 
+async function startEnergyTransport(page) {
+  const username = await register(page, { waitForMap: false });
+  const prepared = await page.request.post("/__tests__/energy-fixture", {
+    headers: { "X-Freight-Request": "1" },
+  });
+  expect(prepared.ok()).toBeTruthy();
+  await page.reload();
+  const fleet = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
+  const vehicle = fleet[0];
+  const offers = await readyContracts(
+    page,
+    [vehicle.id],
+    (offer) => offer.origin_facility_uid === vehicle.facility_uid,
+  );
+  const contract = offers.find((offer) => offer.origin_facility_uid === vehicle.facility_uid);
+  await page.goto("/contracts/" + contract.id);
+  await page.getByLabel("Fahrzeug disponieren").selectOption(vehicle.id);
+  await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
+  await expect(page.getByText(/5 Tank-\/Ladepausen/)).toBeVisible();
+  const accepted = page.waitForResponse((response) => response.url().endsWith("/accept"));
+  await page.getByRole("button", { name: "Transport starten" }).click();
+  const trip = await (await accepted).json();
+  await expect(page).toHaveURL(/transports\//);
+  return { trip, username };
+}
+
 for (const [device, viewport] of [
   ["desktop", { width: 1440, height: 900 }],
   ["mobile", { width: 390, height: 844 }],
 ]) {
-  test(`${device}: energy pauses retain images, offline arrival retains energy`, async ({
-    page,
-  }) => {
+  test(`${device}: energy pauses retain images and update energy`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    const username = await register(page);
-    await readyContracts(page);
-    const prepared = await page.request.post("/__tests__/energy-fixture", {
-      headers: { "X-Freight-Request": "1" },
-    });
-    expect(prepared.ok()).toBeTruthy();
-    await page.reload();
-    const fleetBefore = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
-    const offers = await readyContracts(
-      page,
-      [fleetBefore[0].id],
-      (offer) => offer.origin_facility_uid === fleetBefore[0].facility_uid,
-    );
-    const direct = offers.find(
-      (offer) => offer.origin_facility_uid === fleetBefore[0].facility_uid,
-    );
-    await page.goto("/contracts/" + direct.id);
-    await page.getByLabel("Fahrzeug disponieren").selectOption(fleetBefore[0].id);
-    await page.getByRole("button", { name: "Route & Ertrag berechnen" }).click();
-    await expect(page.getByText(/5 Tank-\/Ladepausen/)).toBeVisible();
-    const accepted = page.waitForResponse((response) => response.url().endsWith("/accept"));
-    await page.getByRole("button", { name: "Transport starten" }).click();
-    const trip = await (await accepted).json();
-    await expect(page).toHaveURL(/transports\//);
+    const { trip } = await startEnergyTransport(page);
     await expect(page.locator("[data-phase-trip]")).toHaveText("Lädt");
     await expect(page.locator(".eta")).toContainText("Weiter in");
     const image = await page.locator("#panel img").first().elementHandle();
@@ -669,21 +681,23 @@ for (const [device, viewport] of [
     await expect(page.locator("[data-phase-trip]")).toHaveText("Fracht unterwegs");
     expect(await image.evaluate((node) => node.isConnected)).toBeTruthy();
     await expect(meter).toHaveAttribute("value", /^(?!10(?:\.0+)?$)/);
-    if (!(await page.getByRole("button", { name: "Abmelden" }).isVisible()))
-      await page.getByRole("button", { name: "Mehr", exact: true }).click();
-    await page.getByRole("button", { name: "Abmelden" }).click();
-    // Advance past arrival while logged out; no background settlement job.
-    await advanceServerTime(page, trip.arrives_at - trip.departed_at + 1);
-    await page.getByLabel("Spielername", { exact: true }).fill(username);
-    await page.getByLabel("Passwort", { exact: true }).fill(password);
-    await page.getByRole("button", { name: "Anmelden", exact: true }).last().click();
-    await expect(page.locator("#reputation")).toHaveText("1");
-    const arrived = (await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
-    expect(arrived.status).toBe("idle");
-    expect(arrived.energy_level).toBeCloseTo(60);
-    expect((await (await page.request.get("/api/v1/dashboard")).json()).player.completed).toBe(1);
   });
 }
+
+test("offline arrival retains energy after relogin", async ({ page }) => {
+  const { trip, username } = await startEnergyTransport(page);
+  await page.getByRole("button", { name: "Abmelden" }).click();
+  // Advance past arrival while logged out; no background settlement job.
+  await advanceServerTime(page, trip.arrives_at - trip.departed_at + 1);
+  await page.getByLabel("Spielername", { exact: true }).fill(username);
+  await page.getByLabel("Passwort", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Anmelden", exact: true }).last().click();
+  await expect(page.locator("#reputation")).toHaveText("1");
+  const arrived = (await (await page.request.get("/api/v1/fleet")).json()).vehicles[0];
+  expect(arrived.status).toBe("idle");
+  expect(arrived.energy_level).toBeCloseTo(60);
+  expect((await (await page.request.get("/api/v1/dashboard")).json()).player.completed).toBe(1);
+});
 
 test("city offers survive pan and zoom without market requests", async ({ page }) => {
   await page.clock.install();
