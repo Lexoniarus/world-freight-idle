@@ -64,7 +64,10 @@ from app.services.market_demand import MarketDemandResolver
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_selection import MarketSelectionService
 from app.services.market_templates import MarketTemplateService
-from app.services.player_market_preparation import PlayerMarketPreparation
+from app.services.player_market_demand import PlayerMarketDemandService
+from app.services.player_market_routes import PlayerMarketRouteService
+from app.services.player_market_services import PlayerMarketServices
+from app.services.player_market_stock import PlayerMarketStockContext
 from app.services.preferences import PreferenceService
 from app.services.preparation_worker import MarketPreparationWorker
 from app.services.profile_maintenance import ProfileMaintenanceService
@@ -204,11 +207,13 @@ def build_game_runtime(
 
 def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
     """Bind one authenticated owner to the shared relational transaction."""
-    preparation = build_player_market_preparation(runtime, user_id)
+    market_services = build_player_market_services(runtime, user_id)
     game = GameService(
-        preparation=preparation,
+        market_services=market_services,
         market_selection=(
-            MarketSelectionService(preparation.policy) if preparation else None
+            MarketSelectionService(market_services.stock.policy)
+            if market_services
+            else None
         ),
         unit_of_work=SqliteGameUnitOfWork(runtime.database, user_id),
         world=runtime.world,
@@ -218,7 +223,7 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
             VehicleCostResolver(runtime.catalogue),
             runtime.anchors,
             runtime.world,
-            preparation,
+            market_services.routes if market_services else None,
         ),
         dispatch_eligibility=DispatchEligibilityService(
             runtime.market.candidates,
@@ -243,12 +248,12 @@ def build_vehicle_catalogue(settings: Settings) -> SqliteVehicleCatalogue:
 
 def build_fleet_service(game: GameService, settings: Settings) -> FleetService:
     """Assemble purchasing against the authenticated player's unit of work."""
-    preparation = game.market_lifecycle.preparation
+    demand = game.market_lifecycle.demand
     return FleetService(
         game.unit_of_work,
         build_vehicle_catalogue(settings),
         game.world,
-        partial(preparation.request, changed=True) if preparation else None,
+        partial(demand.request, changed=True) if demand else None,
     )
 
 
@@ -374,21 +379,29 @@ def build_preferences(runtime: GameRuntime) -> PreferenceService:
     return PreferenceService(SqlitePreferenceStore(runtime.database))
 
 
-def build_player_market_preparation(
+def build_player_market_services(
     runtime: GameRuntime, user_id: str
-) -> PlayerMarketPreparation | None:
+) -> PlayerMarketServices | None:
     """Bind production routing infrastructure to one player's offers."""
     if runtime.readiness is None or runtime.preparation_jobs is None:
         return None
-    return PlayerMarketPreparation(
-        user_id,
-        runtime.readiness,
-        SqliteOfferRouteStore(runtime.database, user_id),
-        runtime.preparation_jobs,
-        runtime.clock,
-        runtime.database,
-        SqlitePlayerMarketStockStore(runtime.database, user_id),
-        SqliteMarketTemplateStore(runtime.database),
+    return PlayerMarketServices(
+        PlayerMarketDemandService(
+            user_id,
+            runtime.preparation_jobs,
+            runtime.clock,
+            runtime.database,
+        ),
+        PlayerMarketRouteService(
+            runtime.readiness,
+            SqliteOfferRouteStore(runtime.database, user_id),
+            runtime.clock,
+            runtime.database,
+        ),
+        PlayerMarketStockContext(
+            SqlitePlayerMarketStockStore(runtime.database, user_id),
+            SqliteMarketTemplateStore(runtime.database),
+        ),
     )
 
 
@@ -399,26 +412,32 @@ def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
 
     def batch(user_id: str) -> StockPreparationBatch:
         """Compose one player's preparation without changing state."""
-        preparation = build_player_market_preparation(runtime, user_id)
-        assert preparation is not None
+        market_services = build_player_market_services(runtime, user_id)
+        assert market_services is not None
         unit = SqliteGameUnitOfWork(runtime.database, user_id)
         demand = MarketDemandResolver(runtime.market.candidates)
         return StockPreparationBatch(
             StockPublicationService(
                 unit,
                 runtime.market,
-                preparation,
+                market_services.demand,
+                market_services.routes,
+                market_services.stock,
                 lambda: True,
             ),
             StockSnapshotReader(
                 unit,
                 runtime.market,
-                preparation,
+                market_services.demand,
+                market_services.routes,
+                market_services.stock,
                 demand,
             ),
-            StockPlanningService(preparation.policy),
+            StockPlanningService(market_services.stock.policy),
             MarketTemplateService(
-                runtime.market.factory, preparation.policy, runtime.clock
+                runtime.market.factory,
+                market_services.stock.policy,
+                runtime.clock,
             ),
         )
 

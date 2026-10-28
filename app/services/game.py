@@ -30,7 +30,7 @@ from app.services.market_components import MarketComponents
 from app.services.market_lifecycle import MarketLifecycleService
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_selection import MarketSelectionService
-from app.services.player_market_preparation import PlayerMarketPreparation
+from app.services.player_market_services import PlayerMarketServices
 from app.services.vehicle_location import VehicleLocationResolver
 
 LOGGER = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class GameService:
         dispatch_planning: DispatchPlanningService,
         dispatch_eligibility: DispatchEligibilityService,
         time_scale: float = 1.0,
-        preparation: PlayerMarketPreparation | None = None,
+        market_services: PlayerMarketServices | None = None,
         market_selection: MarketSelectionService | None = None,
     ) -> None:
         """Wire player-scoped orchestration to injected service ports."""
@@ -72,7 +72,9 @@ class GameService:
             market,
             market_scope,
             lambda: self.now(),
-            preparation,
+            market_services.demand if market_services else None,
+            market_services.routes if market_services else None,
+            market_services.stock if market_services else None,
             selection=market_selection,
         )
 
@@ -85,8 +87,8 @@ class GameService:
             return
         with self.unit_of_work.transaction():
             self._ensure_initial_state()
-            if self.market_lifecycle.preparation is not None:
-                self.market_lifecycle.preparation.request(changed=True)
+            if self.market_lifecycle.demand is not None:
+                self.market_lifecycle.demand.request(changed=True)
 
     def _ensure_initial_state(self) -> None:
         """Initialize player and starter inside the caller's transaction."""
@@ -101,12 +103,8 @@ class GameService:
 
     def preparation_status(self) -> PreparationStatus | None:
         """Expose typed progress for the authenticated player's market."""
-        preparation = self.market_lifecycle.preparation
-        return (
-            preparation.jobs.status(preparation.user_id)
-            if preparation is not None
-            else None
-        )
+        demand = self.market_lifecycle.demand
+        return demand.status() if demand is not None else None
 
     async def quote_contract(
         self, contract_id: str, vehicle_id: str
@@ -186,9 +184,9 @@ class GameService:
         self.state_repository.save_player(player)
         self.state_repository.save_vehicle(vehicle)
         self.state_repository.save_transport(trip)
-        preparation = self.market_lifecycle.preparation
-        if preparation is not None and preparation.stock is not None:
-            preparation.stock.consume(contract_id, self.now())
+        stock = self.market_lifecycle.stock
+        if stock is not None:
+            stock.stock.consume(contract_id, self.now())
         self.state_repository.remove_offer(contract_id)
         self.market_lifecycle.prune_in_transaction()
         LOGGER.info(
@@ -219,8 +217,8 @@ class GameService:
                 return False
             for trip in arrived:
                 self._complete_trip(trip, now)
-            if self.market_lifecycle.preparation is not None:
-                self.market_lifecycle.preparation.request(changed=True)
+            if self.market_lifecycle.demand is not None:
+                self.market_lifecycle.demand.request(changed=True)
         self.market_lifecycle.refill_after_commit()
         return True
 

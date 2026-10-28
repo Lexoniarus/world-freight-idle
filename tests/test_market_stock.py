@@ -15,6 +15,10 @@ from app.services.deterministic_market_random import DeterministicMarketRandom
 from app.services.market_demand import MarketDemandResolver
 from app.services.market_selection import MarketSelectionService
 from app.services.market_templates import MarketTemplateService
+from app.services.player_market_demand import PlayerMarketDemandService
+from app.services.player_market_routes import PlayerMarketRouteService
+from app.services.player_market_services import PlayerMarketServices
+from app.services.player_market_stock import PlayerMarketStockContext
 from app.services.stock_planning import StockPlanningService
 from app.services.stock_preparation import StockPreparationBatch
 from app.services.stock_publication import StockPublicationService
@@ -28,17 +32,17 @@ def stock_game(vehicle_game, database):
     game, preparation = vehicle_game
     SqliteMarketTemplateStore.initialize(database)
     SqlitePlayerMarketStockStore.initialize(database)
-    preparation.stock = SqlitePlayerMarketStockStore(database, "test-owner")
-    preparation.templates = SqliteMarketTemplateStore(database)
     game.market_lifecycle.selection = MarketSelectionService(
-        preparation.policy
+        preparation.stock.policy
     )
-    preparation.request()
+    preparation.demand.request()
     demand = MarketDemandResolver(game.market.candidates)
     publication = StockPublicationService(
         game.unit_of_work,
         game.market,
-        preparation,
+        preparation.demand,
+        preparation.routes,
+        preparation.stock,
         lambda: True,
     )
     batch = StockPreparationBatch(
@@ -46,12 +50,16 @@ def stock_game(vehicle_game, database):
         StockSnapshotReader(
             game.unit_of_work,
             game.market,
-            preparation,
+            preparation.demand,
+            preparation.routes,
+            preparation.stock,
             demand,
         ),
-        StockPlanningService(preparation.policy),
+        StockPlanningService(preparation.stock.policy),
         MarketTemplateService(
-            game.market.factory, preparation.policy, preparation.clock
+            game.market.factory,
+            preparation.stock.policy,
+            preparation.demand.clock,
         ),
     )
     return game, preparation, batch
@@ -65,7 +73,7 @@ async def test_shared_stock_has_three_visible_ten_ready_and_does_not_expire(
     build = game.market.candidates.build
 
     def outside_writer(*args):
-        assert prep.stock.database._active.get() is None
+        assert prep.stock.stock.database._active.get() is None
         return build(*args)
 
     with patch.object(
@@ -87,7 +95,8 @@ async def test_shared_stock_has_three_visible_ten_ready_and_does_not_expire(
     )
     assert all(o.expires_at is None for o in offers)
     assert (
-        len(prep.templates.templates((offers[0].origin.city.city_uid,))) == 30
+        len(prep.stock.templates.templates((offers[0].origin.city.city_uid,)))
+        == 30
     )
     assert game.refresh_contracts() == offers
     assert game.list_contracts() == offers
@@ -95,22 +104,26 @@ async def test_shared_stock_has_three_visible_ten_ready_and_does_not_expire(
     with patch.object(game, "now", return_value=game.now() + 7 * 3600):
         assert [o.id for o in game.list_contracts()] == ids
     chosen = choices[0].offer
-    before = set(prep.stock.bindings())
+    before = set(prep.stock.stock.bindings())
     await game.dispatch(chosen.id, "truck")
-    assert len(prep.stock.used()) == 1
-    assert prep.stock.used() <= before
+    assert len(prep.stock.stock.used()) == 1
+    assert prep.stock.stock.used() <= before
     assert len(game.state_repository.list_offers()) == 29
     # Departure hides availability but does not delete the reserve.
     assert game.list_contracts() == []
     await batch.process()
     assert len(game.state_repository.list_offers()) == 29
-    status = prep.jobs.status(prep.user_id)
-    prep.jobs.finish(
-        prep.user_id, status.generation, "ready", game.now() + 60, game.now()
+    status = prep.demand.jobs.status(prep.demand.user_id)
+    prep.demand.jobs.finish(
+        prep.demand.user_id,
+        status.generation,
+        "ready",
+        game.now() + 60,
+        game.now(),
     )
-    ready_status = prep.jobs.status(prep.user_id)
+    ready_status = prep.demand.jobs.status(prep.demand.user_id)
     assert game.list_contracts() == []
-    assert prep.jobs.status(prep.user_id) == ready_status
+    assert prep.demand.jobs.status(prep.demand.user_id) == ready_status
 
 
 @pytest.mark.asyncio
@@ -120,13 +133,12 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
     from app.domain.game import PlayerState
     from app.repositories.game_state import SqliteGameUnitOfWork
     from app.repositories.routing_readiness import SqliteOfferRouteStore
-    from app.services.player_market_preparation import PlayerMarketPreparation
 
     game, prep, batch = stock_game
     for _ in range(100):
         if (await batch.process()).status == "ready":
             break
-    templates = prep.templates.templates(
+    templates = prep.stock.templates.templates(
         (game.get_vehicle("truck").location.city.city_uid,)
     )
     with database.transaction(), database.connect() as db:
@@ -134,60 +146,80 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
         unit = SqliteGameUnitOfWork(database, "other")
         unit.repository.save_player(PlayerState(175000, 0, 0))
         unit.repository.save_vehicle(game.get_vehicle("truck"))
-    other = PlayerMarketPreparation(
-        "other",
-        prep.readiness,
-        SqliteOfferRouteStore(database, "other"),
-        prep.jobs,
-        prep.clock,
-        database,
-        SqlitePlayerMarketStockStore(database, "other"),
-        SqliteMarketTemplateStore(database),
+    other = PlayerMarketServices(
+        PlayerMarketDemandService(
+            "other",
+            prep.demand.jobs,
+            prep.demand.clock,
+            database,
+        ),
+        PlayerMarketRouteService(
+            prep.routes.readiness,
+            SqliteOfferRouteStore(database, "other"),
+            prep.demand.clock,
+            database,
+        ),
+        PlayerMarketStockContext(
+            SqlitePlayerMarketStockStore(database, "other"),
+            SqliteMarketTemplateStore(database),
+        ),
     )
-    other.request()
-    assert other.stock is not None
+    other.demand.request()
     second = StockPreparationBatch(
-        StockPublicationService(unit, game.market, other, lambda: True),
+        StockPublicationService(
+            unit,
+            game.market,
+            other.demand,
+            other.routes,
+            other.stock,
+            lambda: True,
+        ),
         StockSnapshotReader(
             unit,
             game.market,
-            other,
+            other.demand,
+            other.routes,
+            other.stock,
             batch.snapshots.demand,
         ),
         batch.planning,
         batch.templates,
     )
     with patch.object(
-        prep.readiness,
+        prep.routes.readiness,
         "prepare",
         side_effect=AssertionError("Cached roads must be reused"),
     ):
         for _ in range(15):
             if (await second.process()).status == "ready":
                 break
-    assert other.templates is not None
-    assert other.templates.templates((templates[0].city_uid,)) == templates
+    assert (
+        other.stock.templates.templates((templates[0].city_uid,)) == templates
+    )
     common = next(
-        iter(prep.stock.bindings().keys() & other.stock.bindings().keys())
+        iter(
+            prep.stock.stock.bindings().keys()
+            & other.stock.stock.bindings().keys()
+        )
     )
     first_id, second_id = (
-        prep.stock.bindings()[common],
-        other.stock.bindings()[common],
+        prep.stock.stock.bindings()[common],
+        other.stock.stock.bindings()[common],
     )
     assert first_id != second_id
     with database.transaction():
-        prep.stock.consume(first_id, game.now())
+        prep.stock.stock.consume(first_id, game.now())
         with pytest.raises(ValueError, match="bereits verwendet"):
-            prep.stock.consume(first_id, game.now())
-    assert common not in other.stock.used()
+            prep.stock.stock.consume(first_id, game.now())
+    assert common not in other.stock.stock.used()
     with database.transaction():
-        other.stock.consume(second_id, game.now())
-    assert common in other.stock.used()
+        other.stock.stock.consume(second_id, game.now())
+    assert common in other.stock.stock.used()
     existing = next(
         o for o in game.state_repository.list_offers() if o.id == first_id
     )
     with pytest.raises(ValueError, match="bereits verwendet"):
-        prep.stock.issue(common, replace(existing, id="must-not-exist"))
+        prep.stock.stock.issue(common, replace(existing, id="must-not-exist"))
     assert all(
         o.id != "must-not-exist" for o in game.state_repository.list_offers()
     )
@@ -204,7 +236,7 @@ async def test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance
     assert game.state_repository.list_offers() == ()
     assert not batch.publication.publish(snapshot, (), ())
     batch.publication.guard = lambda: True
-    original = prep.readiness.prepare
+    original = prep.routes.readiness.prepare
 
     async def change_vehicle(*args):
         result = await original(*args)
@@ -213,7 +245,9 @@ async def test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance
         game.state_repository.save_vehicle(vehicle)
         return result
 
-    with patch.object(prep.readiness, "prepare", side_effect=change_vehicle):
+    with patch.object(
+        prep.routes.readiness, "prepare", side_effect=change_vehicle
+    ):
         assert (await batch.process()).status == "partial"
     assert game.state_repository.list_offers() == ()
 
@@ -222,11 +256,13 @@ def test_stock_publication_read_phases_preserve_one_snapshot(stock_game):
     """Keep authoritative reads, demand and readiness in explicit phases."""
     _, prep, batch = stock_game
     reader = batch.snapshots
-    now = prep.clock()
+    now = prep.demand.clock()
     inputs = reader.read_inputs()
     projection = reader.resolve_demand(inputs, now)
     assert prep.stock is not None
-    templates = prep.templates.scoped_templates(projection.template_scopes)
+    templates = prep.stock.templates.scoped_templates(
+        projection.template_scopes
+    )
     candidates = reader.market.candidates.build(
         projection.cities,
         tuple(demand.vehicle for demand in projection.demands),
@@ -320,27 +356,28 @@ def test_stock_policy_selection_and_corrupt_storage_are_rejected(
             )
     with pytest.raises(ValueError):
         PreparedTemplate("bad", "model", "wrong", offer)
-    prep.templates.add(template)
+    prep.stock.templates.add(template)
     with pytest.raises(PersistenceError):
-        prep.templates.add(template)
+        prep.stock.templates.add(template)
     SqlitePlayerMarketStockStore.initialize(database)
-    assert prep.templates.templates((template.city_uid,)) == (template,)
-    assert prep.templates.scoped_templates(
+    assert prep.stock.templates.templates((template.city_uid,)) == (template,)
+    assert prep.stock.templates.scoped_templates(
         ((template.city_uid, template.model_id),)
     ) == (template,)
-    assert prep.templates.scoped_templates(()) == ()
+    assert prep.stock.templates.scoped_templates(()) == ()
     assert (
-        prep.templates.scoped_templates(((template.city_uid, "other"),)) == ()
+        prep.stock.templates.scoped_templates(((template.city_uid, "other"),))
+        == ()
     )
-    assert prep.templates.templates(()) == ()
-    assert prep.stock.cursor() == ""
-    assert prep.stock.pending("context") is None
-    prep.stock.checkpoint("context", ("a", "b", 1))
-    assert prep.stock.cursor() == "context"
-    assert prep.stock.pending("context") == ("a", "b", 1)
-    prep.stock.checkpoint("context", None)
-    assert prep.stock.pending("context") is None
-    prep.stock.consume("unbound-legacy", 1)
+    assert prep.stock.templates.templates(()) == ()
+    assert prep.stock.stock.cursor() == ""
+    assert prep.stock.stock.pending("context") is None
+    prep.stock.stock.checkpoint("context", ("a", "b", 1))
+    assert prep.stock.stock.cursor() == "context"
+    assert prep.stock.stock.pending("context") == ("a", "b", 1)
+    prep.stock.stock.checkpoint("context", None)
+    assert prep.stock.stock.pending("context") is None
+    prep.stock.stock.consume("unbound-legacy", 1)
     selected = MarketSelectionService(StockPolicy()).select(
         tuple(
             AvailableContract(replace(offer, id=str(i)), ("truck", "other"))
@@ -365,9 +402,9 @@ def test_stock_policy_selection_and_corrupt_storage_are_rejected(
     with database.connect() as db:
         db.execute("UPDATE market_templates SET model_id=''")
     with pytest.raises(PersistenceError):
-        prep.templates.templates((template.city_uid,))
+        prep.stock.templates.templates((template.city_uid,))
     with pytest.raises(PersistenceError):
-        prep.templates.scoped_templates(((template.city_uid, ""),))
+        prep.stock.templates.scoped_templates(((template.city_uid, ""),))
 
 
 def test_complete_stock_target_does_not_materialize_another_offer(stock_game):
@@ -514,10 +551,10 @@ async def test_destination_stock_starts_at_dispatch_without_early_settlement(
     )
     reference = Mock(read=Mock(return_value=updated))
     game.market.candidates.world = reference
-    prep.readiness.world = reference
+    prep.routes.readiness.world = reference
     clock = [trip.departed_at + 1]
-    game.now = prep.clock = lambda: clock[0]
-    batch.templates.clock = prep.clock
+    game.now = prep.demand.clock = lambda: clock[0]
+    batch.templates.clock = prep.demand.clock
     snapshot = batch.snapshots.read()
     arriving = next(d for d in snapshot.demands if d.transport_id)
     assert arriving.transport_id == trip.id
@@ -539,7 +576,7 @@ async def test_destination_stock_starts_at_dispatch_without_early_settlement(
     assert not game.reconcile_arrival()
     assert game.state_repository.get_player() == after
     with patch.object(
-        prep.readiness,
+        prep.routes.readiness,
         "prepare",
         side_effect=AssertionError("Runtime provider fallback"),
     ):
@@ -555,8 +592,8 @@ async def test_stale_evidence_reuses_offers_and_backoff_never_releases_stock(
 ):
     game, prep, batch = stock_game
     now = [game.now()]
-    game.now = prep.clock = prep.readiness.clock = lambda: now[0]
-    batch.templates.clock = prep.clock
+    game.now = prep.demand.clock = prep.routes.readiness.clock = lambda: now[0]
+    batch.templates.clock = prep.demand.clock
     for _ in range(100):
         if (await batch.process()).status == "ready":
             break
@@ -565,7 +602,7 @@ async def test_stale_evidence_reuses_offers_and_backoff_never_releases_stock(
     assert game.list_contracts()
     assert game.state_repository.list_offers() == saved
     with patch.object(
-        prep.readiness.router,
+        prep.routes.readiness.router,
         "route",
         side_effect=AssertionError("Ready routes must remain reusable"),
     ):
@@ -614,14 +651,14 @@ async def test_failed_approaches_and_changed_publication_do_not_create_ready_off
     error = RoutingError("no way")
     error.category = "no_path"
     with patch.object(
-        prep.readiness.router, "route", new=AsyncMock(side_effect=error)
+        prep.routes.readiness.router, "route", new=AsyncMock(side_effect=error)
     ):
         for pair in required_relations(snapshot.candidates):
-            await prep.readiness.prepare(*pair)
+            await prep.routes.readiness.prepare(*pair)
         assert (await batch.process()).status == "exhausted"
     assert game.state_repository.list_offers() == ()
     assert (
-        prep.templates.templates(
+        prep.stock.templates.templates(
             tuple({d.vehicle.city_uid for d in snapshot.demands})
         )
         == ()
@@ -641,7 +678,7 @@ async def test_arrival_projection_rejects_inconsistent_locations_and_idle_vehicl
     game, prep, batch = stock_game
     now = game.now()
     trip = add_transport(game, departed_at=now, arrives_at=now + 60)
-    arrivals = prep.stock.arrivals()
+    arrivals = prep.stock.stock.arrivals()
     assert arrivals[0].transport_id == trip.id
     vehicle = game.get_vehicle("truck")
     vehicle.arrive(trip.destination)
@@ -650,7 +687,7 @@ async def test_arrival_projection_rejects_inconsistent_locations_and_idle_vehicl
     with database.connect() as db:
         db.execute("UPDATE transports SET destination_facility_uid='wrong'")
     with pytest.raises(PersistenceError, match="Ankunft"):
-        prep.stock.arrivals()
+        prep.stock.stock.arrivals()
 
 
 @pytest.mark.asyncio
@@ -673,7 +710,7 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
     before = game.contract_choices(game.list_contracts(), "second")
     with (
         patch.object(
-            prep.readiness,
+            prep.routes.readiness,
             "prepare",
             side_effect=AssertionError("Runtime calls provider"),
         ),
@@ -694,14 +731,22 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
             break
     assert len(game.state_repository.list_offers()) >= 30
     assert second.location is not None
-    templates = prep.templates.templates((second.location.city.city_uid,))
+    templates = prep.stock.templates.templates(
+        (second.location.city.city_uid,)
+    )
     assert len(templates) > 30
     assert (
-        len([t for t in templates if t.template_id not in prep.stock.used()])
+        len(
+            [
+                t
+                for t in templates
+                if t.template_id not in prep.stock.stock.used()
+            ]
+        )
         >= 30
     )
     snapshot = batch.snapshots.read()
-    original_ready = prep.readiness.ready
+    original_ready = prep.routes.readiness.ready
     reads = 0
 
     def changed(origin, destination):
@@ -713,12 +758,12 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
             else None
         )
 
-    with patch.object(prep.readiness, "ready", side_effect=changed):
+    with patch.object(prep.routes.readiness, "ready", side_effect=changed):
         assert not batch.publication.publish(snapshot, (), ())
     assert game.state_repository.list_offers() == snapshot.offers
     # A failed financial transaction cannot retain a consumption record.
     next_offer = after[0].offer
-    unused = prep.stock.used()
+    unused = prep.stock.stock.used()
     with patch.object(
         game.state_repository,
         "remove_offer",
@@ -726,7 +771,7 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
     ):
         with pytest.raises(RuntimeError, match="rollback"):
             await game.dispatch(next_offer.id, "second")
-    assert prep.stock.used() == unused
+    assert prep.stock.stock.used() == unused
     assert game.get_vehicle("second").status == "idle"
 
 
@@ -777,16 +822,16 @@ async def test_partial_connection_resumes_after_restart_and_never_releases_early
         assert game.state_repository.list_offers() == ()
         assert (
             sum(
-                prep.readiness.ready(*pair) is not None
+                prep.routes.readiness.ready(*pair) is not None
                 for pair in required_relations((remote,))
             )
             == 1
         )
         # Reopen the durable checkpoint and continue the other relation.
-        prep.stock = SqlitePlayerMarketStockStore(
-            prep.stock.database, prep.user_id
+        prep.stock.stock = SqlitePlayerMarketStockStore(
+            prep.stock.stock.database, prep.demand.user_id
         )
-        assert prep.stock.pending(target.key) == trade_key(remote)
+        assert prep.stock.stock.pending(target.key) == trade_key(remote)
         await batch.process()
     assert len(game.state_repository.list_offers()) == 1
     assert len(game.contract_choices(game.list_contracts(), "truck")) == 1
@@ -863,7 +908,7 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
             break
     offer = game.contract_choices(game.list_contracts(), "truck")[0].offer
     other = GameService(
-        SqliteGameUnitOfWork(prep.stock.database, prep.user_id),
+        SqliteGameUnitOfWork(prep.stock.stock.database, prep.demand.user_id),
         game.world,
         game.router,
         game.market,
@@ -872,7 +917,7 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
         game.now,
         game.dispatch_planning,
         game.dispatch_eligibility,
-        preparation=prep,
+        market_services=prep,
     )
     barrier = Barrier(2)
     original = GameService.quote_contract
@@ -897,7 +942,7 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
         results = [f.result() for f in futures]
     assert sum(isinstance(r, (ValueError, KeyError)) for r in results) == 1
     trips = game.state_repository.list_active_transports()
-    assert len(trips) == len(prep.stock.used()) == 1
+    assert len(trips) == len(prep.stock.stock.used()) == 1
     assert game.state_repository.get_player().cash == (
         before - trips[0].operating_cost_eur
     )

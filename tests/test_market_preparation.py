@@ -21,7 +21,10 @@ from app.repositories.routing_readiness import (
 from app.services.market_demand import MarketDemandResolver
 from app.services.market_selection import MarketSelectionService
 from app.services.market_templates import MarketTemplateService
-from app.services.player_market_preparation import PlayerMarketPreparation
+from app.services.player_market_demand import PlayerMarketDemandService
+from app.services.player_market_routes import PlayerMarketRouteService
+from app.services.player_market_services import PlayerMarketServices
+from app.services.player_market_stock import PlayerMarketStockContext
 from app.services.preparation_worker import MarketPreparationWorker
 from app.services.routing_readiness import RoutingReadinessService
 from app.services.stock_planning import StockPlanningService
@@ -40,35 +43,35 @@ def require_value(value: T | None) -> T:
 
 def make_stock_batch(game, preparation):
     """Compose the production stock batch for worker behavior tests."""
-    database = preparation.transactions
+    database = preparation.routes.transactions
     SqliteMarketTemplateStore.initialize(database)
     SqlitePlayerMarketStockStore.initialize(database)
-    preparation.stock = SqlitePlayerMarketStockStore(
-        database, preparation.user_id
-    )
-    preparation.templates = SqliteMarketTemplateStore(database)
     game.market_lifecycle.selection = MarketSelectionService(
-        preparation.policy
+        preparation.stock.policy
     )
     demand = MarketDemandResolver(game.market.candidates)
     return StockPreparationBatch(
         StockPublicationService(
             game.unit_of_work,
             game.market,
-            preparation,
+            preparation.demand,
+            preparation.routes,
+            preparation.stock,
             lambda: True,
         ),
         StockSnapshotReader(
             game.unit_of_work,
             game.market,
-            preparation,
+            preparation.demand,
+            preparation.routes,
+            preparation.stock,
             demand,
         ),
-        StockPlanningService(preparation.policy),
+        StockPlanningService(preparation.stock.policy),
         MarketTemplateService(
             game.market.factory,
-            preparation.policy,
-            preparation.clock,
+            preparation.stock.policy,
+            preparation.demand.clock,
         ),
     )
 
@@ -89,16 +92,28 @@ def bind_preparation(game, database):
         "test-provider",
         game.now,
     )
-    preparation = PlayerMarketPreparation(
-        "test-owner",
-        readiness,
-        SqliteOfferRouteStore(database, "test-owner"),
-        jobs,
-        game.now,
-        database,
+    SqliteMarketTemplateStore.initialize(database)
+    SqlitePlayerMarketStockStore.initialize(database)
+    preparation = PlayerMarketServices(
+        PlayerMarketDemandService("test-owner", jobs, game.now, database),
+        PlayerMarketRouteService(
+            readiness,
+            SqliteOfferRouteStore(database, "test-owner"),
+            game.now,
+            database,
+        ),
+        PlayerMarketStockContext(
+            SqlitePlayerMarketStockStore(database, "test-owner"),
+            SqliteMarketTemplateStore(database),
+        ),
     )
-    game.market_lifecycle.preparation = preparation
-    game.dispatch_planning.preparation = preparation
+    game.market_lifecycle.demand = preparation.demand
+    game.market_lifecycle.routes = preparation.routes
+    game.market_lifecycle.stock = preparation.stock
+    game.market_lifecycle.selection = MarketSelectionService(
+        preparation.stock.policy
+    )
+    game.dispatch_planning.routes = preparation.routes
     return preparation
 
 
@@ -106,7 +121,7 @@ def bind_preparation(game, database):
 async def test_partial_market_never_publishes_unchecked_offers(game, database):
     preparation = bind_preparation(game, database)
     batch = make_stock_batch(game, preparation)
-    preparation.request()
+    preparation.demand.request()
     assert game.list_contracts() == []
     owned = game.state_repository.list_vehicles()
     fleet = game.market.candidates.resolve_fleet(owned)
@@ -116,7 +131,7 @@ async def test_partial_market_never_publishes_unchecked_offers(game, database):
     candidate = pool[0]
     origin = candidate.trade.origin.facility_uid
     destination = candidate.trade.destination.facility_uid
-    readiness = preparation.readiness
+    readiness = preparation.routes.readiness
     assert readiness.ready(origin, destination) is None
     with pytest.raises(ValueError, match="vorbereitet"):
         readiness.load(origin, destination)
@@ -135,7 +150,7 @@ async def test_partial_market_never_publishes_unchecked_offers(game, database):
             break
     offers = game.list_contracts()
     assert offers
-    assert all(preparation.retained(o) for o in offers)
+    assert all(preparation.routes.retained_current(o) for o in offers)
     assert all(
         readiness.ready(o.origin.facility_uid, o.destination.facility_uid)
         for o in offers
@@ -154,7 +169,7 @@ async def test_partial_market_never_publishes_unchecked_offers(game, database):
     )
     trip = await game.dispatch(offer.id, vehicle.id)
     assert trip.origin == offer.origin
-    assert preparation.references.get(offer.id) is None
+    assert preparation.routes.references.get(offer.id) is None
     readiness.router.route.assert_not_called()
 
 
@@ -175,7 +190,7 @@ async def test_missing_payload_is_detected_only_when_geometry_is_loaded(
     )
     origin = candidate.trade.origin.facility_uid
     destination = candidate.trade.destination.facility_uid
-    readiness = preparation.readiness
+    readiness = preparation.routes.readiness
     await readiness.prepare(origin, destination)
     approach = require_value(
         await readiness.prepare(owned[0].facility_uid, origin)
@@ -187,7 +202,7 @@ async def test_missing_payload_is_detected_only_when_geometry_is_loaded(
             (approach.reference.relation_id,),
         )
     assert readiness.ready(origin, destination) is not None
-    publication = preparation.ready_candidates((candidate,))
+    publication = preparation.routes.ready_candidates((candidate,))
     assert len(publication) == 1
     assert publication[0].trade == candidate.trade
     with pytest.raises(ValueError, match="vorbereitet"):
@@ -197,7 +212,7 @@ async def test_missing_payload_is_detected_only_when_geometry_is_loaded(
 @pytest.mark.asyncio
 async def test_global_negative_cache_timeout_and_stale_payload(game, database):
     preparation = bind_preparation(game, database)
-    readiness = preparation.readiness
+    readiness = preparation.routes.readiness
     offer = game.state_repository.list_offers()[0]
     pair = (offer.origin.facility_uid, offer.destination.facility_uid)
     error = RoutingError("No path")
@@ -248,7 +263,7 @@ async def test_global_negative_cache_timeout_and_stale_payload(game, database):
 @pytest.mark.asyncio
 async def test_players_share_one_provider_calculation(game, database):
     preparation = bind_preparation(game, database)
-    readiness = preparation.readiness
+    readiness = preparation.routes.readiness
     offer = game.state_repository.list_offers()[0]
     pair = offer.origin.facility_uid, offer.destination.facility_uid
     entered = asyncio.Event()
@@ -274,20 +289,21 @@ async def test_players_share_one_provider_calculation(game, database):
 async def test_worker_fills_ready_market_and_owns_shutdown(game, database):
     preparation = bind_preparation(game, database)
     batch = make_stock_batch(game, preparation)
-    preparation.request()
+    preparation.demand.request()
     worker = MarketPreparationWorker(
-        preparation.jobs, lambda user: batch, game.now
+        preparation.demand.jobs, lambda user: batch, game.now
     )
-    assert preparation.jobs.next_player(game.now()) == "test-owner"
+    assert preparation.demand.jobs.next_player(game.now()) == "test-owner"
     for _ in range(100):
         await worker.process("test-owner")
         if (
-            require_value(preparation.jobs.status("test-owner")).status
+            require_value(preparation.demand.jobs.status("test-owner")).status
             == "ready"
         ):
             break
     assert (
-        require_value(preparation.jobs.status("test-owner")).status == "ready"
+        require_value(preparation.demand.jobs.status("test-owner")).status
+        == "ready"
     )
     assert game.list_contracts()
     assert all(
@@ -315,23 +331,23 @@ async def test_worker_fills_ready_market_and_owns_shutdown(game, database):
 
 def test_preparation_store_generation_and_reference_rollback(game, database):
     preparation = bind_preparation(game, database)
-    assert preparation.jobs.status("missing") is None
+    assert preparation.demand.jobs.status("missing") is None
     with pytest.raises(ValueError, match="publication"):
-        preparation.bind(game.state_repository.list_offers())
-    preparation.request()
-    first = require_value(preparation.jobs.status("test-owner"))
+        preparation.routes.bind(game.state_repository.list_offers())
+    preparation.demand.request()
+    first = require_value(preparation.demand.jobs.status("test-owner"))
     assert game.preparation_status() == first
-    preparation.jobs.finish(
+    preparation.demand.jobs.finish(
         "test-owner", "obsolete", "ready", None, game.now()
     )
-    assert preparation.jobs.status("test-owner") == first
-    preparation.jobs.finish(
+    assert preparation.demand.jobs.status("test-owner") == first
+    preparation.demand.jobs.finish(
         "test-owner", first.generation, "ready", None, game.now()
     )
-    assert preparation.jobs.next_player(game.now()) is None
-    preparation.jobs.request("test-owner", "new-generation", game.now())
+    assert preparation.demand.jobs.next_player(game.now()) is None
+    preparation.demand.jobs.request("test-owner", "new-generation", game.now())
     assert (
-        require_value(preparation.jobs.status("test-owner")).status
+        require_value(preparation.demand.jobs.status("test-owner")).status
         == "partial"
     )
 
@@ -342,24 +358,22 @@ def test_preparation_composition_preserves_unconfigured_test_runtime(
     database,
 ):
     from app.bootstrap import (
-        build_player_market_preparation,
+        build_player_market_services,
         build_preparation_worker,
     )
 
-    assert build_player_market_preparation(runtime, "test-owner") is None
+    assert build_player_market_services(runtime, "test-owner") is None
     preparation = bind_preparation(game, database)
-    runtime.readiness = preparation.readiness
-    runtime.preparation_jobs = preparation.jobs
-    bound = require_value(
-        build_player_market_preparation(runtime, "test-owner")
-    )
-    assert bound.user_id == "test-owner"
+    runtime.readiness = preparation.routes.readiness
+    runtime.preparation_jobs = preparation.demand.jobs
+    bound = require_value(build_player_market_services(runtime, "test-owner"))
+    assert bound.demand.user_id == "test-owner"
     worker = build_preparation_worker(runtime)
     from app.services.stock_preparation import StockPreparationBatch
 
     batch = worker.batches("test-owner")
     assert isinstance(batch, StockPreparationBatch)
-    assert batch.publication.preparation.user_id == "test-owner"
+    assert batch.publication.player_demand.user_id == "test-owner"
 
 
 @pytest.mark.asyncio
@@ -368,7 +382,7 @@ async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
     database,
 ):
     preparation = bind_preparation(game, database)
-    readiness = preparation.readiness
+    readiness = preparation.routes.readiness
     owned = game.state_repository.list_vehicles()
     fleet = game.market.candidates.resolve_fleet(owned)
     pool = game.market.candidates.build(
@@ -384,7 +398,7 @@ async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
     readiness.anchors.resolve.side_effect = RoutingError("locate unavailable")
     transient = require_value(await readiness.prepare(*pair))
     assert transient.status == "transient_failure"
-    complete, retry = await preparation.prepare_routes((candidate,), fleet)
+    complete, retry = await preparation.routes.prepare_routes((candidate,))
     assert not complete and retry is not None
     readiness.provider_identity = "retry-generation"
     readiness.anchors = FakeRoutingAnchorResolver()
@@ -402,29 +416,33 @@ async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
         assert await readiness.prepare(*pair) is None
         assert readiness.router.route.await_count == 1
     with patch.object(readiness, "prepare", return_value=None):
-        complete, retry = await preparation.prepare_routes((candidate,), fleet)
+        complete, retry = await preparation.routes.prepare_routes((candidate,))
         assert not complete and retry is not None
     readiness.router = FakeRouter()
     with patch.object(readiness.store, "renew", return_value=False):
         assert await readiness.prepare(*pair) is None
     batch = make_stock_batch(game, preparation)
-    preparation.request()
+    preparation.demand.request()
     worker = MarketPreparationWorker(
-        preparation.jobs, lambda user: batch, game.now
+        preparation.demand.jobs, lambda user: batch, game.now
     )
     with patch.object(worker, "process", side_effect=RuntimeError("batch")):
         await worker.start()
         await asyncio.sleep(0.01)
         await worker.close()
     assert (
-        require_value(preparation.jobs.status("test-owner")).next_retry_at
+        require_value(
+            preparation.demand.jobs.status("test-owner")
+        ).next_retry_at
         is not None
     )
     failed_worker = MarketPreparationWorker(
-        preparation.jobs, lambda user: batch, game.now
+        preparation.demand.jobs, lambda user: batch, game.now
     )
     with patch.object(
-        preparation.jobs, "next_player", side_effect=RuntimeError("startup")
+        preparation.demand.jobs,
+        "next_player",
+        side_effect=RuntimeError("startup"),
     ):
         await failed_worker.start()
         assert failed_worker._task is not None
@@ -437,7 +455,7 @@ async def test_route_publication_rechecks_inputs_after_provider_await(
     game, database
 ):
     preparation = bind_preparation(game, database)
-    readiness = preparation.readiness
+    readiness = preparation.routes.readiness
     offer = game.state_repository.list_offers()[0]
     pair = offer.origin.facility_uid, offer.destination.facility_uid
     original = readiness.world.read()
@@ -474,7 +492,7 @@ async def test_observed_global_graph_revision_invalidates_shared_routes(
     from functools import partial
 
     preparation = bind_preparation(game, database)
-    readiness = preparation.readiness
+    readiness = preparation.routes.readiness
     store = SqliteRoutingReadinessStore(database)
     readiness.provider_identity = "test"
     readiness.provider_revision = partial(store.provider_revision, "test")
@@ -507,10 +525,10 @@ async def test_dispatch_rejects_retired_and_changed_prepared_routes(
     )
     origin = candidate.trade.origin.facility_uid
     destination = candidate.trade.destination.facility_uid
-    await preparation.readiness.prepare(origin, destination)
-    await preparation.readiness.prepare(owned[0].facility_uid, origin)
+    await preparation.routes.readiness.prepare(origin, destination)
+    await preparation.routes.readiness.prepare(owned[0].facility_uid, origin)
     batch = make_stock_batch(game, preparation)
-    preparation.request()
+    preparation.demand.request()
     for _ in range(30):
         await batch.process()
         if game.list_contracts():
@@ -520,7 +538,18 @@ async def test_dispatch_rejects_retired_and_changed_prepared_routes(
     assert vehicle.location is not None
     planner = game.dispatch_planning
     route = await planner.route(vehicle.location, offer)
-    with patch.object(preparation, "retained", return_value=False):
+    with (
+        patch.object(
+            type(preparation.routes),
+            "matches_snapshot",
+            return_value=False,
+        ),
+        patch.object(
+            type(preparation.routes),
+            "retained_current",
+            return_value=False,
+        ),
+    ):
         assert game.contract_choices((offer,)) == ()
         with pytest.raises(ValueError, match="vorbereitet"):
             await planner.route(vehicle.location, offer)

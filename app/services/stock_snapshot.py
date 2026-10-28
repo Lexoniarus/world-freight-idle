@@ -22,7 +22,9 @@ from app.domain.state_ports import GameUnitOfWork
 from app.domain.world import WorldSnapshot
 from app.services.market_components import MarketComponents
 from app.services.market_demand import MarketDemandResolver
-from app.services.player_market_preparation import PlayerMarketPreparation
+from app.services.player_market_demand import PlayerMarketDemandService
+from app.services.player_market_routes import PlayerMarketRouteService
+from app.services.player_market_stock import PlayerMarketStockContext
 from app.services.vehicle_coverage import trade_key
 
 LOGGER = logging.getLogger(__name__)
@@ -79,16 +81,16 @@ class StockSnapshotReader:
 
     unit: GameUnitOfWork
     market: MarketComponents
-    preparation: PlayerMarketPreparation
+    player_demand: PlayerMarketDemandService
+    routes: PlayerMarketRouteService
+    stock_context: PlayerMarketStockContext
     demand: MarketDemandResolver
 
     def read(self) -> StockSnapshot:
         """Read one revision and build its immutable planning snapshot."""
         started = perf_counter()
-        preparation = self.preparation
-        templates = preparation.templates
-        assert preparation.stock is not None and templates is not None
-        now = preparation.clock()
+        templates = self.stock_context.templates
+        now = self.player_demand.clock()
         inputs = self.read_inputs()
         snapshot_ms = (perf_counter() - started) * 1000
         projection = self.resolve_demand(inputs, now)
@@ -134,14 +136,12 @@ class StockSnapshotReader:
 
     def read_inputs(self) -> StockReadInputs:
         """Read player, job and stock facts in one short transaction."""
-        preparation = self.preparation
-        stock = preparation.stock
-        assert stock is not None
+        stock = self.stock_context.stock
         with self.unit.read_transaction():
             owned = self.unit.repository.list_vehicles()
             offers = self.unit.repository.list_offers()
             arrivals = stock.arrivals()
-            status = preparation.jobs.status(preparation.user_id)
+            status = self.player_demand.status()
             used, bindings = stock.used(), stock.bindings()
         assert status is not None
         return StockReadInputs(owned, offers, arrivals, status, used, bindings)
@@ -167,12 +167,11 @@ class StockSnapshotReader:
         self, candidates: tuple[MarketCandidate, ...]
     ) -> tuple[tuple[MarketCandidate, ...], tuple[RelationDemandState, ...]]:
         """Read reusable route evidence for one candidate collection."""
-        preparation = self.preparation
         pairs = required_relations(candidates)
-        with preparation.readiness.reading(pairs):
-            ready = preparation.ready_candidates(candidates)
+        with self.routes.readiness.reading(pairs):
+            ready = self.routes.ready_candidates(candidates)
             evidence = tuple(
-                preparation.demand_state(*pair)
+                self.routes.demand_state(*pair)
                 for pair in required_relations(ready)
             )
         return ready, evidence

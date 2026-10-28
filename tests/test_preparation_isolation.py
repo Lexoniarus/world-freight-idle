@@ -35,22 +35,22 @@ def test_wal_read_snapshot_rejects_writes_and_resets_after_failure(database):
 
 def test_durable_demand_coalesces_and_fences_stale_diagnostics(game, database):
     preparation = bind_preparation(game, database)
-    jobs = preparation.jobs
+    jobs = preparation.demand.jobs
     assert isinstance(jobs, SqlitePreparationStore)
     notify = Mock()
     jobs.set_notifier(notify)
     assert jobs.diagnostics("test-owner") == ()
-    preparation.request()
+    preparation.demand.request()
     notify.assert_called_once_with()
     first = jobs.status("test-owner")
     assert first is not None
-    preparation.request()
+    preparation.demand.request()
     assert notify.call_count == 1
     assert jobs.status("test-owner") == first
     diagnostic = VehicleCoverageDiagnostic("v", "city", 1, (1, 0, 0), (), ())
     jobs.publish_diagnostics("test-owner", first.generation, (diagnostic,))
     assert jobs.diagnostics("test-owner") == (diagnostic,)
-    preparation.request(changed=True)
+    preparation.demand.request(changed=True)
     assert notify.call_count == 2
     second = jobs.status("test-owner")
     assert second is not None and second.generation != first.generation
@@ -99,7 +99,7 @@ async def test_readiness_read_view_reuses_facts_but_never_crosses_publication(
     game, database
 ):
     preparation = bind_preparation(game, database)
-    readiness = preparation.readiness
+    readiness = preparation.routes.readiness
     assert readiness.store.get_many(()) == {}
     assert readiness.anchor_store.get_many((), "truck") == {}
     offer = game.state_repository.list_offers()[0]

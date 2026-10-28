@@ -44,4 +44,4 @@ def test_audit_inventory_is_structural_and_report_preserves_history(
         "attempts": [],
         "focused_attempts": [],
     }
-    assert preparation.readiness.store.get("missing") is None
+    assert preparation.routes.readiness.store.get("missing") is None

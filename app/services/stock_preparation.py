@@ -27,12 +27,11 @@ class StockPreparationBatch:
 
     async def process(self) -> PreparationBatchResult:
         """Advance one demand context, preserving fairness between players."""
-        prep = self.publication.preparation
-        stock = prep.stock
-        assert stock is not None
+        routes = self.publication.routes
+        stock = self.publication.stock_context.stock
         snapshot = self.snapshots.read()
         pairs = required_relations(snapshot.candidates)
-        with prep.readiness.reading(pairs):
+        with routes.readiness.reading(pairs):
             targets = self.planning.targets(
                 snapshot.demands,
                 snapshot.candidates,
@@ -55,14 +54,13 @@ class StockPreparationBatch:
             stock.checkpoint(target.key, trade_key(candidate))
         ready = self._ready(snapshot, candidate)
         if not ready:
-            await prep.prepare_routes(
+            await routes.prepare_routes(
                 (candidate,),
-                (target.demand.vehicle,),
                 limit=1,
             )
             if not self.publication.unchanged(snapshot):
                 return self._result(snapshot, "partial", 0)
-            newly_ready = prep.ready_candidates((candidate,))
+            newly_ready = routes.ready_candidates((candidate,))
             ready = bool(newly_ready)
             fresh = self.planning.targets(
                 snapshot.demands,
@@ -94,9 +92,7 @@ class StockPreparationBatch:
         targets: tuple[StockTarget, ...],
     ) -> tuple[StockTarget, MarketCandidate] | None:
         """Skip failed/backing-off work without starving other contexts."""
-        prep = self.publication.preparation
-        stock = prep.stock
-        assert stock is not None
+        stock = self.publication.stock_context.stock
         for target in self.planning.order(targets, stock.cursor()):
             choices = tuple(c for c in target.choices if self._runnable(c))
             if not choices:
@@ -126,14 +122,15 @@ class StockPreparationBatch:
 
     def _runnable(self, candidate: MarketCandidate) -> bool:
         """Respect shared negative evidence and provider retry deadlines."""
-        prep = self.publication.preparation
+        routes = self.publication.routes
         for pair in required_relations((candidate,)):
-            current = prep.readiness.current(*pair)
+            current = routes.readiness.current(*pair)
             if current is not None and (
                 current.status == "deterministic_failure"
                 or (
                     current.retry_at is not None
-                    and current.retry_at > prep.clock()
+                    and current.retry_at
+                    > self.publication.player_demand.clock()
                 )
             ):
                 return False
@@ -148,7 +145,7 @@ class StockPreparationBatch:
 
     def _waiting(self, targets: tuple[StockTarget, ...]) -> bool:
         """Keep provider backoff distinct from exhausted road coverage."""
-        readiness = self.publication.preparation.readiness
+        readiness = self.publication.routes.readiness
         return any(
             current.status == "transient_failure"
             for target in targets
@@ -167,7 +164,7 @@ class StockPreparationBatch:
         return PreparationBatchResult(
             snapshot.status.generation,
             status,
-            self.publication.preparation.clock() + delay,
+            self.publication.player_demand.clock() + delay,
             len(snapshot.candidates),
             (),
         )

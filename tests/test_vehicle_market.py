@@ -127,26 +127,26 @@ async def test_vehicle_readiness_requires_approach_and_excludes_stale(
         for c in candidates
         if c.trade.origin.facility_uid != fleet[0].facility_uid
     )
-    readiness = preparation.readiness
+    readiness = preparation.routes.readiness
     for candidate in (at_pickup, remote):
         await readiness.prepare(
             candidate.trade.origin.facility_uid,
             candidate.trade.destination.facility_uid,
         )
-    ready = preparation.ready_candidates((at_pickup, remote))
+    ready = preparation.routes.ready_candidates((at_pickup, remote))
     assert len(ready) == 1 and ready[0].trade == at_pickup.trade
     approach = await readiness.prepare(
         fleet[0].facility_uid, remote.trade.origin.facility_uid
     )
     assert approach is not None
-    ready = preparation.ready_candidates((at_pickup, remote))
+    ready = preparation.routes.ready_candidates((at_pickup, remote))
     assert len(ready) == 2
     offers = tuple(
         ContractOffer.from_snapshot(game.market.factory.build(item, 1))
         for item in ready
     )
     game.state_repository.replace_offers(offers)
-    preparation.bind(offers)
+    preparation.routes.bind(offers)
     offers = game.list_contracts()
     assert game.contract_choices(offers, fleet[0].vehicle_id)
     with patch.object(
@@ -200,12 +200,14 @@ def test_two_vehicle_projection_uses_authoritative_sets(vehicle_game):
     }
     with (
         patch.object(
-            game.market_lifecycle.preparation, "retained", return_value=True
+            type(game.market_lifecycle.routes),
+            "matches_snapshot",
+            lambda self, offer, snapshot: True,
         ),
         patch.object(
-            game.market_lifecycle.preparation,
-            "eligible",
-            side_effect=lambda o, f, s: sets[o.id],
+            type(game.market_lifecycle.routes),
+            "eligible_from_snapshot",
+            lambda self, offer, fleet, structural, snapshot: sets[offer.id],
         ),
     ):
         assert [
@@ -226,19 +228,19 @@ async def test_vehicle_projection_api_enforces_owned_idle_selection(
 
     game, preparation = vehicle_game
     batch = make_stock_batch(game, preparation)
-    preparation.request()
+    preparation.demand.request()
     for _ in range(100):
         result = await batch.process()
         if result.status == "ready":
             break
     with (
         patch.object(
-            preparation.references,
+            preparation.routes.references,
             "get_many",
-            wraps=preparation.references.get_many,
+            wraps=preparation.routes.references.get_many,
         ) as get_many,
         patch.object(
-            preparation.references,
+            preparation.routes.references,
             "get",
             side_effect=AssertionError("Market reads must be set-based"),
         ),

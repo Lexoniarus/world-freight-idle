@@ -35,28 +35,28 @@ async def test_exhausted_negative_demand_requires_explicit_invalidation(
         candidate.trade.origin.facility_uid,
         candidate.trade.destination.facility_uid,
     )
-    readiness = preparation.readiness
+    readiness = preparation.routes.readiness
     error = RoutingError("No path")
     error.category = "no_path"
     readiness.router = AsyncMock()
     readiness.router.route.side_effect = error
     await readiness.prepare(*pair)
-    preparation.request()
-    status = require_value(preparation.jobs.status("test-owner"))
-    preparation.jobs.finish(
+    preparation.demand.request()
+    status = require_value(preparation.demand.jobs.status("test-owner"))
+    preparation.demand.jobs.finish(
         "test-owner", status.generation, "exhausted", None, game.now()
     )
-    preparation.request()
-    assert preparation.jobs.next_player(game.now()) is None
-    before = preparation.demand_state(*pair)
+    preparation.demand.request()
+    assert preparation.demand.jobs.next_player(game.now()) is None
+    before = preparation.routes.demand_state(*pair)
     readiness.provider_revision = lambda: "new-graph"
-    after = preparation.demand_state(*pair)
+    after = preparation.routes.demand_state(*pair)
     assert after.expected_fingerprint != before.expected_fingerprint
-    preparation.request(changed=True)
-    changed = require_value(preparation.jobs.status("test-owner"))
+    preparation.demand.request(changed=True)
+    changed = require_value(preparation.demand.jobs.status("test-owner"))
     assert changed.generation != status.generation
     assert changed.status == "partial"
-    assert preparation.jobs.next_player(game.now()) == "test-owner"
+    assert preparation.demand.jobs.next_player(game.now()) == "test-owner"
     await readiness.prepare(*pair)
     assert readiness.router.route.await_count == 2
 
@@ -66,22 +66,22 @@ async def test_reference_replacement_owns_rollback(game, database):
     preparation = bind_preparation(game, database)
     offer = game.state_repository.list_offers()[0]
     pair = offer.origin.facility_uid, offer.destination.facility_uid
-    await preparation.readiness.prepare(*pair)
-    preparation.bind((offer,))
-    reference = require_value(preparation.references.get(offer.id))
+    await preparation.routes.readiness.prepare(*pair)
+    preparation.routes.bind((offer,))
+    reference = require_value(preparation.routes.references.get(offer.id))
     invalid = replace(offer, id="missing-offer")
     with pytest.raises(PersistenceError):
-        preparation.bind((offer, invalid))
-    assert preparation.references.get(offer.id) == reference
+        preparation.routes.bind((offer, invalid))
+    assert preparation.routes.references.get(offer.id) == reference
     with pytest.raises(PersistenceError):
-        preparation.references.replace((("missing-offer", reference),))
-    assert preparation.references.get(offer.id) == reference
+        preparation.routes.references.replace((("missing-offer", reference),))
+    assert preparation.routes.references.get(offer.id) == reference
     before = game.state_repository.list_offers()
     with pytest.raises(PersistenceError), database.transaction():
         game.state_repository.remove_offer(offer.id)
-        preparation.bind((invalid,))
+        preparation.routes.bind((invalid,))
     assert game.state_repository.list_offers() == before
-    assert preparation.references.get(offer.id) == reference
+    assert preparation.routes.references.get(offer.id) == reference
 
 
 @pytest.mark.asyncio
@@ -153,9 +153,9 @@ async def test_batch_exhausts_deterministic_route_failures(game, database):
     game.market.candidates.build = Mock(return_value=candidates)
     error = RoutingError("No path")
     error.category = "no_path"
-    preparation.readiness.router = AsyncMock()
-    preparation.readiness.router.route.side_effect = error
-    preparation.request()
+    preparation.routes.readiness.router = AsyncMock()
+    preparation.routes.readiness.router.route.side_effect = error
+    preparation.demand.request()
     result = await batch.process()
     for _ in range(10):
         result = await batch.process()

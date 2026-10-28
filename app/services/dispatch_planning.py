@@ -16,7 +16,7 @@ from app.domain.routing_anchors import RoutingCandidate
 from app.domain.world import FacilityLocationSnapshot
 from app.domain.world_scopes import WorldScope
 from app.services.cost_profiles import VehicleCostResolver
-from app.services.player_market_preparation import PlayerMarketPreparation
+from app.services.player_market_routes import PlayerMarketRouteService
 from app.services.routing_connections import RoutingConnectionValidator
 
 
@@ -28,7 +28,7 @@ class DispatchPlanningService:
     costs: VehicleCostResolver
     anchors: RoutingAnchorResolverPort
     world: WorldCatalogue
-    preparation: PlayerMarketPreparation | None = None
+    routes: PlayerMarketRouteService | None = None
     connections: RoutingConnectionValidator = field(
         default_factory=RoutingConnectionValidator
     )
@@ -37,7 +37,7 @@ class DispatchPlanningService:
         self, start: FacilityLocationSnapshot, contract: ContractOffer
     ) -> DispatchRoutePlan:
         """Load prepared approach and delivery before a write transaction."""
-        if self.preparation is not None and not self.preparation.retained(
+        if self.routes is not None and not self.routes.retained_current(
             contract
         ):
             raise ValueError("Straßenverbindung wird vorbereitet.")
@@ -61,8 +61,8 @@ class DispatchPlanningService:
         selected: dict[str, RoutingCandidate] | None = None,
     ) -> RouteSnapshot:
         """Resolve a prepared relation at the dispatch boundary."""
-        if self.preparation is not None:
-            return self.preparation.readiness.load(
+        if self.routes is not None:
+            return self.routes.readiness.load(
                 start.facility_uid, destination.facility_uid
             ).to_snapshot()
         world = WorldScope(self.world.read())
@@ -94,10 +94,10 @@ class DispatchPlanningService:
         time_scale: float,
     ) -> ContractQuote:
         """Compose journey and economics from revalidated purchased values."""
-        if self.preparation is not None:
-            if not self.preparation.retained(contract):
+        if self.routes is not None:
+            if not self.routes.retained_current(contract):
                 raise ValueError("Straßenverbindung wurde geändert.")
-            current = self.preparation.readiness
+            current = self.routes.readiness
             if (
                 current.load(
                     contract.origin.facility_uid,

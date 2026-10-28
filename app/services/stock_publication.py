@@ -11,7 +11,9 @@ from app.domain.market_stock import PreparedTemplate
 from app.domain.routing_readiness import RouteReference
 from app.domain.state_ports import GameUnitOfWork
 from app.services.market_components import MarketComponents
-from app.services.player_market_preparation import PlayerMarketPreparation
+from app.services.player_market_demand import PlayerMarketDemandService
+from app.services.player_market_routes import PlayerMarketRouteService
+from app.services.player_market_stock import PlayerMarketStockContext
 from app.services.stock_snapshot import StockSnapshot
 
 LOGGER = logging.getLogger(__name__)
@@ -32,28 +34,28 @@ class StockPublicationService:
 
     unit: GameUnitOfWork
     market: MarketComponents
-    preparation: PlayerMarketPreparation
+    player_demand: PlayerMarketDemandService
+    routes: PlayerMarketRouteService
+    stock_context: PlayerMarketStockContext
     guard: Callable[[], bool]
 
     def unchanged(self, snapshot: StockSnapshot) -> bool:
         """Recheck inputs in the active publication transaction."""
-        prep = self.preparation
-        stock = prep.stock
-        templates = prep.templates
-        assert stock is not None and templates is not None
+        stock = self.stock_context.stock
+        templates = self.stock_context.templates
         return (
             self.guard()
             and self.unit.repository.list_vehicles() == snapshot.owned
             and self.unit.repository.list_offers() == snapshot.offers
             and stock.arrivals() == snapshot.arrivals
-            and prep.jobs.status(prep.user_id) == snapshot.status
+            and self.player_demand.status() == snapshot.status
             and stock.used() == snapshot.used
             and stock.bindings() == snapshot.bindings
             and templates.scoped_templates(snapshot.template_scopes)
             == snapshot.templates
             and self.market.candidates.reference() == snapshot.reference
             and tuple(
-                prep.demand_state(s.origin_uid, s.destination_uid)
+                self.routes.demand_state(s.origin_uid, s.destination_uid)
                 for s in snapshot.evidence
             )
             == snapshot.evidence
@@ -93,7 +95,6 @@ class StockPublicationService:
         issued: tuple[tuple[str, ContractOffer], ...],
     ) -> StockPublicationPlan:
         """Calculate personal offers, coverage and reusable route bindings."""
-        prep = self.preparation
         offers = snapshot.offers + tuple(offer for _, offer in issued)
         coverage = tuple(
             self.market.vehicle_coverage.diagnose(
@@ -112,13 +113,13 @@ class StockPublicationService:
             )
             for offer in offers
         )
-        with prep.readiness.reading(pairs):
+        with self.routes.readiness.reading(pairs):
             bindings = tuple(
                 (offer.id, reference)
                 for offer in offers
                 if self.market.candidates.structurally_current(offer)
                 and (
-                    reference := prep.readiness.ready(
+                    reference := self.routes.readiness.ready(
                         offer.origin.facility_uid,
                         offer.destination.facility_uid,
                     )
@@ -135,10 +136,8 @@ class StockPublicationService:
         plan: StockPublicationPlan,
     ) -> bool:
         """Fence and commit one previously calculated publication plan."""
-        prep = self.preparation
-        stock = prep.stock
-        template_store = prep.templates
-        assert stock is not None and template_store is not None
+        stock = self.stock_context.stock
+        template_store = self.stock_context.templates
         by_id = {offer.id: offer for offer in plan.offers}
         pairs = tuple(
             (
@@ -147,12 +146,12 @@ class StockPublicationService:
             )
             for offer_id, _ in plan.bindings
         )
-        with self.unit.transaction(), prep.readiness.reading(pairs):
+        with self.unit.transaction(), self.routes.readiness.reading(pairs):
             if not self.unchanged(snapshot):
                 return False
             # References outside current demand must also remain current.
             if any(
-                prep.readiness.ready(
+                self.routes.readiness.ready(
                     by_id[offer_id].origin.facility_uid,
                     by_id[offer_id].destination.facility_uid,
                 )
@@ -164,9 +163,8 @@ class StockPublicationService:
                 template_store.add(template)
             for template_id, offer in issued:
                 stock.issue(template_id, offer)
-            prep.references.replace(plan.bindings)
-            prep.jobs.publish_diagnostics(
-                prep.user_id,
+            self.routes.references.replace(plan.bindings)
+            self.player_demand.publish_diagnostics(
                 snapshot.status.generation,
                 plan.coverage,
             )
