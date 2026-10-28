@@ -10,7 +10,12 @@ from app.domain.cargo import FacilityNhmProfile, NhmProduct
 from app.domain.errors import WorldCatalogueError
 from app.domain.evidence import SourceReference
 from app.domain.geography import Address, City, Coordinates, Country
-from app.domain.world import Company, DocumentedGood, Facility, WorldSnapshot
+from app.domain.world import (
+    DocumentedGood,
+    Facility,
+    ReferenceCompany,
+    WorldSnapshot,
+)
 from app.repositories.market_profile_reader import read_market_profiles
 from app.repositories.world_geography_reader import read_cities, read_countries
 
@@ -143,13 +148,13 @@ def source_reference(row: sqlite3.Row) -> SourceReference:
 
 def read_companies(
     connection: sqlite3.Connection, countries: dict[str, Country]
-) -> dict[int, Company]:
+) -> dict[int, ReferenceCompany]:
     """Resolve internal foreign keys into immutable company projections."""
     sources: dict[int, list[SourceReference]] = {}
     for row in connection.execute("SELECT * FROM company_sources"):
         sources.setdefault(row["company_id"], []).append(source_reference(row))
     return {
-        row["company_id"]: Company(
+        row["company_id"]: ReferenceCompany(
             validate_uid(row["company_uid"]),
             row["legal_name"],
             row["display_name"],
@@ -257,7 +262,7 @@ def read_cargo(
 def read_facility(
     connection: sqlite3.Connection,
     row: sqlite3.Row,
-    companies: dict[int, Company],
+    companies: dict[int, ReferenceCompany],
     cities: dict[str, City],
     cargo: tuple[FacilityNhmProfile, ...],
     version: str,

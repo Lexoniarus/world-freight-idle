@@ -83,7 +83,7 @@ FUNCTION_TESTS = {
     "app.services.analytics.breakdown": "test_analytics_scalars_do_not_hydrate_routes",
     "app.services.analytics.AnalyticsService.__init__": "test_analytics_empty_and_utc_boundary",
     "app.services.analytics.AnalyticsService.analyze": "test_analytics_empty_and_utc_boundary",
-    "app.api.v1.company.get_analytics": "test_analytics_and_exact_api_require_session",
+    "app.api.v1.company_analytics.get_analytics": "test_analytics_and_exact_api_require_session",
     "app.bootstrap.build_analytics_service": "test_analytics_and_exact_api_require_session",
     "app.api.v1.map.exact_city": "test_analytics_and_exact_api_require_session",
     "app.api.v1.map.exact_facility": "test_analytics_and_exact_api_require_session",

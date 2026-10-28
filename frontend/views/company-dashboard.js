@@ -15,7 +15,7 @@ const scopeLabels = {
 };
 
 /** Private management view; no fetching or domain decisions. */
-export function renderCompany(view) {
+export function renderCompanyDashboard(view) {
   const data = view.analytics;
   const scope = view.url.searchParams.get("scope") ?? "company";
   return html`<div class="company-heading">

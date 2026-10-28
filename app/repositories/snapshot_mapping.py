@@ -9,9 +9,9 @@ from app.domain.geography import City, Coordinates, Country
 from app.domain.market_terms import OfferMarketContext
 from app.domain.tariffs import FreightTariff
 from app.domain.world import (
-    CompanyIdentity,
     DocumentedGood,
     FacilityLocationSnapshot,
+    ReferenceCompanyIdentity,
 )
 
 
@@ -27,7 +27,7 @@ def load_location(value: dict[str, Any]) -> FacilityLocationSnapshot:
                 else None
             ),
             "company": (
-                CompanyIdentity(
+                ReferenceCompanyIdentity(
                     **{
                         **value["company"],
                         "country": Country(**value["company"]["country"])

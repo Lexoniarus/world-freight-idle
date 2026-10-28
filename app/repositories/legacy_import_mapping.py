@@ -13,9 +13,9 @@ from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.domain.validation import require_finite, require_identity
 from app.domain.vehicles import VehicleModel
 from app.domain.world import (
-    CompanyIdentity,
     DocumentedGood,
     FacilityLocationSnapshot,
+    ReferenceCompanyIdentity,
 )
 from app.domain.world_scopes import WorldScope
 
@@ -70,7 +70,7 @@ class LegacySnapshotReader:
             reject_unknown_fields(
                 raw_company, COMPANY_FIELDS, path + ".company"
             )
-            company = CompanyIdentity(
+            company = ReferenceCompanyIdentity(
                 raw_company["company_uid"],
                 raw_company["legal_name"],
                 raw_company["display_name"],
@@ -81,7 +81,9 @@ class LegacySnapshotReader:
                 ),
             )
         elif value.get("company_uid"):
-            company = CompanyIdentity(value["company_uid"], None, None, None)
+            company = ReferenceCompanyIdentity(
+                value["company_uid"], None, None, None
+            )
         if value.get("company_uid") != (
             company.company_uid if company else None
         ):

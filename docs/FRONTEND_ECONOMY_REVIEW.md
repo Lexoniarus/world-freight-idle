@@ -136,7 +136,7 @@ Requests und Ressourcenbesitz liegen in Controllers/Registries.
 | `frontend/ui/filters.js` · `cityFilter` | passende Stadtauswahl rendern | serverbasierter aktiver Kontext; keine Eignungsregeln |
 | `frontend/ui/preserve-vehicle-images.js` · `matchVehicleImages` | wiederverwendbare Bildknoten finden | DOM-Vergleich; keine URLs laden/freigeben |
 | `frontend/ui/vehicle-image.js` · `renderVehicleImage` | Modellasset und Rollenmetadaten rendern | Assetregister/DOM; kein Fetch |
-| `frontend/views/company.js` · `renderCompany` | Unternehmensansicht zusammenstellen | Read-Modell/Subrenderer; DOM |
+| `frontend/views/company-dashboard.js` · `renderCompanyDashboard` | Unternehmensansicht zusammenstellen | Read-Modell/Subrenderer; DOM |
 | `frontend/views/contracts.js` · `renderContracts` | aktive Stadtangebote/Leermeldung darstellen | View; DOM, keine zweite Kompatibilitätsregel |
 | `frontend/views/contracts.js` · `renderQuote` | serverseitige Quote und Ergebnis darstellen | Quote/Kostenrenderer; DOM, keine Preisberechnung |
 | `frontend/views/shop.js` · `renderOffer` | Katalogangebot mit Wartung statt Aggregatkosten darstellen | Katalogprojektion; reine Einheitenformatierung |

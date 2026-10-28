@@ -23,7 +23,7 @@ Die Liste ist gegen den Basiscommit per AST abgeglichen. Jede Zeile wurde auf Zw
 |---|---|---|---|
 | `project_analytics` | Preserve field names, flattened metrics and historical nulls. | `asdict` | Service-Aufruf und HTTP-Projektion; kein SQL/Provider |
 
-### `app/api/v1/company.py`
+### `app/api/v1/company_analytics.py`
 
 | Funktion | Einziger Zweck | Unmittelbare Abhängigkeiten | Seiteneffekte / Grenze |
 |---|---|---|---|

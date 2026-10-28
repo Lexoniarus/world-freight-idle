@@ -5,7 +5,12 @@ from typing import TypeVar
 
 from app.domain.errors import AmbiguousWorldReference
 from app.domain.geography import City, Country
-from app.domain.world import Company, Facility, FacilityQuery, WorldSnapshot
+from app.domain.world import (
+    Facility,
+    FacilityQuery,
+    ReferenceCompany,
+    WorldSnapshot,
+)
 
 Reference = TypeVar("Reference")
 
@@ -30,7 +35,9 @@ def select_city(cities: tuple[City, ...], identifier: str) -> City:
     return require_unique_reference(identities or names, "city")
 
 
-def select_company(companies: tuple[Company, ...], identifier: str) -> Company:
+def select_company(
+    companies: tuple[ReferenceCompany, ...], identifier: str
+) -> ReferenceCompany:
     """Resolve a company UID or an unambiguous legal/display name."""
     identities = tuple(c for c in companies if c.company_uid == identifier)
     names = tuple(
@@ -47,7 +54,7 @@ def select_company(companies: tuple[Company, ...], identifier: str) -> Company:
 
 def scope_company(
     facilities: tuple[Facility, ...], identifier: str
-) -> "CompanyScope":
+) -> "ReferenceCompanyScope":
     """Select a company through geographically filtered facilities."""
     companies = {
         facility.company.company_uid: facility.company
@@ -55,7 +62,7 @@ def scope_company(
         if facility.company is not None
     }
     company = select_company(tuple(companies.values()), identifier)
-    return CompanyScope(
+    return ReferenceCompanyScope(
         company,
         tuple(
             f
@@ -105,10 +112,10 @@ class WorldScope:
             self._world, select_city(self._world.cities, identifier)
         )
 
-    def company(self, identifier: str) -> "CompanyScope":
+    def company(self, identifier: str) -> "ReferenceCompanyScope":
         """Select a reference company without implying ownership by a city."""
         company = select_company(self._world.companies, identifier)
-        return CompanyScope(
+        return ReferenceCompanyScope(
             company,
             tuple(
                 f
@@ -147,7 +154,7 @@ class CountryScope:
         )
         return CityScope(self._world, select_city(cities, identifier))
 
-    def company(self, identifier: str) -> "CompanyScope":
+    def company(self, identifier: str) -> "ReferenceCompanyScope":
         """Filter a company's facilities without changing its legal country."""
         return scope_company(self.facilities, identifier)
 
@@ -168,14 +175,14 @@ class CityScope:
             if f.address.city.city_uid == self.city.city_uid
         )
 
-    def company(self, identifier: str) -> "CompanyScope":
+    def company(self, identifier: str) -> "ReferenceCompanyScope":
         """Select a company through its facilities in this city."""
         return scope_company(self.facilities, identifier)
 
 
 @dataclass(frozen=True, slots=True)
-class CompanyScope:
+class ReferenceCompanyScope:
     """One company and only its facilities matching the preceding filters."""
 
-    company: Company
+    company: ReferenceCompany
     facilities: tuple[Facility, ...]

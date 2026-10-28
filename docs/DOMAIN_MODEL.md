@@ -36,7 +36,7 @@ wechselt nur von active nach settled und bewahrt den Settlement-Zeitpunkt.
   Adresse, Koordinaten und Evidenz unabhängig vom späteren Katalog. Historische
   Quellen, Warenbelege und Handling-Evidence werden mitbewahrt. Die HTTP-
   Darstellung bleibt kompakt und expandiert diese Referenzaggregate nicht.
-- CompanyIdentity enthält bekannte historische Firmenangaben. Bei früher nur
+- ReferenceCompanyIdentity enthält bekannte historische Firmenangaben. Bei früher nur
   gespeicherter company_uid bleiben nicht aufgezeichnete Namen unbekannt.
 - DocumentedCargo bewahrt eine historische Warenbeschreibung ohne nachträglich
   eine NHM-Identität zu behaupten. Neue Angebote verwenden NhmProduct.
@@ -57,7 +57,7 @@ Priorität und Evidenz. DocumentedGood enthält den unabhängigen recherchierten
 Warenhinweis samt Quelle. Reale Fakten behaupten keine simulierte Lieferbeziehung.
 
 WorldSnapshot ist eine konsistente unveränderliche Katalogrevision. WorldScope,
-CountryScope, CityScope und CompanyScope sind immutable Filteransichten:
+CountryScope, CityScope und ReferenceCompanyScope sind immutable Filteransichten:
 
 ```python
 world = WorldScope(snapshot)
