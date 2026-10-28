@@ -141,6 +141,9 @@ def test_attempt_history_and_offer_reference_atomicity(tmp_path):
     with database.transaction():
         refs.replace((("offer", reference),))
     assert refs.get("offer") == reference
+    assert refs.get_many(()) == {}
+    assert refs.get_many(("missing", "offer", "offer")) == {"offer": reference}
+    assert foreign.get_many(("offer",)) == {}
     assert foreign.get("offer") is None
     with pytest.raises(RuntimeError), database.transaction():
         refs.replace(())

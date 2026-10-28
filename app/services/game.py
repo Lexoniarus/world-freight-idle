@@ -297,6 +297,19 @@ class GameService:
         self.reconcile_arrival()
         return self.market_lifecycle.published(refresh=True)
 
+    def read_market(
+        self,
+        vehicle_id: str,
+        *,
+        refresh: bool = False,
+    ) -> MarketPresentation:
+        """Reconcile and read one vehicle market through one snapshot."""
+        self.reconcile_arrival()
+        return self.market_lifecycle.read_market(
+            vehicle_id,
+            refresh=refresh,
+        )
+
     def contract_choices(
         self, offers: Sequence[ContractOffer], vehicle_id: str | None = None
     ) -> tuple[AvailableContract, ...]:

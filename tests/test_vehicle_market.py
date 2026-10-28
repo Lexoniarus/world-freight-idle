@@ -231,7 +231,20 @@ async def test_vehicle_projection_api_enforces_owned_idle_selection(
         result = await batch.process()
         if result.status == "ready":
             break
-    response = list_contracts(vehicle_id="truck", game=game)
+    with (
+        patch.object(
+            preparation.references,
+            "get_many",
+            wraps=preparation.references.get_many,
+        ) as get_many,
+        patch.object(
+            preparation.references,
+            "get",
+            side_effect=AssertionError("Market reads must be set-based"),
+        ),
+    ):
+        response = list_contracts(vehicle_id="truck", game=game)
+    get_many.assert_called_once()
     assert response["contracts"]
     assert all(
         "truck" in o["eligible_vehicle_ids"] for o in response["contracts"]

@@ -65,6 +65,10 @@ class FakeGame:
             self.preparation_status(),
         )
 
+    def read_market(self, vehicle_id, *, refresh=False):
+        offers = self.refresh_contracts() if refresh else (self.offer,)
+        return self.market_presentation(offers, vehicle_id)
+
     def vehicle_coverage(self):
         return self.market_lifecycle.vehicle_diagnostics()
 
@@ -354,7 +358,7 @@ def test_market_reference_errors_have_explicit_http_responses(tmp_path, game):
                 "Bestand prüfen",
             ),
         ):
-            with patch.object(game, "list_contracts", side_effect=error):
+            with patch.object(game, "read_market", side_effect=error):
                 response = client.get("/api/v1/contracts?vehicle_id=truck_01")
             assert response.status_code == status
             assert message in response.json()["detail"]

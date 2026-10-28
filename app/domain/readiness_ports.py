@@ -79,6 +79,10 @@ class OfferRouteStore(Protocol):
 
     def get(self, offer_id: str) -> RouteReference | None: ...
 
+    def get_many(
+        self, offer_ids: tuple[str, ...]
+    ) -> dict[str, RouteReference]: ...
+
     def replace(
         self, references: tuple[tuple[str, RouteReference], ...]
     ) -> None: ...

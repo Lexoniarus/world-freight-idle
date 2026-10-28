@@ -30,6 +30,7 @@ FUNCTION_TESTS = {
     "app.repositories.routing_audit.SqliteRoutingAudit.report": "test_audit_inventory_is_structural_and_report_preserves_history",
     "app.repositories.routing_readiness.SqliteOfferRouteStore.__init__": "test_attempt_history_and_offer_reference_atomicity",
     "app.repositories.routing_readiness.SqliteOfferRouteStore.get": "test_attempt_history_and_offer_reference_atomicity",
+    "app.repositories.routing_readiness.SqliteOfferRouteStore.get_many": "test_attempt_history_and_offer_reference_atomicity",
     "app.repositories.routing_readiness.SqliteOfferRouteStore.replace": "test_attempt_history_and_offer_reference_atomicity",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.__init__": "test_global_lease_fences_expired_and_competing_writers",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.acquire": "test_global_lease_fences_expired_and_competing_writers",
@@ -783,6 +784,15 @@ FUNCTION_TESTS.update(
         "app.services.economy_audit.summarize_economy": "test_economy_audit_is_typed_and_reproducible",
         "app.services.game.GameService.vehicle_coverage": "test_vehicle_projection_api_enforces_owned_idle_selection",
         "app.services.market_lifecycle.MarketLifecycleService.vehicle_diagnostics": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market_lifecycle.MarketLifecycleService.read_market": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market_lifecycle.MarketLifecycleService._retained_from": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market_lifecycle.MarketLifecycleService._present_from": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market_lifecycle.MarketLifecycleService._route_snapshot": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market_lifecycle.MarketLifecycleService._require_vehicle": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.player_market_routes.PlayerMarketRouteService.read": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.player_market_routes.PlayerMarketRouteService.retained": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.player_market_routes.PlayerMarketRouteService.eligible": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.player_market_routes.PlayerMarketRouteService._required_pairs": "test_vehicle_projection_api_enforces_owned_idle_selection",
         "app.services.player_market_preparation.PlayerMarketPreparation._bind_in_transaction": "test_reference_replacement_owns_rollback",
         "app.services.player_market_preparation.PlayerMarketPreparation._ready_candidates": "test_vehicle_readiness_requires_approach_and_excludes_stale",
         "app.services.player_market_preparation.PlayerMarketPreparation.demand_state": "test_exhausted_negative_demand_requires_explicit_invalidation",
@@ -806,6 +816,9 @@ FUNCTION_TESTS.update(
 )
 
 FUNCTION_TESTS["app.services.game.GameService.market_presentation"] = (
+    "test_vehicle_projection_api_enforces_owned_idle_selection"
+)
+FUNCTION_TESTS["app.services.game.GameService.read_market"] = (
     "test_vehicle_projection_api_enforces_owned_idle_selection"
 )
 FUNCTION_TESTS["app.domain.market_preparation.required_relations"] = (

@@ -459,6 +459,23 @@ class SqliteOfferRouteStore:
             ).fetchone()
         return RouteReference(*row) if row is not None else None
 
+    def get_many(
+        self, offer_ids: tuple[str, ...]
+    ) -> dict[str, RouteReference]:
+        """Read the requested player bindings with one bounded query."""
+        unique_ids = tuple(dict.fromkeys(offer_ids))
+        if not unique_ids:
+            return {}
+        placeholders = ",".join("?" for _ in unique_ids)
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                "SELECT contract_id, relation_id, revision "
+                "FROM offer_route_references WHERE user_id=? "
+                f"AND contract_id IN ({placeholders})",
+                (self.user_id, *unique_ids),
+            ).fetchall()
+        return {row[0]: RouteReference(row[1], row[2]) for row in rows}
+
     def replace(
         self, references: tuple[tuple[str, RouteReference], ...]
     ) -> None:

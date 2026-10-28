@@ -20,6 +20,7 @@ from app.domain.market_stock import (
 from app.domain.readiness_ports import OfferRouteStore
 from app.domain.routing_readiness import RouteReference
 from app.domain.state_ports import TransactionBoundary
+from app.services.player_market_routes import PlayerMarketRouteService
 from app.services.routing_readiness import RoutingReadinessService
 from app.services.vehicle_coverage import restrict_candidate
 
@@ -45,6 +46,7 @@ class PlayerMarketPreparation:
         self.user_id = user_id
         self.readiness = readiness
         self.references = references
+        self.routes = PlayerMarketRouteService(readiness, references)
         self.jobs = jobs
         self.clock = clock
         self.transactions = transactions
