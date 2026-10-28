@@ -113,7 +113,7 @@ FUNCTION_TESTS = {
     "app.api.v1.contracts.get_contract": "test_v1_resource_endpoints_and_error_mapping",
     "app.api.v1.contracts.list_contracts": "test_v1_resource_endpoints_and_error_mapping",
     "app.api.v1.contracts.quote_contract": "test_v1_resource_endpoints_and_error_mapping",
-    "app.api.v1.contracts.refresh_contracts": "test_v1_resource_endpoints_and_error_mapping",
+    "app.api.v1.contracts.refresh_contracts": "test_market_refresh_maps_only_client_errors_to_http",
     "app.api.v1.dashboard.get_dashboard": "test_v1_resource_endpoints_and_error_mapping",
     "app.api.v1.dependencies.get_game_service": "test_auth_api_and_private_game_resources",
     "app.api.v1.fleet.get_vehicle": "test_v1_resource_endpoints_and_error_mapping",
@@ -217,7 +217,7 @@ FUNCTION_TESTS.update(
         "app.services.auth.PasswordHasher.verify_password": "test_password_hashes_are_salted_and_verified",
         "app.services.fleet.FleetService.purchase": "test_player_service_isolation_and_atomic_purchases",
         "app.services.transport_dispatch.TransportDispatchService.commit_dispatch": "test_simultaneous_dispatch_revalidates_after_routing",
-        "app.services.transport_settlement.TransportSettlementService.complete_trip": "test_parallel_transports_and_offline_settlement",
+        "app.services.transport_settlement.TransportSettlementService.complete_trip": "test_settlement_rejects_transport_without_owned_vehicle",
         "app.web.leaderboard_page": "test_product_pages_are_distinct_routes",
         "app.web.login_page": "test_product_pages_are_distinct_routes",
     }
@@ -780,9 +780,9 @@ FUNCTION_TESTS.update(
         "app.services.economy_audit.EconomyAuditService.matrix": "test_economy_audit_is_typed_and_reproducible",
         "app.services.economy_audit.audit_vehicle": "test_economy_audit_is_typed_and_reproducible",
         "app.services.economy_audit.summarize_economy": "test_economy_audit_is_typed_and_reproducible",
-        "app.services.game.GameService.vehicle_coverage": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.game.GameService.vehicle_coverage": "test_market_presentation_filters_coverage_for_requested_vehicle",
         "app.services.market_lifecycle.MarketLifecycleService.vehicle_diagnostics": "test_vehicle_projection_api_enforces_owned_idle_selection",
-        "app.services.market_lifecycle.MarketLifecycleService.read_market": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market_lifecycle.MarketLifecycleService.read_market": "test_local_market_read_projects_coverage_without_durable_demand",
         "app.services.market_lifecycle.MarketLifecycleService._retained_from": "test_vehicle_projection_api_enforces_owned_idle_selection",
         "app.services.market_lifecycle.MarketLifecycleService._present_from": "test_vehicle_projection_api_enforces_owned_idle_selection",
         "app.services.market_lifecycle.MarketLifecycleService._route_snapshot": "test_vehicle_projection_api_enforces_owned_idle_selection",
@@ -797,7 +797,7 @@ FUNCTION_TESTS.update(
         "app.services.player_market_routes.PlayerMarketRouteService.ready_candidates": "test_vehicle_readiness_requires_approach_and_excludes_stale",
         "app.services.player_market_routes.PlayerMarketRouteService.ready_context": "test_vehicle_readiness_requires_approach_and_excludes_stale",
         "app.services.preparation_worker.MarketPreparationWorker._iteration": "test_worker_recovers_entire_iteration",
-        "app.services.preparation_worker.MarketPreparationWorker._wait_for_work": "test_worker_recovers_entire_iteration",
+        "app.services.preparation_worker.MarketPreparationWorker._wait_for_work": "test_worker_idle_wait_finishes_on_safety_timeout",
         "app.services.preparation_worker.MarketPreparationWorker._drain_due_jobs": "test_worker_recovers_entire_iteration",
         "app.services.preparation_worker.MarketPreparationWorker._recover_after_failure": "test_worker_recovers_entire_iteration",
         "app.services.vehicle_coverage.VehicleCoverageService.diagnose": "test_shared_materialized_offers_cover_identical_vehicles_once",
@@ -814,7 +814,7 @@ FUNCTION_TESTS.update(
 )
 
 FUNCTION_TESTS["app.services.game.GameService.market_presentation"] = (
-    "test_vehicle_projection_api_enforces_owned_idle_selection"
+    "test_market_presentation_filters_coverage_for_requested_vehicle"
 )
 FUNCTION_TESTS["app.services.game.GameService.read_market"] = (
     "test_vehicle_projection_api_enforces_owned_idle_selection"
@@ -1034,7 +1034,7 @@ FUNCTION_TESTS.update(
             "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work"
         ),
         "app.services.market_candidates.MarketCandidateService.build": (
-            "test_structural_candidates_are_reused_until_fleet_context_changes"
+            "test_candidate_cache_discards_oldest_context_after_bound"
         ),
     }
 )

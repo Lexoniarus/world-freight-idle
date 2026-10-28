@@ -2,7 +2,7 @@
 
 from dataclasses import replace
 from itertools import cycle, islice
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -267,6 +267,23 @@ async def test_vehicle_projection_api_enforces_owned_idle_selection(
     with pytest.raises(HTTPException) as failure:
         list_contracts(vehicle_id="truck", game=game)
     assert failure.value.status_code == 400
+
+
+def test_market_refresh_maps_only_client_errors_to_http():
+    from fastapi import HTTPException
+
+    from app.api.v1.contracts import refresh_contracts
+    from app.domain.errors import CatalogueError
+
+    game = Mock()
+    game.read_market.side_effect = ValueError("invalid scope")
+    with pytest.raises(HTTPException) as failure:
+        refresh_contracts(vehicle_id="truck", game=game)
+    assert failure.value.status_code == 400
+
+    game.read_market.side_effect = CatalogueError("catalogue unavailable")
+    with pytest.raises(CatalogueError, match="catalogue unavailable"):
+        refresh_contracts(vehicle_id="truck", game=game)
 
 
 def test_approaches_precede_delivery_batches_without_starvation(city_market):

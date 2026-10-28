@@ -936,7 +936,7 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
         prep.demand,
         lifecycle.refill_after_commit,
     )
-    dispatch = TransportDispatchService(
+    dispatch_service = TransportDispatchService(
         unit,
         game.market,
         game.transport_dispatch.planning,
@@ -965,7 +965,7 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
             prep.demand,
         ),
         settlement,
-        dispatch,
+        dispatch_service,
     )
     barrier = Barrier(2)
     original = TransportDispatchService.quote_contract
@@ -975,7 +975,7 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
         barrier.wait(timeout=10)
         return quote
 
-    def dispatch(service):
+    def run_dispatch(service):
         try:
             return asyncio.run(service.dispatch(offer.id, "truck"))
         except (ValueError, KeyError) as error:
@@ -986,7 +986,9 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
         patch.object(TransportDispatchService, "quote_contract", new=together),
         ThreadPoolExecutor(max_workers=2) as pool,
     ):
-        futures = [pool.submit(dispatch, service) for service in (game, other)]
+        futures = [
+            pool.submit(run_dispatch, service) for service in (game, other)
+        ]
         results = [f.result() for f in futures]
     assert sum(isinstance(r, (ValueError, KeyError)) for r in results) == 1
     trips = game.state_repository.list_active_transports()

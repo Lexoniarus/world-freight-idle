@@ -332,6 +332,17 @@ def test_reference_cache_and_empty_origin_relations(city_market):
     assert first[0].trade.origin.label != "New source"
 
 
+def test_candidate_cache_discards_oldest_context_after_bound(city_market):
+    market, _, _, _, _ = city_market
+    candidates = market.candidates
+
+    for index in range(33):
+        candidates.build((f"missing-city-{index}",), ())
+
+    assert len(candidates._candidate_cache) == 32
+    assert (("missing-city-0",), ()) not in candidates._candidate_cache
+
+
 def test_model_resolution_is_explicit_and_saved_capacity_wins(city_market):
     market, owned, fleet, world, _ = city_market
     owned._capacity_tons = 4.2

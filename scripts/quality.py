@@ -71,6 +71,7 @@ COMMANDS = (
         "--cov=app",
         "--cov-report=term-missing",
         "--cov-fail-under=100",
+        "--durations=20",
     ),
     (
         "node",

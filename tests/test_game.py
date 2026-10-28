@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from dataclasses import asdict, replace
 from typing import Any
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -148,6 +149,8 @@ def test_state_expands_contract_addresses(game: GameService):
 
 
 def test_reset_restores_playable_state(game: GameService):
+    demand = Mock()
+    game.initialization.market_demand = demand
     game.state_repository.save_player(
         PlayerState(cash=1, completed=99, reputation=99)
     )
@@ -155,6 +158,7 @@ def test_reset_restores_playable_state(game: GameService):
     assert state["player"]["cash"] == 175000
     assert state["player"]["completed"] == 0
     assert len(state["vehicles"]) == 1
+    demand.request.assert_called_once_with(changed=True)
 
 
 def test_find_contract_returns_match_and_raises(game: GameService):
@@ -370,6 +374,35 @@ def test_list_and_get_contracts_return_real_addresses(game: GameService):
     assert contract["destination"]["address"]
     with pytest.raises(KeyError):
         project_contract(game.get_contract("missing"))
+
+
+def test_market_presentation_filters_coverage_for_requested_vehicle(
+    game: GameService,
+):
+    offers = game.list_contracts()
+    presentation = game.market_presentation(offers, "truck_01")
+
+    assert presentation.contracts == game.contract_choices(
+        offers,
+        "truck_01",
+    )
+    assert presentation.vehicle_coverage == tuple(
+        item
+        for item in game.vehicle_coverage()
+        if item.vehicle_id == "truck_01"
+    )
+
+
+@pytest.mark.asyncio
+async def test_settlement_rejects_transport_without_owned_vehicle(
+    game: GameService,
+):
+    contract = first_berlin_contract(game)
+    trip = await game.dispatch(contract["id"], "truck_01")
+
+    with patch.object(game.state_repository, "list_vehicles", return_value=()):
+        with pytest.raises(ValueError, match="Fahrzeug existiert nicht"):
+            game.settlement.complete_trip(trip, trip.arrives_at + 1)
 
 
 def test_list_get_and_expand_vehicles(game: GameService):

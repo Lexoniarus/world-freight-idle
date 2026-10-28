@@ -141,6 +141,18 @@ async def test_arrival_activates_city_and_preserves_historical_terms(
     assert offers == []
 
 
+def test_local_market_read_projects_coverage_without_durable_demand(game):
+    game.market_lifecycle.demand = None
+
+    result = game.market_lifecycle.read_market("truck_01")
+
+    assert result.contracts
+    assert result.preparation is None
+    assert all(
+        item.vehicle_id == "truck_01" for item in result.vehicle_coverage
+    )
+
+
 def test_retention_filters_without_writing_during_market_reads(game):
     offers = game.list_contracts()
     first = offers[0]
