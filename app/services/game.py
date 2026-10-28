@@ -26,7 +26,7 @@ from app.services.fleet import (
     create_starter_vehicle,
     resolve_delivery_facility,
 )
-from app.services.market import MarketGenerator
+from app.services.market_components import MarketComponents
 from app.services.market_lifecycle import MarketLifecycleService
 from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
@@ -44,7 +44,7 @@ class GameService:
         unit_of_work: GameUnitOfWork,
         world: WorldCatalogue,
         router: TruckRouter,
-        market: MarketGenerator,
+        market: MarketComponents,
         catalogue: VehicleCatalogue,
         market_scope: MarketScopeResolver,
         clock: Callable[[], float],

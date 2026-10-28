@@ -8,7 +8,7 @@ from uuid import UUID
 
 import pytest
 
-from app.bootstrap import build_market_generator
+from app.bootstrap import build_market_components
 from app.domain.cargo import FacilityNhmProfile, NhmProduct
 from app.domain.contracts import ContractOffer
 from app.domain.errors import CatalogueError, WorldCatalogueError
@@ -93,7 +93,7 @@ def city_market(world_catalogue, catalogue):
     )
     models = Mock(list_models=Mock(return_value=(model,)))
     owned = build_owned_vehicle(model, "truck", origin.location_snapshot())
-    market = build_market_generator(world, random.Random(3), models)
+    market = build_market_components(world, random.Random(3), models)
     fleet = market.candidates.resolve_fleet((owned,))
     return market, owned, fleet, world, model
 

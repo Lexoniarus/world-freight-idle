@@ -9,7 +9,7 @@ from app.domain.contracts import ContractOffer
 from app.domain.market import MarketVehicle, VehicleCoverageDiagnostic
 from app.domain.results import AvailableContract
 from app.domain.state_ports import GameUnitOfWork
-from app.services.market import MarketGenerator
+from app.services.market_components import MarketComponents
 from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_selection import MarketSelectionService
@@ -23,7 +23,7 @@ class MarketLifecycleService:
     """Own refresh transactions and expose pruning within dispatch."""
 
     unit_of_work: GameUnitOfWork
-    generator: MarketGenerator
+    market: MarketComponents
     scope: MarketScopeResolver
     clock: Callable[[], float]
     preparation: MarketPreparationService | None = None
@@ -36,7 +36,7 @@ class MarketLifecycleService:
             self.preparation.request(changed=True)
         with self.unit_of_work.read_transaction():
             owned = self.unit_of_work.repository.list_vehicles()
-            fleet = self.generator.candidates.resolve_fleet(owned)
+            fleet = self.market.candidates.resolve_fleet(owned)
             retained = self._retained(
                 self.scope.resolve(owned), fleet, self.clock()
             )
@@ -49,7 +49,7 @@ class MarketLifecycleService:
             return
         owned = self.unit_of_work.repository.list_vehicles()
         cities = self.scope.resolve(owned)
-        fleet = self.generator.candidates.resolve_fleet(owned)
+        fleet = self.market.candidates.resolve_fleet(owned)
         self._store(self._retained(cities, fleet, self.clock()))
         if self.preparation is not None:
             self.preparation.request(changed=True)
@@ -66,11 +66,11 @@ class MarketLifecycleService:
             if self.preparation is not None
             else nullcontext()
         ):
-            candidates = self.generator.candidates
+            candidates = self.market.candidates
             return tuple(
                 offer
                 for offer in self.unit_of_work.repository.list_offers()
-                if offer.is_available(now, self.generator.model_id)
+                if offer.is_available(now, self.market.model_id)
                 and (
                     offer.expires_at is None
                     or offer.expires_at > now + RETAIN_MINIMUM_SECONDS
@@ -117,7 +117,7 @@ class MarketLifecycleService:
             if self.preparation is not None
             else nullcontext()
         ):
-            fleet = self.generator.candidates.resolve_fleet(
+            fleet = self.market.candidates.resolve_fleet(
                 self.unit_of_work.repository.list_vehicles()
             )
             if vehicle_id is not None and not any(
@@ -128,7 +128,7 @@ class MarketLifecycleService:
                 )
             result = []
             for offer in offers:
-                eligible = self.generator.candidates.eligible_ids(offer, fleet)
+                eligible = self.market.candidates.eligible_ids(offer, fleet)
                 reference = None
                 if self.preparation is not None:
                     if not self.preparation.retained(offer):
@@ -161,8 +161,8 @@ class MarketLifecycleService:
     ) -> tuple[VehicleCoverageDiagnostic, ...]:
         """Project consistent cached evidence in the active transaction."""
         owned = self.unit_of_work.repository.list_vehicles()
-        fleet = self.generator.candidates.resolve_fleet(owned)
-        candidates = self.generator.candidates.build(
+        fleet = self.market.candidates.resolve_fleet(owned)
+        candidates = self.market.candidates.build(
             self.scope.resolve(owned), fleet
         )
         ready = (
@@ -172,7 +172,7 @@ class MarketLifecycleService:
         )
         offers = self.unit_of_work.repository.list_offers()
         return tuple(
-            self.generator.vehicle_coverage.diagnose(
+            self.market.vehicle_coverage.diagnose(
                 vehicle, candidates, ready, offers
             )
             for vehicle in fleet

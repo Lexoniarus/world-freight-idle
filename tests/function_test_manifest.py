@@ -595,7 +595,7 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.bootstrap.build_market_generator": "test_market_diversity_counts_only_persisted_offer_dimensions",
+        "app.bootstrap.build_market_components": "test_market_diversity_counts_only_persisted_offer_dimensions",
         "app.domain.game.OwnedVehicle.reposition_within_city": "test_reposition_rejects_busy_other_city_and_missing_location",
         "app.domain.market_calculations.distance_band": "test_distance_and_tonnage_are_deterministic_and_bounded",
         "app.domain.market_calculations.great_circle_km": "test_distance_and_tonnage_are_deterministic_and_bounded",

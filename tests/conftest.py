@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from app.bootstrap import GameRuntime, build_market_generator
+from app.bootstrap import GameRuntime, build_market_components
 from app.domain.contracts import ContractOffer
 from app.domain.transports import RouteSnapshot
 from app.domain.world import Facility
@@ -87,7 +87,7 @@ def world_catalogue(tmp_path):
 
 @pytest.fixture
 def game(database, catalogue, world_catalogue) -> GameService:
-    market = build_market_generator(
+    market = build_market_components(
         world_catalogue, random.Random(7), catalogue
     )
     router = FakeRouter()

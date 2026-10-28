@@ -22,7 +22,7 @@ from app.domain.market_stock import (
 from app.domain.routing_readiness import RouteReference
 from app.domain.state_ports import GameUnitOfWork
 from app.domain.world import WorldSnapshot
-from app.services.market import MarketGenerator
+from app.services.market_components import MarketComponents
 from app.services.market_demand import MarketDemandResolver
 from app.services.market_preparation import MarketPreparationService
 from app.services.vehicle_coverage import trade_key
@@ -89,7 +89,7 @@ class StockPublicationService:
     """Own fenced publication, leaving selection and routing elsewhere."""
 
     unit: GameUnitOfWork
-    market: MarketGenerator
+    market: MarketComponents
     preparation: MarketPreparationService
     demand: MarketDemandResolver
     guard: Callable[[], bool]

@@ -58,8 +58,8 @@ from app.services.economy_audit import EconomyAuditService
 from app.services.fleet import FleetService
 from app.services.game import GameService
 from app.services.map_locations import MapLocationService
-from app.services.market import MarketGenerator
 from app.services.market_candidates import MarketCandidateService
+from app.services.market_components import MarketComponents
 from app.services.market_demand import MarketDemandResolver
 from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
@@ -85,7 +85,7 @@ class GameRuntime:
     world: WorldCatalogue
     router: TruckRouter
     anchors: RoutingAnchorResolverPort
-    market: MarketGenerator
+    market: MarketComponents
     catalogue: VehicleCatalogue
     market_scope: MarketScopeResolver
     time_scale: float
@@ -191,7 +191,7 @@ def build_game_runtime(
         world=world,
         router=router,
         anchors=anchors,
-        market=build_market_generator(
+        market=build_market_components(
             world, random.Random(rng_seed), catalogue
         ),
         catalogue=catalogue,
@@ -340,7 +340,7 @@ def build_game_importer(
     return LegacyGameImporter(
         source,
         WorldScope(build_world_catalogue(settings).read()),
-        MarketGenerator.model_id,
+        MarketComponents.model_id,
         build_vehicle_catalogue(settings).list_models(),
         exclude_global_demo=exclude_global_demo,
     )
@@ -355,13 +355,13 @@ def build_energy_upgrade(
     )
 
 
-def build_market_generator(
+def build_market_components(
     world: WorldCatalogue,
     rng: random.Random,
     catalogue: VehicleCatalogue,
-) -> MarketGenerator:
-    """Inject independent candidate, coverage and materialization services."""
-    return MarketGenerator(
+) -> MarketComponents:
+    """Bundle independent candidate, materialization and coverage services."""
+    return MarketComponents(
         MarketCandidateService(world, catalogue),
         ContractFactory(rng),
         VehicleCoverageService(),
