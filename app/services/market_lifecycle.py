@@ -10,9 +10,9 @@ from app.domain.market import MarketVehicle, VehicleCoverageDiagnostic
 from app.domain.results import AvailableContract
 from app.domain.state_ports import GameUnitOfWork
 from app.services.market_components import MarketComponents
-from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_selection import MarketSelectionService
+from app.services.player_market_preparation import PlayerMarketPreparation
 
 LOGGER = logging.getLogger(__name__)
 RETAIN_MINIMUM_SECONDS = 60
@@ -26,7 +26,7 @@ class MarketLifecycleService:
     market: MarketComponents
     scope: MarketScopeResolver
     clock: Callable[[], float]
-    preparation: MarketPreparationService | None = None
+    preparation: PlayerMarketPreparation | None = None
     publication_guard: Callable[[], bool] | None = None
     selection: MarketSelectionService | None = None
 

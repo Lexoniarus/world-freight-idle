@@ -28,9 +28,9 @@ from app.services.fleet import (
 )
 from app.services.market_components import MarketComponents
 from app.services.market_lifecycle import MarketLifecycleService
-from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_selection import MarketSelectionService
+from app.services.player_market_preparation import PlayerMarketPreparation
 from app.services.vehicle_location import VehicleLocationResolver
 
 LOGGER = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class GameService:
         dispatch_planning: DispatchPlanningService,
         dispatch_eligibility: DispatchEligibilityService,
         time_scale: float = 1.0,
-        preparation: MarketPreparationService | None = None,
+        preparation: PlayerMarketPreparation | None = None,
         market_selection: MarketSelectionService | None = None,
     ) -> None:
         """Wire player-scoped orchestration to injected service ports."""

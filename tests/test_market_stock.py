@@ -113,7 +113,7 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
     from app.domain.game import PlayerState
     from app.repositories.game_state import SqliteGameUnitOfWork
     from app.repositories.routing_readiness import SqliteOfferRouteStore
-    from app.services.market_preparation import MarketPreparationService
+    from app.services.player_market_preparation import PlayerMarketPreparation
 
     game, prep, batch = stock_game
     for _ in range(100):
@@ -127,7 +127,7 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
         unit = SqliteGameUnitOfWork(database, "other")
         unit.repository.save_player(PlayerState(175000, 0, 0))
         unit.repository.save_vehicle(game.get_vehicle("truck"))
-    other = MarketPreparationService(
+    other = PlayerMarketPreparation(
         "other",
         prep.readiness,
         SqliteOfferRouteStore(database, "other"),

@@ -26,7 +26,7 @@ from app.services.vehicle_coverage import restrict_candidate
 LOGGER = logging.getLogger(__name__)
 
 
-class MarketPreparationService:
+class PlayerMarketPreparation:
     """Bind player demand and offer references to global readiness."""
 
     def __init__(
@@ -167,7 +167,7 @@ class MarketPreparationService:
             bindings.append((offer.id, reference))
         self.references.replace(tuple(bindings))
 
-    async def prepare_batch(
+    async def prepare_routes(
         self,
         candidates: tuple[MarketCandidate, ...],
         fleet: tuple[MarketVehicle, ...],

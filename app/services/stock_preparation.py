@@ -54,7 +54,7 @@ class StockPreparationBatch:
             stock.checkpoint(target.key, trade_key(candidate))
         ready = self._ready(snapshot, candidate)
         if not ready:
-            await prep.prepare_batch(
+            await prep.prepare_routes(
                 (candidate,),
                 (target.demand.vehicle,),
                 limit=1,

@@ -19,9 +19,9 @@ from app.repositories.routing_readiness import (
     SqliteRoutingReadinessStore,
 )
 from app.services.market_demand import MarketDemandResolver
-from app.services.market_preparation import MarketPreparationService
 from app.services.market_selection import MarketSelectionService
 from app.services.market_templates import MarketTemplateService
+from app.services.player_market_preparation import PlayerMarketPreparation
 from app.services.preparation_worker import MarketPreparationWorker
 from app.services.routing_readiness import RoutingReadinessService
 from app.services.stock_planning import StockPlanningService
@@ -82,7 +82,7 @@ def bind_preparation(game, database):
         "test-provider",
         game.now,
     )
-    preparation = MarketPreparationService(
+    preparation = PlayerMarketPreparation(
         "test-owner",
         readiness,
         SqliteOfferRouteStore(database, "test-owner"),
@@ -335,15 +335,17 @@ def test_preparation_composition_preserves_unconfigured_test_runtime(
     database,
 ):
     from app.bootstrap import (
-        build_market_preparation,
+        build_player_market_preparation,
         build_preparation_worker,
     )
 
-    assert build_market_preparation(runtime, "test-owner") is None
+    assert build_player_market_preparation(runtime, "test-owner") is None
     preparation = bind_preparation(game, database)
     runtime.readiness = preparation.readiness
     runtime.preparation_jobs = preparation.jobs
-    bound = require_value(build_market_preparation(runtime, "test-owner"))
+    bound = require_value(
+        build_player_market_preparation(runtime, "test-owner")
+    )
     assert bound.user_id == "test-owner"
     worker = build_preparation_worker(runtime)
     from app.services.stock_preparation import StockPreparationBatch
@@ -375,7 +377,7 @@ async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
     readiness.anchors.resolve.side_effect = RoutingError("locate unavailable")
     transient = require_value(await readiness.prepare(*pair))
     assert transient.status == "transient_failure"
-    complete, retry = await preparation.prepare_batch((candidate,), fleet)
+    complete, retry = await preparation.prepare_routes((candidate,), fleet)
     assert not complete and retry is not None
     readiness.provider_identity = "retry-generation"
     readiness.anchors = FakeRoutingAnchorResolver()
@@ -393,7 +395,7 @@ async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
         assert await readiness.prepare(*pair) is None
         assert readiness.router.route.await_count == 1
     with patch.object(readiness, "prepare", return_value=None):
-        complete, retry = await preparation.prepare_batch((candidate,), fleet)
+        complete, retry = await preparation.prepare_routes((candidate,), fleet)
         assert not complete and retry is not None
     readiness.router = FakeRouter()
     with patch.object(readiness.store, "renew", return_value=False):

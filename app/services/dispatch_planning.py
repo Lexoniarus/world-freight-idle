@@ -16,7 +16,7 @@ from app.domain.routing_anchors import RoutingCandidate
 from app.domain.world import FacilityLocationSnapshot
 from app.domain.world_scopes import WorldScope
 from app.services.cost_profiles import VehicleCostResolver
-from app.services.market_preparation import MarketPreparationService
+from app.services.player_market_preparation import PlayerMarketPreparation
 from app.services.routing_connections import RoutingConnectionValidator
 
 
@@ -28,7 +28,7 @@ class DispatchPlanningService:
     costs: VehicleCostResolver
     anchors: RoutingAnchorResolverPort
     world: WorldCatalogue
-    preparation: MarketPreparationService | None = None
+    preparation: PlayerMarketPreparation | None = None
     connections: RoutingConnectionValidator = field(
         default_factory=RoutingConnectionValidator
     )

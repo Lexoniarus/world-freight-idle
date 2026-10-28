@@ -61,10 +61,10 @@ from app.services.map_locations import MapLocationService
 from app.services.market_candidates import MarketCandidateService
 from app.services.market_components import MarketComponents
 from app.services.market_demand import MarketDemandResolver
-from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_selection import MarketSelectionService
 from app.services.market_templates import MarketTemplateService
+from app.services.player_market_preparation import PlayerMarketPreparation
 from app.services.preferences import PreferenceService
 from app.services.preparation_worker import MarketPreparationWorker
 from app.services.profile_maintenance import ProfileMaintenanceService
@@ -203,7 +203,7 @@ def build_game_runtime(
 
 def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
     """Bind one authenticated owner to the shared relational transaction."""
-    preparation = build_market_preparation(runtime, user_id)
+    preparation = build_player_market_preparation(runtime, user_id)
     game = GameService(
         preparation=preparation,
         market_selection=(
@@ -373,13 +373,13 @@ def build_preferences(runtime: GameRuntime) -> PreferenceService:
     return PreferenceService(SqlitePreferenceStore(runtime.database))
 
 
-def build_market_preparation(
+def build_player_market_preparation(
     runtime: GameRuntime, user_id: str
-) -> MarketPreparationService | None:
+) -> PlayerMarketPreparation | None:
     """Bind production routing infrastructure to one player's offers."""
     if runtime.readiness is None or runtime.preparation_jobs is None:
         return None
-    return MarketPreparationService(
+    return PlayerMarketPreparation(
         user_id,
         runtime.readiness,
         SqliteOfferRouteStore(runtime.database, user_id),
@@ -398,7 +398,7 @@ def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
 
     def batch(user_id: str) -> StockPreparationBatch:
         """Compose one player's preparation without changing state."""
-        preparation = build_market_preparation(runtime, user_id)
+        preparation = build_player_market_preparation(runtime, user_id)
         assert preparation is not None
         return StockPreparationBatch(
             StockPublicationService(
