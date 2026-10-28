@@ -99,23 +99,28 @@ async def test_worker_recovers_entire_iteration(stage):
         if stage == "status"
         else None,
     ]
-    worker = MarketPreparationWorker(jobs, Mock(), lambda: 10)
     process = AsyncMock()
-    worker.process = process
     if stage == "finish":
         process.side_effect = [RuntimeError("batch"), None]
     sleeps = []
 
     async def sleep(delay):
         sleeps.append(delay)
-        if process.await_count >= (2 if stage == "finish" else 1):
+        if delay == 0:
             raise asyncio.CancelledError
 
-    with patch("app.services.preparation_worker.asyncio.sleep", sleep):
-        with pytest.raises(asyncio.CancelledError):
-            await worker._run()
+    worker = MarketPreparationWorker(
+        jobs,
+        Mock(),
+        lambda: 10,
+        sleep=sleep,
+    )
+    worker.process = process
+    worker.wake()
+    with pytest.raises(asyncio.CancelledError):
+        await worker._run()
     assert 60 in sleeps
-    assert process.await_count >= 1
+    assert process.await_count == (2 if stage == "finish" else 1)
 
 
 @pytest.mark.asyncio

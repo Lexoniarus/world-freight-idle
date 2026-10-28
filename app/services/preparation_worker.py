@@ -2,8 +2,9 @@
 
 import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from contextvars import Context
+from dataclasses import dataclass
 from typing import Protocol
 
 from app.domain.market_preparation import (
@@ -21,6 +22,14 @@ class PreparationBatch(Protocol):
     async def process(self) -> PreparationBatchResult: ...
 
 
+@dataclass(frozen=True, slots=True)
+class PreparationWorkerTiming:
+    """Configure scheduler waits without hiding real time in tests."""
+
+    idle_wait_seconds: float = 60
+    failure_retry_seconds: float = 60
+
+
 class MarketPreparationWorker:
     """Own one cancellable fair-batch loop without inheriting request state."""
 
@@ -29,11 +38,15 @@ class MarketPreparationWorker:
         jobs: PreparationStore,
         batches: Callable[[str], PreparationBatch],
         clock: Callable[[], float],
+        timing: PreparationWorkerTiming | None = None,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ) -> None:
         """Inject scheduling storage and player lifecycle composition."""
         self.jobs = jobs
         self.batches = batches
         self.clock = clock
+        self.timing = timing or PreparationWorkerTiming()
+        self.sleep = sleep
         self._task: asyncio.Task[None] | None = None
         self._wake = asyncio.Event()
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -76,22 +89,42 @@ class MarketPreparationWorker:
                 self._loop = None
 
     async def _run(self) -> None:
-        """Drain due work after events, with a slow retry safety timer."""
+        """Drain due work after events and recover without a second wait."""
         while True:
             try:
-                try:
-                    await asyncio.wait_for(self._wake.wait(), timeout=60)
-                except TimeoutError:
-                    pass
+                await self._wait_for_work()
                 self._wake.clear()
-                while await self._iteration():
-                    await asyncio.sleep(0)
+                await self._drain_due_jobs()
+            except asyncio.CancelledError:
+                raise
             except Exception:
                 LOGGER.exception(
                     "Market preparation scheduler failed",
                     extra={"event": "market.preparation_scheduler_failed"},
                 )
-                await asyncio.sleep(60)
+                await self._recover_after_failure()
+
+    async def _wait_for_work(self) -> None:
+        """Wait for a wake signal or the bounded scheduler safety timer."""
+        if self._wake.is_set():
+            return
+        try:
+            await asyncio.wait_for(
+                self._wake.wait(),
+                timeout=self.timing.idle_wait_seconds,
+            )
+        except TimeoutError:
+            pass
+
+    async def _drain_due_jobs(self) -> None:
+        """Yield fairly while processing every currently due job."""
+        while await self._iteration():
+            await self.sleep(0)
+
+    async def _recover_after_failure(self) -> None:
+        """Back off once, then make the next scheduler pass immediate."""
+        await self.sleep(self.timing.failure_retry_seconds)
+        self._wake.set()
 
     async def _iteration(self) -> bool:
         """Run one due job in its own trace and persist retry state."""
