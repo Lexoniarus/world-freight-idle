@@ -18,6 +18,7 @@ export default defineConfig({
   },
   webServer: {
     command: `"${process.env.PYTHON_EXECUTABLE || resolve(process.platform === "win32" ? ".venv/Scripts/python.exe" : ".venv/bin/python")}" -m uvicorn tests.browser_server:app --host 127.0.0.1 --port 8011 --log-level warning`,
+    env: { ...process.env, LOG_LEVEL: "WARNING" },
     url: "http://127.0.0.1:8011/api/v1/system/health",
     reuseExistingServer: false,
   },

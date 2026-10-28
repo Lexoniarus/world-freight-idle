@@ -7,7 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 
 from app.api.v1.dependencies import get_game_service
 from app.bootstrap import build_game_runtime
@@ -19,6 +19,7 @@ from tests.conftest import (
     FakeRouter,
     FakeRoutingAnchorResolver,
 )
+from tests.support.manual_clock import ManualClock
 
 temporary = TemporaryDirectory(prefix="world-freight-browser-")
 external_database = os.getenv("WFI_BROWSER_DB_PATH")
@@ -34,13 +35,18 @@ settings = replace(
 app = create_app(settings)
 
 
+browser_clock = ManualClock()
+
+
 @asynccontextmanager
 async def browser_lifespan(application):
     def test_runtime(active_settings, client):
         runtime = build_game_runtime(active_settings, client)
+        runtime.clock = browser_clock
         runtime.router = FakeRouter()
         runtime.anchors = FakeRoutingAnchorResolver()
         assert runtime.readiness is not None
+        runtime.readiness.clock = browser_clock
         runtime.readiness.router = runtime.router
         runtime.readiness.anchors = runtime.anchors
         return runtime
@@ -52,6 +58,16 @@ async def browser_lifespan(application):
 
 
 app.router.lifespan_context = browser_lifespan
+
+
+@app.post("/__tests__/advance-time")
+def advance_browser_time(seconds: float) -> dict:
+    """Advance only the isolated browser server's application clock."""
+    try:
+        now = browser_clock.advance(seconds)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"now": now}
 
 
 @app.post("/__tests__/preparation-scope")
