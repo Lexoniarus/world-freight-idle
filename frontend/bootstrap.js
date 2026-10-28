@@ -1,5 +1,6 @@
 import { reportCleanup } from "./lifecycle.js";
 import { MapFocusController } from "./controllers/map-focus-controller.js";
+import { MapSelectionController } from "./controllers/map-selection-controller.js";
 import { VehicleColorAssets } from "./vehicle-color-assets.js";
 import { VehicleImageController } from "./vehicle-image-bindings.js";
 import { PreferencesController } from "./controllers/preferences-controller.js";
@@ -105,7 +106,7 @@ function createGameApplication(api, user, redirect) {
   const router = new BrowserRouter(window, (url) => application.navigateTo(url));
   const navigate = (path) => router.navigate(path);
   const map = new DeferredMap({
-    create: () => createWorldMap(navigate, notify, () => state.now(), api.requestAsset, assets),
+    create: () => createWorldMap(notify, () => state.now(), api.requestAsset, assets),
     notify,
   });
   map?.setCompanyColor(user.company_color);
@@ -130,6 +131,7 @@ function createGameApplication(api, user, redirect) {
     market: contractMarket,
   });
   const focus = new MapFocusController({ state, view, map });
+  const mapSelection = new MapSelectionController({ map, navigate, notify });
   const actions = new GameActions({
     focus,
     api,
@@ -172,17 +174,17 @@ function createGameApplication(api, user, redirect) {
     managementInput,
     preferences,
     assets,
+    mapSelection,
     redirect,
   });
   return application;
 }
 
 /** Keep game controls usable when the browser cannot initialize WebGL. */
-async function createWorldMap(navigate, notify, now, loadAsset, assets) {
+async function createWorldMap(notify, now, loadAsset, assets) {
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const { WorldMap } = await import("./map/world-map.js");
   return new WorldMap("world-map", {
-    navigate,
     notify,
     now,
     loadAsset,

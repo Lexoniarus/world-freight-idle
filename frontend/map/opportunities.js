@@ -17,9 +17,9 @@ export function opportunityGroups(contracts, cityLevel) {
 
 /** Accessible badges use existing coordinates and preserve keyboard nodes. */
 export class Opportunities {
-  constructor(map, navigate) {
+  constructor(map, select) {
     this.map = map;
-    this.navigate = navigate;
+    this.select = select;
     this.markers = new Map();
   }
   update(contracts, visible, selected = "", vehicleId = "") {
@@ -38,11 +38,12 @@ export class Opportunities {
         entry = { button, marker, group };
         button.addEventListener("click", (event) => {
           event.stopPropagation();
-          this.navigate(
-            "/contracts?city=" +
-              encodeURIComponent(this.markers.get(key).group.origin.city_uid) +
-              (this.vehicleId ? "&vehicle=" + encodeURIComponent(this.vehicleId) : ""),
-          );
+          this.select({
+            kind: "facility",
+            cityUid: this.markers.get(key).group.origin.city_uid,
+            parked: false,
+            vehicleId: this.vehicleId,
+          });
         });
         this.markers.set(key, entry);
       }

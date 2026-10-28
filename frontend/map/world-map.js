@@ -33,10 +33,9 @@ export class WorldMap extends EventTarget {
    */
   constructor(
     container,
-    { navigate, notify, now, loadAsset, assets, provider, viewport, reducedMotion, isHidden },
+    { notify, now, loadAsset, assets, provider, viewport, reducedMotion, isHidden },
   ) {
     super();
-    this.navigate = navigate;
     this.notify = notify;
     this.now = now;
     this.reducedMotion = reducedMotion;
@@ -84,8 +83,12 @@ export class WorldMap extends EventTarget {
       reducedMotion,
     });
     this.map.touchZoomRotate.disableRotation();
-    this.groups = new VehicleGroups(this.map, navigate, reducedMotion);
-    this.opportunities = new Opportunities(this.map, navigate);
+    this.groups = new VehicleGroups(
+      this.map,
+      (selection) => this.emitSelection(selection),
+      reducedMotion,
+    );
+    this.opportunities = new Opportunities(this.map, (selection) => this.emitSelection(selection));
     this.map.addControl(new maplibregl.AttributionControl({ compact: false }), "bottom-left");
     this.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
     this.bindMapEvents();
@@ -353,23 +356,33 @@ export class WorldMap extends EventTarget {
         duration: this.reducedMotion() ? 0 : 500,
       });
     } else if (OWN_VEHICLE_LAYERS.includes(feature.layer.id)) {
-      this.navigate(
-        feature.properties.idle
-          ? "/fleet/" + encodeURIComponent(feature.properties.vehicleId)
-          : "/transports/" + encodeURIComponent(feature.properties.id),
-      );
+      this.emitSelection({
+        kind: "own-vehicle",
+        idle: Boolean(feature.properties.idle),
+        vehicleId: feature.properties.vehicleId,
+        transportId: feature.properties.id,
+      });
     } else if (MULTIPLAYER_VEHICLE_LAYERS.includes(feature.layer.id)) {
-      this.notify(
-        `${feature.properties.username || "Ein anderer Spieler"} · ${feature.properties.modelName || "Fahrzeug"}`,
-        "map",
-      );
+      this.emitSelection({
+        kind: "public-vehicle",
+        username: feature.properties.username,
+        modelName: feature.properties.modelName,
+      });
     } else {
-      this.navigate(
-        (feature.layer.id === "parked" ? "/fleet" : "/contracts") +
-          "?city=" +
-          encodeURIComponent(feature.properties.cityUid ?? ""),
-      );
+      this.emitSelection({
+        kind: "facility",
+        cityUid: feature.properties.cityUid ?? "",
+        parked: feature.layer.id === "parked",
+      });
     }
+  }
+
+  /** Publish a semantic selection without coupling the renderer to routing.
+   * @param {import('../types.js').MapObjectSelection} selection
+   * @returns {void}
+   */
+  emitSelection(selection) {
+    this.dispatchEvent(new CustomEvent("object-selected", { detail: selection }));
   }
 
   /** Display or clear the current quote geometry.

@@ -5,13 +5,13 @@ import { groupVehicles, GROUP_INTERVAL, ZOOM_TIERS } from "./grouping.js";
 /** Render accessible count markers independently of the movement frame loop. */
 export class VehicleGroups {
   /** @param {import("maplibre-gl").Map} map
-   * @param {import("../types.js").Navigate} navigate
+   * @param {(selection: import("../types.js").MapObjectSelection) => void} select
    * @param {() => boolean} reducedMotion
    */
-  constructor(map, navigate, reducedMotion) {
+  constructor(map, select, reducedMotion) {
     this.signature = "";
     this.map = map;
-    this.navigate = navigate;
+    this.select = select;
     this.reducedMotion = reducedMotion;
     this.markers = new Map();
     this.hidden = new Set();
@@ -137,7 +137,12 @@ export class VehicleGroups {
       control.textContent = `${props.modelName || "Fahrzeug"} · ${props.isOwn ? props.vehicleId : props.username}`;
       if (props.isOwn)
         control.addEventListener("click", () => {
-          this.navigate(props.idle ? "/fleet/" + props.vehicleId : "/transports/" + props.id);
+          this.select({
+            kind: "own-vehicle",
+            idle: Boolean(props.idle),
+            vehicleId: props.vehicleId,
+            transportId: props.id,
+          });
           this.popup?.remove();
         });
       list.append(control);
