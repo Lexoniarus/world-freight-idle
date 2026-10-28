@@ -11,7 +11,6 @@ from unittest.mock import patch
 import pytest
 
 from app.api.v1.game_projection import (
-    project_contract,
     project_player,
     project_transport,
     project_vehicle,
@@ -27,6 +26,7 @@ from app.repositories.accounts import AccountRepository
 from app.repositories.database_backup import backup_database
 from app.services.fleet import build_owned_vehicle
 from scripts.update_test_profile import main, parse_assignments
+from tests.conftest import seed_test_offers
 from tests.test_api import make_settings
 from tests.test_game import first_berlin_contract
 from tests.transport_fixtures import add_transport
@@ -373,7 +373,7 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
     game.state_repository.save_player(
         PlayerState(**{**player, "cash": before})
     )
-    [project_contract(value) for value in game.refresh_market(force=True)]
+    seed_test_offers(game)
     contract = first_berlin_contract(game)
     task = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
     await asyncio.wait_for(route_started.wait(), 2)

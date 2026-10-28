@@ -1,6 +1,5 @@
 """Market v2 dispatch atomicity, refill isolation and history regression."""
 
-import sqlite3
 from dataclasses import replace
 from unittest.mock import patch
 
@@ -60,8 +59,7 @@ async def test_dispatch_failure_rolls_back_reservation_and_market(game):
     assert game.state_repository.list_active_transports() == ()
 
 
-async def test_refill_failure_cannot_undo_committed_dispatch(game, caplog):
-    caplog.set_level("ERROR", logger="app.services.market_lifecycle")
+async def test_dispatch_never_runs_synchronous_market_refill(game):
     offer = other_facility_offer(game)
     cash = game._get_player().cash
     with patch.object(
@@ -75,19 +73,12 @@ async def test_refill_failure_cannot_undo_committed_dispatch(game, caplog):
     assert game._get_player().cash == cash - trip.operating_cost_eur
     assert game.state_repository.list_active_transports() == (trip,)
     assert not game.state_repository.list_offers()
-    assert any(
-        getattr(record, "event", "") == "market.refill_failed"
-        for record in caplog.records
-    )
     game.refresh_market()
     assert game.state_repository.list_active_transports() == (trip,)
     assert game._get_player().cash == cash - trip.operating_cost_eur
 
 
-async def test_refill_uses_separate_transaction_and_rolls_back_only_new_offers(
-    game,
-    database,
-):
+async def test_dispatch_prunes_without_starting_market_generation(game):
     offer = other_facility_offer(game)
     first = game.get_vehicle("truck_01")
     model = next(
@@ -95,49 +86,17 @@ async def test_refill_uses_separate_transaction_and_rolls_back_only_new_offers(
     )
     second = build_owned_vehicle(model, "second", first.location)
     game.state_repository.save_vehicle(second)
-    original_generate = game.market.generate
-    original_replace = game.state_repository.replace_offers
-    refill_started = False
-
-    def generate(*args, **kwargs):
-        nonlocal refill_started
-        # A separate SQLite connection cannot observe uncommitted writes.
-        with sqlite3.connect(database.path) as connection:
-            assert (
-                connection.execute(
-                    "SELECT status FROM owned_vehicles WHERE vehicle_id=?",
-                    (first.id,),
-                ).fetchone()[0]
-                == "enroute"
-            )
-        assert game.state_repository.list_active_transports()
-        assert game.get_vehicle(first.id).status == "enroute"
-        refill_started = True
-        return original_generate(*args, **kwargs)
-
-    def replace_offers(offers):
-        original_replace(offers)
-        if refill_started:
-            raise RuntimeError("refill write failed")
-
-    with (
-        patch.object(type(game.market), "generate", side_effect=generate),
-        patch.object(
-            game.state_repository, "replace_offers", side_effect=replace_offers
-        ),
+    with patch.object(
+        type(game.market),
+        "generate",
+        side_effect=AssertionError("synchronous generation"),
     ):
         trip = await game.dispatch(offer.id, first.id)
-    assert refill_started
     assert game.state_repository.list_active_transports() == (trip,)
     remaining = game.state_repository.list_offers()
     assert offer.id not in {o.id for o in remaining}
     assert remaining
-    refilled = game.refresh_market()
-    assert len(refilled) >= len(remaining)
-    assert all(
-        o.origin.city.city_uid == first.location.city.city_uid
-        for o in refilled
-    )
+    assert game.refresh_market() == list(remaining)
 
 
 async def test_arrival_activates_city_and_preserves_historical_terms(
@@ -176,14 +135,10 @@ async def test_arrival_activates_city_and_preserves_historical_terms(
     assert settled.payout_eur == trip.payout_eur
     assert game.get_vehicle("truck_01").location == trip.destination
     offers = game.refresh_market()
-    assert offers
-    assert {o.origin.city.city_uid for o in offers} == {
-        trip.destination.city.city_uid
-    }
-    assert {o.id for o in game.refresh_market()} == {o.id for o in offers}
+    assert offers == []
 
 
-def test_retention_prunes_v1_unavailable_fleet_and_expiring_offers(game):
+def test_retention_filters_without_writing_during_market_reads(game):
     offers = game.list_contracts()
     first = offers[0]
     legacy = replace(
@@ -199,15 +154,13 @@ def test_retention_prunes_v1_unavailable_fleet_and_expiring_offers(game):
     vehicle._capacity_tons = 0.1
     game.state_repository.save_vehicle(vehicle)
     new = game.refresh_market()
-    assert new
-    assert not ({o.id for o in offers} & {o.id for o in new})
-    assert all(o.tons <= 0.1 for o in new)
+    assert new == []
     with patch.object(
         game.catalogue, "list_models", side_effect=CatalogueError("offline")
     ):
         with pytest.raises(CatalogueError):
             game.refresh_market()
-    assert game.state_repository.list_offers() == tuple(new)
+    assert game.state_repository.list_offers() == (*offers, legacy, expired)
 
 
 def test_reposition_rejects_busy_other_city_and_missing_location(game):
@@ -340,13 +293,12 @@ async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(game):
     assert not game.state_repository.list_active_transports()
 
 
-def test_generation_does_not_route_and_manual_refresh_only_rerolls_city(game):
+def test_market_reads_and_refresh_never_call_providers_or_generate(game):
     with patch.object(game.router, "route", side_effect=AssertionError):
         retained = game.list_contracts()
         assert game.list_contracts() == retained
         regenerated = game.refresh_contracts()
-        assert regenerated
-        assert not ({o.id for o in retained} & {o.id for o in regenerated})
+        assert regenerated == retained
         assert {o.origin.city.city_uid for o in regenerated} == {
             game.get_vehicle("truck_01").location.city.city_uid
         }

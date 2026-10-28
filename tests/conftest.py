@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from app.bootstrap import GameRuntime, build_market_generator
+from app.domain.contracts import ContractOffer
 from app.domain.transports import RouteSnapshot
 from app.domain.world import Facility
 from app.domain.world_scopes import WorldScope
@@ -111,8 +112,31 @@ def game(database, catalogue, world_catalogue) -> GameService:
         clock=time.time,
     )
     service.ensure_initial_state()
-    service.refresh_market(force=True)
+    seed_test_offers(service)
     return service
+
+
+def seed_test_offers(service: GameService, count: int = 30) -> None:
+    """Store deterministic local fixture offers without invoking runtime refill."""
+    market = service.market
+    owned = service.state_repository.list_vehicles()
+    fleet = market.candidates.resolve_fleet(owned)
+    candidates = market.candidates.build(
+        service.market_scope.resolve(owned), fleet
+    )
+    local = tuple(
+        candidate
+        for candidate in candidates
+        if candidate.trade.origin.facility_uid == owned[0].facility_uid
+    )
+    selected = (*local[:10], *(c for c in candidates if c not in local))
+    offers = tuple(
+        ContractOffer.from_snapshot(
+            market.factory.build(candidate, time.time(), f"fixture:{index}")
+        )
+        for index, candidate in enumerate(selected[:count])
+    )
+    service.state_repository.replace_offers(offers)
 
 
 @pytest.fixture

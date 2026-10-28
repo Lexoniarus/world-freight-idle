@@ -3,11 +3,10 @@
 import logging
 from collections.abc import Callable, Sequence
 from contextlib import nullcontext
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 
 from app.domain.contracts import ContractOffer
 from app.domain.market import MarketVehicle, VehicleCoverageDiagnostic
-from app.domain.market_preparation import RelationDemandState
 from app.domain.results import AvailableContract
 from app.domain.state_ports import GameUnitOfWork
 from app.services.market import MarketGenerator
@@ -32,103 +31,12 @@ class MarketLifecycleService:
     selection: MarketSelectionService | None = None
 
     def refresh(self, force: bool = False) -> list[ContractOffer]:
-        """Plan outside the writer, then publish against unchanged inputs."""
-        preparation = self.preparation
-        if preparation is not None and preparation.stock is not None:
-            return self.published(refresh=force)
-        if preparation is not None:
-            preparation.request()
-        repository = self.unit_of_work.repository
-        reference = self.generator.candidates.reference()
-        with self.unit_of_work.read_transaction():
-            owned = repository.list_vehicles()
-            original_offers = repository.list_offers()
-            status = (
-                preparation.jobs.status(preparation.user_id)
-                if preparation
-                else None
-            )
-        cities = self.scope.resolve(owned)
-        fleet = self.generator.candidates.resolve_fleet(owned)
-        now = self.clock()
-        retained = () if force else self._retained(cities, fleet, now)
-        structural = self.generator.candidates.build(cities, fleet)
-        ready = (
-            preparation.ready_candidates(structural)
-            if preparation
-            else structural
-        )
-        offers, diagnostics = self.generator.generate(
-            now, cities, fleet, retained, ready
-        )
-        coverage = tuple(
-            self.generator.vehicle_coverage.diagnose(
-                vehicle, structural, ready, offers
-            )
-            for vehicle in fleet
-        )
-        evidence = self._publication_evidence(offers, fleet)
-        with self.unit_of_work.transaction():
-            if (
-                (self.publication_guard and not self.publication_guard())
-                or repository.list_vehicles() != owned
-                or repository.list_offers() != original_offers
-                or self.generator.candidates.reference() != reference
-                or self._publication_evidence(offers, fleet) != evidence
-                or (
-                    preparation
-                    and preparation.jobs.status(preparation.user_id) != status
-                )
-            ):
-                return list(repository.list_offers())
-            self._store(offers)
-            if preparation and status:
-                preparation.jobs.publish_diagnostics(
-                    preparation.user_id, status.generation, coverage
-                )
-            LOGGER.info(
-                "City market refreshed",
-                extra={
-                    "event": "market.refresh",
-                    "data": {
-                        "active_city_count": len(cities),
-                        "idle_vehicle_count": len(fleet),
-                        "offer_count": len(offers),
-                        "coverage": [asdict(d) for d in diagnostics],
-                    },
-                },
-            )
-            return list(offers)
-
-    def _publication_evidence(
-        self,
-        offers: tuple[ContractOffer, ...],
-        fleet: tuple[MarketVehicle, ...],
-    ) -> tuple[RelationDemandState, ...]:
-        """Fence provider, anchor and route revisions used by publication."""
-        if self.preparation is None:
-            return ()
-        pairs = set()
-        for offer in offers:
-            origin = offer.origin.facility_uid
-            pairs.add((origin, offer.destination.facility_uid))
-            eligible = self.generator.candidates.eligible_ids(offer, fleet)
-            pairs.update(
-                (vehicle.facility_uid, origin)
-                for vehicle in fleet
-                if vehicle.vehicle_id in eligible
-                and vehicle.facility_uid != origin
-            )
-        with self.preparation.readiness.reading(tuple(sorted(pairs))):
-            return tuple(
-                self.preparation.demand_state(*pair) for pair in sorted(pairs)
-            )
+        """Request a refill and return only already published local stock."""
+        return self.published(refresh=force)
 
     def published(self, *, refresh: bool = False) -> list[ContractOffer]:
         """Serve retained stock; only an explicit refresh writes demand."""
-        if self.preparation is None:
-            return self.refresh(force=refresh)
-        if refresh:
+        if refresh and self.preparation is not None:
             self.preparation.request(changed=True)
         with self.unit_of_work.read_transaction():
             owned = self.unit_of_work.repository.list_vehicles()
@@ -196,9 +104,7 @@ class MarketLifecycleService:
     def refill_after_commit(self) -> None:
         """Keep a committed trip successful even when separate refill fails."""
         try:
-            if self.preparation is None:
-                self.refresh()
-            else:
+            if self.preparation is not None:
                 self.preparation.request(changed=True)
         except Exception:
             LOGGER.exception(

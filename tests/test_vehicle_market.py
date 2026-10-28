@@ -110,7 +110,14 @@ async def test_vehicle_readiness_requires_approach_and_excludes_stale(
         fleet[0].facility_uid, remote.trade.origin.facility_uid
     )
     assert approach is not None
-    assert len(preparation.ready_candidates((at_pickup, remote))) == 2
+    ready = preparation.ready_candidates((at_pickup, remote))
+    assert len(ready) == 2
+    offers = tuple(
+        ContractOffer.from_snapshot(game.market.factory.build(item, 1))
+        for item in ready
+    )
+    game.state_repository.replace_offers(offers)
+    preparation.bind(offers)
     offers = game.refresh_market()
     assert game.contract_choices(offers, fleet[0].vehicle_id)
     with patch.object(

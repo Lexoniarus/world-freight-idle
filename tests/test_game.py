@@ -55,7 +55,7 @@ def test_ensure_initial_state_is_idempotent(game: GameService):
     assert game._get_player().cash == 175000
 
 
-def test_refresh_market_reuses_fresh_market_and_can_force(game: GameService):
+def test_refresh_market_never_generates_inside_request(game: GameService):
     first = [
         project_contract(value) for value in game.refresh_market(force=False)
     ]
@@ -66,7 +66,7 @@ def test_refresh_market_reuses_fresh_market_and_can_force(game: GameService):
         project_contract(value) for value in game.refresh_market(force=True)
     ]
     assert second == first
-    assert forced != first
+    assert forced == first
     assert any(contract["origin_hub_id"] == BERLIN_UID for contract in forced)
 
 
@@ -359,7 +359,7 @@ def test_list_and_get_contracts_return_real_addresses(game: GameService):
         project_contract(value) for value in game.list_contracts()
     ] == contracts
     refreshed = [project_contract(value) for value in game.refresh_contracts()]
-    assert refreshed != contracts
+    assert refreshed == contracts
     contract = project_contract(game.get_contract(refreshed[0]["id"]))
     assert contract["origin"]["address"]
     assert contract["destination"]["address"]

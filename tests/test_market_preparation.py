@@ -98,6 +98,8 @@ def bind_preparation(game, database):
 @pytest.mark.asyncio
 async def test_partial_market_never_publishes_unchecked_offers(game, database):
     preparation = bind_preparation(game, database)
+    batch = make_stock_batch(game, preparation)
+    preparation.request()
     assert game.refresh_market() == []
     owned = game.state_repository.list_vehicles()
     fleet = game.market.candidates.resolve_fleet(owned)
@@ -120,7 +122,11 @@ async def test_partial_market_never_publishes_unchecked_offers(game, database):
     readiness.router = AsyncMock()
     assert await readiness.prepare(origin, destination) == result
     readiness.router.route.assert_not_called()
-    offers = game.refresh_market()
+    for _ in range(30):
+        await batch.process()
+        if game.list_contracts():
+            break
+    offers = game.list_contracts()
     assert offers
     assert all(preparation.retained(o) for o in offers)
     assert all(
@@ -268,8 +274,8 @@ async def test_players_share_one_provider_calculation(game, database):
 @pytest.mark.asyncio
 async def test_worker_fills_ready_market_and_owns_shutdown(game, database):
     preparation = bind_preparation(game, database)
-    game.refresh_market()
     batch = make_stock_batch(game, preparation)
+    preparation.request()
     worker = MarketPreparationWorker(
         preparation.jobs, lambda user: batch, game.now
     )
@@ -322,7 +328,7 @@ def test_preparation_generation_and_reference_rollback(game, database):
     assert preparation.jobs.status("missing") is None
     with pytest.raises(ValueError, match="publication"):
         preparation.bind(game.state_repository.list_offers())
-    game.refresh_market()
+    preparation.request()
     first = require_value(preparation.jobs.status("test-owner"))
     assert game.preparation_status() == first
     preparation.jobs.finish(
@@ -409,8 +415,8 @@ async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
     readiness.router = FakeRouter()
     with patch.object(readiness.store, "renew", return_value=False):
         assert await readiness.prepare(*pair) is None
-    game.refresh_market()
     batch = make_stock_batch(game, preparation)
+    preparation.request()
     worker = MarketPreparationWorker(
         preparation.jobs, lambda user: batch, game.now
     )
@@ -511,7 +517,13 @@ async def test_dispatch_rejects_retired_and_changed_prepared_routes(
     destination = candidate.trade.destination.facility_uid
     await preparation.readiness.prepare(origin, destination)
     await preparation.readiness.prepare(owned[0].facility_uid, origin)
-    offer = game.refresh_market()[0]
+    batch = make_stock_batch(game, preparation)
+    preparation.request()
+    for _ in range(30):
+        await batch.process()
+        if game.list_contracts():
+            break
+    offer = game.list_contracts()[0]
     vehicle = owned[0]
     assert vehicle.location is not None
     planner = game.dispatch_planning

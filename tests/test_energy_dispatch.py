@@ -11,6 +11,7 @@ from app.api.v1.traffic_projection import project_traffic
 from app.domain.energy import EnergyProfile
 from app.domain.errors import CatalogueError
 from app.repositories.relational_traffic import SqliteTrafficReader
+from tests.conftest import seed_test_offers
 from tests.test_game import first_berlin_contract
 
 
@@ -88,6 +89,7 @@ async def test_energy_quote_dispatch_pause_and_offline_settlement(
     assert game.get_vehicle(vehicle.id).energy_level == 20
     assert game._get_player().cash == before + trip.payout_eur
     assert game.state_repository.list_transports()[0].status == "settled"
+    seed_test_offers(game)
     next_offer = next(
         o
         for o in game.refresh_market()
