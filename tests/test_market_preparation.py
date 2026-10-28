@@ -10,7 +10,8 @@ import pytest
 from app.domain.errors import RoutingError
 from app.repositories.cached_world_catalogue import CachedWorldCatalogue
 from app.repositories.market_preparation import SqlitePreparationStore
-from app.repositories.market_stock import SqliteMarketStockStore
+from app.repositories.market_stock import SqlitePlayerMarketStockStore
+from app.repositories.market_templates import SqliteMarketTemplateStore
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
 from app.repositories.routing_readiness import (
@@ -39,8 +40,12 @@ def require_value(value: T | None) -> T:
 def make_stock_batch(game, preparation):
     """Compose the production stock batch for worker behavior tests."""
     database = preparation.transactions
-    SqliteMarketStockStore.initialize(database)
-    preparation.stock = SqliteMarketStockStore(database, preparation.user_id)
+    SqliteMarketTemplateStore.initialize(database)
+    SqlitePlayerMarketStockStore.initialize(database)
+    preparation.stock = SqlitePlayerMarketStockStore(
+        database, preparation.user_id
+    )
+    preparation.templates = SqliteMarketTemplateStore(database)
     game.market_lifecycle.selection = MarketSelectionService(
         preparation.policy
     )

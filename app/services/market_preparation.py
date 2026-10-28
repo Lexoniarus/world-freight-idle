@@ -13,7 +13,11 @@ from app.domain.market_preparation import (
     preparation_generation,
     required_relations,
 )
-from app.domain.market_stock import MarketStockStore, StockPolicy
+from app.domain.market_stock import (
+    MarketTemplateStore,
+    PlayerMarketStockStore,
+    StockPolicy,
+)
 from app.domain.readiness_ports import OfferRouteStore
 from app.domain.routing_readiness import RouteReference
 from app.domain.state_ports import TransactionBoundary
@@ -34,7 +38,8 @@ class MarketPreparationService:
         jobs: PreparationStore,
         clock: Callable[[], float],
         transactions: TransactionBoundary,
-        stock: MarketStockStore | None = None,
+        stock: PlayerMarketStockStore | None = None,
+        templates: MarketTemplateStore | None = None,
         policy: StockPolicy = StockPolicy(),
     ) -> None:
         """Inject global readiness and player-scoped reference storage."""
@@ -45,6 +50,7 @@ class MarketPreparationService:
         self.clock = clock
         self.transactions = transactions
         self.stock = stock
+        self.templates = templates
         self.policy = policy
 
     def prepare_publication(

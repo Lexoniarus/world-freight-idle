@@ -32,8 +32,9 @@ from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.leaderboard import SqliteLeaderboardReader
 from app.repositories.legacy_game_import import LegacyGameImporter
 from app.repositories.market_preparation import SqlitePreparationStore
-from app.repositories.market_stock import SqliteMarketStockStore
+from app.repositories.market_stock import SqlitePlayerMarketStockStore
 from app.repositories.market_stock_upgrade import MarketStockUpgradeRepository
+from app.repositories.market_templates import SqliteMarketTemplateStore
 from app.repositories.preferences import SqlitePreferenceStore
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.relational_traffic import SqliteTrafficReader
@@ -150,7 +151,8 @@ def build_game_runtime(
     cache = SqliteProviderCache(database)
     evidence = SqliteRoutingReadinessStore(database)
     jobs = SqlitePreparationStore(database)
-    SqliteMarketStockStore.initialize(database)
+    SqliteMarketTemplateStore.initialize(database)
+    SqlitePlayerMarketStockStore.initialize(database)
     limiter = ProviderRequestLimiter(
         settings.valhalla_concurrency, settings.valhalla_minimum_interval
     )
@@ -387,7 +389,8 @@ def build_market_preparation(
         runtime.preparation_jobs,
         runtime.clock,
         runtime.database,
-        SqliteMarketStockStore(runtime.database, user_id),
+        SqlitePlayerMarketStockStore(runtime.database, user_id),
+        SqliteMarketTemplateStore(runtime.database),
     )
 
 

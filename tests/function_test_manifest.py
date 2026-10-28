@@ -912,18 +912,16 @@ FUNCTION_TESTS.update(
         "app.domain.market_compatibility.planning_vehicle": "test_demand_models_and_owned_capacity_remain_separate",
         "app.domain.market_stock.PreparedTemplate.__post_init__": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
         "app.domain.market_stock.StockPolicy.__post_init__": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
-        "app.repositories.market_stock.SqliteMarketStockStore.__init__": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
-        "app.repositories.market_stock.SqliteMarketStockStore.add": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
-        "app.repositories.market_stock.SqliteMarketStockStore.arrivals": "test_arrival_projection_rejects_inconsistent_locations_and_idle_vehicle",
-        "app.repositories.market_stock.SqliteMarketStockStore.bindings": "test_templates_are_shared_but_consumption_is_once_per_account",
-        "app.repositories.market_stock.SqliteMarketStockStore.checkpoint": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
-        "app.repositories.market_stock.SqliteMarketStockStore.consume": "test_templates_are_shared_but_consumption_is_once_per_account",
-        "app.repositories.market_stock.SqliteMarketStockStore.cursor": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
-        "app.repositories.market_stock.SqliteMarketStockStore.initialize": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
-        "app.repositories.market_stock.SqliteMarketStockStore.issue": "test_templates_are_shared_but_consumption_is_once_per_account",
-        "app.repositories.market_stock.SqliteMarketStockStore.pending": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
-        "app.repositories.market_stock.SqliteMarketStockStore.templates": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
-        "app.repositories.market_stock.SqliteMarketStockStore.used": "test_templates_are_shared_but_consumption_is_once_per_account",
+        "app.repositories.market_stock.SqlitePlayerMarketStockStore.__init__": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
+        "app.repositories.market_stock.SqlitePlayerMarketStockStore.arrivals": "test_arrival_projection_rejects_inconsistent_locations_and_idle_vehicle",
+        "app.repositories.market_stock.SqlitePlayerMarketStockStore.bindings": "test_templates_are_shared_but_consumption_is_once_per_account",
+        "app.repositories.market_stock.SqlitePlayerMarketStockStore.checkpoint": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
+        "app.repositories.market_stock.SqlitePlayerMarketStockStore.consume": "test_templates_are_shared_but_consumption_is_once_per_account",
+        "app.repositories.market_stock.SqlitePlayerMarketStockStore.cursor": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
+        "app.repositories.market_stock.SqlitePlayerMarketStockStore.initialize": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
+        "app.repositories.market_stock.SqlitePlayerMarketStockStore.issue": "test_templates_are_shared_but_consumption_is_once_per_account",
+        "app.repositories.market_stock.SqlitePlayerMarketStockStore.pending": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
+        "app.repositories.market_stock.SqlitePlayerMarketStockStore.used": "test_templates_are_shared_but_consumption_is_once_per_account",
         "app.repositories.market_stock_upgrade.MarketStockUpgradeRepository.__init__": "test_market_upgrade_preserves_source_history_and_only_converts_live_offers",
         "app.repositories.market_stock_upgrade.MarketStockUpgradeRepository._apply": "test_market_upgrade_preserves_source_history_and_only_converts_live_offers",
         "app.repositories.market_stock_upgrade.MarketStockUpgradeRepository._compare": "test_market_upgrade_reconciliation_detects_unapproved_changes",
@@ -978,9 +976,6 @@ FUNCTION_TESTS.update(
         ),
         "app.repositories.market_preparation.SqlitePreparationStore.set_notifier": (
             "test_durable_demand_coalesces_and_fences_stale_diagnostics"
-        ),
-        "app.repositories.market_stock.SqliteMarketStockStore.scoped_templates": (
-            "test_stock_policy_selection_and_corrupt_storage_are_rejected"
         ),
         "app.repositories.market_templates.SqliteMarketTemplateStore.__init__": (
             "test_stock_policy_selection_and_corrupt_storage_are_rejected"

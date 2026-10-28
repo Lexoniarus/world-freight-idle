@@ -9,7 +9,8 @@ from app.domain.contracts import ContractOffer
 from app.domain.errors import PersistenceError
 from app.domain.market_stock import PreparedTemplate, StockPolicy
 from app.domain.results import AvailableContract
-from app.repositories.market_stock import SqliteMarketStockStore
+from app.repositories.market_stock import SqlitePlayerMarketStockStore
+from app.repositories.market_templates import SqliteMarketTemplateStore
 from app.services.deterministic_market_random import DeterministicMarketRandom
 from app.services.market_demand import MarketDemandResolver
 from app.services.market_selection import MarketSelectionService
@@ -24,8 +25,10 @@ from tests.test_vehicle_market import vehicle_game as vehicle_game
 @pytest.fixture
 def stock_game(vehicle_game, database):
     game, preparation = vehicle_game
-    SqliteMarketStockStore.initialize(database)
-    preparation.stock = SqliteMarketStockStore(database, "test-owner")
+    SqliteMarketTemplateStore.initialize(database)
+    SqlitePlayerMarketStockStore.initialize(database)
+    preparation.stock = SqlitePlayerMarketStockStore(database, "test-owner")
+    preparation.templates = SqliteMarketTemplateStore(database)
     game.market_lifecycle.selection = MarketSelectionService(
         preparation.policy
     )
@@ -76,7 +79,9 @@ async def test_shared_stock_has_three_visible_ten_ready_and_does_not_expire(
         for band in ("short", "medium", "long")
     )
     assert all(o.expires_at is None for o in offers)
-    assert len(prep.stock.templates((offers[0].origin.city.city_uid,))) == 30
+    assert (
+        len(prep.templates.templates((offers[0].origin.city.city_uid,))) == 30
+    )
     assert game.refresh_contracts() == offers
     assert game.refresh_market() == offers
     ids = [o.id for o in offers]
@@ -114,7 +119,7 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
     for _ in range(100):
         if (await batch.process()).status == "ready":
             break
-    templates = prep.stock.templates(
+    templates = prep.templates.templates(
         (game.get_vehicle("truck").location.city.city_uid,)
     )
     with database.transaction(), database.connect() as db:
@@ -129,7 +134,8 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
         prep.jobs,
         prep.clock,
         database,
-        SqliteMarketStockStore(database, "other"),
+        SqlitePlayerMarketStockStore(database, "other"),
+        SqliteMarketTemplateStore(database),
     )
     other.request()
     assert other.stock is not None
@@ -148,7 +154,7 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
         for _ in range(15):
             if (await second.process()).status == "ready":
                 break
-    assert other.stock.templates((templates[0].city_uid,)) == templates
+    assert other.templates.templates((templates[0].city_uid,)) == templates
     common = next(
         iter(prep.stock.bindings().keys() & other.stock.bindings().keys())
     )
@@ -208,7 +214,7 @@ def test_stock_publication_read_phases_preserve_one_snapshot(stock_game):
     inputs = publication._read_inputs()
     projection = publication._resolve_demand(inputs, now)
     assert prep.stock is not None
-    templates = prep.stock.scoped_templates(projection.template_scopes)
+    templates = prep.templates.scoped_templates(projection.template_scopes)
     candidates = publication.market.candidates.build(
         projection.cities,
         tuple(demand.vehicle for demand in projection.demands),
@@ -286,17 +292,19 @@ def test_stock_policy_selection_and_corrupt_storage_are_rejected(
             )
     with pytest.raises(ValueError):
         PreparedTemplate("bad", "model", "wrong", offer)
-    prep.stock.add(template)
+    prep.templates.add(template)
     with pytest.raises(PersistenceError):
-        prep.stock.add(template)
-    SqliteMarketStockStore.initialize(database)
-    assert prep.stock.templates((template.city_uid,)) == (template,)
-    assert prep.stock.scoped_templates(
+        prep.templates.add(template)
+    SqlitePlayerMarketStockStore.initialize(database)
+    assert prep.templates.templates((template.city_uid,)) == (template,)
+    assert prep.templates.scoped_templates(
         ((template.city_uid, template.model_id),)
     ) == (template,)
-    assert prep.stock.scoped_templates(()) == ()
-    assert prep.stock.scoped_templates(((template.city_uid, "other"),)) == ()
-    assert prep.stock.templates(()) == ()
+    assert prep.templates.scoped_templates(()) == ()
+    assert (
+        prep.templates.scoped_templates(((template.city_uid, "other"),)) == ()
+    )
+    assert prep.templates.templates(()) == ()
     assert prep.stock.cursor() == ""
     assert prep.stock.pending("context") is None
     prep.stock.checkpoint("context", ("a", "b", 1))
@@ -329,9 +337,9 @@ def test_stock_policy_selection_and_corrupt_storage_are_rejected(
     with database.connect() as db:
         db.execute("UPDATE market_templates SET model_id=''")
     with pytest.raises(PersistenceError):
-        prep.stock.templates((template.city_uid,))
+        prep.templates.templates((template.city_uid,))
     with pytest.raises(PersistenceError):
-        prep.stock.scoped_templates(((template.city_uid, ""),))
+        prep.templates.scoped_templates(((template.city_uid, ""),))
 
 
 def test_complete_stock_target_does_not_materialize_another_offer(stock_game):
@@ -585,7 +593,7 @@ async def test_failed_approaches_and_changed_publication_do_not_create_ready_off
         assert (await batch.process()).status == "exhausted"
     assert game.state_repository.list_offers() == ()
     assert (
-        prep.stock.templates(
+        prep.templates.templates(
             tuple({d.vehicle.city_uid for d in snapshot.demands})
         )
         == ()
@@ -658,7 +666,7 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
             break
     assert len(game.state_repository.list_offers()) >= 30
     assert second.location is not None
-    templates = prep.stock.templates((second.location.city.city_uid,))
+    templates = prep.templates.templates((second.location.city.city_uid,))
     assert len(templates) > 30
     assert (
         len([t for t in templates if t.template_id not in prep.stock.used()])
@@ -747,7 +755,9 @@ async def test_partial_connection_resumes_after_restart_and_never_releases_early
             == 1
         )
         # Reopen the durable checkpoint and continue the other relation.
-        prep.stock = SqliteMarketStockStore(prep.stock.database, prep.user_id)
+        prep.stock = SqlitePlayerMarketStockStore(
+            prep.stock.database, prep.user_id
+        )
         assert prep.stock.pending(target.key) == trade_key(remote)
         await batch.process()
     assert len(game.state_repository.list_offers()) == 1

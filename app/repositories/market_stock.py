@@ -4,9 +4,8 @@ import json
 
 from app.domain.contracts import ContractOffer
 from app.domain.errors import PersistenceError
-from app.domain.market_stock import MarketArrival, PreparedTemplate, TradeKey
+from app.domain.market_stock import MarketArrival, TradeKey
 from app.repositories.game_database import SqliteGameDatabase
-from app.repositories.market_templates import SqliteMarketTemplateStore
 from app.repositories.snapshot_mapping import load_location
 from app.repositories.state_snapshots import encode_snapshot
 
@@ -32,34 +31,20 @@ STOCK_SCHEMA = (
 )
 
 
-class SqliteMarketStockStore:
-    """Bind private use records while sharing the same global template pool."""
+class SqlitePlayerMarketStockStore:
+    """Persist account-bound issuance, consumption and refill progress."""
 
     def __init__(self, database: SqliteGameDatabase, user_id: str) -> None:
         """Inject existing storage; schema creation belongs to startup."""
         self.database = database
         self.user_id = user_id
-        self.template_store = SqliteMarketTemplateStore(database)
 
     @staticmethod
     def initialize(database: SqliteGameDatabase) -> None:
         """Create additive stock infrastructure before serving requests."""
-        SqliteMarketTemplateStore.initialize(database)
         with database.transaction(), database.connect() as db:
             for statement in STOCK_SCHEMA:
                 db.execute(statement)
-
-    def templates(
-        self, cities: tuple[str, ...]
-    ) -> tuple[PreparedTemplate, ...]:
-        """Delegate player-independent reads to the template repository."""
-        return self.template_store.templates(cities)
-
-    def scoped_templates(
-        self, scopes: tuple[tuple[str, str], ...]
-    ) -> tuple[PreparedTemplate, ...]:
-        """Delegate exact city/model reads to global template storage."""
-        return self.template_store.scoped_templates(scopes)
 
     def used(self) -> frozenset[str]:
         """Read this account's permanent consumption ledger."""
@@ -84,10 +69,6 @@ class SqliteMarketStockStore:
                     (self.user_id,),
                 )
             )
-
-    def add(self, template: PreparedTemplate) -> None:
-        """Delegate global supply writes to the template repository."""
-        self.template_store.add(template)
 
     def issue(self, template_id: str, offer: ContractOffer) -> None:
         """Atomically issue a private snapshot only for an unused template."""

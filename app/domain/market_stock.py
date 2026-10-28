@@ -66,8 +66,8 @@ class PreparedTemplate:
             raise ValueError("Template context differs from its offer.")
 
 
-class MarketStockStore(Protocol):
-    """Persist global templates and a bound account's durable stock state."""
+class MarketTemplateStore(Protocol):
+    """Persist player-independent reusable freight templates."""
 
     def templates(
         self, cities: tuple[str, ...]
@@ -77,11 +77,15 @@ class MarketStockStore(Protocol):
         self, scopes: tuple[tuple[str, str], ...]
     ) -> tuple[PreparedTemplate, ...]: ...
 
+    def add(self, template: PreparedTemplate) -> None: ...
+
+
+class PlayerMarketStockStore(Protocol):
+    """Persist one account's issuance, consumption and refill progress."""
+
     def used(self) -> frozenset[str]: ...
 
     def bindings(self) -> dict[str, str]: ...
-
-    def add(self, template: PreparedTemplate) -> None: ...
 
     def issue(self, template_id: str, offer: ContractOffer) -> None: ...
 

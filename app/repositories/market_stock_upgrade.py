@@ -16,7 +16,8 @@ from app.repositories.game_state import (
     load_offer_record,
     load_transport_record,
 )
-from app.repositories.market_stock import SqliteMarketStockStore
+from app.repositories.market_stock import SqlitePlayerMarketStockStore
+from app.repositories.market_templates import SqliteMarketTemplateStore
 from app.repositories.previous_game_schema import SCHEMA as PREVIOUS_SCHEMA
 from app.repositories.transport_repair import table_digest
 
@@ -71,7 +72,8 @@ class MarketStockUpgradeRepository:
                     self._compare(source, output)
             database = SqliteGameDatabase(target)
             database.initialize()
-            SqliteMarketStockStore.initialize(database)
+            SqliteMarketTemplateStore.initialize(database)
+            SqlitePlayerMarketStockStore.initialize(database)
             LOGGER.info(
                 "Market stock schema upgraded into separate output",
                 extra={"event": "state.market_stock_upgraded", "data": counts},

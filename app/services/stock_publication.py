@@ -99,13 +99,16 @@ class StockPublicationService:
         started = perf_counter()
         prep = self.preparation
         stock = prep.stock
-        assert stock is not None
+        templates = prep.templates
+        assert stock is not None and templates is not None
         now = prep.clock()
         inputs = self._read_inputs()
         snapshot_ms = (perf_counter() - started) * 1000
         projection = self._resolve_demand(inputs, now)
         phase = perf_counter()
-        templates = stock.scoped_templates(projection.template_scopes)
+        prepared_templates = templates.scoped_templates(
+            projection.template_scopes
+        )
         templates_ms = (perf_counter() - phase) * 1000
         phase = perf_counter()
         candidates = self.market.candidates.build(
@@ -121,7 +124,7 @@ class StockPublicationService:
             projection,
             candidates,
             ready,
-            templates,
+            prepared_templates,
             evidence,
             now,
         )
@@ -146,7 +149,8 @@ class StockPublicationService:
         """Read player, job and stock facts in one short transaction."""
         prep = self.preparation
         stock = prep.stock
-        assert stock is not None
+        templates = prep.templates
+        assert stock is not None and templates is not None
         with self.unit.read_transaction():
             owned = self.unit.repository.list_vehicles()
             offers = self.unit.repository.list_offers()
@@ -230,7 +234,8 @@ class StockPublicationService:
         """Recheck inputs in the active publication transaction."""
         prep = self.preparation
         stock = prep.stock
-        assert stock is not None
+        templates = prep.templates
+        assert stock is not None and templates is not None
         return (
             self.guard()
             and self.unit.repository.list_vehicles() == snapshot.owned
@@ -239,7 +244,7 @@ class StockPublicationService:
             and prep.jobs.status(prep.user_id) == snapshot.status
             and stock.used() == snapshot.used
             and stock.bindings() == snapshot.bindings
-            and stock.scoped_templates(snapshot.template_scopes)
+            and templates.scoped_templates(snapshot.template_scopes)
             == snapshot.templates
             and self.market.candidates.reference() == snapshot.reference
             and tuple(
@@ -327,7 +332,8 @@ class StockPublicationService:
         """Fence and commit one previously calculated publication plan."""
         prep = self.preparation
         stock = prep.stock
-        assert stock is not None
+        template_store = prep.templates
+        assert stock is not None and template_store is not None
         by_id = {offer.id: offer for offer in plan.offers}
         pairs = tuple(
             (
@@ -350,7 +356,7 @@ class StockPublicationService:
             ):
                 return False
             for template in templates:
-                stock.add(template)
+                template_store.add(template)
             for template_id, offer in issued:
                 stock.issue(template_id, offer)
             prep.references.replace(plan.bindings)
