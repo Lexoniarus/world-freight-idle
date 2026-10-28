@@ -61,9 +61,11 @@ from app.services.map_locations import MapLocationService
 from app.services.market_candidates import MarketCandidateService
 from app.services.market_components import MarketComponents
 from app.services.market_demand import MarketDemandResolver
+from app.services.market_lifecycle import MarketLifecycleService
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_selection import MarketSelectionService
 from app.services.market_templates import MarketTemplateService
+from app.services.player_initialization import PlayerInitializationService
 from app.services.player_market_demand import PlayerMarketDemandService
 from app.services.player_market_routes import PlayerMarketRouteService
 from app.services.player_market_services import PlayerMarketServices
@@ -78,7 +80,10 @@ from app.services.stock_planning import StockPlanningService
 from app.services.stock_preparation import StockPreparationBatch
 from app.services.stock_publication import StockPublicationService
 from app.services.stock_snapshot import StockSnapshotReader
+from app.services.transport_dispatch import TransportDispatchService
+from app.services.transport_settlement import TransportSettlementService
 from app.services.vehicle_coverage import VehicleCoverageService
+from app.services.vehicle_location import VehicleLocationResolver
 
 
 @dataclass
@@ -208,31 +213,64 @@ def build_game_runtime(
 def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
     """Bind one authenticated owner to the shared relational transaction."""
     market_services = build_player_market_services(runtime, user_id)
-    game = GameService(
-        market_services=market_services,
-        market_selection=(
+    unit = SqliteGameUnitOfWork(runtime.database, user_id)
+    lifecycle = MarketLifecycleService(
+        unit,
+        runtime.market,
+        runtime.market_scope,
+        runtime.clock,
+        market_services.demand if market_services else None,
+        market_services.routes if market_services else None,
+        market_services.stock if market_services else None,
+        selection=(
             MarketSelectionService(market_services.stock.policy)
             if market_services
             else None
         ),
-        unit_of_work=SqliteGameUnitOfWork(runtime.database, user_id),
-        world=runtime.world,
-        router=runtime.router,
-        dispatch_planning=DispatchPlanningService(
-            runtime.router,
-            VehicleCostResolver(runtime.catalogue),
-            runtime.anchors,
+    )
+    planning = DispatchPlanningService(
+        runtime.router,
+        VehicleCostResolver(runtime.catalogue),
+        runtime.anchors,
+        runtime.world,
+        market_services.routes if market_services else None,
+    )
+    settlement = TransportSettlementService(
+        unit,
+        runtime.clock,
+        market_services.demand if market_services else None,
+        lifecycle.refill_after_commit,
+    )
+    dispatch = TransportDispatchService(
+        unit,
+        runtime.market,
+        planning,
+        DispatchEligibilityService(runtime.market.candidates),
+        VehicleLocationResolver(runtime.world),
+        settlement,
+        runtime.clock,
+        runtime.time_scale,
+        lifecycle.prune_in_transaction,
+        lifecycle.refill_after_commit,
+        market_services.stock if market_services else None,
+    )
+    game = GameService(
+        unit,
+        runtime.world,
+        runtime.market,
+        runtime.catalogue,
+        runtime.market_scope,
+        runtime.clock,
+        runtime.time_scale,
+        lifecycle,
+        PlayerInitializationService(
+            unit,
             runtime.world,
-            market_services.routes if market_services else None,
+            runtime.catalogue,
+            market_services.demand if market_services else None,
         ),
-        dispatch_eligibility=DispatchEligibilityService(
-            runtime.market.candidates,
-        ),
-        market=runtime.market,
-        catalogue=runtime.catalogue,
-        market_scope=runtime.market_scope,
-        time_scale=runtime.time_scale,
-        clock=runtime.clock,
+        settlement,
+        dispatch,
     )
     game.ensure_initial_state()
     return game

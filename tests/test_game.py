@@ -52,7 +52,7 @@ def test_ensure_initial_state_is_idempotent(game: GameService):
     assert [
         project_vehicle(item) for item in game.state_repository.list_vehicles()
     ] == before
-    assert game._get_player().cash == 175000
+    assert game.player_state().cash == 175000
 
 
 def test_contract_reads_never_generate_inside_request(game: GameService):
@@ -89,9 +89,9 @@ async def test_dispatch_builds_persisted_trip_and_debits_cost(
     game: GameService,
 ):
     contract = first_berlin_contract(game)
-    before_cash = game._get_player().cash
+    before_cash = game.player_state().cash
     trip = project_transport(await game.dispatch(contract["id"], "truck_01"))
-    after_cash = game._get_player().cash
+    after_cash = game.player_state().cash
     assert (
         trip["origin"]["address"]
         == WorldScope(game.world.read())
@@ -108,14 +108,14 @@ async def test_dispatch_builds_persisted_trip_and_debits_cost(
 def test_reconcile_arrival_moves_vehicle_and_pays(game: GameService):
     contract = first_berlin_contract(game)
     quote = ContractQuote(
-        game._find_contract(contract["id"]),
+        game.transport_dispatch.find_contract(contract["id"]),
         RouteSnapshot(((13.3, 52.5), (9.9, 53.5)), 300, 100, "fake"),
         PriceQuote(1000, 200, 800),
         "truck_01",
         0.62,
     )
-    trip = game._build_trip(
-        game._find_contract(contract["id"]),
+    trip = game.transport_dispatch.build_trip(
+        game.transport_dispatch.find_contract(contract["id"]),
         "truck_01",
         replace(quote, journey=unmetered_journey(300, 1)),
         1.0,
@@ -124,7 +124,7 @@ def test_reconcile_arrival_moves_vehicle_and_pays(game: GameService):
     vehicle = game.state_repository.list_vehicles()[0]
     vehicle.start_trip()
     game.state_repository.save_vehicle(vehicle)
-    before_cash = game._get_player().cash
+    before_cash = game.player_state().cash
     assert game.reconcile_arrival() is True
     assert game.reconcile_arrival() is False
     vehicle = [
@@ -132,7 +132,7 @@ def test_reconcile_arrival_moves_vehicle_and_pays(game: GameService):
     ][0]
     assert vehicle["hub_id"] == contract["destination_hub_id"]
     assert vehicle["status"] == "idle"
-    assert game._get_player().cash == before_cash + 1000
+    assert game.player_state().cash == before_cash + 1000
 
 
 def test_state_expands_contract_addresses(game: GameService):
@@ -159,15 +159,19 @@ def test_reset_restores_playable_state(game: GameService):
 
 def test_find_contract_returns_match_and_raises(game: GameService):
     contract = first_berlin_contract(game)
-    assert game._find_contract(contract["id"]).id == contract["id"]
+    assert (
+        game.transport_dispatch.find_contract(contract["id"]).id
+        == contract["id"]
+    )
     with pytest.raises(KeyError):
-        game._find_contract("missing")
+        game.transport_dispatch.find_contract("missing")
     future = replace(
-        game._find_contract(contract["id"]), created_at=game.now() + 100
+        game.transport_dispatch.find_contract(contract["id"]),
+        created_at=game.now() + 100,
     )
     game.state_repository.replace_offers((future,))
     with pytest.raises(KeyError):
-        game._find_contract(contract["id"])
+        game.transport_dispatch.find_contract(contract["id"])
 
 
 def test_contract_reads_drop_legacy_offers_but_keep_active_trips(
@@ -188,16 +192,16 @@ def test_contract_reads_drop_legacy_offers_but_keep_active_trips(
         if item.status == "active"
     ] == [asdict(trip)]
     with pytest.raises(KeyError):
-        game._find_contract("legacy-offer")
+        game.transport_dispatch.find_contract("legacy-offer")
 
 
 def test_find_vehicle_returns_match_and_raises(game: GameService):
     vehicles = game.state_repository.list_vehicles()
-    assert game._find_vehicle(vehicles, "truck_01").name == (
+    assert game.transport_dispatch.find_vehicle(vehicles, "truck_01").name == (
         "IVECO S-Way 500 XC13"
     )
     with pytest.raises(ValueError):
-        game._find_vehicle(vehicles, "missing")
+        game.transport_dispatch.find_vehicle(vehicles, "missing")
 
 
 def test_validate_dispatch_checks_location_capacity_mode_and_status(
@@ -205,7 +209,9 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
 ):
     contract = first_berlin_contract(game)
     vehicle = game.state_repository.list_vehicles()[0]
-    game._validate_dispatch(vehicle, game._find_contract(contract["id"]))
+    game.transport_dispatch.validate_dispatch(
+        vehicle, game.transport_dispatch.find_contract(contract["id"])
+    )
 
     base: dict[str, Any] = dict(
         id=vehicle.id,
@@ -236,8 +242,8 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
             top_speed_kmh=90,
         )
         with pytest.raises(ValueError, match=message):
-            game._validate_dispatch(
-                invalid, game._find_contract(contract["id"])
+            game.transport_dispatch.validate_dispatch(
+                invalid, game.transport_dispatch.find_contract(contract["id"])
             )
 
 
@@ -245,7 +251,9 @@ def test_vehicle_location_resolution_is_explicit_and_eligibility_is_pure(
     game: GameService,
 ):
     """Eligibility must not hide restoration of persisted vehicle state."""
-    contract = game._find_contract(first_berlin_contract(game)["id"])
+    contract = game.transport_dispatch.find_contract(
+        first_berlin_contract(game)["id"]
+    )
     stored = game.state_repository.list_vehicles()[0]
     vehicle = OwnedVehicle(
         id=stored.id,
@@ -262,32 +270,35 @@ def test_vehicle_location_resolution_is_explicit_and_eligibility_is_pure(
     )
 
     with pytest.raises(ValueError, match="Abholstadt"):
-        game.dispatch_eligibility.require_eligible(vehicle, contract)
+        game.transport_dispatch.eligibility.require_eligible(vehicle, contract)
     assert vehicle.location is None
 
-    game.vehicle_locations.resolve(vehicle)
-    game.dispatch_eligibility.require_eligible(vehicle, contract)
+    game.transport_dispatch.vehicle_locations.resolve(vehicle)
+    game.transport_dispatch.eligibility.require_eligible(vehicle, contract)
     assert vehicle.location is not None
 
 
 def test_build_trip_contains_tracking_timestamps(game: GameService):
     contract = first_berlin_contract(game)
     quote = ContractQuote(
-        game._find_contract(contract["id"]),
+        game.transport_dispatch.find_contract(contract["id"]),
         RouteSnapshot(((1, 2), (3, 4)), 10, 20, "p"),
         PriceQuote(100, 30, 70),
         "truck_01",
         0.62,
     )
-    trip = game._build_trip(
-        game._find_contract(contract["id"]),
+    trip = game.transport_dispatch.build_trip(
+        game.transport_dispatch.find_contract(contract["id"]),
         "truck_01",
         replace(quote, journey=unmetered_journey(10, 50)),
         1000.0,
     )
     with pytest.raises(ValueError, match="energy plan"):
-        game._build_trip(
-            game._find_contract(contract["id"]), "truck_01", quote, 1000
+        game.transport_dispatch.build_trip(
+            game.transport_dispatch.find_contract(contract["id"]),
+            "truck_01",
+            quote,
+            1000,
         )
     assert trip.departed_at == 1000.0
     assert trip.arrives_at == 1050.0

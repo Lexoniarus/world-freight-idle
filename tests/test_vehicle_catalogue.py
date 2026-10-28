@@ -32,6 +32,7 @@ from tests.routing_fixtures import (
     install_fake_routing,
     prepare_client_market,
 )
+from tests.support.game_clock import set_game_clock
 from tests.test_api import make_settings, make_static_files
 from tests.test_game import first_berlin_contract
 
@@ -128,13 +129,13 @@ def test_purchase_reputation_snapshots_and_rollback(game, catalogue):
     fleet = FleetService(game.unit_of_work, catalogue, game.world)
     with pytest.raises(ValueError, match="Reputation"):
         project_vehicle(fleet.purchase("daf_xg_plus_480"))
-    player = project_player(game._get_player())
+    player = project_player(game.player_state())
     player.update(cash=500000, reputation=25)
     game.state_repository.save_player(PlayerState(**player))
     vehicle = project_vehicle(fleet.purchase("daf_xg_plus_480"))
     rate = vehicle["operating_cost_eur_per_km"]
     assert vehicle["capacity_tons"] == 24.3
-    assert game._get_player().cash == 338000
+    assert game.player_state().cash == 338000
     with sqlite3.connect(catalogue.path) as connection:
         connection.execute(
             "UPDATE vehicle_balance SET operating_cost_eur_per_km_game=9"
@@ -145,7 +146,7 @@ def test_purchase_reputation_snapshots_and_rollback(game, catalogue):
         ]
         == rate
     )
-    before = project_player(game._get_player())
+    before = project_player(game.player_state())
     vehicles = [
         project_vehicle(item) for item in game.state_repository.list_vehicles()
     ]
@@ -156,7 +157,7 @@ def test_purchase_reputation_snapshots_and_rollback(game, catalogue):
     ):
         with pytest.raises(RuntimeError):
             project_vehicle(fleet.purchase("iveco_sway_500"))
-    assert project_player(game._get_player()) == before
+    assert project_player(game.player_state()) == before
     assert [
         project_vehicle(item) for item in game.state_repository.list_vehicles()
     ] == vehicles
@@ -203,12 +204,12 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
     )
     assert quote["payout_eur"] == first["payout_eur"]
     assert quote["operating_cost_eur"] == first["operating_cost_eur"]
-    before = game._get_player().cash
+    before = game.player_state().cash
     trip = project_transport(
         await game.dispatch(contract["id"], vehicle["id"])
     )
     assert trip["operating_cost_eur"] == quote["operating_cost_eur"]
-    assert game._get_player().cash == before - quote["operating_cost_eur"]
+    assert game.player_state().cash == before - quote["operating_cost_eur"]
     # Old balances and models are not migrated by reinitialization.
     game.state_repository.save_player(
         PlayerState(cash=25000, reputation=0, completed=0)
@@ -229,16 +230,16 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
         )
         game.state_repository.save_vehicle(legacy)
         game.ensure_initial_state()
-        assert game._get_player().cash == 25000
+        assert game.player_state().cash == 25000
         assert (
             project_vehicle(game.get_vehicle("truck_01"))["model_id"]
             == model_id
         )
     # Already running transport economics are independent of the catalogue.
-    monkeypatch.setattr(game, "now", lambda: trip["arrives_at"] + 1)
+    set_game_clock(game, lambda: trip["arrives_at"] + 1)
     assert game.get_vehicle(vehicle["id"]).status == "enroute"
     assert game.reconcile_arrival()
-    assert game._get_player().cash == 25000 + trip["payout_eur"]
+    assert game.player_state().cash == 25000 + trip["payout_eur"]
 
 
 def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
@@ -364,7 +365,7 @@ def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
     assert (
         starter["operating_cost_eur_per_km"] == model.operating_cost_eur_per_km
     )
-    assert game._get_player().cash == 175000
+    assert game.player_state().cash == 175000
     before = [
         project_vehicle(item) for item in game.state_repository.list_vehicles()
     ]

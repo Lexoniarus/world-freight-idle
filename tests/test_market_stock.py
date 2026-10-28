@@ -23,6 +23,7 @@ from app.services.stock_planning import StockPlanningService
 from app.services.stock_preparation import StockPreparationBatch
 from app.services.stock_publication import StockPublicationService
 from app.services.stock_snapshot import StockSnapshotReader
+from tests.support.game_clock import set_game_clock
 from tests.test_market import city_market as city_market
 from tests.test_vehicle_market import vehicle_game as vehicle_game
 
@@ -101,8 +102,9 @@ async def test_shared_stock_has_three_visible_ten_ready_and_does_not_expire(
     assert game.refresh_contracts() == offers
     assert game.list_contracts() == offers
     ids = [o.id for o in offers]
-    with patch.object(game, "now", return_value=game.now() + 7 * 3600):
-        assert [o.id for o in game.list_contracts()] == ids
+    future = game.now() + 7 * 3600
+    set_game_clock(game, lambda: future)
+    assert [o.id for o in game.list_contracts()] == ids
     chosen = choices[0].offer
     before = set(prep.stock.stock.bindings())
     await game.dispatch(chosen.id, "truck")
@@ -553,7 +555,8 @@ async def test_destination_stock_starts_at_dispatch_without_early_settlement(
     game.market.candidates.world = reference
     prep.routes.readiness.world = reference
     clock = [trip.departed_at + 1]
-    game.now = prep.demand.clock = lambda: clock[0]
+    set_game_clock(game, lambda: clock[0])
+    prep.demand.clock = lambda: clock[0]
     batch.templates.clock = prep.demand.clock
     snapshot = batch.snapshots.read()
     arriving = next(d for d in snapshot.demands if d.transport_id)
@@ -592,7 +595,8 @@ async def test_stale_evidence_reuses_offers_and_backoff_never_releases_stock(
 ):
     game, prep, batch = stock_game
     now = [game.now()]
-    game.now = prep.demand.clock = prep.routes.readiness.clock = lambda: now[0]
+    set_game_clock(game, lambda: now[0])
+    prep.demand.clock = prep.routes.readiness.clock = lambda: now[0]
     batch.templates.clock = prep.demand.clock
     for _ in range(100):
         if (await batch.process()).status == "ready":
@@ -901,26 +905,70 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
 
     from app.repositories.game_state import SqliteGameUnitOfWork
     from app.services.game import GameService
+    from app.services.market_lifecycle import MarketLifecycleService
+    from app.services.player_initialization import PlayerInitializationService
+    from app.services.transport_dispatch import TransportDispatchService
+    from app.services.transport_settlement import TransportSettlementService
+    from app.services.vehicle_location import VehicleLocationResolver
 
     game, prep, batch = stock_game
     for _ in range(30):
         if (await batch.process()).status == "ready":
             break
     offer = game.contract_choices(game.list_contracts(), "truck")[0].offer
+    unit = SqliteGameUnitOfWork(
+        prep.stock.stock.database,
+        prep.demand.user_id,
+    )
+    lifecycle = MarketLifecycleService(
+        unit,
+        game.market,
+        game.market_scope,
+        game.now,
+        prep.demand,
+        prep.routes,
+        prep.stock,
+        selection=game.market_lifecycle.selection,
+    )
+    settlement = TransportSettlementService(
+        unit,
+        game.now,
+        prep.demand,
+        lifecycle.refill_after_commit,
+    )
+    dispatch = TransportDispatchService(
+        unit,
+        game.market,
+        game.transport_dispatch.planning,
+        game.transport_dispatch.eligibility,
+        VehicleLocationResolver(game.world),
+        settlement,
+        game.now,
+        game.time_scale,
+        lifecycle.prune_in_transaction,
+        lifecycle.refill_after_commit,
+        prep.stock,
+    )
     other = GameService(
-        SqliteGameUnitOfWork(prep.stock.stock.database, prep.demand.user_id),
+        unit,
         game.world,
-        game.router,
         game.market,
         game.catalogue,
         game.market_scope,
         game.now,
-        game.dispatch_planning,
-        game.dispatch_eligibility,
-        market_services=prep,
+        game.time_scale,
+        lifecycle,
+        PlayerInitializationService(
+            unit,
+            game.world,
+            game.catalogue,
+            prep.demand,
+        ),
+        settlement,
+        dispatch,
     )
     barrier = Barrier(2)
-    original = GameService.quote_contract
+    original = TransportDispatchService.quote_contract
 
     async def together(service, contract_id, vehicle_id):
         quote = await original(service, contract_id, vehicle_id)
@@ -935,7 +983,7 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
 
     before = game.state_repository.get_player().cash
     with (
-        patch.object(GameService, "quote_contract", new=together),
+        patch.object(TransportDispatchService, "quote_contract", new=together),
         ThreadPoolExecutor(max_workers=2) as pool,
     ):
         futures = [pool.submit(dispatch, service) for service in (game, other)]

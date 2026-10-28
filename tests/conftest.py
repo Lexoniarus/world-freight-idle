@@ -19,7 +19,12 @@ from app.services.cost_profiles import VehicleCostResolver
 from app.services.dispatch_eligibility import DispatchEligibilityService
 from app.services.dispatch_planning import DispatchPlanningService
 from app.services.game import GameService
+from app.services.market_lifecycle import MarketLifecycleService
 from app.services.market_scope import MarketScopeResolver
+from app.services.player_initialization import PlayerInitializationService
+from app.services.transport_dispatch import TransportDispatchService
+from app.services.transport_settlement import TransportSettlementService
+from app.services.vehicle_location import VehicleLocationResolver
 
 
 class FakeRouter:
@@ -92,24 +97,45 @@ def game(database, catalogue, world_catalogue) -> GameService:
     )
     router = FakeRouter()
     anchors = FakeRoutingAnchorResolver()
+    unit = SqliteGameUnitOfWork(database, "test-owner")
+    scope = MarketScopeResolver(world_catalogue)
+    lifecycle = MarketLifecycleService(unit, market, scope, time.time)
+    planning = DispatchPlanningService(
+        router,
+        VehicleCostResolver(catalogue),
+        anchors,
+        world_catalogue,
+    )
+    settlement = TransportSettlementService(
+        unit,
+        time.time,
+        None,
+        lifecycle.refill_after_commit,
+    )
+    dispatch = TransportDispatchService(
+        unit,
+        market,
+        planning,
+        DispatchEligibilityService(market.candidates),
+        VehicleLocationResolver(world_catalogue),
+        settlement,
+        time.time,
+        1.0,
+        lifecycle.prune_in_transaction,
+        lifecycle.refill_after_commit,
+    )
     service = GameService(
-        unit_of_work=SqliteGameUnitOfWork(database, "test-owner"),
-        world=world_catalogue,
-        router=router,
-        dispatch_planning=DispatchPlanningService(
-            router,
-            VehicleCostResolver(catalogue),
-            anchors,
-            world_catalogue,
-        ),
-        dispatch_eligibility=DispatchEligibilityService(
-            market.candidates,
-        ),
-        market=market,
-        market_scope=MarketScopeResolver(world_catalogue),
-        catalogue=catalogue,
-        time_scale=1.0,
-        clock=time.time,
+        unit,
+        world_catalogue,
+        market,
+        catalogue,
+        scope,
+        time.time,
+        1.0,
+        lifecycle,
+        PlayerInitializationService(unit, world_catalogue, catalogue),
+        settlement,
+        dispatch,
     )
     service.ensure_initial_state()
     seed_test_offers(service)
@@ -174,8 +200,8 @@ def runtime(game, database):
     return GameRuntime(
         database,
         game.world,
-        game.router,
-        game.dispatch_planning.anchors,
+        game.transport_dispatch.planning.router,
+        game.transport_dispatch.planning.anchors,
         game.market,
         game.catalogue,
         game.market_scope,

@@ -149,8 +149,8 @@ async def test_dispatch_approach_uses_facility_identity_not_display_coordinate(
     router = CaptureRouter()
     planner = DispatchPlanningService(
         router,
-        game.dispatch_planning.costs,
-        game.dispatch_planning.anchors,
+        game.transport_dispatch.planning.costs,
+        game.transport_dispatch.planning.anchors,
         game.world,
     )
 

@@ -14,6 +14,7 @@ from app.domain.errors import PersistenceError
 from app.main import create_app
 from app.repositories.analytics import SqliteAnalyticsReader
 from app.services.analytics import AnalyticsService, summarize, validate_scope
+from tests.support.game_clock import set_game_clock
 from tests.test_api import make_settings, make_static_files
 
 NOW = datetime(2026, 9, 25, 12, tzinfo=UTC).timestamp()
@@ -199,7 +200,7 @@ async def test_analytics_offline_arrival_is_idempotent(
         if item.eligible_vehicle_ids
     )
     trip = await game.dispatch(choice.offer.id, choice.eligible_vehicle_ids[0])
-    game.now = lambda: trip.arrives_at + 1
+    set_game_clock(game, lambda: trip.arrives_at + 1)
     make_static_files(tmp_path)
     application = create_app(make_settings(tmp_path))
     with TestClient(application) as client:

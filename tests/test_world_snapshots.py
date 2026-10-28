@@ -12,6 +12,7 @@ from app.api.v1.game_projection import (
 from app.domain.energy import EnergyProfile
 from app.domain.errors import WorldCatalogueError
 from app.domain.game import OwnedVehicle
+from tests.support.game_clock import set_game_clock
 from tests.test_game import first_berlin_contract
 
 
@@ -19,13 +20,15 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
     monkeypatch, game
 ):
     contract = first_berlin_contract(game)
-    original = game.router.route
-    game.router.route = AsyncMock(side_effect=original)
+    original = game.transport_dispatch.planning.router.route
+    game.transport_dispatch.planning.router.route = AsyncMock(
+        side_effect=original
+    )
     quote = project_quote(
         await game.quote_contract(contract["id"], "truck_01")
     )
-    assert game.router.route.await_count == 2
-    game.router.route.assert_any_await(
+    assert game.transport_dispatch.planning.router.route.await_count == 2
+    game.transport_dispatch.planning.router.route.assert_any_await(
         contract["origin"]["lat"],
         contract["origin"]["lon"],
         contract["destination"]["lat"],
@@ -35,10 +38,10 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
     with patch.object(
         game.world, "read", side_effect=WorldCatalogueError("offline")
     ):
-        cash = game._get_player().cash
-        monkeypatch.setattr(game, "now", lambda: trip["arrives_at"] + 1)
+        cash = game.player_state().cash
+        set_game_clock(game, lambda: trip["arrives_at"] + 1)
         assert game.reconcile_arrival()
-        assert game._get_player().cash == cash + trip["payout_eur"]
+        assert game.player_state().cash == cash + trip["payout_eur"]
         assert not game.reconcile_arrival()
         assert (
             project_vehicle(game.get_vehicle("truck_01"))["hub"]

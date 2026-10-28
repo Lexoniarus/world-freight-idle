@@ -33,6 +33,7 @@ from tests.routing_fixtures import (
     install_fake_routing,
     prepare_client_market,
 )
+from tests.support.game_clock import set_game_clock
 from tests.test_api import make_settings, make_static_files
 from tests.test_game import first_berlin_contract
 from tests.transport_fixtures import add_transport
@@ -158,9 +159,7 @@ def test_concurrent_purchases_cannot_overdraw(runtime, game, catalogue):
     )
 
 
-async def test_parallel_transports_and_offline_settlement(
-    game, catalogue, monkeypatch
-):
+async def test_parallel_transports_and_offline_settlement(game, catalogue):
     second_vehicle = project_vehicle(
         FleetService(game.unit_of_work, catalogue, game.world).purchase(
             "iveco_sway_500"
@@ -185,8 +184,9 @@ async def test_parallel_transports_and_offline_settlement(
         == 2
     )
     before = project_state(game.state())["player"]["cash"]
-    monkeypatch.setattr(
-        game, "now", lambda: max(first["arrives_at"], second["arrives_at"]) + 1
+    set_game_clock(
+        game,
+        lambda: max(first["arrives_at"], second["arrives_at"]) + 1,
     )
     assert game.reconcile_arrival()
     assert not game.reconcile_arrival()
@@ -203,14 +203,14 @@ async def test_parallel_transports_and_offline_settlement(
 async def test_simultaneous_dispatch_revalidates_after_routing(game):
     arrived = asyncio.Event()
     release = asyncio.Event()
-    original = game.router.route
+    original = game.transport_dispatch.planning.router.route
 
     async def slow_route(*args):
         arrived.set()
         await release.wait()
         return await original(*args)
 
-    game.router.route = slow_route
+    game.transport_dispatch.planning.router.route = slow_route
     contract = first_berlin_contract(game)
     task = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
     await arrived.wait()
@@ -228,7 +228,9 @@ async def test_simultaneous_dispatch_revalidates_after_routing(game):
 
 
 async def test_expired_contract_and_failed_routing_do_not_charge(game):
-    contract = game._find_contract(first_berlin_contract(game)["id"])
+    contract = game.transport_dispatch.find_contract(
+        first_berlin_contract(game)["id"]
+    )
     game.state_repository.replace_offers(
         (replace(contract, created_at=0, expires_at=1),)
     )
@@ -236,7 +238,9 @@ async def test_expired_contract_and_failed_routing_do_not_charge(game):
         project_transport(await game.dispatch(contract.id, "truck_01"))
     game.state_repository.replace_offers((contract,))
     with patch.object(
-        game.router, "route", side_effect=RuntimeError("offline")
+        game.transport_dispatch.planning.router,
+        "route",
+        side_effect=RuntimeError("offline"),
     ):
         with pytest.raises(RuntimeError):
             project_transport(await game.dispatch(contract.id, "truck_01"))

@@ -160,7 +160,7 @@ async def test_dispatch_stores_costs_and_preserves_tariff_for_vehicle_choice(
     route = quote.dispatch_route
     assert route is not None
     with pytest.raises(ValueError, match="Tarif"):
-        game.dispatch_planning.quote(
+        game.transport_dispatch.planning.quote(
             replace(
                 offer,
                 market_context=replace(offer.market_context, tariff=None),
@@ -283,7 +283,7 @@ async def test_vehicle_switch_preserves_offer_and_checks_actual_capacity(game):
         type(game.market.candidates), "eligible_ids", return_value=()
     ):
         with pytest.raises(ValueError, match="Transportklasse"):
-            game._validate_dispatch(vehicle, offer)
+            game.transport_dispatch.validate_dispatch(vehicle, offer)
 
 
 def test_vehicle_reference_cache_retries_failure_then_reuses_revision(

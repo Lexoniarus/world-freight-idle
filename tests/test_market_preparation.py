@@ -113,7 +113,10 @@ def bind_preparation(game, database):
     game.market_lifecycle.selection = MarketSelectionService(
         preparation.stock.policy
     )
-    game.dispatch_planning.routes = preparation.routes
+    game.initialization.market_demand = preparation.demand
+    game.settlement.market_demand = preparation.demand
+    game.transport_dispatch.planning.routes = preparation.routes
+    game.transport_dispatch.stock = preparation.stock
     return preparation
 
 
@@ -536,7 +539,7 @@ async def test_dispatch_rejects_retired_and_changed_prepared_routes(
     offer = game.list_contracts()[0]
     vehicle = owned[0]
     assert vehicle.location is not None
-    planner = game.dispatch_planning
+    planner = game.transport_dispatch.planning
     route = await planner.route(vehicle.location, offer)
     with (
         patch.object(

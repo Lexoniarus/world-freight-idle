@@ -12,6 +12,7 @@ from app.domain.energy import EnergyProfile
 from app.domain.errors import CatalogueError
 from app.repositories.relational_traffic import SqliteTrafficReader
 from tests.conftest import seed_test_offers
+from tests.support.game_clock import set_game_clock
 from tests.test_game import first_berlin_contract
 
 
@@ -28,6 +29,7 @@ def prepare_electric_vehicle(game):
     vehicle.consume_energy(90)
     game.state_repository.save_vehicle(vehicle)
     game.time_scale = 100
+    game.transport_dispatch.time_scale = 100
     return vehicle
 
 
@@ -36,7 +38,7 @@ async def test_energy_quote_dispatch_pause_and_offline_settlement(
 ):
     vehicle = prepare_electric_vehicle(game)
     now = [game.now()]
-    game.now = lambda: now[0]
+    set_game_clock(game, lambda: now[0])
     contract = first_berlin_contract(game)
     with pytest.raises(TypeError):
         await game.quote_contract(contract["id"])
@@ -80,14 +82,14 @@ async def test_energy_quote_dispatch_pause_and_offline_settlement(
     )
     assert game.get_vehicle(vehicle.id).energy_level == 10
     now[0] = trip.arrives_at + 1
-    before = game._get_player().cash
+    before = game.player_state().cash
     with patch.object(
         game.catalogue, "list_models", side_effect=CatalogueError("offline")
     ):
         assert game.reconcile_arrival()
         assert not game.reconcile_arrival()
     assert game.get_vehicle(vehicle.id).energy_level == 20
-    assert game._get_player().cash == before + trip.payout_eur
+    assert game.player_state().cash == before + trip.payout_eur
     assert game.state_repository.list_transports()[0].status == "settled"
     seed_test_offers(game)
     next_offer = next(
@@ -104,7 +106,7 @@ async def test_energy_quote_dispatch_pause_and_offline_settlement(
 async def test_dispatch_replans_after_routing_and_settlement_rolls_back(game):
     vehicle = prepare_electric_vehicle(game)
     contract = first_berlin_contract(game)
-    original_route = game.router.route
+    original_route = game.transport_dispatch.planning.router.route
 
     async def route_then_change_energy(*args):
         route = await original_route(*args)
@@ -114,13 +116,15 @@ async def test_dispatch_replans_after_routing_and_settlement_rolls_back(game):
         return route
 
     with patch.object(
-        game.router, "route", side_effect=route_then_change_energy
+        game.transport_dispatch.planning.router,
+        "route",
+        side_effect=route_then_change_energy,
     ):
         trip = await game.dispatch(contract["id"], vehicle.id)
     assert trip.journey.stop_count == 0
     assert trip.journey.segments[0].start_energy == 100
-    game.now = lambda: trip.arrives_at + 1
-    before = game._get_player()
+    set_game_clock(game, lambda: trip.arrives_at + 1)
+    before = game.player_state()
     with patch.object(
         game.state_repository,
         "save_player",
@@ -130,7 +134,7 @@ async def test_dispatch_replans_after_routing_and_settlement_rolls_back(game):
             game.reconcile_arrival()
     assert game.get_vehicle(vehicle.id).energy_level == 100
     assert game.get_vehicle(vehicle.id).status == "enroute"
-    assert game._get_player() == before
+    assert game.player_state() == before
     assert game.state_repository.list_transports()[0].status == "active"
     corrupted = game.get_vehicle(vehicle.id)
     # Simulate a damaged persisted departure checkpoint, not a legal mutation.
@@ -138,7 +142,7 @@ async def test_dispatch_replans_after_routing_and_settlement_rolls_back(game):
     game.state_repository.save_vehicle(corrupted)
     with pytest.raises(ValueError, match="checkpoint"):
         game.reconcile_arrival()
-    assert game._get_player() == before
+    assert game.player_state() == before
     corrupted._energy_level = 100
     game.state_repository.save_vehicle(corrupted)
     assert game.reconcile_arrival()
@@ -147,7 +151,7 @@ async def test_dispatch_replans_after_routing_and_settlement_rolls_back(game):
 
 async def test_quote_rejects_offer_changed_during_routing(game):
     contract = first_berlin_contract(game)
-    original_route = game.router.route
+    original_route = game.transport_dispatch.planning.router.route
 
     async def route_then_change_offer(*args):
         route = await original_route(*args)
@@ -162,7 +166,11 @@ async def test_quote_rejects_offer_changed_during_routing(game):
         )
         return route
 
-    with patch.object(game.router, "route", route_then_change_offer):
+    with patch.object(
+        game.transport_dispatch.planning.router,
+        "route",
+        route_then_change_offer,
+    ):
         with pytest.raises(ValueError, match="geändert"):
             await game.quote_contract(contract["id"], "truck_01")
     assert game.get_vehicle("truck_01").status == "idle"
@@ -172,7 +180,7 @@ async def test_quote_rejects_offer_changed_during_routing(game):
 async def test_dispatch_rejects_offer_changed_after_quote(game):
     contract = first_berlin_contract(game)
     quote = await game.quote_contract(contract["id"], "truck_01")
-    before = game._get_player()
+    before = game.player_state()
     game.state_repository.replace_offers(
         tuple(
             replace(
@@ -185,7 +193,11 @@ async def test_dispatch_rejects_offer_changed_after_quote(game):
     )
     with game.unit_of_work.transaction():
         with pytest.raises(ValueError, match="geändert"):
-            game._commit_dispatch(contract["id"], "truck_01", quote)
-    assert game._get_player() == before
+            game.transport_dispatch.commit_dispatch(
+                contract["id"],
+                "truck_01",
+                quote,
+            )
+    assert game.player_state() == before
     assert game.get_vehicle("truck_01").status == "idle"
     assert game.state_repository.list_active_transports() == ()

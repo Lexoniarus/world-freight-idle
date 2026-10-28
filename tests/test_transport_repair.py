@@ -14,6 +14,8 @@ from app.domain.errors import PersistenceError
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.transport_repair import repaired_transport, table_digest
+from tests.support.game_clock import set_game_clock
+from tests.support.game_service import rebind_game_storage
 from tests.test_market_preparation import require_value
 from tests.test_runtime_views import active_trip as active_trip
 
@@ -172,10 +174,8 @@ def test_repair_reconciliation_and_archive_reject_any_unapproved_change(
             tool._verify_archive(source, repairs, archive)
     # Normal game settlement, never the repair tool, applies the due payout.
     unit = SqliteGameUnitOfWork(SqliteGameDatabase(target), "test-owner")
-    game.unit_of_work = unit
-    game.state_repository = unit.repository
-    game.market_lifecycle.unit_of_work = unit
-    game.now = lambda: active_trip.arrives_at + 1
+    rebind_game_storage(game, unit)
+    set_game_clock(game, lambda: active_trip.arrives_at + 1)
     assert game.reconcile_arrival()
     paid = unit.repository.get_player()
     assert require_value(paid).cash == 175000 + active_trip.payout_eur

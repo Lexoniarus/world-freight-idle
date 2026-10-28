@@ -198,8 +198,8 @@ def test_offline_import_preserves_profiles_history_and_settles_once(
     runtime = GameRuntime(
         database=database,
         world=game.world,
-        router=game.router,
-        anchors=game.dispatch_planning.anchors,
+        router=game.transport_dispatch.planning.router,
+        anchors=game.transport_dispatch.planning.anchors,
         market=game.market,
         catalogue=game.catalogue,
         market_scope=game.market_scope,

@@ -11,6 +11,7 @@ from app.domain.errors import CatalogueError
 from app.domain.pricing import calculate_price
 from app.repositories.snapshot_mapping import load_historical_contract
 from app.services.fleet import build_owned_vehicle
+from tests.support.game_clock import set_game_clock
 
 
 def other_facility_offer(game):
@@ -43,7 +44,7 @@ async def test_same_city_dispatch_preserves_departure_and_prunes_atomically(
 async def test_dispatch_failure_rolls_back_reservation_and_market(game):
     offer = other_facility_offer(game)
     before_vehicle = game.get_vehicle("truck_01")
-    before_cash = game._get_player().cash
+    before_cash = game.player_state().cash
     before_offers = game.state_repository.list_offers()
     with patch.object(
         game.state_repository,
@@ -54,24 +55,24 @@ async def test_dispatch_failure_rolls_back_reservation_and_market(game):
             await game.dispatch(offer.id, "truck_01")
     assert game.get_vehicle("truck_01").location == before_vehicle.location
     assert game.get_vehicle("truck_01").status == "idle"
-    assert game._get_player().cash == before_cash
+    assert game.player_state().cash == before_cash
     assert game.state_repository.list_offers() == before_offers
     assert game.state_repository.list_active_transports() == ()
 
 
 async def test_dispatch_commits_before_background_market_refill(game):
     offer = other_facility_offer(game)
-    cash = game._get_player().cash
+    cash = game.player_state().cash
     assert not hasattr(game.market, "generate")
     trip = await game.dispatch(offer.id, "truck_01")
     assert game.get_vehicle("truck_01").status == "enroute"
     assert game.get_vehicle("truck_01").location == trip.dispatch_route.start
-    assert game._get_player().cash == cash - trip.operating_cost_eur
+    assert game.player_state().cash == cash - trip.operating_cost_eur
     assert game.state_repository.list_active_transports() == (trip,)
     assert not game.state_repository.list_offers()
     game.list_contracts()
     assert game.state_repository.list_active_transports() == (trip,)
-    assert game._get_player().cash == cash - trip.operating_cost_eur
+    assert game.player_state().cash == cash - trip.operating_cost_eur
     demand = Mock()
     demand.request.side_effect = RuntimeError("refill failed")
     game.market_lifecycle.demand = demand
@@ -105,7 +106,7 @@ async def test_arrival_activates_city_and_preserves_historical_terms(
         for o in game.list_contracts()
         if o.destination.city.city_uid != o.origin.city.city_uid
     )
-    build_trip = game._build_trip
+    build_trip = game.transport_dispatch.build_trip
 
     def historical_trip(*args):
         trip = build_trip(*args)
@@ -119,10 +120,14 @@ async def test_arrival_activates_city_and_preserves_historical_terms(
             ),
         )
 
-    with patch.object(game, "_build_trip", side_effect=historical_trip):
+    with patch.object(
+        type(game.transport_dispatch),
+        "build_trip",
+        lambda self, *args: historical_trip(*args),
+    ):
         historical = await game.dispatch(offer.id, "truck_01")
     trip = historical
-    monkeypatch.setattr(game, "now", lambda: trip.arrives_at + 1)
+    set_game_clock(game, lambda: trip.arrives_at + 1)
     with patch.object(
         game.catalogue, "list_models", side_effect=CatalogueError("offline")
     ):
@@ -267,7 +272,9 @@ async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(game):
     quote = await game.quote_contract(offer.id, vehicle.id)
     vehicle._operating_cost_eur_per_km = None
     assert (
-        game._calculate_quote(offer, quote.dispatch_route, vehicle).economics
+        game.transport_dispatch.calculate_quote(
+            offer, quote.dispatch_route, vehicle
+        ).economics
         == quote.economics
     )
     model = next(
@@ -292,7 +299,11 @@ async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(game):
 
 
 def test_market_reads_and_refresh_never_call_providers_or_generate(game):
-    with patch.object(game.router, "route", side_effect=AssertionError):
+    with patch.object(
+        game.transport_dispatch.planning.router,
+        "route",
+        side_effect=AssertionError,
+    ):
         retained = game.list_contracts()
         assert game.list_contracts() == retained
         regenerated = game.refresh_contracts()

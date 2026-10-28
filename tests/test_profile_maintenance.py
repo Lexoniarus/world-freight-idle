@@ -65,7 +65,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
         for item in selected.state_repository.list_transports()
         if item.status == "active"
     ]
-    other_before = project_player(other_game._get_player())
+    other_before = project_player(other_game.player_state())
     backup = tmp_path / "backup.db"
     backup_database(database.path, backup)
     assert backup.exists()
@@ -85,7 +85,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
         project_vehicle(selected.get_vehicle("free"))["model_id"]
         == "iveco_sway_500"
     )
-    assert project_player(other_game._get_player()) == other_before
+    assert project_player(other_game.player_state()) == other_before
     selected.state_repository.save_player(
         PlayerState(**{**other_before, "cash": 12345})
     )
@@ -94,7 +94,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
         {"free": "iveco_sway_500"},
         None,
     )
-    assert selected._get_player().cash == 12345
+    assert selected.player_state().cash == 12345
     with pytest.raises(ValueError):
         service.update_profile(
             "Selected",
@@ -107,7 +107,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
             {"free": "missing"},
             1,
         )
-    assert selected._get_player().cash == 12345
+    assert selected.player_state().cash == 12345
 
 
 @pytest.fixture
@@ -144,7 +144,7 @@ def test_maintenance_validation_preserves_state(maintenance, failure):
             project_vehicle(item)
             for item in selected.state_repository.list_vehicles()
         ],
-        project_player(selected._get_player()),
+        project_player(selected.player_state()),
     )
     username = "Selected"
     assignments = {"truck_01": "man_tgx_520"}
@@ -169,7 +169,7 @@ def test_maintenance_validation_preserves_state(maintenance, failure):
             project_vehicle(item)
             for item in selected.state_repository.list_vehicles()
         ],
-        project_player(selected._get_player()),
+        project_player(selected.player_state()),
     ) == before
 
 
@@ -360,16 +360,16 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
     _, service, game, _ = maintenance
     route_started = asyncio.Event()
     release_route = asyncio.Event()
-    original_route = game.router.route
+    original_route = game.transport_dispatch.planning.router.route
 
     async def delayed_route(*args):
         route_started.set()
         await release_route.wait()
         return await original_route(*args)
 
-    game.router.route = delayed_route
+    game.transport_dispatch.planning.router.route = delayed_route
     before = 112 if limited_cash else 175000
-    player = project_player(game._get_player())
+    player = project_player(game.player_state())
     game.state_repository.save_player(
         PlayerState(**{**player, "cash": before})
     )
@@ -385,9 +385,9 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
         with pytest.raises(ValueError, match="Nicht genug"):
             await task
         assert game.state_repository.list_transports() == ()
-        assert game._get_player().cash == before
+        assert game.player_state().cash == before
     else:
         trip = project_transport(await task)
         assert trip["cost_breakdown"]["maintenance_eur_per_km"] == 0.085
         assert trip["operating_cost_eur"] == 114
-        assert game._get_player().cash == before - trip["operating_cost_eur"]
+        assert game.player_state().cash == before - trip["operating_cost_eur"]

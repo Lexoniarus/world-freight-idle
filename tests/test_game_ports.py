@@ -12,10 +12,17 @@ from app.api.v1.game_projection import (
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.services.cost_profiles import VehicleCostResolver
+from app.services.dispatch_eligibility import DispatchEligibilityService
 from app.services.dispatch_planning import DispatchPlanningService
 from app.services.fleet import FleetService
 from app.services.game import GameService
+from app.services.market_lifecycle import MarketLifecycleService
+from app.services.player_initialization import PlayerInitializationService
+from app.services.transport_dispatch import TransportDispatchService
+from app.services.transport_settlement import TransportSettlementService
+from app.services.vehicle_location import VehicleLocationResolver
 from tests.conftest import seed_test_offers
+from tests.support.game_clock import set_game_clock
 
 
 @pytest.fixture
@@ -26,21 +33,49 @@ def relational_game(game, tmp_path):
         connection.execute(
             "INSERT INTO users VALUES ('owner', 'Owner', 'test-only', 0)"
         )
+    unit = SqliteGameUnitOfWork(database, "owner")
+    lifecycle = MarketLifecycleService(
+        unit,
+        game.market,
+        game.market_scope,
+        game.now,
+    )
+    planning = DispatchPlanningService(
+        game.transport_dispatch.planning.router,
+        VehicleCostResolver(game.catalogue),
+        game.transport_dispatch.planning.anchors,
+        game.world,
+    )
+    settlement = TransportSettlementService(
+        unit,
+        game.now,
+        None,
+        lifecycle.refill_after_commit,
+    )
+    dispatch = TransportDispatchService(
+        unit,
+        game.market,
+        planning,
+        DispatchEligibilityService(game.market.candidates),
+        VehicleLocationResolver(game.world),
+        settlement,
+        game.now,
+        1.0,
+        lifecycle.prune_in_transaction,
+        lifecycle.refill_after_commit,
+    )
     service = GameService(
-        unit_of_work=SqliteGameUnitOfWork(database, "owner"),
-        world=game.world,
-        router=game.router,
-        dispatch_planning=DispatchPlanningService(
-            game.router,
-            VehicleCostResolver(game.catalogue),
-            game.dispatch_planning.anchors,
-            game.world,
-        ),
-        dispatch_eligibility=game.dispatch_eligibility,
-        market=game.market,
-        catalogue=game.catalogue,
-        market_scope=game.market_scope,
-        clock=game.now,
+        unit,
+        game.world,
+        game.market,
+        game.catalogue,
+        game.market_scope,
+        game.now,
+        1.0,
+        lifecycle,
+        PlayerInitializationService(unit, game.world, game.catalogue),
+        settlement,
+        dispatch,
     )
     return service
 
@@ -65,7 +100,7 @@ async def test_relational_game_use_cases_preserve_atomic_settlement(
     )
     before = game.state_repository.get_player()
     assert before is not None
-    monkeypatch.setattr(game, "now", lambda: trip["arrives_at"])
+    set_game_clock(game, lambda: trip["arrives_at"])
     assert game.reconcile_arrival()
     assert not game.reconcile_arrival()
     after = game.state_repository.get_player()
@@ -123,7 +158,7 @@ async def test_game_workflows_return_typed_values_and_reject_changed_offer(
     assert isinstance(quote, ContractQuote)
     assert isinstance(quote.route, RouteSnapshot)
     player = game.state_repository.get_player()
-    original_route = game.router.route
+    original_route = game.transport_dispatch.planning.router.route
 
     async def route_while_offer_changes(*coordinates):
         route = await original_route(*coordinates)
@@ -139,7 +174,11 @@ async def test_game_workflows_return_typed_values_and_reject_changed_offer(
         )
         return route
 
-    monkeypatch.setattr(game.router, "route", route_while_offer_changes)
+    monkeypatch.setattr(
+        game.transport_dispatch.planning.router,
+        "route",
+        route_while_offer_changes,
+    )
     with pytest.raises(ValueError, match="geändert"):
         await game.dispatch(offer.id, "truck_01")
     assert game.state_repository.get_player() == player
@@ -158,9 +197,9 @@ async def test_quote_routes_missing_snapshot_coordinates_by_facility_uid(
         (replace(offer, origin=replace(offer.origin, coordinates=None)),)
     )
     with patch.object(
-        game.router,
+        game.transport_dispatch.planning.router,
         "route",
-        wraps=game.router.route,
+        wraps=game.transport_dispatch.planning.router.route,
     ) as routed:
         quote = await game.quote_contract(offer.id, "truck_01")
 
