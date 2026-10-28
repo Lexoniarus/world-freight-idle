@@ -1001,5 +1001,8 @@ FUNCTION_TESTS.update(
         "app.services.stock_planning.StockPlanningService.preferred": (
             "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work"
         ),
+        "app.services.market_candidates.MarketCandidateService.build": (
+            "test_structural_candidates_are_reused_until_fleet_context_changes"
+        ),
     }
 )

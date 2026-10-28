@@ -1,5 +1,6 @@
 """Resolve vehicle-aware market candidates from NHM trade relations."""
 
+from collections import OrderedDict
 from collections.abc import Sequence
 
 from app.domain.contracts import ContractOffer
@@ -42,6 +43,10 @@ class MarketCandidateService:
         self._profiles: dict[int, NhmMarketProfile] = {}
         self._reference_factor = 0.0
         self._facilities: dict[str, Facility] = {}
+        self._candidate_cache: OrderedDict[
+            tuple[tuple[str, ...], tuple[MarketVehicle, ...]],
+            tuple[MarketCandidate, ...],
+        ] = OrderedDict()
 
     def reference(self) -> WorldSnapshot:
         """Refresh derived reference indexes only for a changed revision."""
@@ -56,6 +61,7 @@ class MarketCandidateService:
                 p.freight_rate_factor_game for p in snapshot.market_profiles
             )
             self._snapshot = snapshot
+            self._candidate_cache.clear()
         return snapshot
 
     def resolve_fleet(
@@ -89,6 +95,11 @@ class MarketCandidateService:
     ) -> tuple[MarketCandidate, ...]:
         """Generate active origins against the complete destination index."""
         snapshot = self.reference()
+        cache_key = cities, vehicles
+        cached = self._candidate_cache.get(cache_key)
+        if cached is not None:
+            self._candidate_cache.move_to_end(cache_key)
+            return cached
         assert self._network is not None
         candidates = []
         for facility in snapshot.facilities:
@@ -106,7 +117,12 @@ class MarketCandidateService:
                 candidate = self._candidate(trade, fleet)
                 if candidate is not None:
                     candidates.append(candidate)
-        return tuple(candidates)
+        result = tuple(candidates)
+        self._candidate_cache[cache_key] = result
+        self._candidate_cache.move_to_end(cache_key)
+        if len(self._candidate_cache) > 32:
+            self._candidate_cache.popitem(last=False)
+        return result
 
     def _candidate(
         self,

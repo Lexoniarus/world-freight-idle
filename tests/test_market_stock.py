@@ -238,6 +238,22 @@ def test_stock_publication_read_phases_preserve_one_snapshot(stock_game):
     assert snapshot.template_scopes == projection.template_scopes
 
 
+def test_structural_candidates_are_reused_until_fleet_context_changes(
+    stock_game,
+):
+    """Reuse expensive trade projections without freezing changed demand."""
+    game, _, batch = stock_game
+    candidates = game.market.candidates
+    snapshot = batch.publication.read()
+    cities = tuple(sorted({d.vehicle.city_uid for d in snapshot.demands}))
+    fleet = tuple(d.vehicle for d in snapshot.demands)
+    first = candidates.build(cities, fleet)
+    assert candidates.build(cities, fleet) is first
+    changed = replace(fleet[0], capacity_tons=fleet[0].capacity_tons + 1)
+    rebuilt = candidates.build(cities, (changed, *fleet[1:]))
+    assert rebuilt is not first
+
+
 def test_stock_publication_plan_contains_coverage_and_routes(stock_game):
     """Calculate coverage and route bindings before the writer opens."""
     _, _, batch = stock_game
