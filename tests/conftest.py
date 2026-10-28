@@ -102,7 +102,6 @@ def game(database, catalogue, world_catalogue) -> GameService:
             world_catalogue,
         ),
         dispatch_eligibility=DispatchEligibilityService(
-            world_catalogue,
             market.candidates,
         ),
         market=market,

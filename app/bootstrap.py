@@ -219,7 +219,6 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
             preparation,
         ),
         dispatch_eligibility=DispatchEligibilityService(
-            runtime.world,
             runtime.market.candidates,
         ),
         market=runtime.market,

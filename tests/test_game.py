@@ -247,6 +247,35 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
             )
 
 
+def test_vehicle_location_resolution_is_explicit_and_eligibility_is_pure(
+    game: GameService,
+):
+    """Eligibility must not hide restoration of persisted vehicle state."""
+    contract = game._find_contract(first_berlin_contract(game)["id"])
+    stored = game.state_repository.list_vehicles()[0]
+    vehicle = OwnedVehicle(
+        id=stored.id,
+        name=stored.name,
+        mode=stored.mode,
+        capacity_tons=stored.capacity_tons,
+        facility_uid=stored.facility_uid,
+        status=stored.status,
+        model_id=stored.model_id,
+        location=None,
+        energy=stored.energy,
+        energy_level=stored.energy_level,
+        top_speed_kmh=stored.top_speed_kmh,
+    )
+
+    with pytest.raises(ValueError, match="Abholstadt"):
+        game.dispatch_eligibility.require_eligible(vehicle, contract)
+    assert vehicle.location is None
+
+    game.vehicle_locations.resolve(vehicle)
+    game.dispatch_eligibility.require_eligible(vehicle, contract)
+    assert vehicle.location is not None
+
+
 def test_build_trip_contains_tracking_timestamps(game: GameService):
     contract = first_berlin_contract(game)
     quote = ContractQuote(

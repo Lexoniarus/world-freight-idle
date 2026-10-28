@@ -31,6 +31,7 @@ from app.services.market_lifecycle import MarketLifecycleService
 from app.services.market_preparation import MarketPreparationService
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_selection import MarketSelectionService
+from app.services.vehicle_location import VehicleLocationResolver
 
 LOGGER = logging.getLogger(__name__)
 
@@ -60,6 +61,7 @@ class GameService:
         self.router = router
         self.dispatch_planning = dispatch_planning
         self.dispatch_eligibility = dispatch_eligibility
+        self.vehicle_locations = VehicleLocationResolver(world)
         self.market = market
         self.time_scale = max(0.001, time_scale)
         self.catalogue = catalogue
@@ -412,8 +414,9 @@ class GameService:
         vehicle: OwnedVehicle,
         contract: ContractOffer,
     ) -> None:
-        """Delegate vehicle-specific dispatch invariants to the entity."""
-        self.dispatch_eligibility.validate(vehicle, contract)
+        """Resolve persisted location, then enforce pure eligibility rules."""
+        self.vehicle_locations.resolve(vehicle)
+        self.dispatch_eligibility.require_eligible(vehicle, contract)
 
     def _build_trip(
         self,

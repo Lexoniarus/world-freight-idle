@@ -74,9 +74,7 @@ def vehicle_game(game, city_market, database):
     game.market_scope = MarketScopeResolver(world)
     game.market_lifecycle.generator = market
     game.market_lifecycle.scope = game.market_scope
-    game.dispatch_eligibility = DispatchEligibilityService(
-        world, market.candidates
-    )
+    game.dispatch_eligibility = DispatchEligibilityService(market.candidates)
     preparation = bind_preparation(game, database)
     return game, preparation
 

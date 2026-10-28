@@ -997,8 +997,11 @@ FUNCTION_TESTS.update(
         "app.services.deterministic_market_random.DeterministicMarketRandom.weighted_index": (
             "test_deterministic_market_random_is_stable_and_rejects_bad_choices"
         ),
-        "app.services.dispatch_eligibility.DispatchEligibilityService.validate": (
-            "test_vehicle_readiness_requires_approach_and_excludes_stale"
+        "app.services.dispatch_eligibility.DispatchEligibilityService.require_eligible": (
+            "test_vehicle_location_resolution_is_explicit_and_eligibility_is_pure"
+        ),
+        "app.services.vehicle_location.VehicleLocationResolver.resolve": (
+            "test_vehicle_location_resolution_is_explicit_and_eligibility_is_pure"
         ),
         "app.services.preparation_worker.MarketPreparationWorker.wake": (
             "test_worker_fills_ready_market_and_owns_shutdown"
