@@ -100,7 +100,7 @@ async def test_partial_market_never_publishes_unchecked_offers(game, database):
     preparation = bind_preparation(game, database)
     batch = make_stock_batch(game, preparation)
     preparation.request()
-    assert game.refresh_market() == []
+    assert game.list_contracts() == []
     owned = game.state_repository.list_vehicles()
     fleet = game.market.candidates.resolve_fleet(owned)
     pool = game.market.candidates.build(
@@ -116,7 +116,7 @@ async def test_partial_market_never_publishes_unchecked_offers(game, database):
     result = require_value(await readiness.prepare(origin, destination))
     # Delivery alone cannot publish an offer for an unprepared approach.
     if owned[0].facility_uid != origin:
-        assert game.refresh_market() == []
+        assert game.list_contracts() == []
         await readiness.prepare(owned[0].facility_uid, origin)
     assert result.status == "ready"
     readiness.router = AsyncMock()
@@ -173,11 +173,6 @@ async def test_missing_payload_is_detected_only_when_geometry_is_loaded(
     approach = require_value(
         await readiness.prepare(owned[0].facility_uid, origin)
     )
-    preparation.prepare_publication((candidate,), fleet)
-    status = require_value(preparation.jobs.status("test-owner"))
-    preparation.jobs.finish(
-        "test-owner", status.generation, "ready", None, game.now()
-    )
     with database.connect() as conn:
         conn.execute(
             "DELETE FROM route_cache WHERE cache_key IN "
@@ -185,14 +180,11 @@ async def test_missing_payload_is_detected_only_when_geometry_is_loaded(
             (approach.reference.relation_id,),
         )
     assert readiness.ready(origin, destination) is not None
-    publication = preparation.prepare_publication((candidate,), fleet)
+    publication = preparation.ready_candidates((candidate,))
     assert len(publication) == 1
     assert publication[0].trade == candidate.trade
     with pytest.raises(ValueError, match="vorbereitet"):
         readiness.load(owned[0].facility_uid, origin)
-    updated = require_value(preparation.jobs.status("test-owner"))
-    assert updated.status == "ready"
-    assert preparation.jobs.next_player(game.now()) is None
 
 
 @pytest.mark.asyncio
@@ -314,17 +306,8 @@ async def test_worker_fills_ready_market_and_owns_shutdown(game, database):
     await worker.close()
 
 
-def test_preparation_generation_and_reference_rollback(game, database):
+def test_preparation_store_generation_and_reference_rollback(game, database):
     preparation = bind_preparation(game, database)
-    from app.domain.market_preparation import preparation_generation
-
-    fleet = game.market.candidates.resolve_fleet(
-        game.state_repository.list_vehicles()
-    )
-    first_generation = preparation_generation(fleet, (), ())
-    assert preparation_generation(fleet, (), ()) == first_generation
-    changed = (replace(fleet[0], capacity_tons=fleet[0].capacity_tons + 1),)
-    assert preparation_generation(changed, (), ()) != first_generation
     assert preparation.jobs.status("missing") is None
     with pytest.raises(ValueError, match="publication"):
         preparation.bind(game.state_repository.list_offers())

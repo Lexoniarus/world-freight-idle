@@ -20,7 +20,7 @@ from tests.test_market_preparation import (
 
 
 @pytest.mark.asyncio
-async def test_exhausted_negative_demand_requeues_after_revision(
+async def test_exhausted_negative_demand_requires_explicit_invalidation(
     game, database
 ):
     preparation = bind_preparation(game, database)
@@ -41,20 +41,22 @@ async def test_exhausted_negative_demand_requeues_after_revision(
     readiness.router = AsyncMock()
     readiness.router.route.side_effect = error
     await readiness.prepare(*pair)
-    preparation.prepare_publication((candidate,), fleet)
+    preparation.request()
     status = require_value(preparation.jobs.status("test-owner"))
     preparation.jobs.finish(
         "test-owner", status.generation, "exhausted", None, game.now()
     )
-    preparation.prepare_publication((candidate,), fleet)
+    preparation.request()
     assert preparation.jobs.next_player(game.now()) is None
+    before = preparation.demand_state(*pair)
     readiness.provider_revision = lambda: "new-graph"
-    preparation.prepare_publication((candidate,), fleet)
+    after = preparation.demand_state(*pair)
+    assert after.expected_fingerprint != before.expected_fingerprint
+    preparation.request(changed=True)
     changed = require_value(preparation.jobs.status("test-owner"))
     assert changed.generation != status.generation
     assert changed.status == "partial"
     assert preparation.jobs.next_player(game.now()) == "test-owner"
-    assert preparation.prepare_publication((candidate,), fleet) == ()
     await readiness.prepare(*pair)
     assert readiness.router.route.await_count == 2
 

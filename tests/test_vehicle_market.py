@@ -147,7 +147,7 @@ async def test_vehicle_readiness_requires_approach_and_excludes_stale(
     )
     game.state_repository.replace_offers(offers)
     preparation.bind(offers)
-    offers = game.refresh_market()
+    offers = game.list_contracts()
     assert game.contract_choices(offers, fleet[0].vehicle_id)
     with patch.object(
         readiness.store,

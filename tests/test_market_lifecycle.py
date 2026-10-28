@@ -59,26 +59,22 @@ async def test_dispatch_failure_rolls_back_reservation_and_market(game):
     assert game.state_repository.list_active_transports() == ()
 
 
-async def test_dispatch_never_runs_synchronous_market_refill(game):
+async def test_dispatch_commits_before_background_market_refill(game):
     offer = other_facility_offer(game)
     cash = game._get_player().cash
-    with patch.object(
-        type(game.market),
-        "generate",
-        side_effect=CatalogueError("refill offline"),
-    ):
-        trip = await game.dispatch(offer.id, "truck_01")
+    assert not hasattr(game.market, "generate")
+    trip = await game.dispatch(offer.id, "truck_01")
     assert game.get_vehicle("truck_01").status == "enroute"
     assert game.get_vehicle("truck_01").location == trip.dispatch_route.start
     assert game._get_player().cash == cash - trip.operating_cost_eur
     assert game.state_repository.list_active_transports() == (trip,)
     assert not game.state_repository.list_offers()
-    game.refresh_market()
+    game.list_contracts()
     assert game.state_repository.list_active_transports() == (trip,)
     assert game._get_player().cash == cash - trip.operating_cost_eur
 
 
-async def test_dispatch_prunes_without_starting_market_generation(game):
+async def test_dispatch_prunes_stock_without_generation_api(game):
     offer = other_facility_offer(game)
     first = game.get_vehicle("truck_01")
     model = next(
@@ -86,17 +82,13 @@ async def test_dispatch_prunes_without_starting_market_generation(game):
     )
     second = build_owned_vehicle(model, "second", first.location)
     game.state_repository.save_vehicle(second)
-    with patch.object(
-        type(game.market),
-        "generate",
-        side_effect=AssertionError("synchronous generation"),
-    ):
-        trip = await game.dispatch(offer.id, first.id)
+    assert not hasattr(game.market, "generate")
+    trip = await game.dispatch(offer.id, first.id)
     assert game.state_repository.list_active_transports() == (trip,)
     remaining = game.state_repository.list_offers()
     assert offer.id not in {o.id for o in remaining}
     assert remaining
-    assert game.refresh_market() == list(remaining)
+    assert game.list_contracts() == list(remaining)
 
 
 async def test_arrival_activates_city_and_preserves_historical_terms(
@@ -134,7 +126,7 @@ async def test_arrival_activates_city_and_preserves_historical_terms(
     assert settled.contract == historical.contract
     assert settled.payout_eur == trip.payout_eur
     assert game.get_vehicle("truck_01").location == trip.destination
-    offers = game.refresh_market()
+    offers = game.list_contracts()
     assert offers == []
 
 
@@ -146,20 +138,20 @@ def test_retention_filters_without_writing_during_market_reads(game):
     )
     expired = replace(first, id="expiring", expires_at=game.now() + 30)
     game.state_repository.replace_offers((*offers, legacy, expired))
-    assert game.refresh_market() == offers
+    assert game.list_contracts() == offers
     assert game.contract_choices(offers)[0].eligible_vehicle_ids == (
         "truck_01",
     )
     vehicle = game.get_vehicle("truck_01")
     vehicle._capacity_tons = 0.1
     game.state_repository.save_vehicle(vehicle)
-    new = game.refresh_market()
+    new = game.list_contracts()
     assert new == []
     with patch.object(
         game.catalogue, "list_models", side_effect=CatalogueError("offline")
     ):
         with pytest.raises(CatalogueError):
-            game.refresh_market()
+            game.list_contracts()
     assert game.state_repository.list_offers() == (*offers, legacy, expired)
 
 
@@ -289,7 +281,7 @@ async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(game):
             await game.quote_contract(offer.id, vehicle.id)
         with pytest.raises(ValueError, match="Transportklasse"):
             await game.dispatch(offer.id, vehicle.id)
-        assert not game.refresh_market()
+        assert not game.list_contracts()
     assert not game.state_repository.list_active_transports()
 
 

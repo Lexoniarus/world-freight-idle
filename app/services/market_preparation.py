@@ -10,7 +10,6 @@ from app.domain.market_preparation import (
     PreparationStore,
     RelationDemandState,
     VehicleReadyCandidate,
-    preparation_generation,
     required_relations,
 )
 from app.domain.market_stock import (
@@ -52,19 +51,6 @@ class MarketPreparationService:
         self.stock = stock
         self.templates = templates
         self.policy = policy
-
-    def prepare_publication(
-        self,
-        candidates: tuple[MarketCandidate, ...],
-        fleet: tuple[MarketVehicle, ...],
-    ) -> tuple[MarketCandidate, ...]:
-        """Enqueue demand and expose vehicle-ready structural candidates."""
-        pairs = required_relations(candidates)
-        states = tuple(self.demand_state(*pair) for pair in pairs)
-        generation = preparation_generation(fleet, candidates, states)
-        with self.transactions.transaction():
-            self.jobs.request(self.user_id, generation, self.clock())
-        return self._ready_candidates(candidates, states)
 
     def request(self, *, changed: bool = False) -> None:
         """Schedule durable demand without building a candidate pool."""
@@ -121,34 +107,6 @@ class MarketPreparationService:
         if delivery is None or not vehicles:
             return None
         return VehicleReadyCandidate(candidate, delivery, vehicles)
-
-    def preparable_candidates(
-        self,
-        candidates: tuple[MarketCandidate, ...],
-    ) -> tuple[MarketCandidate, ...]:
-        """Skip deterministic delivery or approach failures during planning."""
-        pairs = required_relations(candidates)
-        with self.readiness.reading(pairs):
-            states = {pair: self.readiness.current(*pair) for pair in pairs}
-            result = []
-            for candidate in candidates:
-                origin = candidate.trade.origin.facility_uid
-                relation = states[
-                    origin, candidate.trade.destination.facility_uid
-                ]
-                if relation and relation.status == "deterministic_failure":
-                    continue
-                vehicles = tuple(
-                    v
-                    for v in candidate.vehicles
-                    if v.vehicle.facility_uid == origin
-                    or (approach := states[v.vehicle.facility_uid, origin])
-                    is None
-                    or approach.status != "deterministic_failure"
-                )
-                if vehicles:
-                    result.append(restrict_candidate(candidate, vehicles))
-            return tuple(result)
 
     def demand_state(
         self, origin: str, destination: str

@@ -108,10 +108,6 @@ class GameService:
             else None
         )
 
-    def refresh_market(self, force: bool = False) -> list[ContractOffer]:
-        """Delegate city market lifecycle to its transactional service."""
-        return self.market_lifecycle.refresh(force)
-
     async def quote_contract(
         self, contract_id: str, vehicle_id: str
     ) -> ContractQuote:
@@ -292,12 +288,12 @@ class GameService:
             )
 
     def list_contracts(self) -> list[ContractOffer]:
-        """Reconcile arrivals and return retained/refilled city markets."""
+        """Reconcile arrivals and return already published local stock."""
         self.reconcile_arrival()
         return self.market_lifecycle.published()
 
     def refresh_contracts(self) -> list[ContractOffer]:
-        """Explicitly regenerate offers only for current active cities."""
+        """Request background refill and return already published stock."""
         self.reconcile_arrival()
         return self.market_lifecycle.published(refresh=True)
 

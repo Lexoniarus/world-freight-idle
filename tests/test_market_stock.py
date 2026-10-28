@@ -83,7 +83,7 @@ async def test_shared_stock_has_three_visible_ten_ready_and_does_not_expire(
         len(prep.templates.templates((offers[0].origin.city.city_uid,))) == 30
     )
     assert game.refresh_contracts() == offers
-    assert game.refresh_market() == offers
+    assert game.list_contracts() == offers
     ids = [o.id for o in offers]
     with patch.object(game, "now", return_value=game.now() + 7 * 3600):
         assert [o.id for o in game.list_contracts()] == ids

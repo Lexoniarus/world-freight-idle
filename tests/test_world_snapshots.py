@@ -44,9 +44,9 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
             project_vehicle(game.get_vehicle("truck_01"))["hub"]
             == trip["destination_snapshot"]
         )
-        for force in (False, True):
+        for read_contracts in (game.list_contracts, game.refresh_contracts):
             with pytest.raises(WorldCatalogueError):
-                game.refresh_market(force=force)
+                read_contracts()
         assert game.dashboard().vehicles
     assert quote["origin"] == contract["origin"]
 

@@ -55,16 +55,10 @@ def test_ensure_initial_state_is_idempotent(game: GameService):
     assert game._get_player().cash == 175000
 
 
-def test_refresh_market_never_generates_inside_request(game: GameService):
-    first = [
-        project_contract(value) for value in game.refresh_market(force=False)
-    ]
-    second = [
-        project_contract(value) for value in game.refresh_market(force=False)
-    ]
-    forced = [
-        project_contract(value) for value in game.refresh_market(force=True)
-    ]
+def test_contract_reads_never_generate_inside_request(game: GameService):
+    first = [project_contract(value) for value in game.list_contracts()]
+    second = [project_contract(value) for value in game.list_contracts()]
+    forced = [project_contract(value) for value in game.refresh_contracts()]
     assert second == first
     assert forced == first
     assert any(contract["origin_hub_id"] == BERLIN_UID for contract in forced)
@@ -176,16 +170,16 @@ def test_find_contract_returns_match_and_raises(game: GameService):
         game._find_contract(contract["id"])
 
 
-def test_refresh_market_drops_legacy_offers_but_keeps_active_trips(
+def test_contract_reads_drop_legacy_offers_but_keep_active_trips(
     game: GameService,
 ):
-    current = game.refresh_market()
+    current = game.list_contracts()
     legacy = replace(
         current[0], id="legacy-offer", market_model="previous-market"
     )
     trip = add_transport(game, arrives_at=game.now() + 1000)
     game.state_repository.replace_offers((legacy, *current))
-    refreshed = [project_contract(value) for value in game.refresh_market()]
+    refreshed = [project_contract(value) for value in game.list_contracts()]
     assert all(item.get("market_model") == "nhm_v2" for item in refreshed)
     assert all(item["id"] != "legacy-offer" for item in refreshed)
     assert [
@@ -314,14 +308,14 @@ def test_contract_projection_retains_endpoint_snapshots(game):
         assert project_contract(offer) == projected
 
 
-def test_refresh_market_without_idle_vehicle_has_no_local_origins(
+def test_contract_refresh_without_idle_vehicle_has_no_local_origins(
     game: GameService,
 ):
     vehicle = game.state_repository.list_vehicles()[0]
     vehicle.start_trip()
     game.state_repository.save_vehicle(vehicle)
     assert [
-        project_contract(value) for value in game.refresh_market(force=True)
+        project_contract(value) for value in game.refresh_contracts()
     ] == []
 
 

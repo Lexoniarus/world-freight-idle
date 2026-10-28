@@ -166,7 +166,7 @@ async def test_parallel_transports_and_offline_settlement(
             "iveco_sway_500"
         )
     )
-    [project_contract(value) for value in game.refresh_market(force=True)]
+    [project_contract(value) for value in game.refresh_contracts()]
     contracts = [
         item
         for item in [

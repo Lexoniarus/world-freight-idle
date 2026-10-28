@@ -30,10 +30,6 @@ class MarketLifecycleService:
     publication_guard: Callable[[], bool] | None = None
     selection: MarketSelectionService | None = None
 
-    def refresh(self, force: bool = False) -> list[ContractOffer]:
-        """Request a refill and return only already published local stock."""
-        return self.published(refresh=force)
-
     def published(self, *, refresh: bool = False) -> list[ContractOffer]:
         """Serve retained stock; only an explicit refresh writes demand."""
         if refresh and self.preparation is not None:

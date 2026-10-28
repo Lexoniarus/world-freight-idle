@@ -1,13 +1,11 @@
 """Persistent player preparation contracts, separate from global routes."""
 
 from dataclasses import dataclass
-from hashlib import sha256
 from typing import Protocol
 
 from app.domain.market import (
     CompatibleVehicle,
     MarketCandidate,
-    MarketVehicle,
     VehicleCoverageDiagnostic,
 )
 from app.domain.routing_readiness import RelationStatus, RouteReference
@@ -77,25 +75,6 @@ class PreparationStore(Protocol):
         retry_at: float | None,
         now: float,
     ) -> None: ...
-
-
-def preparation_generation(
-    fleet: tuple[MarketVehicle, ...],
-    candidates: tuple[MarketCandidate, ...],
-    references: tuple[RelationDemandState, ...],
-) -> str:
-    """Fingerprint relevant demand without copying entire facility trees."""
-    facts = tuple(
-        (
-            c.trade.origin.facility_uid,
-            c.trade.destination.facility_uid,
-            c.trade.cargo.nhm_row_id,
-            c.profile,
-            c.weight,
-        )
-        for c in candidates
-    )
-    return sha256(repr((fleet, facts, references)).encode()).hexdigest()
 
 
 def required_relations(

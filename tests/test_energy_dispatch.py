@@ -92,7 +92,7 @@ async def test_energy_quote_dispatch_pause_and_offline_settlement(
     seed_test_offers(game)
     next_offer = next(
         o
-        for o in game.refresh_market()
+        for o in game.list_contracts()
         if o.origin.facility_uid == trip.destination.facility_uid
         and o.tons <= vehicle.capacity_tons
     )
