@@ -40,7 +40,7 @@ FUNCTION_TESTS = {
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.publish": "test_global_lease_fences_expired_and_competing_writers",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.release": "test_global_lease_fences_expired_and_competing_writers",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.renew": "test_global_lease_fences_expired_and_competing_writers",
-    "app.services.game.GameService.preparation_status": "test_preparation_store_generation_and_reference_rollback",
+    "app.services.gameplay.game.GameService.preparation_status": "test_preparation_store_generation_and_reference_rollback",
     "app.services.player_market_routes.PlayerMarketRouteService.bind": "test_partial_market_never_publishes_unchecked_offers",
     "app.services.market_route_preparation.MarketRoutePreparationService.prepare": "test_preparation_failures_backoff_fencing_and_worker_cleanup",
     "app.services.player_market_routes.PlayerMarketRouteService.retained_current": "test_partial_market_never_publishes_unchecked_offers",
@@ -68,9 +68,9 @@ FUNCTION_TESTS = {
     "app.domain.routes.DispatchRoutePlan.matches_route": "test_dispatch_route_matches_all_saved_facts_without_revalidation",
     "app.domain.routes.DispatchRoutePlan.legs": "test_dispatch_route_invariants_and_historical_mapping",
     "app.domain.dispatch_journey.plan_dispatch_journey": "test_dispatch_journey_preserves_leg_speeds_energy_and_boundary",
-    "app.services.dispatch_planning.DispatchPlanningService.route": "test_planner_routes_from_checkpoint_by_facility_identity",
-    "app.services.dispatch_planning.DispatchPlanningService._load_prepared_route": "test_planner_routes_from_checkpoint_by_facility_identity",
-    "app.services.dispatch_planning.DispatchPlanningService.quote": "test_changed_departure_and_missing_evidence_never_dispatch",
+    "app.services.gameplay.dispatch_planning.DispatchPlanningService.route": "test_planner_routes_from_checkpoint_by_facility_identity",
+    "app.services.gameplay.dispatch_planning.DispatchPlanningService._load_prepared_route": "test_planner_routes_from_checkpoint_by_facility_identity",
+    "app.services.gameplay.dispatch_planning.DispatchPlanningService.quote": "test_changed_departure_and_missing_evidence_never_dispatch",
     "app.repositories.transport_mapping.load_route": "test_dispatch_route_invariants_and_historical_mapping",
     "app.repositories.transport_mapping.load_dispatch_route": "test_dispatch_route_invariants_and_historical_mapping",
     "app.api.v1.dispatch_projection.project_dispatch_route": "test_approach_dispatch_reload_public_privacy_and_offline_arrival",
@@ -105,7 +105,7 @@ FUNCTION_TESTS = {
     "app.domain.transports.ActiveTransport.is_due": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
     "app.domain.transports.ActiveTransport.settle": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
     "app.repositories.transport_mapping.load_transport": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
-    "app.services.game.GameService.player_state": "test_relational_game_use_cases_preserve_atomic_settlement",
+    "app.services.gameplay.game.GameService.player_state": "test_relational_game_use_cases_preserve_atomic_settlement",
     "app.domain.contracts.ContractOffer.__post_init__": "test_contract_offer_domain_rules",
     "app.domain.validation.require_finite": "test_domain_value_validators_reject_invalid_values",
     "app.domain.validation.require_integer": "test_domain_value_validators_reject_invalid_values",
@@ -136,24 +136,24 @@ FUNCTION_TESTS = {
     "app.providers.routing.ValhallaTruckRouter._extract_route": "test_extract_route_supports_geojson_and_rejects_empty",
     "app.providers.routing.ValhallaTruckRouter.route": "test_route_calls_valhalla_and_caches",
     "app.providers.routing.decode_polyline6": "test_decode_polyline6_and_invalid_input",
-    "app.services.transport_dispatch.TransportDispatchService.build_trip": "test_build_trip_contains_tracking_timestamps",
-    "app.services.transport_dispatch.TransportDispatchService.find_contract": "test_find_contract_returns_match_and_raises",
-    "app.services.transport_dispatch.TransportDispatchService.find_vehicle": "test_find_vehicle_returns_match_and_raises",
-    "app.services.transport_dispatch.TransportDispatchService.validate_dispatch": "test_validate_dispatch_checks_location_capacity_mode_and_status",
-    "app.services.game.GameService.dashboard": "test_dashboard_returns_product_projection",
-    "app.services.game.GameService.dispatch": "test_dispatch_builds_persisted_trip_and_debits_cost",
-    "app.services.game.GameService.ensure_initial_state": "test_ensure_initial_state_is_idempotent",
-    "app.services.game.GameService.get_contract": "test_list_and_get_contracts_return_real_addresses",
-    "app.services.game.GameService.get_transport": "test_list_and_get_transports",
-    "app.services.game.GameService.get_vehicle": "test_list_get_and_expand_vehicles",
-    "app.services.game.GameService.list_contracts": "test_list_and_get_contracts_return_real_addresses",
-    "app.services.game.GameService.list_transports": "test_list_and_get_transports",
-    "app.services.game.GameService.list_vehicles": "test_list_get_and_expand_vehicles",
-    "app.services.game.GameService.quote_contract": "test_quote_contract_geocodes_routes_and_prices",
-    "app.services.game.GameService.reconcile_arrival": "test_reconcile_arrival_moves_vehicle_and_pays",
-    "app.services.game.GameService.refresh_contracts": "test_list_and_get_contracts_return_real_addresses",
-    "app.services.game.GameService.reset": "test_reset_restores_playable_state",
-    "app.services.game.GameService.state": "test_state_expands_contract_addresses",
+    "app.services.gameplay.dispatch.TransportDispatchService.build_trip": "test_build_trip_contains_tracking_timestamps",
+    "app.services.gameplay.dispatch.TransportDispatchService.find_contract": "test_find_contract_returns_match_and_raises",
+    "app.services.gameplay.dispatch.TransportDispatchService.find_vehicle": "test_find_vehicle_returns_match_and_raises",
+    "app.services.gameplay.dispatch.TransportDispatchService.validate_dispatch": "test_validate_dispatch_checks_location_capacity_mode_and_status",
+    "app.services.gameplay.game.GameService.dashboard": "test_dashboard_returns_product_projection",
+    "app.services.gameplay.game.GameService.dispatch": "test_dispatch_builds_persisted_trip_and_debits_cost",
+    "app.services.gameplay.game.GameService.ensure_initial_state": "test_ensure_initial_state_is_idempotent",
+    "app.services.gameplay.game.GameService.get_contract": "test_list_and_get_contracts_return_real_addresses",
+    "app.services.gameplay.game.GameService.get_transport": "test_list_and_get_transports",
+    "app.services.gameplay.game.GameService.get_vehicle": "test_list_get_and_expand_vehicles",
+    "app.services.gameplay.game.GameService.list_contracts": "test_list_and_get_contracts_return_real_addresses",
+    "app.services.gameplay.game.GameService.list_transports": "test_list_and_get_transports",
+    "app.services.gameplay.game.GameService.list_vehicles": "test_list_get_and_expand_vehicles",
+    "app.services.gameplay.game.GameService.quote_contract": "test_quote_contract_geocodes_routes_and_prices",
+    "app.services.gameplay.game.GameService.reconcile_arrival": "test_reconcile_arrival_moves_vehicle_and_pays",
+    "app.services.gameplay.game.GameService.refresh_contracts": "test_list_and_get_contracts_return_real_addresses",
+    "app.services.gameplay.game.GameService.reset": "test_reset_restores_playable_state",
+    "app.services.gameplay.game.GameService.state": "test_state_expands_contract_addresses",
     "app.domain.contracts.ContractOffer.from_snapshot": "test_contract_offer_domain_rules",
     "app.domain.contracts.ContractOffer.is_available": "test_contract_offer_domain_rules",
     "app.domain.game.PlayerState.debit": "test_player_state_domain_rules",
@@ -217,9 +217,9 @@ FUNCTION_TESTS.update(
         "app.services.auth.AuthService.register": "test_auth_sessions_expire_revoke_and_throttle",
         "app.services.auth.PasswordHasher.hash_password": "test_password_hashes_are_salted_and_verified",
         "app.services.auth.PasswordHasher.verify_password": "test_password_hashes_are_salted_and_verified",
-        "app.services.fleet.FleetService.purchase": "test_player_service_isolation_and_atomic_purchases",
-        "app.services.transport_dispatch.TransportDispatchService.commit_dispatch": "test_simultaneous_dispatch_revalidates_after_routing",
-        "app.services.transport_settlement.TransportSettlementService.complete_trip": "test_settlement_rejects_transport_without_owned_vehicle",
+        "app.services.gameplay.fleet.FleetService.purchase": "test_player_service_isolation_and_atomic_purchases",
+        "app.services.gameplay.dispatch.TransportDispatchService.commit_dispatch": "test_simultaneous_dispatch_revalidates_after_routing",
+        "app.services.gameplay.settlement.TransportSettlementService.complete_trip": "test_settlement_rejects_transport_without_owned_vehicle",
         "app.web.leaderboard_page": "test_product_pages_are_distinct_routes",
         "app.web.login_page": "test_product_pages_are_distinct_routes",
     }
@@ -247,9 +247,9 @@ FUNCTION_TESTS.update(
         "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue._read_model": "test_catalogue_failures_are_explicit",
         "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue.list_models": "test_catalogue_projects_all_offers_without_writing",
         "app.services.auth.AuthService.__init__": "test_auth_sessions_expire_revoke_and_throttle",
-        "app.services.fleet.FleetService.__init__": "test_purchase_reputation_snapshots_and_rollback",
-        "app.services.fleet.FleetService.list_catalogue": "test_catalogue_api_errors_and_vehicle_quote_validation",
-        "app.services.game.GameService.__post_init__": "test_player_service_isolation_and_atomic_purchases",
+        "app.services.gameplay.fleet.FleetService.__init__": "test_purchase_reputation_snapshots_and_rollback",
+        "app.services.gameplay.fleet.FleetService.list_catalogue": "test_catalogue_api_errors_and_vehicle_quote_validation",
+        "app.services.gameplay.game.GameService.__post_init__": "test_player_service_isolation_and_atomic_purchases",
         "app.services.map_locations.MapLocationService.__init__": "test_map_hubs_resolve_and_preserve_partial_failures",
     }
 )
@@ -265,27 +265,27 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.services.fleet.build_owned_vehicle": "test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts",
-        "app.services.fleet.create_starter_vehicle": "test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts",
+        "app.services.gameplay.fleet.build_owned_vehicle": "test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts",
+        "app.services.gameplay.fleet.create_starter_vehicle": "test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts",
     }
 )
 
 FUNCTION_TESTS.update(
     {
-        "app.services.player_initialization.PlayerInitializationService.ensure_in_transaction": "test_initialization_direct_failure_is_atomic",
+        "app.services.gameplay.initialization.PlayerInitializationService.ensure_in_transaction": "test_initialization_direct_failure_is_atomic",
         "app.bootstrap.build_profile_maintenance_service": "test_profile_update_preserves_other_players_and_trip_snapshots",
         "app.bootstrap.build_profile_maintenance_service.player_unit_of_work_factory": "test_profile_update_preserves_other_players_and_trip_snapshots",
         "app.repositories.database_backup.backup_database": "test_backup_reads_committed_wal_and_refuses_overwrite",
         "app.services.profile_maintenance.ProfileMaintenanceService.__init__": "test_profile_update_preserves_other_players_and_trip_snapshots",
         "app.services.profile_maintenance.ProfileMaintenanceService.update_profile": "test_maintenance_write_failure_rolls_back_and_retains_unselected",
         "app.services.profile_maintenance.validate_assignments": "test_maintenance_validation_preserves_state",
-        "app.services.game.GameService.ensure_initial_state": "test_initialization_direct_failure_is_atomic",
+        "app.services.gameplay.game.GameService.ensure_initial_state": "test_initialization_direct_failure_is_atomic",
         "app.main.lifespan": "test_lifespan_cleans_up_partial_start_and_shutdown",
     }
 )
 
 FUNCTION_TESTS[
-    "app.services.transport_dispatch.TransportDispatchService.commit_dispatch"
+    "app.services.gameplay.dispatch.TransportDispatchService.commit_dispatch"
 ] = "test_dispatch_rejects_offer_changed_after_quote"
 
 FUNCTION_TESTS.update(
@@ -314,7 +314,7 @@ FUNCTION_TESTS.update(
         "app.repositories.world_catalogue.source_reference": "test_world_repository_rejects_incompatible_data",
         "app.repositories.world_catalogue.validate_uid": "test_world_repository_rejects_incompatible_data",
         "app.repositories.world_catalogue.validate_world_schema": "test_world_repository_rejects_incompatible_data",
-        "app.services.fleet.resolve_delivery_facility": "test_delivery_requires_verified_catalogue_endpoint",
+        "app.services.gameplay.fleet.resolve_delivery_facility": "test_delivery_requires_verified_catalogue_endpoint",
         "app.services.map_locations.MapLocationService.list_facilities": "test_map_hubs_resolve_and_preserve_partial_failures",
     }
 )
@@ -575,7 +575,7 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.services.transport_dispatch.TransportDispatchService.calculate_quote": "test_energy_quote_dispatch_pause_and_offline_settlement",
+        "app.services.gameplay.dispatch.TransportDispatchService.calculate_quote": "test_energy_quote_dispatch_pause_and_offline_settlement",
         "app.api.v1.game_projection.project_fleet": "test_energy_quote_dispatch_pause_and_offline_settlement",
     }
 )
@@ -611,7 +611,7 @@ FUNCTION_TESTS.update(
         "app.domain.market_terms.OfferMarketContext.__post_init__": "test_materialization_snapshots_profile_terms_and_validates_context",
         "app.domain.market_terms.OfferMarketContext.validate_tonnage": "test_materialization_snapshots_profile_terms_and_validates_context",
         "app.repositories.snapshot_mapping.load_market_context": "test_historical_v2_and_missing_context_roundtrip_without_catalogue",
-        "app.services.game.GameService.contract_choices": "test_retention_filters_without_writing_during_market_reads",
+        "app.services.gameplay.game.GameService.contract_choices": "test_retention_filters_without_writing_during_market_reads",
         "app.services.market_candidates.MarketCandidateService.__init__": "test_reference_cache_and_empty_origin_relations",
         "app.services.market_candidates.MarketCandidateService.reference": "test_reference_cache_and_empty_origin_relations",
         "app.services.market_candidates.MarketCandidateService.resolve_fleet": "test_model_resolution_is_explicit_and_saved_capacity_wins",
@@ -758,7 +758,7 @@ FUNCTION_TESTS.update(
         "app.bootstrap.build_routing_anchor_resolver": (
             "test_build_game_service_wires_real_provider_adapters"
         ),
-        "app.services.dispatch_planning.DispatchPlanningService.route": (
+        "app.services.gameplay.dispatch_planning.DispatchPlanningService.route": (
             "test_dispatch_approach_uses_facility_identity_not_display_coordinate"
         ),
     }
@@ -776,7 +776,7 @@ FUNCTION_TESTS.update(
         "app.services.economy_audit.EconomyAuditService.matrix": "test_economy_audit_is_typed_and_reproducible",
         "app.services.economy_audit.audit_vehicle": "test_economy_audit_is_typed_and_reproducible",
         "app.services.economy_audit.summarize_economy": "test_economy_audit_is_typed_and_reproducible",
-        "app.services.game.GameService.vehicle_coverage": "test_market_presentation_filters_coverage_for_requested_vehicle",
+        "app.services.gameplay.game.GameService.vehicle_coverage": "test_market_presentation_filters_coverage_for_requested_vehicle",
         "app.services.market_lifecycle.MarketLifecycleService.vehicle_diagnostics": "test_vehicle_projection_api_enforces_owned_idle_selection",
         "app.services.market_lifecycle.MarketLifecycleService.read_market": "test_vehicle_projection_api_enforces_owned_idle_selection",
         "app.services.market_lifecycle.MarketLifecycleService._retained_from": "test_vehicle_projection_api_enforces_owned_idle_selection",
@@ -805,10 +805,10 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update({})
 
-FUNCTION_TESTS["app.services.game.GameService.market_presentation"] = (
-    "test_market_presentation_filters_coverage_for_requested_vehicle"
-)
-FUNCTION_TESTS["app.services.game.GameService.read_market"] = (
+FUNCTION_TESTS[
+    "app.services.gameplay.game.GameService.market_presentation"
+] = "test_market_presentation_filters_coverage_for_requested_vehicle"
+FUNCTION_TESTS["app.services.gameplay.game.GameService.read_market"] = (
     "test_vehicle_projection_api_enforces_owned_idle_selection"
 )
 FUNCTION_TESTS["app.domain.market_preparation.required_relations"] = (
@@ -930,35 +930,35 @@ FUNCTION_TESTS.update(
         "app.services.market_demand.MarketDemandResolver.resolve": "test_destination_stock_starts_at_dispatch_without_early_settlement",
         "app.services.market_selection.MarketSelectionService.select": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
         "app.services.market_templates.MarketTemplateService.materialize": "test_templates_are_shared_but_consumption_is_once_per_account",
-        "app.services.stock_planning.StockPlanningService.choose": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
-        "app.services.stock_planning.StockPlanningService.order": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
-        "app.services.stock_planning.StockPlanningService.targets": "test_demand_models_and_owned_capacity_remain_separate",
-        "app.services.stock_planning.StockTarget.key": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
-        "app.services.stock_preparation.StockPreparationBatch._ready": "test_partial_connection_resumes_after_restart_and_never_releases_early",
-        "app.services.stock_preparation.StockPreparationBatch._result": "test_stale_evidence_reuses_offers_and_backoff_never_releases_stock",
-        "app.services.stock_preparation.StockPreparationBatch._runnable": "test_failed_approaches_and_changed_publication_do_not_create_ready_offers",
-        "app.services.stock_preparation.StockPreparationBatch._select": "test_failed_approaches_and_changed_publication_do_not_create_ready_offers",
-        "app.services.stock_preparation.StockPreparationBatch._waiting": "test_stale_evidence_reuses_offers_and_backoff_never_releases_stock",
-        "app.services.stock_preparation.StockPreparationBatch.process": "test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance",
-        "app.services.stock_publication.StockPublicationService.publish": "test_reserve_replacement_and_publication_failure_keep_atomic_state",
-        "app.services.stock_snapshot.StockSnapshotReader.read": "test_catalogue_changes_block_old_supply_without_deleting_terms",
-        "app.services.stock_publication.StockPublicationService.unchanged": "test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance",
-        "app.services.stock_snapshot.StockSnapshotReader.read_inputs": (
+        "app.services.market.stock.planning.StockPlanningService.choose": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
+        "app.services.market.stock.planning.StockPlanningService.order": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
+        "app.services.market.stock.planning.StockPlanningService.targets": "test_demand_models_and_owned_capacity_remain_separate",
+        "app.services.market.stock.planning.StockTarget.key": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
+        "app.services.market.stock.preparation.StockPreparationBatch._ready": "test_partial_connection_resumes_after_restart_and_never_releases_early",
+        "app.services.market.stock.preparation.StockPreparationBatch._result": "test_stale_evidence_reuses_offers_and_backoff_never_releases_stock",
+        "app.services.market.stock.preparation.StockPreparationBatch._runnable": "test_failed_approaches_and_changed_publication_do_not_create_ready_offers",
+        "app.services.market.stock.preparation.StockPreparationBatch._select": "test_failed_approaches_and_changed_publication_do_not_create_ready_offers",
+        "app.services.market.stock.preparation.StockPreparationBatch._waiting": "test_stale_evidence_reuses_offers_and_backoff_never_releases_stock",
+        "app.services.market.stock.preparation.StockPreparationBatch.process": "test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance",
+        "app.services.market.stock.publication.StockPublicationService.publish": "test_reserve_replacement_and_publication_failure_keep_atomic_state",
+        "app.services.market.stock.snapshot.StockSnapshotReader.read": "test_catalogue_changes_block_old_supply_without_deleting_terms",
+        "app.services.market.stock.publication.StockPublicationService.unchanged": "test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance",
+        "app.services.market.stock.snapshot.StockSnapshotReader.read_inputs": (
             "test_stock_publication_read_phases_preserve_one_snapshot"
         ),
-        "app.services.stock_snapshot.StockSnapshotReader.resolve_demand": (
+        "app.services.market.stock.snapshot.StockSnapshotReader.resolve_demand": (
             "test_stock_publication_read_phases_preserve_one_snapshot"
         ),
-        "app.services.stock_snapshot.StockSnapshotReader.read_readiness": (
+        "app.services.market.stock.snapshot.StockSnapshotReader.read_readiness": (
             "test_stock_publication_read_phases_preserve_one_snapshot"
         ),
-        "app.services.stock_snapshot.StockSnapshotReader.assemble": (
+        "app.services.market.stock.snapshot.StockSnapshotReader.assemble": (
             "test_stock_publication_read_phases_preserve_one_snapshot"
         ),
-        "app.services.stock_publication.StockPublicationService._build_publication_plan": (
+        "app.services.market.stock.publication.StockPublicationService._build_publication_plan": (
             "test_stock_publication_plan_contains_coverage_and_routes"
         ),
-        "app.services.stock_publication.StockPublicationService._commit_publication": (
+        "app.services.market.stock.publication.StockPublicationService._commit_publication": (
             "test_stock_publication_commit_is_fenced_and_atomic"
         ),
     }
@@ -966,22 +966,22 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.services.player_initialization.PlayerInitializationService.ensure": (
+        "app.services.gameplay.initialization.PlayerInitializationService.ensure": (
             "test_ensure_initial_state_is_idempotent"
         ),
-        "app.services.player_initialization.PlayerInitializationService.reset": (
+        "app.services.gameplay.initialization.PlayerInitializationService.reset": (
             "test_reset_restores_playable_state"
         ),
-        "app.services.transport_dispatch.TransportDispatchService.quote_contract": (
+        "app.services.gameplay.dispatch.TransportDispatchService.quote_contract": (
             "test_quote_contract_geocodes_routes_and_prices"
         ),
-        "app.services.transport_dispatch.TransportDispatchService.dispatch": (
+        "app.services.gameplay.dispatch.TransportDispatchService.dispatch": (
             "test_dispatch_builds_persisted_trip_and_debits_cost"
         ),
-        "app.services.transport_settlement.TransportSettlementService.reconcile": (
+        "app.services.gameplay.settlement.TransportSettlementService.reconcile": (
             "test_reconcile_arrival_moves_vehicle_and_pays"
         ),
-        "app.services.transport_settlement.TransportSettlementService.player_state": (
+        "app.services.gameplay.settlement.TransportSettlementService.player_state": (
             "test_relational_game_use_cases_preserve_atomic_settlement"
         ),
         "app.launcher.run": (
@@ -1014,16 +1014,16 @@ FUNCTION_TESTS.update(
         "app.services.deterministic_market_random.DeterministicMarketRandom.weighted_index": (
             "test_deterministic_market_random_is_stable_and_rejects_bad_choices"
         ),
-        "app.services.dispatch_eligibility.DispatchEligibilityService.require_eligible": (
+        "app.services.gameplay.dispatch_eligibility.DispatchEligibilityService.require_eligible": (
             "test_vehicle_location_resolution_is_explicit_and_eligibility_is_pure"
         ),
-        "app.services.vehicle_location.VehicleLocationResolver.resolve": (
+        "app.services.gameplay.vehicle_location.VehicleLocationResolver.resolve": (
             "test_vehicle_location_resolution_is_explicit_and_eligibility_is_pure"
         ),
         "app.services.preparation_worker.MarketPreparationWorker.wake": (
             "test_worker_fills_ready_market_and_owns_shutdown"
         ),
-        "app.services.stock_planning.StockPlanningService.preferred": (
+        "app.services.market.stock.planning.StockPlanningService.preferred": (
             "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work"
         ),
         "app.services.market_candidates.MarketCandidateService.build": (

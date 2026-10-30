@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from app.domain.game import PlayerState
 from app.domain.ports import VehicleCatalogue, WorldCatalogue
 from app.domain.state_ports import GameUnitOfWork
-from app.services.fleet import (
+from app.services.gameplay.fleet import (
     create_starter_vehicle,
     resolve_delivery_facility,
 )

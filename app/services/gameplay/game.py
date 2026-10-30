@@ -18,13 +18,13 @@ from app.domain.results import (
 )
 from app.domain.state_ports import GameStateRepository, GameUnitOfWork
 from app.domain.transports import ActiveTransport
+from app.services.gameplay.dispatch import TransportDispatchService
+from app.services.gameplay.initialization import PlayerInitializationService
+from app.services.gameplay.settlement import TransportSettlementService
 from app.services.market_components import MarketComponents
 from app.services.market_lifecycle import MarketLifecycleService
 from app.services.market_scope import MarketScopeResolver
-from app.services.player_initialization import PlayerInitializationService
 from app.services.player_market_services import PlayerMarketServices
-from app.services.transport_dispatch import TransportDispatchService
-from app.services.transport_settlement import TransportSettlementService
 
 
 @dataclass

@@ -25,7 +25,7 @@ from app.domain.transports import ActiveTransport
 from app.main import create_app
 from app.repositories.accounts import AccountRepository
 from app.services.auth import SESSION_COOKIE, AuthService, PasswordHasher
-from app.services.fleet import FleetService
+from app.services.gameplay.fleet import FleetService
 from tests.routing_fixtures import (
     install_fake_routing,
     prepare_client_market,

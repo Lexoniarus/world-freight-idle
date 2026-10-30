@@ -5,7 +5,7 @@ from dataclasses import replace
 from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.journeys import unmetered_journey
 from app.domain.transports import ActiveTransport, RouteSnapshot
-from app.services.game import GameService
+from app.services.gameplay.game import GameService
 
 
 def add_transport(

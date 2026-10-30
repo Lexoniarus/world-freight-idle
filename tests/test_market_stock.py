@@ -12,6 +12,10 @@ from app.domain.results import AvailableContract
 from app.repositories.market_stock import SqlitePlayerMarketStockStore
 from app.repositories.market_templates import SqliteMarketTemplateStore
 from app.services.deterministic_market_random import DeterministicMarketRandom
+from app.services.market.stock.planning import StockPlanningService
+from app.services.market.stock.preparation import StockPreparationBatch
+from app.services.market.stock.publication import StockPublicationService
+from app.services.market.stock.snapshot import StockSnapshotReader
 from app.services.market_demand import MarketDemandResolver
 from app.services.market_route_preparation import (
     MarketRoutePreparationService,
@@ -22,10 +26,6 @@ from app.services.player_market_demand import PlayerMarketDemandService
 from app.services.player_market_routes import PlayerMarketRouteService
 from app.services.player_market_services import PlayerMarketServices
 from app.services.player_market_stock import PlayerMarketStockContext
-from app.services.stock_planning import StockPlanningService
-from app.services.stock_preparation import StockPreparationBatch
-from app.services.stock_publication import StockPublicationService
-from app.services.stock_snapshot import StockSnapshotReader
 from tests.support.game_clock import set_game_clock
 
 
@@ -192,11 +192,11 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
         other.route_preparation,
     )
     with patch.object(
-            type(prep.route_preparation.preparation),
+        type(prep.route_preparation.preparation),
         "prepare",
-            new=AsyncMock(
-                side_effect=AssertionError("Cached roads must be reused")
-            ),
+        new=AsyncMock(
+            side_effect=AssertionError("Cached roads must be reused")
+        ),
     ):
         for _ in range(15):
             if (await second.process()).status == "ready":
@@ -586,9 +586,7 @@ async def test_destination_stock_starts_at_dispatch_without_early_settlement(
     with patch.object(
         type(prep.route_preparation.preparation),
         "prepare",
-        new=AsyncMock(
-            side_effect=AssertionError("Runtime provider fallback")
-        ),
+        new=AsyncMock(side_effect=AssertionError("Runtime provider fallback")),
     ):
         choices = game.contract_choices(game.list_contracts(), "truck")
         assert choices
@@ -626,7 +624,7 @@ def test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work(
     stock_game,
 ):
     from app.domain.market_stock import MarketDemand
-    from app.services.stock_planning import StockTarget
+    from app.services.market.stock.planning import StockTarget
     from app.services.vehicle_coverage import trade_key
 
     game, prep, batch = stock_game
@@ -707,7 +705,7 @@ async def test_arrival_projection_rejects_inconsistent_locations_and_idle_vehicl
 async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
     stock_game, database
 ):
-    from app.services.fleet import build_owned_vehicle
+    from app.services.gameplay.fleet import build_owned_vehicle
 
     game, prep, batch = stock_game
     for _ in range(30):
@@ -915,12 +913,14 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
     from threading import Barrier
 
     from app.repositories.game_state import SqliteGameUnitOfWork
-    from app.services.game import GameService
+    from app.services.gameplay.dispatch import TransportDispatchService
+    from app.services.gameplay.game import GameService
+    from app.services.gameplay.initialization import (
+        PlayerInitializationService,
+    )
+    from app.services.gameplay.settlement import TransportSettlementService
+    from app.services.gameplay.vehicle_location import VehicleLocationResolver
     from app.services.market_lifecycle import MarketLifecycleService
-    from app.services.player_initialization import PlayerInitializationService
-    from app.services.transport_dispatch import TransportDispatchService
-    from app.services.transport_settlement import TransportSettlementService
-    from app.services.vehicle_location import VehicleLocationResolver
 
     game, prep, batch = stock_game
     for _ in range(30):

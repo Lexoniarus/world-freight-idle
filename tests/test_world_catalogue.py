@@ -307,7 +307,7 @@ def test_world_uids_survive_internal_primary_key_changes(world_catalogue):
 def test_delivery_requires_verified_catalogue_endpoint(world_catalogue):
     from unittest.mock import Mock
 
-    from app.services.fleet import resolve_delivery_facility
+    from app.services.gameplay.fleet import resolve_delivery_facility
 
     snapshot = world_catalogue.read()
     delivery = resolve_delivery_facility(world_catalogue)

@@ -16,8 +16,8 @@ from app.api.v1.schemas import PurchaseRequest
 from app.api.v1.vehicle_presentation import present_vehicles
 from app.domain.errors import CatalogueError
 from app.domain.ports import VehicleCatalogue
-from app.services.fleet import FleetService
-from app.services.game import GameService
+from app.services.gameplay.fleet import FleetService
+from app.services.gameplay.game import GameService
 
 router = APIRouter(prefix="/fleet", tags=["fleet"])
 

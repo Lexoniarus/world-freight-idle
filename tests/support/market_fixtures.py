@@ -19,7 +19,7 @@ from app.domain.market_profiles import (
     VehicleScaleProfile,
 )
 from app.domain.world_scopes import WorldScope
-from app.services.fleet import build_owned_vehicle
+from app.services.gameplay.fleet import build_owned_vehicle
 from tests.support.game_service import build_fixture_game
 from tests.support.market import build_prepared_game
 

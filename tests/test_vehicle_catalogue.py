@@ -24,7 +24,7 @@ from app.domain.errors import CatalogueError
 from app.domain.game import OwnedVehicle, PlayerState
 from app.main import create_app
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
-from app.services.fleet import FleetService
+from app.services.gameplay.fleet import FleetService
 from tests.routing_fixtures import (
     install_fake_routing,
     prepare_client_market,

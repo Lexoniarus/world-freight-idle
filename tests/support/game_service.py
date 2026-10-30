@@ -7,24 +7,26 @@ from app.domain.ports import VehicleCatalogue, WorldCatalogue
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.services.cost_profiles import VehicleCostResolver
-from app.services.dispatch_eligibility import DispatchEligibilityService
-from app.services.dispatch_planning import DispatchPlanningService
-from app.services.game import GameService
+from app.services.gameplay.dispatch import TransportDispatchService
+from app.services.gameplay.dispatch_eligibility import (
+    DispatchEligibilityService,
+)
+from app.services.gameplay.dispatch_planning import DispatchPlanningService
+from app.services.gameplay.game import GameService
+from app.services.gameplay.initialization import PlayerInitializationService
+from app.services.gameplay.settlement import TransportSettlementService
+from app.services.gameplay.vehicle_location import VehicleLocationResolver
 from app.services.market_components import MarketComponents
 from app.services.market_lifecycle import MarketLifecycleService
 from app.services.market_route_preparation import MarketRoutePreparationService
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_selection import MarketSelectionService
-from app.services.player_initialization import PlayerInitializationService
 from app.services.player_market_demand import PlayerMarketDemandService
 from app.services.player_market_routes import PlayerMarketRouteService
 from app.services.player_market_services import PlayerMarketServices
 from app.services.player_market_stock import PlayerMarketStockContext
 from app.services.routing.evidence import RoutingEvidenceReader
 from app.services.routing.preparation import RoutingPreparationService
-from app.services.transport_dispatch import TransportDispatchService
-from app.services.transport_settlement import TransportSettlementService
-from app.services.vehicle_location import VehicleLocationResolver
 from tests.support.market_state import (
     FixturePreparationStore,
     MemoryMarketTemplateStore,

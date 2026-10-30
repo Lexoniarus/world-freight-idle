@@ -24,7 +24,7 @@ from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.world_scopes import WorldScope
 from app.repositories.accounts import AccountRepository
 from app.repositories.database_backup import backup_database
-from app.services.fleet import build_owned_vehicle
+from app.services.gameplay.fleet import build_owned_vehicle
 from scripts.update_test_profile import main, parse_assignments
 from tests.support.api import make_settings
 from tests.support.game import first_berlin_contract

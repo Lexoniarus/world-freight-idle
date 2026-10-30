@@ -163,7 +163,7 @@ def test_two_vehicle_projection_uses_authoritative_sets(vehicle_game):
     game, _ = vehicle_game
     # Verify projection independently of materialization and HTTP formatting.
     owned = game.get_vehicle("truck")
-    from app.services.fleet import build_owned_vehicle
+    from app.services.gameplay.fleet import build_owned_vehicle
 
     model = game.market.candidates.catalogue.list_models()[0]
     other = build_owned_vehicle(model, "second", owned.location)

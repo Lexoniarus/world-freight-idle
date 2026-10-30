@@ -7,13 +7,13 @@ from app.bootstrap import build_player_service
 from app.domain.contracts import ContractOffer
 from app.repositories.market_stock import SqlitePlayerMarketStockStore
 from app.repositories.market_templates import SqliteMarketTemplateStore
-from app.services.game import GameService
+from app.services.gameplay.game import GameService
+from app.services.market.stock.planning import StockPlanningService
+from app.services.market.stock.preparation import StockPreparationBatch
+from app.services.market.stock.publication import StockPublicationService
+from app.services.market.stock.snapshot import StockSnapshotReader
 from app.services.market_demand import MarketDemandResolver
 from app.services.market_templates import MarketTemplateService
-from app.services.stock_planning import StockPlanningService
-from app.services.stock_preparation import StockPreparationBatch
-from app.services.stock_publication import StockPublicationService
-from app.services.stock_snapshot import StockSnapshotReader
 from tests.support.runtime import build_test_runtime
 
 T = TypeVar("T")

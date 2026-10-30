@@ -10,7 +10,7 @@ from app.bootstrap import build_market_components
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
-from app.services.game import GameService
+from app.services.gameplay.game import GameService
 from tests.support.catalogues import WORLD_PATH
 from tests.support.game import create_active_trip
 from tests.support.game_service import build_fixture_game

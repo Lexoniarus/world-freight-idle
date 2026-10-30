@@ -10,7 +10,7 @@ from app.api.v1.game_projection import (
     project_vehicle,
 )
 from app.repositories.game_database import SqliteGameDatabase
-from app.services.fleet import FleetService
+from app.services.gameplay.fleet import FleetService
 from tests.support.game_clock import set_game_clock
 from tests.support.game_service import build_fixture_game
 from tests.support.market import seed_test_offers

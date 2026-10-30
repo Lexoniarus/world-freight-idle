@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.v1.dependencies import get_game_service
 from app.api.v1.game_projection import project_dashboard
-from app.services.game import GameService
+from app.services.gameplay.game import GameService
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 

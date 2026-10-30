@@ -8,7 +8,7 @@ from app.domain.contracts import ContractOffer
 from app.domain.market import MarketCandidate
 from app.domain.market_stock import PreparedTemplate, StockPolicy
 from app.services.contract_factory import ContractFactory
-from app.services.stock_planning import StockTarget
+from app.services.market.stock.planning import StockTarget
 from app.services.vehicle_coverage import trade_key
 
 

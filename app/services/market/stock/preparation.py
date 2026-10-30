@@ -7,15 +7,21 @@ from app.domain.market_preparation import (
     PreparationBatchResult,
     required_relations,
 )
+from app.services.market.stock.planning import (
+    StockPlanningService,
+    StockTarget,
+)
+from app.services.market.stock.publication import (
+    StockPublicationService,
+)
+from app.services.market.stock.snapshot import (
+    StockSnapshot,
+    StockSnapshotReader,
+)
 from app.services.market_route_preparation import (
     MarketRoutePreparationService,
 )
 from app.services.market_templates import MarketTemplateService
-from app.services.stock_planning import StockPlanningService, StockTarget
-from app.services.stock_publication import (
-    StockPublicationService,
-)
-from app.services.stock_snapshot import StockSnapshot, StockSnapshotReader
 from app.services.vehicle_coverage import trade_key
 
 

@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from app.api.v1.contracts import accept_contract, quote_contract
 from app.api.v1.schemas import DispatchRequest, QuoteRequest
 from app.domain.errors import RoutingError
-from app.services.game import GameService
+from app.services.gameplay.game import GameService
 
 
 class FailingRoutingGame:

@@ -17,8 +17,8 @@ from app.domain.ports import VehicleCatalogue
 from app.domain.read_ports import LeaderboardReader, TrafficReader
 from app.domain.runtime_views import RuntimeReader
 from app.services.auth import SESSION_COOKIE, AuthService
-from app.services.fleet import FleetService
-from app.services.game import GameService
+from app.services.gameplay.fleet import FleetService
+from app.services.gameplay.game import GameService
 from app.services.map_locations import MapLocationService
 from app.services.runtime_views import RuntimeViewService
 

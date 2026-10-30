@@ -52,12 +52,22 @@ from app.repositories.world_geography import WorldGeographyRepository
 from app.services.analytics import AnalyticsService
 from app.services.contract_factory import ContractFactory
 from app.services.cost_profiles import VehicleCostResolver
-from app.services.dispatch_eligibility import DispatchEligibilityService
-from app.services.dispatch_planning import DispatchPlanningService
 from app.services.economy_audit import EconomyAuditService
-from app.services.fleet import FleetService
-from app.services.game import GameService
+from app.services.gameplay.dispatch import TransportDispatchService
+from app.services.gameplay.dispatch_eligibility import (
+    DispatchEligibilityService,
+)
+from app.services.gameplay.dispatch_planning import DispatchPlanningService
+from app.services.gameplay.fleet import FleetService
+from app.services.gameplay.game import GameService
+from app.services.gameplay.initialization import PlayerInitializationService
+from app.services.gameplay.settlement import TransportSettlementService
+from app.services.gameplay.vehicle_location import VehicleLocationResolver
 from app.services.map_locations import MapLocationService
+from app.services.market.stock.planning import StockPlanningService
+from app.services.market.stock.preparation import StockPreparationBatch
+from app.services.market.stock.publication import StockPublicationService
+from app.services.market.stock.snapshot import StockSnapshotReader
 from app.services.market_candidates import MarketCandidateService
 from app.services.market_components import MarketComponents
 from app.services.market_demand import MarketDemandResolver
@@ -68,7 +78,6 @@ from app.services.market_route_preparation import (
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_selection import MarketSelectionService
 from app.services.market_templates import MarketTemplateService
-from app.services.player_initialization import PlayerInitializationService
 from app.services.player_market_demand import PlayerMarketDemandService
 from app.services.player_market_routes import PlayerMarketRouteService
 from app.services.player_market_services import PlayerMarketServices
@@ -80,14 +89,7 @@ from app.services.routing.evidence import RoutingEvidenceReader
 from app.services.routing.preparation import RoutingPreparationService
 from app.services.routing_anchors import RoutingAnchorResolver
 from app.services.runtime_views import RuntimeViewService
-from app.services.stock_planning import StockPlanningService
-from app.services.stock_preparation import StockPreparationBatch
-from app.services.stock_publication import StockPublicationService
-from app.services.stock_snapshot import StockSnapshotReader
-from app.services.transport_dispatch import TransportDispatchService
-from app.services.transport_settlement import TransportSettlementService
 from app.services.vehicle_coverage import VehicleCoverageService
-from app.services.vehicle_location import VehicleLocationResolver
 
 
 @dataclass

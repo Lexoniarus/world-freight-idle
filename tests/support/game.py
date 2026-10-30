@@ -4,7 +4,7 @@ import time
 from dataclasses import replace
 
 from app.api.v1.game_projection import project_contract
-from app.services.game import GameService
+from app.services.gameplay.game import GameService
 from tests.support.api import FakeGame
 from tests.support.catalogues import BERLIN_UID
 

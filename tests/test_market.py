@@ -23,7 +23,7 @@ from app.domain.market_compatibility import (
 from app.domain.market_profiles import (
     TransportCapability,
 )
-from app.services.fleet import build_owned_vehicle
+from app.services.gameplay.fleet import build_owned_vehicle
 from app.services.market_scope import MarketScopeResolver
 from app.services.trade_network import TradeNetwork
 

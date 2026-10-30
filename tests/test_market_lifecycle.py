@@ -10,7 +10,7 @@ from app.domain.economics import CostBreakdown
 from app.domain.errors import CatalogueError
 from app.domain.pricing import calculate_price
 from app.repositories.snapshot_mapping import load_historical_contract
-from app.services.fleet import build_owned_vehicle
+from app.services.gameplay.fleet import build_owned_vehicle
 from tests.support.game import other_facility_offer
 from tests.support.game_clock import set_game_clock
 

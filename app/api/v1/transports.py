@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.v1.dependencies import get_game_service
 from app.api.v1.game_projection import project_transport
-from app.services.game import GameService
+from app.services.gameplay.game import GameService
 
 router = APIRouter(prefix="/transports", tags=["transports"])
 

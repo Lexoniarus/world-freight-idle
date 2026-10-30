@@ -8,7 +8,7 @@ from app.api.v1.analytics_projection import project_analytics
 from app.api.v1.dependencies import get_current_user, get_game_service
 from app.bootstrap import build_analytics_service
 from app.services.analytics import validate_scope
-from app.services.game import GameService
+from app.services.gameplay.game import GameService
 
 router = APIRouter(prefix="/company", tags=["company"])
 

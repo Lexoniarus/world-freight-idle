@@ -22,7 +22,7 @@ from app.domain.pricing import PriceQuote
 from app.domain.results import ContractQuote
 from app.domain.transports import RouteSnapshot
 from app.domain.world_scopes import WorldScope
-from app.services.game import GameService
+from app.services.gameplay.game import GameService
 from tests.support.catalogues import BERLIN_UID
 from tests.support.game import first_berlin_contract
 from tests.transport_fixtures import add_transport

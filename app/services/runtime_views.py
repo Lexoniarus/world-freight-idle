@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 from app.domain.runtime_views import RuntimeReader, RuntimeView
-from app.services.game import GameService
+from app.services.gameplay.game import GameService
 
 
 @dataclass(slots=True)

@@ -298,7 +298,7 @@ def test_preparation_composition_uses_complete_local_runtime(
     bound = build_player_market_services(runtime, "test-owner")
     assert bound.demand.user_id == "test-owner"
     worker = build_preparation_worker(runtime)
-    from app.services.stock_preparation import StockPreparationBatch
+    from app.services.market.stock.preparation import StockPreparationBatch
 
     batch = worker.batches("test-owner")
     assert isinstance(batch, StockPreparationBatch)

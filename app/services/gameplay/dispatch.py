@@ -11,13 +11,15 @@ from app.domain.results import ContractQuote
 from app.domain.routes import DispatchRoutePlan
 from app.domain.state_ports import GameUnitOfWork
 from app.domain.transports import ActiveTransport
-from app.services.dispatch_eligibility import DispatchEligibilityService
-from app.services.dispatch_planning import DispatchPlanningService
+from app.services.gameplay.dispatch_eligibility import (
+    DispatchEligibilityService,
+)
+from app.services.gameplay.dispatch_planning import DispatchPlanningService
+from app.services.gameplay.settlement import TransportSettlementService
+from app.services.gameplay.vehicle_location import VehicleLocationResolver
 from app.services.market_components import MarketComponents
 from app.services.player_market_demand import PlayerMarketDemandService
 from app.services.player_market_stock import PlayerMarketStockContext
-from app.services.transport_settlement import TransportSettlementService
-from app.services.vehicle_location import VehicleLocationResolver
 
 LOGGER = logging.getLogger(__name__)
 
