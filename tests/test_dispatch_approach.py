@@ -259,12 +259,14 @@ async def test_approach_dispatch_reload_public_privacy_and_offline_arrival(
     assert projected["approach_distance_km"] == 400
     assert projected["delivery_distance_km"] == 400
     assert projected["distance_km"] == 800
+    context = offer.market_context
+    assert context is not None and context.tariff is not None
     assert quote.economics == calculate_price(
         offer.tons,
         400,
         quote.economics.cost_breakdown,
         offer.rate_eur_per_km_ton,
-        minimum_eur_per_km=offer.market_context.tariff.minimum_eur_per_km,
+        minimum_eur_per_km=context.tariff.minimum_eur_per_km,
     )
     restored = game.state_repository.list_active_transports()[0]
     assert restored == trip

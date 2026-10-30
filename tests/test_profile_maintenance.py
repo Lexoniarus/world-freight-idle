@@ -387,6 +387,7 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
         await release_route.wait()
         return await original_route(*args)
 
+    trip = None
     with patch.object(type(planning), "route", delayed_route):
         task = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
         await asyncio.wait_for(route_started.wait(), 2)
@@ -403,6 +404,7 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
         assert game.state_repository.list_transports() == ()
         assert game.player_state().cash == before
     else:
+        assert trip is not None
         assert trip["cost_breakdown"]["maintenance_eur_per_km"] == 0.085
         assert trip["operating_cost_eur"] == 114
         assert game.player_state().cash == before - trip["operating_cost_eur"]
