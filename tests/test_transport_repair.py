@@ -15,7 +15,7 @@ from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.transport_repair import repaired_transport, table_digest
 from tests.support.game_clock import set_game_clock
-from tests.support.game_service import rebind_game_storage
+from tests.support.game_service import build_fixture_game
 from tests.support.market import require_value
 
 
@@ -172,12 +172,21 @@ def test_repair_reconciliation_and_archive_reject_any_unapproved_change(
         with pytest.raises(PersistenceError):
             tool._verify_archive(source, repairs, archive)
     # Normal game settlement, never the repair tool, applies the due payout.
-    unit = SqliteGameUnitOfWork(SqliteGameDatabase(target), "test-owner")
-    rebind_game_storage(game, unit)
-    set_game_clock(game, lambda: active_trip.arrives_at + 1)
-    assert game.reconcile_arrival()
+    repaired_database = SqliteGameDatabase(target)
+    unit = SqliteGameUnitOfWork(repaired_database, "test-owner")
+    repaired_game = build_fixture_game(
+        repaired_database,
+        "test-owner",
+        game.world,
+        game.catalogue,
+        game.market,
+        game.now,
+        game.time_scale,
+    )
+    set_game_clock(repaired_game, lambda: active_trip.arrives_at + 1)
+    assert repaired_game.reconcile_arrival()
     paid = unit.repository.get_player()
     assert require_value(paid).cash == 175000 + active_trip.payout_eur
-    assert not game.reconcile_arrival()
+    assert not repaired_game.reconcile_arrival()
     assert unit.repository.get_player() == paid
     assert database.path.read_bytes() == before

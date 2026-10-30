@@ -10,6 +10,7 @@ from app.domain.errors import RoutingError
 from app.repositories.routing_readiness import SqliteRoutingReadinessStore
 from app.services.preparation_worker import (
     MarketPreparationWorker,
+    PreparationWorkerTiming,
 )
 from app.services.routing.preparation import RoutingPreparationService
 from tests.support.market import (
@@ -74,7 +75,7 @@ async def test_partial_market_never_publishes_unchecked_offers(game, database):
     assert vehicle.id in choices[0].eligible_vehicle_ids
     quote = await game.quote_contract(offer.id, vehicle.id)
     assert (
-        quote.dispatch_route.delivery
+        require_value(quote.dispatch_route).delivery
         == readiness.load(origin, destination).to_snapshot()
     )
     trip = await game.dispatch(offer.id, vehicle.id)
@@ -209,7 +210,10 @@ async def test_worker_fills_ready_market_and_owns_shutdown(game, database):
     batch = make_stock_batch(game, preparation)
     preparation.demand.ensure()
     worker = MarketPreparationWorker(
-        preparation.demand.jobs, lambda user: batch, game.now
+        preparation.demand.jobs,
+        lambda user: batch,
+        game.now,
+        timing=PreparationWorkerTiming(idle_wait_seconds=0.01),
     )
     assert preparation.demand.jobs.next_player(game.now()) == "test-owner"
     for _ in range(100):
@@ -233,7 +237,7 @@ async def test_worker_fills_ready_market_and_owns_shutdown(game, database):
     worker.wake()
     with pytest.raises(RuntimeError):
         await worker.start()
-    await asyncio.sleep(1.05)
+    await asyncio.sleep(0.03)
     await worker.close()
     await worker.close()
     assert not worker.running

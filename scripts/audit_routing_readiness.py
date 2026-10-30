@@ -55,15 +55,15 @@ async def run(args: argparse.Namespace) -> None:
         runtime = build_game_runtime(settings, client)
         world = runtime.world.read()
         runtime.catalogue.list_models()
-        readiness = runtime.readiness
-        assert readiness is not None
+        evidence = runtime.routing_evidence
+        preparation = runtime.routing_preparation
         pairs = tuple(routing_inventory(world, args.city))
         if args.prewarm:
 
             async def prepare() -> None:
                 """Prepare bounded relations through repository leases."""
                 for origin, destination in pairs:
-                    await readiness.prepare(origin, destination)
+                    await preparation.prepare(origin, destination)
 
             try:
                 with background_trace("cli-routing-prewarm"):
@@ -90,7 +90,7 @@ async def run(args: argparse.Namespace) -> None:
         report["current_relations"] = dict(
             Counter(
                 relation.status
-                if (relation := readiness.current(*pair))
+                if (relation := evidence.current(*pair))
                 else "unchecked"
                 for pair in pairs
             )
