@@ -42,7 +42,7 @@ FUNCTION_TESTS = {
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.renew": "test_global_lease_fences_expired_and_competing_writers",
     "app.services.game.GameService.preparation_status": "test_preparation_store_generation_and_reference_rollback",
     "app.services.player_market_routes.PlayerMarketRouteService.bind": "test_partial_market_never_publishes_unchecked_offers",
-    "app.services.player_market_routes.PlayerMarketRouteService.prepare_routes": "test_preparation_failures_backoff_fencing_and_worker_cleanup",
+    "app.services.market_route_preparation.MarketRoutePreparationService.prepare": "test_preparation_failures_backoff_fencing_and_worker_cleanup",
     "app.services.player_market_routes.PlayerMarketRouteService.retained_current": "test_partial_market_never_publishes_unchecked_offers",
     "app.services.preparation_worker.MarketPreparationWorker.__init__": "test_worker_fills_ready_market_and_owns_shutdown",
     "app.services.preparation_worker.MarketPreparationWorker._run": "test_preparation_failures_backoff_fencing_and_worker_cleanup",

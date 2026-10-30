@@ -13,6 +13,9 @@ from app.repositories.market_stock import SqlitePlayerMarketStockStore
 from app.repositories.market_templates import SqliteMarketTemplateStore
 from app.services.deterministic_market_random import DeterministicMarketRandom
 from app.services.market_demand import MarketDemandResolver
+from app.services.market_route_preparation import (
+    MarketRoutePreparationService,
+)
 from app.services.market_selection import MarketSelectionService
 from app.services.market_templates import MarketTemplateService
 from app.services.player_market_demand import PlayerMarketDemandService
@@ -60,6 +63,7 @@ def stock_game(vehicle_game, database):
             preparation.stock.policy,
             preparation.demand.clock,
         ),
+        preparation.route_preparation,
     )
     return game, preparation, batch
 
@@ -101,7 +105,7 @@ async def test_shared_stock_has_three_visible_ten_ready_and_does_not_expire(
     assert game.list_contracts() == offers
     ids = [o.id for o in offers]
     future = game.now() + 7 * 3600
-    set_game_clock(game, lambda: future)
+    set_game_clock(game, lambda: future, batch.route_preparation)
     assert [o.id for o in game.list_contracts()] == ids
     chosen = choices[0].offer
     before = set(prep.stock.stock.bindings())
@@ -156,8 +160,11 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
         PlayerMarketRouteService(
             prep.routes.readiness,
             SqliteOfferRouteStore(database, "other"),
-            prep.demand.clock,
             database,
+        ),
+        MarketRoutePreparationService(
+            prep.routes.readiness,
+            prep.demand.clock,
         ),
         PlayerMarketStockContext(
             SqlitePlayerMarketStockStore(database, "other"),
@@ -184,6 +191,7 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
         ),
         batch.planning,
         batch.templates,
+        other.route_preparation,
     )
     with patch.object(
         prep.routes.readiness,
@@ -553,7 +561,7 @@ async def test_destination_stock_starts_at_dispatch_without_early_settlement(
     game.market.candidates.world = reference
     prep.routes.readiness.world = reference
     clock = [trip.departed_at + 1]
-    set_game_clock(game, lambda: clock[0])
+    set_game_clock(game, lambda: clock[0], batch.route_preparation)
     prep.demand.clock = lambda: clock[0]
     batch.templates.clock = prep.demand.clock
     snapshot = batch.snapshots.read()
@@ -593,7 +601,7 @@ async def test_stale_evidence_reuses_offers_and_backoff_never_releases_stock(
 ):
     game, prep, batch = stock_game
     now = [game.now()]
-    set_game_clock(game, lambda: now[0])
+    set_game_clock(game, lambda: now[0], batch.route_preparation)
     prep.demand.clock = prep.routes.readiness.clock = lambda: now[0]
     batch.templates.clock = prep.demand.clock
     for _ in range(100):

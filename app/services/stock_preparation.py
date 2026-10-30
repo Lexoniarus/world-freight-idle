@@ -7,6 +7,9 @@ from app.domain.market_preparation import (
     PreparationBatchResult,
     required_relations,
 )
+from app.services.market_route_preparation import (
+    MarketRoutePreparationService,
+)
 from app.services.market_templates import MarketTemplateService
 from app.services.stock_planning import StockPlanningService, StockTarget
 from app.services.stock_publication import (
@@ -24,6 +27,7 @@ class StockPreparationBatch:
     snapshots: StockSnapshotReader
     planning: StockPlanningService
     templates: MarketTemplateService
+    route_preparation: MarketRoutePreparationService
 
     async def process(self) -> PreparationBatchResult:
         """Advance one demand context, preserving fairness between players."""
@@ -54,7 +58,7 @@ class StockPreparationBatch:
             stock.checkpoint(target.key, trade_key(candidate))
         ready = self._ready(snapshot, candidate)
         if not ready:
-            await routes.prepare_routes(
+            await self.route_preparation.prepare(
                 (candidate,),
                 limit=1,
             )

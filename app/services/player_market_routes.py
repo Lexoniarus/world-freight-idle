@@ -1,9 +1,6 @@
 """Own player offer bindings and reusable shared route readiness."""
 
-import logging
-from collections.abc import Callable
 from dataclasses import dataclass
-from time import perf_counter
 
 from app.domain.contracts import ContractOffer
 from app.domain.market import MarketCandidate, MarketVehicle
@@ -19,7 +16,6 @@ from app.services.routing_readiness import RoutingReadinessService
 from app.services.vehicle_coverage import restrict_candidate
 
 RoutePair = tuple[str, str]
-LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,7 +32,6 @@ class PlayerMarketRouteService:
 
     readiness: RoutingReadinessService
     references: OfferRouteStore
-    clock: Callable[[], float]
     transactions: TransactionBoundary
 
     def read(
@@ -185,57 +180,6 @@ class PlayerMarketRouteService:
                 )
             bindings.append((offer.id, reference))
         self.references.replace(tuple(bindings))
-
-    async def prepare_routes(
-        self,
-        candidates: tuple[MarketCandidate, ...],
-        limit: int = 4,
-    ) -> tuple[bool, float | None]:
-        """Prepare a bounded relation batch with explicit retry timing."""
-        pairs = required_relations(candidates)
-        count = 0
-        waiting = False
-        retry_at = None
-        started = perf_counter()
-        for origin, destination in pairs:
-            current = self.readiness.current(origin, destination)
-            if current and current.status in {
-                "ready",
-                "deterministic_failure",
-            }:
-                continue
-            if (
-                current
-                and current.retry_at
-                and current.retry_at > self.clock()
-            ):
-                waiting = True
-                retry_at = min(retry_at or current.retry_at, current.retry_at)
-                continue
-            if count >= limit:
-                waiting = True
-                retry_at = self.clock()
-                break
-            count += 1
-            result = await self.readiness.prepare(origin, destination)
-            if result is None or result.status == "transient_failure":
-                waiting = True
-                next_try = (result.retry_at if result else None) or (
-                    self.clock() + 1
-                )
-                retry_at = min(retry_at or next_try, next_try)
-        LOGGER.info(
-            "Market routing preparation phase completed",
-            extra={
-                "event": "market.provider_phase",
-                "data": {
-                    "relation_count": len(pairs),
-                    "provider_request_count": count,
-                    "provider_ms": round((perf_counter() - started) * 1000, 3),
-                },
-            },
-        )
-        return not waiting, retry_at
 
     def _required_pairs(
         self,

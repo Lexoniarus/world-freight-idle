@@ -2,6 +2,9 @@
 
 from dataclasses import dataclass
 
+from app.services.market_route_preparation import (
+    MarketRoutePreparationService,
+)
 from app.services.player_market_demand import PlayerMarketDemandService
 from app.services.player_market_routes import PlayerMarketRouteService
 from app.services.player_market_stock import PlayerMarketStockContext
@@ -13,4 +16,5 @@ class PlayerMarketServices:
 
     demand: PlayerMarketDemandService
     routes: PlayerMarketRouteService
+    route_preparation: MarketRoutePreparationService
     stock: PlayerMarketStockContext

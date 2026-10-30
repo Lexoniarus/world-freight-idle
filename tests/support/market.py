@@ -16,6 +16,9 @@ from app.repositories.routing_readiness import (
 )
 from app.services.game import GameService
 from app.services.market_demand import MarketDemandResolver
+from app.services.market_route_preparation import (
+    MarketRoutePreparationService,
+)
 from app.services.market_selection import MarketSelectionService
 from app.services.market_templates import MarketTemplateService
 from app.services.player_market_demand import PlayerMarketDemandService
@@ -97,6 +100,7 @@ def make_stock_batch(game, preparation):
             preparation.stock.policy,
             preparation.demand.clock,
         ),
+        preparation.route_preparation,
     )
 
 
@@ -124,9 +128,9 @@ def bind_preparation(game, database):
         PlayerMarketRouteService(
             readiness,
             SqliteOfferRouteStore(database, "test-owner"),
-            game.now,
             database,
         ),
+        MarketRoutePreparationService(readiness, game.now),
         PlayerMarketStockContext(
             SqlitePlayerMarketStockStore(database, "test-owner"),
             SqliteMarketTemplateStore(database),

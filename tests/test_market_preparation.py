@@ -312,7 +312,7 @@ async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
     readiness.anchors.resolve.side_effect = RoutingError("locate unavailable")
     transient = require_value(await readiness.prepare(*pair))
     assert transient.status == "transient_failure"
-    complete, retry = await preparation.routes.prepare_routes((candidate,))
+    complete, retry = await preparation.route_preparation.prepare((candidate,))
     assert not complete and retry is not None
     readiness.provider_identity = "retry-generation"
     readiness.anchors = FakeRoutingAnchorResolver()
@@ -330,7 +330,9 @@ async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
         assert await readiness.prepare(*pair) is None
         assert readiness.router.route.await_count == 1
     with patch.object(readiness, "prepare", return_value=None):
-        complete, retry = await preparation.routes.prepare_routes((candidate,))
+        complete, retry = await preparation.route_preparation.prepare(
+            (candidate,)
+        )
         assert not complete and retry is not None
     readiness.router = FakeRouter()
     with patch.object(readiness.store, "renew", return_value=False):

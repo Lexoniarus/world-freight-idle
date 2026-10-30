@@ -62,6 +62,9 @@ from app.services.market_candidates import MarketCandidateService
 from app.services.market_components import MarketComponents
 from app.services.market_demand import MarketDemandResolver
 from app.services.market_lifecycle import MarketLifecycleService
+from app.services.market_route_preparation import (
+    MarketRoutePreparationService,
+)
 from app.services.market_scope import MarketScopeResolver
 from app.services.market_selection import MarketSelectionService
 from app.services.market_templates import MarketTemplateService
@@ -427,9 +430,9 @@ def build_player_market_services(
         PlayerMarketRouteService(
             runtime.readiness,
             SqliteOfferRouteStore(runtime.database, user_id),
-            runtime.clock,
             runtime.database,
         ),
+        MarketRoutePreparationService(runtime.readiness, runtime.clock),
         PlayerMarketStockContext(
             SqlitePlayerMarketStockStore(runtime.database, user_id),
             SqliteMarketTemplateStore(runtime.database),
@@ -468,6 +471,7 @@ def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
                 market_services.stock.policy,
                 runtime.clock,
             ),
+            market_services.route_preparation,
         )
 
     worker = MarketPreparationWorker(
