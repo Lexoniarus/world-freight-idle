@@ -8,35 +8,13 @@ from app.domain.routing_readiness import (
     RoutePayload,
     RouteReference,
     RoutingAttempt,
-    RoutingRelation,
     relation_identity,
 )
-from app.repositories.game_database import SqliteGameDatabase
-from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.routing_readiness import (
     SqliteOfferRouteStore,
     SqliteRoutingReadinessStore,
 )
-
-
-def routing_store(tmp_path):
-    database = SqliteGameDatabase(tmp_path / "game.db")
-    database.initialize()
-    SqliteProviderCache(database)
-    return database, SqliteRoutingReadinessStore(database)
-
-
-def ready_relation():
-    return RoutingRelation(
-        RouteReference(relation_identity("A", "B"), "revision"),
-        "A",
-        "B",
-        "fingerprint",
-        "ready",
-        None,
-        None,
-        10,
-    )
+from tests.support.readiness import ready_relation, routing_store
 
 
 def test_readiness_domain_rejects_incoherent_records():

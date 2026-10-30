@@ -5,13 +5,13 @@ import pytest
 from app.domain.errors import GeocodingError
 from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
 from app.services.routing_anchors import RoutingAnchorResolver
-from tests.test_routing_anchors import (
+from tests.support.readiness import routing_store
+from tests.support.routing import (
     FakeGeocoder,
     FakeLocator,
     facility,
     located,
 )
-from tests.test_routing_readiness_store import routing_store
 
 
 @pytest.mark.asyncio

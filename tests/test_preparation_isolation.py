@@ -9,11 +9,11 @@ from app.domain.market import VehicleCoverageDiagnostic
 from app.domain.routing_readiness import RoutePayload
 from app.repositories.market_preparation import SqlitePreparationStore
 from app.repositories.routing_readiness import decode_route_payload
+from tests.support.readiness import ready_relation, routing_store
 from tests.test_market_preparation import (
     bind_preparation,
     require_value,
 )
-from tests.test_routing_readiness_store import ready_relation, routing_store
 
 
 def test_wal_read_snapshot_rejects_writes_and_resets_after_failure(database):
