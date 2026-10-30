@@ -24,6 +24,12 @@ from app.services.vehicle_location import VehicleLocationResolver
 from tests.support.catalogues import WORLD_PATH
 from tests.support.game import create_active_trip
 from tests.support.market import seed_test_offers
+from tests.support.market_fixtures import (
+    city_market as city_market,
+)
+from tests.support.market_fixtures import (
+    vehicle_game as vehicle_game,
+)
 from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 
 

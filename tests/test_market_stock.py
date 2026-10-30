@@ -24,8 +24,6 @@ from app.services.stock_preparation import StockPreparationBatch
 from app.services.stock_publication import StockPublicationService
 from app.services.stock_snapshot import StockSnapshotReader
 from tests.support.game_clock import set_game_clock
-from tests.test_market import city_market as city_market
-from tests.test_vehicle_market import vehicle_game as vehicle_game
 
 
 @pytest.fixture

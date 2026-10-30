@@ -1,15 +1,11 @@
 """City market selection, coverage and immutable materialization behavior."""
 
 import math
-import random
 from dataclasses import FrozenInstanceError, replace
-from unittest.mock import Mock, patch
-from uuid import UUID
+from unittest.mock import patch
 
 import pytest
 
-from app.bootstrap import build_market_components
-from app.domain.cargo import FacilityNhmProfile, NhmProduct
 from app.domain.contracts import ContractOffer
 from app.domain.errors import CatalogueError, WorldCatalogueError
 from app.domain.geography import Coordinates
@@ -25,77 +21,11 @@ from app.domain.market_compatibility import (
     vehicle_suitability,
 )
 from app.domain.market_profiles import (
-    VEHICLE_SCALES,
-    DistanceLoadProfile,
-    NhmMarketProfile,
     TransportCapability,
-    VehicleScaleProfile,
 )
-from app.domain.world_scopes import WorldScope
 from app.services.fleet import build_owned_vehicle
 from app.services.market_scope import MarketScopeResolver
 from app.services.trade_network import TradeNetwork
-
-
-@pytest.fixture
-def city_market(world_catalogue, catalogue):
-    snapshot = world_catalogue.read()
-    base = WorldScope(snapshot).facility("berlin_westhafen")
-    cargo = NhmProduct(1, "7308", "Structural modules", (1,))
-    output = FacilityNhmProfile(cargo, "output", "derived", 0.8, 0.7, None)
-    inbound = replace(output, role="input")
-    origin = replace(base, facility_uid="origin-a", nhm_profiles=(output,))
-    other = replace(origin, facility_uid="origin-b")
-    destinations = tuple(
-        replace(
-            base,
-            facility_uid="destination-" + str(index),
-            address=replace(
-                base.address,
-                city=replace(
-                    base.address.city,
-                    city_uid=str(UUID(int=index + 1)),
-                ),
-            ),
-            coordinates=point,
-            nhm_profiles=(inbound,),
-        )
-        for index, point in enumerate(
-            (Coordinates(52.5, 13.4), Coordinates(50, 13), Coordinates(40, 2))
-        )
-    )
-    # An inbound facility in the active city cannot invent outbound work.
-    inactive = replace(
-        origin, facility_uid="inbound-only", nhm_profiles=(inbound,)
-    )
-    profile = NhmMarketProfile(
-        1,
-        "general",
-        500,
-        1.4,
-        tuple(
-            DistanceLoadProfile(band, 1, 0.5, 0.8)
-            for band in ("short", "medium", "long")
-        ),
-        tuple(VehicleScaleProfile(scale, 1) for scale in VEHICLE_SCALES),
-    )
-    world = Mock(
-        read=Mock(
-            return_value=replace(
-                snapshot,
-                facilities=(origin, other, inactive, *destinations),
-                market_profiles=(profile,),
-            )
-        )
-    )
-    model = next(
-        m for m in catalogue.list_models() if m.id == "iveco_sway_500"
-    )
-    models = Mock(list_models=Mock(return_value=(model,)))
-    owned = build_owned_vehicle(model, "truck", origin.location_snapshot())
-    market = build_market_components(world, random.Random(3), models)
-    fleet = market.candidates.resolve_fleet((owned,))
-    return market, owned, fleet, world, model
 
 
 def test_city_scope_uses_only_distinct_idle_city_identities(city_market):

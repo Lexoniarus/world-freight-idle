@@ -1,0 +1,110 @@
+"""Reusable market fixtures composed outside executable test modules."""
+
+import random
+from dataclasses import replace
+from unittest.mock import Mock
+from uuid import UUID
+
+import pytest
+
+from app.bootstrap import build_market_components
+from app.domain.cargo import FacilityNhmProfile, NhmProduct
+from app.domain.geography import Coordinates
+from app.domain.market_profiles import (
+    VEHICLE_SCALES,
+    DistanceLoadProfile,
+    NhmMarketProfile,
+    VehicleScaleProfile,
+)
+from app.domain.world_scopes import WorldScope
+from app.services.dispatch_eligibility import DispatchEligibilityService
+from app.services.fleet import build_owned_vehicle
+from app.services.market_scope import MarketScopeResolver
+from tests.support.market import bind_preparation
+
+
+@pytest.fixture
+def city_market(world_catalogue, catalogue):
+    """Build a compact three-band city market for behavior tests."""
+    snapshot = world_catalogue.read()
+    base = WorldScope(snapshot).facility("berlin_westhafen")
+    cargo = NhmProduct(1, "7308", "Structural modules", (1,))
+    output = FacilityNhmProfile(cargo, "output", "derived", 0.8, 0.7, None)
+    inbound = replace(output, role="input")
+    origin = replace(base, facility_uid="origin-a", nhm_profiles=(output,))
+    other = replace(origin, facility_uid="origin-b")
+    destinations = tuple(
+        replace(
+            base,
+            facility_uid="destination-" + str(index),
+            address=replace(
+                base.address,
+                city=replace(
+                    base.address.city,
+                    city_uid=str(UUID(int=index + 1)),
+                ),
+            ),
+            coordinates=point,
+            nhm_profiles=(inbound,),
+        )
+        for index, point in enumerate(
+            (
+                Coordinates(52.5, 13.4),
+                Coordinates(50, 13),
+                Coordinates(40, 2),
+            )
+        )
+    )
+    inactive = replace(
+        origin,
+        facility_uid="inbound-only",
+        nhm_profiles=(inbound,),
+    )
+    profile = NhmMarketProfile(
+        1,
+        "general",
+        500,
+        1.4,
+        tuple(
+            DistanceLoadProfile(band, 1, 0.5, 0.8)
+            for band in ("short", "medium", "long")
+        ),
+        tuple(VehicleScaleProfile(scale, 1) for scale in VEHICLE_SCALES),
+    )
+    world = Mock(
+        read=Mock(
+            return_value=replace(
+                snapshot,
+                facilities=(origin, other, inactive, *destinations),
+                market_profiles=(profile,),
+            )
+        )
+    )
+    model = next(
+        item for item in catalogue.list_models() if item.id == "iveco_sway_500"
+    )
+    models = Mock(list_models=Mock(return_value=(model,)))
+    owned = build_owned_vehicle(model, "truck", origin.location_snapshot())
+    market = build_market_components(world, random.Random(3), models)
+    fleet = market.candidates.resolve_fleet((owned,))
+    return market, owned, fleet, world, model
+
+
+@pytest.fixture
+def vehicle_game(game, city_market, database):
+    """Bind a compact city market to the shared game fixture."""
+    market, owned, _, world, _ = city_market
+    with database.transaction(), database.connect() as connection:
+        connection.execute("DELETE FROM contract_offers")
+        connection.execute("DELETE FROM owned_vehicles")
+        game.state_repository.save_vehicle(owned)
+    game.world = world
+    game.market = market
+    game.market_scope = MarketScopeResolver(world)
+    game.market_lifecycle.market = market
+    game.market_lifecycle.scope = game.market_scope
+    game.transport_dispatch.eligibility = DispatchEligibilityService(
+        market.candidates
+    )
+    preparation = bind_preparation(game, database)
+    return game, preparation

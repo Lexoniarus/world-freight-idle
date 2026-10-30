@@ -8,11 +8,8 @@ import pytest
 
 from app.domain.contracts import ContractOffer
 from app.domain.market import MarketCandidate
-from app.services.dispatch_eligibility import DispatchEligibilityService
-from app.services.market_scope import MarketScopeResolver
 from app.services.vehicle_coverage import vehicle_candidates, vehicle_offers
-from tests.support.market import bind_preparation, make_stock_batch
-from tests.test_market import city_market as city_market
+from tests.support.market import make_stock_batch
 
 
 def select_three_per_distance_band(
@@ -89,25 +86,6 @@ def test_shared_materialized_offers_cover_identical_vehicles_once(city_market):
     )
     assert diagnostic.distance_counts == (3, 0, 0)
     assert diagnostic.unmet_bands == ("medium", "long")
-
-
-@pytest.fixture
-def vehicle_game(game, city_market, database):
-    market, owned, _, world, _ = city_market
-    with database.transaction(), database.connect() as connection:
-        connection.execute("DELETE FROM contract_offers")
-        connection.execute("DELETE FROM owned_vehicles")
-        game.state_repository.save_vehicle(owned)
-    game.world = world
-    game.market = market
-    game.market_scope = MarketScopeResolver(world)
-    game.market_lifecycle.market = market
-    game.market_lifecycle.scope = game.market_scope
-    game.transport_dispatch.eligibility = DispatchEligibilityService(
-        market.candidates
-    )
-    preparation = bind_preparation(game, database)
-    return game, preparation
 
 
 @pytest.mark.asyncio
