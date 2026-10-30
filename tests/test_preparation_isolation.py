@@ -10,7 +10,7 @@ from app.domain.routing_readiness import RoutePayload
 from app.repositories.market_preparation import SqlitePreparationStore
 from app.repositories.routing_readiness import decode_route_payload
 from tests.support.market import (
-    bind_preparation,
+    build_prepared_game,
     require_value,
 )
 from tests.support.readiness import ready_relation, routing_store
@@ -34,7 +34,7 @@ def test_wal_read_snapshot_rejects_writes_and_resets_after_failure(database):
 
 
 def test_durable_demand_coalesces_and_fences_stale_diagnostics(game, database):
-    preparation = bind_preparation(game, database)
+    game, preparation = build_prepared_game(game, database)
     jobs = preparation.demand.jobs
     assert isinstance(jobs, SqlitePreparationStore)
     notify = Mock()
@@ -73,7 +73,7 @@ def test_durable_demand_coalesces_and_fences_stale_diagnostics(game, database):
 def test_runtime_never_builds_candidates_and_worker_plans_outside_writer(
     game, database
 ):
-    bind_preparation(game, database)
+    game, _ = build_prepared_game(game, database)
     with patch.object(
         type(game.market.candidates),
         "build",
@@ -98,7 +98,7 @@ def test_runtime_never_builds_candidates_and_worker_plans_outside_writer(
 async def test_readiness_read_view_reuses_facts_but_never_crosses_publication(
     game, database
 ):
-    preparation = bind_preparation(game, database)
+    game, preparation = build_prepared_game(game, database)
     readiness = preparation.routes.readiness
     assert readiness.store.get_many(()) == {}
     assert readiness.anchor_store.get_many((), "truck") == {}

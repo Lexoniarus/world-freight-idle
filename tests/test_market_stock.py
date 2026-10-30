@@ -34,9 +34,6 @@ def stock_game(vehicle_game, database):
     game, preparation = vehicle_game
     SqliteMarketTemplateStore.initialize(database)
     SqlitePlayerMarketStockStore.initialize(database)
-    game.market_lifecycle.selection = MarketSelectionService(
-        preparation.stock.policy
-    )
     preparation.demand.ensure()
     demand = MarketDemandResolver(game.market.candidates)
     publication = StockPublicationService(

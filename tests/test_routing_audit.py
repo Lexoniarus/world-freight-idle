@@ -7,13 +7,13 @@ import pytest
 from app.domain.errors import WorldCatalogueError
 from app.repositories.routing_audit import SqliteRoutingAudit
 from app.services.routing_inventory import routing_inventory
-from tests.support.market import bind_preparation
+from tests.support.market import build_prepared_game
 
 
 def test_audit_inventory_is_structural_and_report_preserves_history(
     game, database
 ):
-    preparation = bind_preparation(game, database)
+    game, preparation = build_prepared_game(game, database)
     world = game.world.read()
     pairs = tuple(routing_inventory(world, "Berlin"))
     assert pairs

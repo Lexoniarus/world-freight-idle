@@ -3,34 +3,18 @@
 import time
 from typing import TypeVar
 
+from app.bootstrap import build_player_service
 from app.domain.contracts import ContractOffer
-from app.repositories.cached_world_catalogue import CachedWorldCatalogue
-from app.repositories.market_preparation import SqlitePreparationStore
 from app.repositories.market_stock import SqlitePlayerMarketStockStore
 from app.repositories.market_templates import SqliteMarketTemplateStore
-from app.repositories.provider_cache import SqliteProviderCache
-from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
-from app.repositories.routing_readiness import (
-    SqliteOfferRouteStore,
-    SqliteRoutingReadinessStore,
-)
 from app.services.game import GameService
 from app.services.market_demand import MarketDemandResolver
-from app.services.market_route_preparation import (
-    MarketRoutePreparationService,
-)
-from app.services.market_selection import MarketSelectionService
 from app.services.market_templates import MarketTemplateService
-from app.services.player_market_demand import PlayerMarketDemandService
-from app.services.player_market_routes import PlayerMarketRouteService
-from app.services.player_market_services import PlayerMarketServices
-from app.services.player_market_stock import PlayerMarketStockContext
-from app.services.routing_readiness import RoutingReadinessService
 from app.services.stock_planning import StockPlanningService
 from app.services.stock_preparation import StockPreparationBatch
 from app.services.stock_publication import StockPublicationService
 from app.services.stock_snapshot import StockSnapshotReader
-from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
+from tests.support.runtime import build_test_runtime
 
 T = TypeVar("T")
 
@@ -74,9 +58,6 @@ def make_stock_batch(game, preparation):
     database = preparation.routes.transactions
     SqliteMarketTemplateStore.initialize(database)
     SqlitePlayerMarketStockStore.initialize(database)
-    game.market_lifecycle.selection = MarketSelectionService(
-        preparation.stock.policy
-    )
     demand = MarketDemandResolver(game.market.candidates)
     return StockPreparationBatch(
         StockPublicationService(
@@ -105,48 +86,10 @@ def make_stock_batch(game, preparation):
     )
 
 
-def bind_preparation(game, database):
-    """Bind production preparation collaborators to a legacy game fixture."""
-    game.world = CachedWorldCatalogue(game.world)
-    game.market.candidates.world = game.world
-    SqliteProviderCache(database)
-    store = SqliteRoutingReadinessStore(database)
-    jobs = SqlitePreparationStore(database)
-    anchor_store = SqliteRoutingAnchorRepository(database)
-    readiness = RoutingReadinessService(
-        store,
-        FakeRoutingAnchorResolver(),
-        anchor_store,
-        FakeRouter(),
-        CachedWorldCatalogue(game.world),
-        "test-provider",
-        game.now,
+def build_prepared_game(game, database):
+    """Recompose one game with real local preparation collaborators."""
+    prepared = build_player_service(
+        build_test_runtime(game, database),
+        "test-owner",
     )
-    SqliteMarketTemplateStore.initialize(database)
-    SqlitePlayerMarketStockStore.initialize(database)
-    preparation = PlayerMarketServices(
-        PlayerMarketDemandService("test-owner", jobs, game.now, database),
-        PlayerMarketRouteService(
-            readiness,
-            SqliteOfferRouteStore(database, "test-owner"),
-            database,
-        ),
-        MarketRoutePreparationService(readiness, game.now),
-        PlayerMarketStockContext(
-            SqlitePlayerMarketStockStore(database, "test-owner"),
-            SqliteMarketTemplateStore(database),
-        ),
-    )
-    game.market_lifecycle.demand = preparation.demand
-    game.market_lifecycle.routes = preparation.routes
-    game.market_lifecycle.stock = preparation.stock
-    game.market_lifecycle.selection = MarketSelectionService(
-        preparation.stock.policy
-    )
-    game.initialization.market_demand = preparation.demand
-    game.settlement.market_demand = preparation.demand
-    game.transport_dispatch.planning.routes = preparation.routes
-    game.transport_dispatch.stock = preparation.stock
-    game.transport_dispatch.market_demand = preparation.demand
-    game.market_services = preparation
-    return preparation
+    return prepared, prepared.market_services

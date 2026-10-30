@@ -1,6 +1,7 @@
 """Reusable market fixtures composed outside executable test modules."""
 
 import random
+import time
 from dataclasses import replace
 from unittest.mock import Mock
 from uuid import UUID
@@ -9,6 +10,7 @@ import pytest
 
 from app.bootstrap import build_market_components
 from app.domain.cargo import FacilityNhmProfile, NhmProduct
+from app.domain.game import PlayerState
 from app.domain.geography import Coordinates
 from app.domain.market_profiles import (
     VEHICLE_SCALES,
@@ -17,10 +19,9 @@ from app.domain.market_profiles import (
     VehicleScaleProfile,
 )
 from app.domain.world_scopes import WorldScope
-from app.services.dispatch_eligibility import DispatchEligibilityService
 from app.services.fleet import build_owned_vehicle
-from app.services.market_scope import MarketScopeResolver
-from tests.support.market import bind_preparation
+from tests.support.game_service import build_fixture_game
+from tests.support.market import build_prepared_game
 
 
 @pytest.fixture
@@ -91,20 +92,20 @@ def city_market(world_catalogue, catalogue):
 
 
 @pytest.fixture
-def vehicle_game(game, city_market, database):
-    """Bind a compact city market to the shared game fixture."""
+def vehicle_game(city_market, database, catalogue):
+    """Compose a compact city game with real preparation collaborators."""
     market, owned, _, world, _ = city_market
+    game = build_fixture_game(
+        database,
+        "test-owner",
+        world,
+        catalogue,
+        market,
+        time.time,
+    )
     with database.transaction(), database.connect() as connection:
         connection.execute("DELETE FROM contract_offers")
         connection.execute("DELETE FROM owned_vehicles")
+        game.state_repository.save_player(PlayerState(175000, 0, 0))
         game.state_repository.save_vehicle(owned)
-    game.world = world
-    game.market = market
-    game.market_scope = MarketScopeResolver(world)
-    game.market_lifecycle.market = market
-    game.market_lifecycle.scope = game.market_scope
-    game.transport_dispatch.eligibility = DispatchEligibilityService(
-        market.candidates
-    )
-    preparation = bind_preparation(game, database)
-    return game, preparation
+    return build_prepared_game(game, database)

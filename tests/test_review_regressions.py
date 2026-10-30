@@ -13,7 +13,7 @@ from app.domain.market_preparation import PreparationStatus
 from app.services.economy_audit import summarize_economy
 from app.services.preparation_worker import MarketPreparationWorker
 from tests.support.market import (
-    bind_preparation,
+    build_prepared_game,
     make_stock_batch,
     require_value,
 )
@@ -23,7 +23,7 @@ from tests.support.market import (
 async def test_exhausted_negative_demand_requires_explicit_invalidation(
     game, database
 ):
-    preparation = bind_preparation(game, database)
+    game, preparation = build_prepared_game(game, database)
     fleet = game.market.candidates.resolve_fleet(
         game.state_repository.list_vehicles()
     )
@@ -63,7 +63,7 @@ async def test_exhausted_negative_demand_requires_explicit_invalidation(
 
 @pytest.mark.asyncio
 async def test_reference_replacement_owns_rollback(game, database):
-    preparation = bind_preparation(game, database)
+    game, preparation = build_prepared_game(game, database)
     offer = game.state_repository.list_offers()[0]
     pair = offer.origin.facility_uid, offer.destination.facility_uid
     await preparation.routes.readiness.prepare(*pair)
@@ -142,7 +142,7 @@ async def test_worker_vanished_job_and_start_failure():
 
 @pytest.mark.asyncio
 async def test_batch_exhausts_deterministic_route_failures(game, database):
-    preparation = bind_preparation(game, database)
+    game, preparation = build_prepared_game(game, database)
     batch = make_stock_batch(game, preparation)
     # Bound the structural pool so exhausting it is deterministic and fast.
     owned = game.state_repository.list_vehicles()
