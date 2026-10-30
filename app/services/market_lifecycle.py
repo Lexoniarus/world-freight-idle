@@ -34,7 +34,6 @@ class MarketLifecycleService:
     demand: PlayerMarketDemandService | None = None
     routes: PlayerMarketRouteService | None = None
     stock: PlayerMarketStockContext | None = None
-    publication_guard: Callable[[], bool] | None = None
     selection: MarketSelectionService | None = None
 
     def published(self, *, refresh: bool = False) -> list[ContractOffer]:
