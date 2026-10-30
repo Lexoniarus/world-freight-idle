@@ -11,8 +11,8 @@ from app.domain.market import MarketCandidate
 from app.services.dispatch_eligibility import DispatchEligibilityService
 from app.services.market_scope import MarketScopeResolver
 from app.services.vehicle_coverage import vehicle_candidates, vehicle_offers
+from tests.support.market import bind_preparation, make_stock_batch
 from tests.test_market import city_market as city_market
-from tests.test_market_preparation import bind_preparation, make_stock_batch
 
 
 def select_three_per_distance_band(

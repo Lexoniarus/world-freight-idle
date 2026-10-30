@@ -7,7 +7,7 @@ import pytest
 from app.domain.errors import WorldCatalogueError
 from app.repositories.routing_audit import SqliteRoutingAudit
 from app.services.routing_inventory import routing_inventory
-from tests.test_market_preparation import bind_preparation
+from tests.support.market import bind_preparation
 
 
 def test_audit_inventory_is_structural_and_report_preserves_history(

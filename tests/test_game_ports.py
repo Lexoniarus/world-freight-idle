@@ -21,8 +21,8 @@ from app.services.player_initialization import PlayerInitializationService
 from app.services.transport_dispatch import TransportDispatchService
 from app.services.transport_settlement import TransportSettlementService
 from app.services.vehicle_location import VehicleLocationResolver
-from tests.conftest import seed_test_offers
 from tests.support.game_clock import set_game_clock
+from tests.support.market import seed_test_offers
 
 
 @pytest.fixture

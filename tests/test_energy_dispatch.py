@@ -11,9 +11,9 @@ from app.api.v1.traffic_projection import project_traffic
 from app.domain.energy import EnergyProfile
 from app.domain.errors import CatalogueError
 from app.repositories.relational_traffic import SqliteTrafficReader
-from tests.conftest import seed_test_offers
 from tests.support.game import first_berlin_contract
 from tests.support.game_clock import set_game_clock
+from tests.support.market import seed_test_offers
 
 
 def prepare_electric_vehicle(game):

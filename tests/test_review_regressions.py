@@ -12,7 +12,7 @@ from app.domain.errors import PersistenceError, RoutingError
 from app.domain.market_preparation import PreparationStatus
 from app.services.economy_audit import summarize_economy
 from app.services.preparation_worker import MarketPreparationWorker
-from tests.test_market_preparation import (
+from tests.support.market import (
     bind_preparation,
     make_stock_batch,
     require_value,

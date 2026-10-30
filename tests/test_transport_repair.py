@@ -16,7 +16,7 @@ from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.transport_repair import repaired_transport, table_digest
 from tests.support.game_clock import set_game_clock
 from tests.support.game_service import rebind_game_storage
-from tests.test_market_preparation import require_value
+from tests.support.market import require_value
 
 
 def damage_approach(database, trip, *, settled=False):

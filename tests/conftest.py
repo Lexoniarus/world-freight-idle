@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 from app.bootstrap import GameRuntime, build_market_components
-from app.domain.contracts import ContractOffer
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.provider_cache import SqliteProviderCache
@@ -24,6 +23,7 @@ from app.services.transport_settlement import TransportSettlementService
 from app.services.vehicle_location import VehicleLocationResolver
 from tests.support.catalogues import WORLD_PATH
 from tests.support.game import create_active_trip
+from tests.support.market import seed_test_offers
 from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 
 
@@ -97,29 +97,6 @@ def game(database, catalogue, world_catalogue) -> GameService:
     service.ensure_initial_state()
     seed_test_offers(service)
     return service
-
-
-def seed_test_offers(service: GameService, count: int = 30) -> None:
-    """Store deterministic local fixture offers without invoking runtime refill."""
-    market = service.market
-    owned = service.state_repository.list_vehicles()
-    fleet = market.candidates.resolve_fleet(owned)
-    candidates = market.candidates.build(
-        service.market_scope.resolve(owned), fleet
-    )
-    local = tuple(
-        candidate
-        for candidate in candidates
-        if candidate.trade.origin.facility_uid == owned[0].facility_uid
-    )
-    selected = (*local[:10], *(c for c in candidates if c not in local))
-    offers = tuple(
-        ContractOffer.from_snapshot(
-            market.factory.build(candidate, time.time(), f"fixture:{index}")
-        )
-        for index, candidate in enumerate(selected[:count])
-    )
-    service.state_repository.replace_offers(offers)
 
 
 @pytest.fixture

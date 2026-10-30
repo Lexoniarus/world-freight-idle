@@ -26,9 +26,9 @@ from app.repositories.accounts import AccountRepository
 from app.repositories.database_backup import backup_database
 from app.services.fleet import build_owned_vehicle
 from scripts.update_test_profile import main, parse_assignments
-from tests.conftest import seed_test_offers
 from tests.support.api import make_settings
 from tests.support.game import first_berlin_contract
+from tests.support.market import seed_test_offers
 from tests.transport_fixtures import add_transport
 
 
