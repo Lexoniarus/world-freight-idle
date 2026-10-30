@@ -34,7 +34,6 @@ class TransportDispatchService:
     clock: Callable[[], float]
     time_scale: float
     prune_market: Callable[[], None]
-    refill_market: Callable[[], None]
     stock: PlayerMarketStockContext | None = None
 
     async def quote_contract(
@@ -84,7 +83,6 @@ class TransportDispatchService:
         quote = await self.quote_contract(contract_id, vehicle_id)
         with self.unit.transaction():
             trip = self.commit_dispatch(contract_id, vehicle_id, quote)
-        self.refill_market()
         return trip
 
     def commit_dispatch(

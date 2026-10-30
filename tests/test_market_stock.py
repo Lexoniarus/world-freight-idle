@@ -940,7 +940,6 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
         unit,
         game.now,
         prep.demand,
-        lifecycle.refill_after_commit,
     )
     dispatch_service = TransportDispatchService(
         unit,
@@ -952,7 +951,6 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
         game.now,
         game.time_scale,
         lifecycle.prune_in_transaction,
-        lifecycle.refill_after_commit,
         prep.stock,
     )
     other = GameService(

@@ -50,7 +50,6 @@ def relational_game(game, tmp_path):
         unit,
         game.now,
         None,
-        lifecycle.refill_after_commit,
     )
     dispatch = TransportDispatchService(
         unit,
@@ -62,7 +61,6 @@ def relational_game(game, tmp_path):
         game.now,
         1.0,
         lifecycle.prune_in_transaction,
-        lifecycle.refill_after_commit,
     )
     service = GameService(
         unit,

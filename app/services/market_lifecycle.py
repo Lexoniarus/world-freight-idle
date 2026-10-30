@@ -1,6 +1,5 @@
 """Transactional lifecycle of one player's city markets."""
 
-import logging
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import cast
@@ -19,7 +18,6 @@ from app.services.player_market_routes import (
 )
 from app.services.player_market_stock import PlayerMarketStockContext
 
-LOGGER = logging.getLogger(__name__)
 RETAIN_MINIMUM_SECONDS = 60
 
 
@@ -146,17 +144,6 @@ class MarketLifecycleService:
         repository = self.unit_of_work.repository
         if offers != repository.list_offers():
             repository.replace_offers(offers)
-
-    def refill_after_commit(self) -> None:
-        """Keep a committed trip successful even when separate refill fails."""
-        try:
-            if self.demand is not None:
-                self.demand.invalidate()
-        except Exception:
-            LOGGER.exception(
-                "Post-commit market refill failed",
-                extra={"event": "market.refill_failed"},
-            )
 
     def present(
         self, offers: Sequence[ContractOffer], vehicle_id: str | None = None

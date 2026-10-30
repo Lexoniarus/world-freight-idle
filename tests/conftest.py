@@ -76,7 +76,6 @@ def game(database, catalogue, world_catalogue) -> GameService:
         unit,
         time.time,
         None,
-        lifecycle.refill_after_commit,
     )
     dispatch = TransportDispatchService(
         unit,
@@ -88,7 +87,6 @@ def game(database, catalogue, world_catalogue) -> GameService:
         time.time,
         1.0,
         lifecycle.prune_in_transaction,
-        lifecycle.refill_after_commit,
     )
     service = GameService(
         unit,

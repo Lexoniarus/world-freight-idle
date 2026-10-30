@@ -623,7 +623,6 @@ FUNCTION_TESTS.update(
         "app.services.market_lifecycle.MarketLifecycleService._store": "test_dispatch_prunes_stock_without_generation_api",
         "app.services.market_lifecycle.MarketLifecycleService.present": "test_retention_filters_without_writing_during_market_reads",
         "app.services.market_lifecycle.MarketLifecycleService.prune_in_transaction": "test_same_city_dispatch_preserves_departure_and_prunes_atomically",
-        "app.services.market_lifecycle.MarketLifecycleService.refill_after_commit": "test_dispatch_commits_before_background_market_refill",
     }
 )
 

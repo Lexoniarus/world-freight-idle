@@ -19,7 +19,6 @@ class TransportSettlementService:
     unit: GameUnitOfWork
     clock: Callable[[], float]
     market_demand: PlayerMarketDemandService | None
-    after_commit: Callable[[], None]
 
     def reconcile(self) -> bool:
         """Settle every due transport once and request destination stock."""
@@ -35,7 +34,6 @@ class TransportSettlementService:
                 self.complete_trip(trip, now)
             if self.market_demand is not None:
                 self.market_demand.invalidate()
-        self.after_commit()
         return True
 
     def complete_trip(self, trip: ActiveTransport, now: float) -> None:

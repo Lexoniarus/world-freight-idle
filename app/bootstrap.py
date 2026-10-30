@@ -238,7 +238,6 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
         unit,
         runtime.clock,
         market_services.demand,
-        lifecycle.refill_after_commit,
     )
     dispatch = TransportDispatchService(
         unit,
@@ -250,8 +249,7 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
         runtime.clock,
         runtime.time_scale,
         lifecycle.prune_in_transaction,
-        lifecycle.refill_after_commit,
-        market_services.stock if market_services else None,
+        market_services.stock,
     )
     game = GameService(
         unit,
@@ -266,7 +264,7 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
             unit,
             runtime.world,
             runtime.catalogue,
-            market_services.demand if market_services else None,
+            market_services.demand,
         ),
         settlement,
         dispatch,
