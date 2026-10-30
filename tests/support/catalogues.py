@@ -7,9 +7,7 @@ from app.repositories.world_catalogue import SqliteWorldCatalogue
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 WORLD_PATH = (
-    REPOSITORY_ROOT
-    / "data"
-    / "world_freight_company_facility_mvp.sqlite3"
+    REPOSITORY_ROOT / "data" / "world_freight_company_facility_mvp.sqlite3"
 )
 BERLIN_UID = (
     WorldScope(SqliteWorldCatalogue(WORLD_PATH).read())

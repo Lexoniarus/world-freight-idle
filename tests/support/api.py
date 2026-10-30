@@ -85,9 +85,7 @@ class FakeGame:
 
     def preparation_status(self) -> PreparationStatus:
         """Return deterministic partial preparation progress."""
-        return PreparationStatus(
-            "preparation1", "generation1", "partial", 30
-        )
+        return PreparationStatus("preparation1", "generation1", "partial", 30)
 
     def get_contract(self, contract_id):
         """Return or reject the requested fixture offer."""
@@ -153,8 +151,7 @@ def make_settings(tmp_path: Path) -> Settings:
     )
     world = tmp_path / "world.sqlite3"
     shutil.copyfile(
-        REPOSITORY_ROOT
-        / "data/world_freight_company_facility_mvp.sqlite3",
+        REPOSITORY_ROOT / "data/world_freight_company_facility_mvp.sqlite3",
         world,
     )
     return Settings(
@@ -178,9 +175,7 @@ def make_static_files(tmp_path: Path) -> None:
     static = tmp_path / "static"
     static.mkdir(parents=True)
     (static / "dist").mkdir()
-    (static / "dist" / "index.html").write_text(
-        "<html>world-map-shell</html>"
-    )
+    (static / "dist" / "index.html").write_text("<html>world-map-shell</html>")
     for filename in (
         "login.html",
         "leaderboard.html",
