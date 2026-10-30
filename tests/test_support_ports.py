@@ -16,7 +16,6 @@ from app.repositories.leaderboard import SqliteLeaderboardReader
 from app.repositories.preferences import SqlitePreferenceStore
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.relational_traffic import SqliteTrafficReader
-from tests.test_relational_state import relational as relational
 
 
 def test_relational_public_reads_preserve_privacy_and_offline_progress(

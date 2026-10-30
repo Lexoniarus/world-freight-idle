@@ -25,21 +25,6 @@ from app.repositories.game_state import (
 from app.repositories.state_snapshots import decode_snapshot, encode_snapshot
 
 
-@pytest.fixture
-def relational(tmp_path):
-    database = SqliteGameDatabase(tmp_path / "fresh.db")
-    database.initialize()
-    with database.connect() as connection:
-        connection.executemany(
-            "INSERT INTO users VALUES (?, ?, ?, ?)",
-            [
-                ("alice", "Alice", "test-only", 0),
-                ("bob", "Bob", "test-only", 1),
-            ],
-        )
-    return database
-
-
 def test_database_schema_rejects_old_and_unknown_files(tmp_path):
     path = tmp_path / "database.db"
     database = SqliteGameDatabase(path)

@@ -30,6 +30,7 @@ from tests.support.market_fixtures import (
 from tests.support.market_fixtures import (
     vehicle_game as vehicle_game,
 )
+from tests.support.persistence_fixtures import relational as relational
 from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 
 
