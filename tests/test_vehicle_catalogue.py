@@ -3,6 +3,7 @@
 import hashlib
 import math
 import sqlite3
+from contextlib import closing
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
@@ -79,7 +80,10 @@ def test_catalogue_failures_are_explicit(catalogue, failure):
     elif failure == "corrupt":
         catalogue.path.write_bytes(b"not sqlite")
     else:
-        with sqlite3.connect(catalogue.path) as connection:
+        with (
+            closing(sqlite3.connect(catalogue.path)) as connection,
+            connection,
+        ):
             connection.execute("PRAGMA ignore_check_constraints=ON")
             sql = {
                 "schema": "DROP TABLE vehicle_balance",
@@ -106,7 +110,7 @@ def test_catalogue_failures_are_explicit(catalogue, failure):
 
 
 def test_catalogue_numeric_nonfinite_and_negative_cost(catalogue):
-    with sqlite3.connect(catalogue.path) as connection:
+    with closing(sqlite3.connect(catalogue.path)) as connection, connection:
         connection.execute("PRAGMA ignore_check_constraints=ON")
         connection.execute(
             "UPDATE vehicle_balance SET operating_cost_eur_per_km_game=?",
@@ -114,7 +118,7 @@ def test_catalogue_numeric_nonfinite_and_negative_cost(catalogue):
         )
     with pytest.raises(CatalogueError):
         catalogue.list_models()
-    with sqlite3.connect(catalogue.path) as connection:
+    with closing(sqlite3.connect(catalogue.path)) as connection, connection:
         connection.execute("PRAGMA ignore_check_constraints=ON")
         connection.execute(
             "UPDATE vehicle_balance SET operating_cost_eur_per_km_game=-1"
@@ -134,7 +138,7 @@ def test_purchase_reputation_snapshots_and_rollback(game, catalogue):
     rate = vehicle["operating_cost_eur_per_km"]
     assert vehicle["capacity_tons"] == 24.3
     assert game.player_state().cash == 338000
-    with sqlite3.connect(catalogue.path) as connection:
+    with closing(sqlite3.connect(catalogue.path)) as connection, connection:
         connection.execute(
             "UPDATE vehicle_balance SET operating_cost_eur_per_km_game=9"
         )
@@ -367,7 +371,7 @@ def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
     before = [
         project_vehicle(item) for item in game.state_repository.list_vehicles()
     ]
-    with sqlite3.connect(catalogue.path) as db:
+    with closing(sqlite3.connect(catalogue.path)) as db, db:
         db.execute(
             "UPDATE vehicle_balance SET operating_cost_eur_per_km_game=7"
         )
@@ -435,7 +439,7 @@ def test_missing_catalogue_blocks_start_and_repaired_start_is_retryable(
 
 @pytest.mark.parametrize("value", [-1, math.inf, "invalid"])
 def test_catalogue_rejects_invalid_explicit_maintenance(catalogue, value):
-    with sqlite3.connect(catalogue.path) as connection:
+    with closing(sqlite3.connect(catalogue.path)) as connection, connection:
         connection.execute("PRAGMA ignore_check_constraints=ON")
         connection.execute(
             "UPDATE vehicle_balance SET maintenance_eur_per_1000_km_game=?",
@@ -446,7 +450,7 @@ def test_catalogue_rejects_invalid_explicit_maintenance(catalogue, value):
 
 
 def test_catalogue_requires_explicit_maintenance_column(catalogue):
-    with sqlite3.connect(catalogue.path) as connection:
+    with closing(sqlite3.connect(catalogue.path)) as connection, connection:
         connection.execute(
             "ALTER TABLE vehicle_balance RENAME COLUMN "
             "maintenance_eur_per_1000_km_game TO unavailable_maintenance"

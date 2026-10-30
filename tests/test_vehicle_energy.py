@@ -2,6 +2,7 @@
 
 import math
 import sqlite3
+from contextlib import closing
 from dataclasses import replace
 
 import pytest
@@ -70,7 +71,7 @@ def test_catalogue_energy_values_match_all_fourteen_models(catalogue):
     ],
 )
 def test_catalogue_rejects_incomplete_energy(catalogue, column, value):
-    with sqlite3.connect(catalogue.path) as db:
+    with closing(sqlite3.connect(catalogue.path)) as db, db:
         db.execute("PRAGMA ignore_check_constraints=ON")
         db.execute(
             f"UPDATE vehicle_models SET {column}=? "
@@ -82,7 +83,7 @@ def test_catalogue_rejects_incomplete_energy(catalogue, column, value):
 
 
 def test_catalogue_requires_non_diesel_stop_time(catalogue):
-    with sqlite3.connect(catalogue.path) as db:
+    with closing(sqlite3.connect(catalogue.path)) as db, db:
         db.execute(
             "UPDATE vehicle_balance SET energy_stop_minutes_game=NULL "
             "WHERE vehicle_id='mercedes_eactros_600'"

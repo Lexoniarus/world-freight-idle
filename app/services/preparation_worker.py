@@ -65,6 +65,11 @@ class MarketPreparationWorker:
         else:
             self._loop.call_soon_threadsafe(self._wake.set)
 
+    @property
+    def running(self) -> bool:
+        """Report whether the lifespan currently owns an active task."""
+        return self._task is not None and not self._task.done()
+
     async def start(self) -> None:
         """Start exactly one owned loop in a fresh context."""
         if self._task is not None:

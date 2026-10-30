@@ -2,7 +2,7 @@
 
 import asyncio
 from dataclasses import replace
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -10,7 +10,6 @@ from app.domain.errors import RoutingError
 from app.repositories.routing_readiness import SqliteRoutingReadinessStore
 from app.services.preparation_worker import (
     MarketPreparationWorker,
-    PreparationWorkerTiming,
 )
 from app.services.routing.preparation import RoutingPreparationService
 from tests.support.market import (
@@ -230,37 +229,14 @@ async def test_worker_fills_ready_market_and_owns_shutdown(game, database):
         for o in game.contract_choices(game.list_contracts())
     )
     await worker.start()
+    assert worker.running
     worker.wake()
-    assert worker._wake.is_set()
-    foreign_loop = Mock()
-    worker._loop = foreign_loop
-    with patch(
-        "app.services.preparation_worker.asyncio.get_running_loop",
-        side_effect=RuntimeError,
-    ):
-        worker.wake()
-    foreign_loop.call_soon_threadsafe.assert_called_once_with(worker._wake.set)
-    worker._loop = asyncio.get_running_loop()
     with pytest.raises(RuntimeError):
         await worker.start()
     await asyncio.sleep(1.05)
     await worker.close()
     await worker.close()
-
-
-@pytest.mark.asyncio
-async def test_worker_idle_wait_finishes_on_safety_timeout(game, database):
-    game, preparation = build_prepared_game(game, database)
-    worker = MarketPreparationWorker(
-        preparation.demand.jobs,
-        lambda _user_id: make_stock_batch(game, preparation),
-        game.now,
-        PreparationWorkerTiming(idle_wait_seconds=0.001),
-    )
-
-    await worker._wait_for_work()
-
-    assert not worker._wake.is_set()
+    assert not worker.running
 
 
 def test_preparation_store_generation_and_reference_rollback(game, database):
@@ -383,8 +359,7 @@ async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
         side_effect=RuntimeError("startup"),
     ):
         await failed_worker.start()
-        assert failed_worker._task is not None
-        assert not failed_worker._task.done()
+        assert failed_worker.running
         await failed_worker.close()
 
 

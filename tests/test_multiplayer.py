@@ -3,6 +3,7 @@
 import asyncio
 import runpy
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
@@ -414,7 +415,7 @@ async def test_initialization_does_not_implicitly_import_legacy_trips(
     import sqlite3
 
     settings.db_path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(settings.db_path) as connection:
+    with closing(sqlite3.connect(settings.db_path)) as connection, connection:
         connection.execute(
             "CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT)"
         )

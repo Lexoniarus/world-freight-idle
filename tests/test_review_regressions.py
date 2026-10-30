@@ -138,7 +138,7 @@ async def test_worker_vanished_job_and_start_failure():
             await worker.start()
         with pytest.raises(RuntimeError, match="start"):
             await worker.close()
-    assert worker._task is None
+    assert not worker.running
 
 
 @pytest.mark.asyncio

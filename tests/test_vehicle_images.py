@@ -1,6 +1,7 @@
 """Photo provenance and narrowly scoped profile maintenance."""
 
 import sqlite3
+from contextlib import closing
 
 import pytest
 
@@ -33,19 +34,19 @@ def test_images_preserve_provenance_and_never_change_gameplay(catalogue):
     ["javascript:alert(1)", "https://[broken", "https://elsewhere.test/a.jpg"],
 )
 def test_invalid_image_links_do_not_break_catalogue(catalogue, url):
-    with sqlite3.connect(catalogue.path) as db:
+    with closing(sqlite3.connect(catalogue.path)) as db, db:
         db.execute("UPDATE vehicle_images SET direct_image_url=?", (url,))
     assert all(model.image is None for model in catalogue.list_models())
 
 
 def test_unverified_images_are_not_presented(catalogue):
-    with sqlite3.connect(catalogue.path) as db:
+    with closing(sqlite3.connect(catalogue.path)) as db, db:
         db.execute("UPDATE vehicle_images SET verification_status='pending'")
     assert all(model.image is None for model in catalogue.list_models())
 
 
 def test_image_selection_prefers_verified_primary(catalogue):
-    with sqlite3.connect(catalogue.path) as db:
+    with closing(sqlite3.connect(catalogue.path)) as db, db:
         db.execute(
             "UPDATE vehicle_images SET is_primary=0 WHERE vehicle_id='iveco_sway_500'"
         )

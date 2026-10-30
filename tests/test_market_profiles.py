@@ -2,6 +2,7 @@
 
 import math
 import sqlite3
+from contextlib import closing
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
@@ -102,7 +103,7 @@ def test_market_profile_small_values_reject_invalid_weights():
 def test_world_market_profile_corruption_is_rejected(
     world_catalogue, mutation
 ):
-    with sqlite3.connect(world_catalogue.path) as db:
+    with closing(sqlite3.connect(world_catalogue.path)) as db, db:
         db.execute("PRAGMA ignore_check_constraints=ON")
         db.execute(mutation)
     with pytest.raises(WorldCatalogueError):
@@ -122,7 +123,7 @@ def test_world_market_profile_corruption_is_rejected(
     ],
 )
 def test_vehicle_market_profile_corruption_is_rejected(catalogue, mutation):
-    with sqlite3.connect(catalogue.path) as db:
+    with closing(sqlite3.connect(catalogue.path)) as db, db:
         db.execute("PRAGMA ignore_check_constraints=ON")
         db.execute(mutation)
     with pytest.raises(CatalogueError):
