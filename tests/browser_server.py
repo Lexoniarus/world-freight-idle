@@ -115,7 +115,7 @@ def prepare_energy_fixture(
     with game.unit_of_work.transaction():
         game.state_repository.save_vehicle(vehicle)
         assert game.market_lifecycle.demand is not None
-        game.market_lifecycle.demand.request(changed=True)
+        game.market_lifecycle.demand.invalidate()
     return {"vehicle_id": vehicle.id}
 
 
@@ -137,5 +137,5 @@ def prepare_approach_fixture(
     with game.unit_of_work.transaction():
         game.state_repository.save_vehicle(vehicle)
         assert game.market_lifecycle.demand is not None
-        game.market_lifecycle.demand.request(changed=True)
+        game.market_lifecycle.demand.invalidate()
     return {"vehicle_id": vehicle.id, "offer_id": offer.id}

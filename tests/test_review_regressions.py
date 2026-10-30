@@ -41,18 +41,18 @@ async def test_exhausted_negative_demand_requires_explicit_invalidation(
     readiness.router = AsyncMock()
     readiness.router.route.side_effect = error
     await readiness.prepare(*pair)
-    preparation.demand.request()
+    preparation.demand.ensure()
     status = require_value(preparation.demand.jobs.status("test-owner"))
     preparation.demand.jobs.finish(
         "test-owner", status.generation, "exhausted", None, game.now()
     )
-    preparation.demand.request()
+    preparation.demand.ensure()
     assert preparation.demand.jobs.next_player(game.now()) is None
     before = preparation.routes.demand_state(*pair)
     readiness.provider_revision = lambda: "new-graph"
     after = preparation.routes.demand_state(*pair)
     assert after.expected_fingerprint != before.expected_fingerprint
-    preparation.demand.request(changed=True)
+    preparation.demand.invalidate()
     changed = require_value(preparation.demand.jobs.status("test-owner"))
     assert changed.generation != status.generation
     assert changed.status == "partial"
@@ -155,7 +155,7 @@ async def test_batch_exhausts_deterministic_route_failures(game, database):
     error.category = "no_path"
     preparation.routes.readiness.router = AsyncMock()
     preparation.routes.readiness.router.route.side_effect = error
-    preparation.demand.request()
+    preparation.demand.ensure()
     result = await batch.process()
     for _ in range(10):
         result = await batch.process()

@@ -39,7 +39,7 @@ class MarketLifecycleService:
     def published(self, *, refresh: bool = False) -> list[ContractOffer]:
         """Serve retained stock; only an explicit refresh writes demand."""
         if refresh and self.demand is not None:
-            self.demand.request(changed=True)
+            self.demand.invalidate()
         with self.unit_of_work.read_transaction():
             owned = self.unit_of_work.repository.list_vehicles()
             fleet = self.market.candidates.resolve_fleet(owned)
@@ -56,7 +56,7 @@ class MarketLifecycleService:
     ) -> MarketPresentation:
         """Read one authorized vehicle market without duplicate projections."""
         if refresh and self.demand is not None:
-            self.demand.request(changed=True)
+            self.demand.invalidate()
         with self.unit_of_work.read_transaction():
             owned = self.unit_of_work.repository.list_vehicles()
             fleet = self.market.candidates.resolve_fleet(owned)
@@ -93,7 +93,7 @@ class MarketLifecycleService:
     def prune_in_transaction(self) -> None:
         """Prune within the caller's dispatch transaction, without refill."""
         if self.demand is not None:
-            self.demand.request(changed=True)
+            self.demand.invalidate()
             return
         owned = self.unit_of_work.repository.list_vehicles()
         cities = self.scope.resolve(owned)
@@ -151,7 +151,7 @@ class MarketLifecycleService:
         """Keep a committed trip successful even when separate refill fails."""
         try:
             if self.demand is not None:
-                self.demand.request(changed=True)
+                self.demand.invalidate()
         except Exception:
             LOGGER.exception(
                 "Post-commit market refill failed",

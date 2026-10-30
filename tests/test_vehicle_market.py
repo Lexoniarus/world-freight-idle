@@ -208,7 +208,7 @@ async def test_vehicle_projection_api_enforces_owned_idle_selection(
 
     game, preparation = vehicle_game
     batch = make_stock_batch(game, preparation)
-    preparation.demand.request()
+    preparation.demand.ensure()
     for _ in range(100):
         result = await batch.process()
         if result.status == "ready":

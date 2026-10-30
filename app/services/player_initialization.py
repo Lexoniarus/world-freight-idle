@@ -29,7 +29,7 @@ class PlayerInitializationService:
         with self.unit.transaction():
             self.ensure_in_transaction()
             if self.market_demand is not None:
-                self.market_demand.request(changed=True)
+                self.market_demand.invalidate()
 
     def ensure_in_transaction(self) -> None:
         """Create missing state inside the caller's transaction."""
@@ -50,4 +50,4 @@ class PlayerInitializationService:
             self.unit.repository.reset()
             self.ensure_in_transaction()
             if self.market_demand is not None:
-                self.market_demand.request(changed=True)
+                self.market_demand.invalidate()

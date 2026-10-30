@@ -40,17 +40,17 @@ def test_durable_demand_coalesces_and_fences_stale_diagnostics(game, database):
     notify = Mock()
     jobs.set_notifier(notify)
     assert jobs.diagnostics("test-owner") == ()
-    preparation.demand.request()
+    preparation.demand.ensure()
     notify.assert_called_once_with()
     first = jobs.status("test-owner")
     assert first is not None
-    preparation.demand.request()
+    preparation.demand.ensure()
     assert notify.call_count == 1
     assert jobs.status("test-owner") == first
     diagnostic = VehicleCoverageDiagnostic("v", "city", 1, (1, 0, 0), (), ())
     jobs.publish_diagnostics("test-owner", first.generation, (diagnostic,))
     assert jobs.diagnostics("test-owner") == (diagnostic,)
-    preparation.demand.request(changed=True)
+    preparation.demand.invalidate()
     assert notify.call_count == 2
     second = jobs.status("test-owner")
     assert second is not None and second.generation != first.generation

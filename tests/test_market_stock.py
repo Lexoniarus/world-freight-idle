@@ -37,7 +37,7 @@ def stock_game(vehicle_game, database):
     game.market_lifecycle.selection = MarketSelectionService(
         preparation.stock.policy
     )
-    preparation.demand.request()
+    preparation.demand.ensure()
     demand = MarketDemandResolver(game.market.candidates)
     publication = StockPublicationService(
         game.unit_of_work,
@@ -171,7 +171,7 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
             SqliteMarketTemplateStore(database),
         ),
     )
-    other.demand.request()
+    other.demand.ensure()
     second = StockPreparationBatch(
         StockPublicationService(
             unit,

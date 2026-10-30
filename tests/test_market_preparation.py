@@ -25,7 +25,7 @@ from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 async def test_partial_market_never_publishes_unchecked_offers(game, database):
     preparation = bind_preparation(game, database)
     batch = make_stock_batch(game, preparation)
-    preparation.demand.request()
+    preparation.demand.ensure()
     assert game.list_contracts() == []
     owned = game.state_repository.list_vehicles()
     fleet = game.market.candidates.resolve_fleet(owned)
@@ -193,7 +193,7 @@ async def test_players_share_one_provider_calculation(game, database):
 async def test_worker_fills_ready_market_and_owns_shutdown(game, database):
     preparation = bind_preparation(game, database)
     batch = make_stock_batch(game, preparation)
-    preparation.demand.request()
+    preparation.demand.ensure()
     worker = MarketPreparationWorker(
         preparation.demand.jobs, lambda user: batch, game.now
     )
@@ -253,7 +253,7 @@ def test_preparation_store_generation_and_reference_rollback(game, database):
     assert preparation.demand.jobs.status("missing") is None
     with pytest.raises(ValueError, match="publication"):
         preparation.routes.bind(game.state_repository.list_offers())
-    preparation.demand.request()
+    preparation.demand.ensure()
     first = require_value(preparation.demand.jobs.status("test-owner"))
     assert game.preparation_status() == first
     preparation.demand.jobs.finish(
@@ -338,7 +338,7 @@ async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
     with patch.object(readiness.store, "renew", return_value=False):
         assert await readiness.prepare(*pair) is None
     batch = make_stock_batch(game, preparation)
-    preparation.demand.request()
+    preparation.demand.ensure()
     worker = MarketPreparationWorker(
         preparation.demand.jobs, lambda user: batch, game.now
     )
@@ -444,7 +444,7 @@ async def test_dispatch_rejects_retired_and_changed_prepared_routes(
     await preparation.routes.readiness.prepare(origin, destination)
     await preparation.routes.readiness.prepare(owned[0].facility_uid, origin)
     batch = make_stock_batch(game, preparation)
-    preparation.demand.request()
+    preparation.demand.ensure()
     for _ in range(30):
         await batch.process()
         if game.list_contracts():

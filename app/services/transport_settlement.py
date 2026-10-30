@@ -34,7 +34,7 @@ class TransportSettlementService:
             for trip in arrived:
                 self.complete_trip(trip, now)
             if self.market_demand is not None:
-                self.market_demand.request(changed=True)
+                self.market_demand.invalidate()
         self.after_commit()
         return True
 

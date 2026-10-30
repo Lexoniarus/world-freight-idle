@@ -17,13 +17,14 @@ class PlayerMarketDemandService:
     clock: Callable[[], float]
     transactions: TransactionBoundary
 
-    def request(self, *, changed: bool = False) -> None:
-        """Schedule durable demand without building candidate structures."""
-        if changed:
-            with self.transactions.transaction():
-                self.jobs.invalidate(self.user_id, self.clock())
-            return
+    def ensure(self) -> None:
+        """Create absent durable demand without reopening finished work."""
         self.jobs.ensure(self.user_id, self.clock())
+
+    def invalidate(self) -> None:
+        """Fence changed player inputs in the surrounding transaction."""
+        with self.transactions.transaction():
+            self.jobs.invalidate(self.user_id, self.clock())
 
     def status(self) -> PreparationStatus | None:
         """Return the public progress for this player's current generation."""
