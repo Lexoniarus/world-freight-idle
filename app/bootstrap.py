@@ -248,7 +248,7 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
         settlement,
         runtime.clock,
         runtime.time_scale,
-        lifecycle.prune_in_transaction,
+        market_services.demand,
         market_services.stock,
     )
     game = GameService(
@@ -268,6 +268,7 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
         ),
         settlement,
         dispatch,
+        market_services,
     )
     game.ensure_initial_state()
     return game
@@ -283,12 +284,11 @@ def build_vehicle_catalogue(settings: Settings) -> SqliteVehicleCatalogue:
 
 def build_fleet_service(game: GameService, settings: Settings) -> FleetService:
     """Assemble purchasing against the authenticated player's unit of work."""
-    demand = game.market_lifecycle.demand
     return FleetService(
         game.unit_of_work,
         build_vehicle_catalogue(settings),
         game.world,
-        partial(demand.request, changed=True) if demand else None,
+        game.market_services.demand.invalidate,
     )
 
 

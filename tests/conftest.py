@@ -8,21 +8,12 @@ import pytest
 
 from app.bootstrap import build_market_components
 from app.repositories.game_database import SqliteGameDatabase
-from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
-from app.services.cost_profiles import VehicleCostResolver
-from app.services.dispatch_eligibility import DispatchEligibilityService
-from app.services.dispatch_planning import DispatchPlanningService
 from app.services.game import GameService
-from app.services.market_lifecycle import MarketLifecycleService
-from app.services.market_scope import MarketScopeResolver
-from app.services.player_initialization import PlayerInitializationService
-from app.services.transport_dispatch import TransportDispatchService
-from app.services.transport_settlement import TransportSettlementService
-from app.services.vehicle_location import VehicleLocationResolver
 from tests.support.catalogues import WORLD_PATH
 from tests.support.game import create_active_trip
+from tests.support.game_service import build_fixture_game
 from tests.support.legacy_fixtures import legacy_source as legacy_source
 from tests.support.market import seed_test_offers
 from tests.support.market_fixtures import (
@@ -32,7 +23,6 @@ from tests.support.market_fixtures import (
     vehicle_game as vehicle_game,
 )
 from tests.support.persistence_fixtures import relational as relational
-from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 from tests.support.runtime import build_test_runtime
 
 
@@ -61,45 +51,13 @@ def game(database, catalogue, world_catalogue) -> GameService:
     market = build_market_components(
         world_catalogue, random.Random(7), catalogue
     )
-    router = FakeRouter()
-    anchors = FakeRoutingAnchorResolver()
-    unit = SqliteGameUnitOfWork(database, "test-owner")
-    scope = MarketScopeResolver(world_catalogue)
-    lifecycle = MarketLifecycleService(unit, market, scope, time.time)
-    planning = DispatchPlanningService(
-        router,
-        VehicleCostResolver(catalogue),
-        anchors,
+    service = build_fixture_game(
+        database,
+        "test-owner",
         world_catalogue,
-    )
-    settlement = TransportSettlementService(
-        unit,
-        time.time,
-        None,
-    )
-    dispatch = TransportDispatchService(
-        unit,
-        market,
-        planning,
-        DispatchEligibilityService(market.candidates),
-        VehicleLocationResolver(world_catalogue),
-        settlement,
-        time.time,
-        1.0,
-        lifecycle.prune_in_transaction,
-    )
-    service = GameService(
-        unit,
-        world_catalogue,
-        market,
         catalogue,
-        scope,
+        market,
         time.time,
-        1.0,
-        lifecycle,
-        PlayerInitializationService(unit, world_catalogue, catalogue),
-        settlement,
-        dispatch,
     )
     service.ensure_initial_state()
     seed_test_offers(service)

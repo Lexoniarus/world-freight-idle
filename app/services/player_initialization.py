@@ -19,7 +19,7 @@ class PlayerInitializationService:
     unit: GameUnitOfWork
     world: WorldCatalogue
     catalogue: VehicleCatalogue
-    market_demand: PlayerMarketDemandService | None = None
+    market_demand: PlayerMarketDemandService
 
     def ensure(self) -> None:
         """Create missing player and starter state atomically."""
@@ -28,8 +28,7 @@ class PlayerInitializationService:
             return
         with self.unit.transaction():
             self.ensure_in_transaction()
-            if self.market_demand is not None:
-                self.market_demand.invalidate()
+            self.market_demand.invalidate()
 
     def ensure_in_transaction(self) -> None:
         """Create missing state inside the caller's transaction."""
@@ -49,5 +48,4 @@ class PlayerInitializationService:
         with self.unit.transaction():
             self.unit.repository.reset()
             self.ensure_in_transaction()
-            if self.market_demand is not None:
-                self.market_demand.invalidate()
+            self.market_demand.invalidate()

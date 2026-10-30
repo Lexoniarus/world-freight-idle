@@ -114,8 +114,7 @@ def prepare_energy_fixture(
         vehicle.reposition_within_city(offers[0].origin)
     with game.unit_of_work.transaction():
         game.state_repository.save_vehicle(vehicle)
-        assert game.market_lifecycle.demand is not None
-        game.market_lifecycle.demand.invalidate()
+        game.market_services.demand.invalidate()
     return {"vehicle_id": vehicle.id}
 
 
@@ -136,6 +135,5 @@ def prepare_approach_fixture(
     vehicle.reposition_within_city(facility.location_snapshot())
     with game.unit_of_work.transaction():
         game.state_repository.save_vehicle(vehicle)
-        assert game.market_lifecycle.demand is not None
-        game.market_lifecycle.demand.invalidate()
+        game.market_services.demand.invalidate()
     return {"vehicle_id": vehicle.id, "offer_id": offer.id}

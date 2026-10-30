@@ -620,9 +620,7 @@ FUNCTION_TESTS.update(
         "app.services.market_diversity.MarketDiversity.record": "test_market_diversity_counts_only_persisted_offer_dimensions",
         "app.services.market_diversity.MarketDiversity.rank": "test_market_diversity_counts_only_persisted_offer_dimensions",
         "app.services.market_lifecycle.MarketLifecycleService._retained": "test_retention_filters_without_writing_during_market_reads",
-        "app.services.market_lifecycle.MarketLifecycleService._store": "test_dispatch_prunes_stock_without_generation_api",
         "app.services.market_lifecycle.MarketLifecycleService.present": "test_retention_filters_without_writing_during_market_reads",
-        "app.services.market_lifecycle.MarketLifecycleService.prune_in_transaction": "test_same_city_dispatch_preserves_departure_and_prunes_atomically",
     }
 )
 
@@ -781,7 +779,7 @@ FUNCTION_TESTS.update(
         "app.services.economy_audit.summarize_economy": "test_economy_audit_is_typed_and_reproducible",
         "app.services.game.GameService.vehicle_coverage": "test_market_presentation_filters_coverage_for_requested_vehicle",
         "app.services.market_lifecycle.MarketLifecycleService.vehicle_diagnostics": "test_vehicle_projection_api_enforces_owned_idle_selection",
-        "app.services.market_lifecycle.MarketLifecycleService.read_market": "test_local_market_read_projects_coverage_without_durable_demand",
+        "app.services.market_lifecycle.MarketLifecycleService.read_market": "test_vehicle_projection_api_enforces_owned_idle_selection",
         "app.services.market_lifecycle.MarketLifecycleService._retained_from": "test_vehicle_projection_api_enforces_owned_idle_selection",
         "app.services.market_lifecycle.MarketLifecycleService._present_from": "test_vehicle_projection_api_enforces_owned_idle_selection",
         "app.services.market_lifecycle.MarketLifecycleService._route_snapshot": "test_vehicle_projection_api_enforces_owned_idle_selection",
@@ -808,7 +806,6 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.services.market_lifecycle.MarketLifecycleService._vehicle_diagnostics_in_transaction": "test_vehicle_projection_api_enforces_owned_idle_selection",
     }
 )
 

@@ -10,18 +10,9 @@ from app.api.v1.game_projection import (
     project_vehicle,
 )
 from app.repositories.game_database import SqliteGameDatabase
-from app.repositories.game_state import SqliteGameUnitOfWork
-from app.services.cost_profiles import VehicleCostResolver
-from app.services.dispatch_eligibility import DispatchEligibilityService
-from app.services.dispatch_planning import DispatchPlanningService
 from app.services.fleet import FleetService
-from app.services.game import GameService
-from app.services.market_lifecycle import MarketLifecycleService
-from app.services.player_initialization import PlayerInitializationService
-from app.services.transport_dispatch import TransportDispatchService
-from app.services.transport_settlement import TransportSettlementService
-from app.services.vehicle_location import VehicleLocationResolver
 from tests.support.game_clock import set_game_clock
+from tests.support.game_service import build_fixture_game
 from tests.support.market import seed_test_offers
 
 
@@ -33,49 +24,14 @@ def relational_game(game, tmp_path):
         connection.execute(
             "INSERT INTO users VALUES ('owner', 'Owner', 'test-only', 0)"
         )
-    unit = SqliteGameUnitOfWork(database, "owner")
-    lifecycle = MarketLifecycleService(
-        unit,
-        game.market,
-        game.market_scope,
-        game.now,
-    )
-    planning = DispatchPlanningService(
-        game.transport_dispatch.planning.router,
-        VehicleCostResolver(game.catalogue),
-        game.transport_dispatch.planning.anchors,
+    return build_fixture_game(
+        database,
+        "owner",
         game.world,
-    )
-    settlement = TransportSettlementService(
-        unit,
-        game.now,
-        None,
-    )
-    dispatch = TransportDispatchService(
-        unit,
-        game.market,
-        planning,
-        DispatchEligibilityService(game.market.candidates),
-        VehicleLocationResolver(game.world),
-        settlement,
-        game.now,
-        1.0,
-        lifecycle.prune_in_transaction,
-    )
-    service = GameService(
-        unit,
-        game.world,
-        game.market,
         game.catalogue,
-        game.market_scope,
+        game.market,
         game.now,
-        1.0,
-        lifecycle,
-        PlayerInitializationService(unit, game.world, game.catalogue),
-        settlement,
-        dispatch,
     )
-    return service
 
 
 async def test_relational_game_use_cases_preserve_atomic_settlement(
@@ -156,27 +112,30 @@ async def test_game_workflows_return_typed_values_and_reject_changed_offer(
     assert isinstance(quote, ContractQuote)
     assert isinstance(quote.route, RouteSnapshot)
     player = game.state_repository.get_player()
-    original_route = game.transport_dispatch.planning.router.route
+    readiness = game.market_services.routes.readiness
+    original_load = readiness.load
+    changed = False
 
-    async def route_while_offer_changes(*coordinates):
-        route = await original_route(*coordinates)
-        game.state_repository.replace_offers(
-            tuple(
-                replace(
-                    item, rate_eur_per_km_ton=item.rate_eur_per_km_ton + 0.01
+    def load_while_offer_changes(*facilities):
+        nonlocal changed
+        route = original_load(*facilities)
+        if not changed:
+            changed = True
+            game.state_repository.replace_offers(
+                tuple(
+                    replace(
+                        item,
+                        rate_eur_per_km_ton=(item.rate_eur_per_km_ton + 0.01),
+                    )
+                    if item.id == offer.id
+                    else item
+                    for item in game.state_repository.list_offers()
                 )
-                if item.id == offer.id
-                else item
-                for item in game.state_repository.list_offers()
             )
-        )
+
         return route
 
-    monkeypatch.setattr(
-        game.transport_dispatch.planning.router,
-        "route",
-        route_while_offer_changes,
-    )
+    monkeypatch.setattr(readiness, "load", load_while_offer_changes)
     with pytest.raises(ValueError, match="geändert"):
         await game.dispatch(offer.id, "truck_01")
     assert game.state_repository.get_player() == player
@@ -184,7 +143,7 @@ async def test_game_workflows_return_typed_values_and_reject_changed_offer(
     assert game.list_transports() == ()
 
 
-async def test_quote_routes_missing_snapshot_coordinates_by_facility_uid(
+async def test_quote_loads_prepared_route_by_facility_identity(
     game,
 ):
     from dataclasses import replace
@@ -194,14 +153,15 @@ async def test_quote_routes_missing_snapshot_coordinates_by_facility_uid(
     game.state_repository.replace_offers(
         (replace(offer, origin=replace(offer.origin, coordinates=None)),)
     )
+    readiness = game.market_services.routes.readiness
     with patch.object(
-        game.transport_dispatch.planning.router,
-        "route",
-        wraps=game.transport_dispatch.planning.router.route,
-    ) as routed:
+        readiness,
+        "load",
+        wraps=readiness.load,
+    ) as loaded:
         quote = await game.quote_contract(offer.id, "truck_01")
 
     assert quote.contract.origin.coordinates is None
     assert quote.dispatch_route is not None
     assert quote.dispatch_route.pickup.coordinates is None
-    assert routed.await_count >= 1
+    assert loaded.call_count >= 1

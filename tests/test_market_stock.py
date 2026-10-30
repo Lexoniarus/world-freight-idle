@@ -950,7 +950,7 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
         settlement,
         game.now,
         game.time_scale,
-        lifecycle.prune_in_transaction,
+        prep.demand,
         prep.stock,
     )
     other = GameService(
@@ -970,6 +970,7 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
         ),
         settlement,
         dispatch_service,
+        prep,
     )
     barrier = Barrier(2)
     original = TransportDispatchService.quote_contract

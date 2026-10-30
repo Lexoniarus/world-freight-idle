@@ -14,6 +14,7 @@ from app.domain.transports import ActiveTransport
 from app.services.dispatch_eligibility import DispatchEligibilityService
 from app.services.dispatch_planning import DispatchPlanningService
 from app.services.market_components import MarketComponents
+from app.services.player_market_demand import PlayerMarketDemandService
 from app.services.player_market_stock import PlayerMarketStockContext
 from app.services.transport_settlement import TransportSettlementService
 from app.services.vehicle_location import VehicleLocationResolver
@@ -33,8 +34,8 @@ class TransportDispatchService:
     settlement: TransportSettlementService
     clock: Callable[[], float]
     time_scale: float
-    prune_market: Callable[[], None]
-    stock: PlayerMarketStockContext | None = None
+    market_demand: PlayerMarketDemandService
+    stock: PlayerMarketStockContext
 
     async def quote_contract(
         self, contract_id: str, vehicle_id: str
@@ -108,10 +109,9 @@ class TransportDispatchService:
         repository.save_player(player)
         repository.save_vehicle(vehicle)
         repository.save_transport(trip)
-        if self.stock is not None:
-            self.stock.stock.consume(contract_id, self.clock())
+        self.stock.stock.consume(contract_id, self.clock())
         repository.remove_offer(contract_id)
-        self.prune_market()
+        self.market_demand.invalidate()
         LOGGER.info(
             "Trip dispatched",
             extra={

@@ -66,6 +66,7 @@ def seed_test_offers(service: GameService, count: int = 30) -> None:
         for index, candidate in enumerate(selected[:count])
     )
     service.state_repository.replace_offers(offers)
+    service.market_services.routes.bind(offers)
 
 
 def make_stock_batch(game, preparation):
@@ -146,4 +147,6 @@ def bind_preparation(game, database):
     game.settlement.market_demand = preparation.demand
     game.transport_dispatch.planning.routes = preparation.routes
     game.transport_dispatch.stock = preparation.stock
+    game.transport_dispatch.market_demand = preparation.demand
+    game.market_services = preparation
     return preparation

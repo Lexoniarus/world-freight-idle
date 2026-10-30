@@ -148,7 +148,7 @@ def test_reset_restores_playable_state(game: GameService):
     assert state["player"]["cash"] == 175000
     assert state["player"]["completed"] == 0
     assert len(state["vehicles"]) == 1
-    demand.request.assert_called_once_with(changed=True)
+    demand.invalidate.assert_called_once_with()
 
 
 def test_find_contract_returns_match_and_raises(game: GameService):

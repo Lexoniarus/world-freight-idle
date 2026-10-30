@@ -18,9 +18,7 @@ def set_game_clock(
     game.market_lifecycle.clock = clock
     game.settlement.clock = clock
     game.transport_dispatch.clock = clock
-    if game.market_lifecycle.demand is not None:
-        game.market_lifecycle.demand.clock = clock
-    if game.market_lifecycle.routes is not None:
-        game.market_lifecycle.routes.readiness.clock = clock
+    game.market_services.demand.clock = clock
+    game.market_services.routes.readiness.clock = clock
     if route_preparation is not None:
         route_preparation.clock = clock

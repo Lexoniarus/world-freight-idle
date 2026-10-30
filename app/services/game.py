@@ -22,6 +22,7 @@ from app.services.market_components import MarketComponents
 from app.services.market_lifecycle import MarketLifecycleService
 from app.services.market_scope import MarketScopeResolver
 from app.services.player_initialization import PlayerInitializationService
+from app.services.player_market_services import PlayerMarketServices
 from app.services.transport_dispatch import TransportDispatchService
 from app.services.transport_settlement import TransportSettlementService
 
@@ -41,6 +42,7 @@ class GameService:
     initialization: PlayerInitializationService
     settlement: TransportSettlementService
     transport_dispatch: TransportDispatchService
+    market_services: PlayerMarketServices
     state_repository: GameStateRepository = field(init=False)
 
     def __post_init__(self) -> None:
@@ -54,8 +56,7 @@ class GameService:
 
     def preparation_status(self) -> PreparationStatus | None:
         """Expose typed progress for the authenticated player's market."""
-        demand = self.market_lifecycle.demand
-        return demand.status() if demand is not None else None
+        return self.market_services.demand.status()
 
     async def quote_contract(
         self, contract_id: str, vehicle_id: str

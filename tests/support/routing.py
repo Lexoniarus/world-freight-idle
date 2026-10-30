@@ -1,14 +1,119 @@
 """Shared routing doubles and factories for isolated tests."""
 
+from collections.abc import Callable, Iterable, Iterator
+from contextlib import contextmanager
+from hashlib import sha256
+
 from app.domain.geography import Address, City, Coordinates, Country
+from app.domain.ports import WorldCatalogue
 from app.domain.routing_anchors import (
     LocateResult,
     RoutingAnchor,
     RoutingAnchorStatus,
     RoutingCandidate,
 )
+from app.domain.routing_readiness import (
+    RoutePayload,
+    RouteReference,
+    RoutingRelation,
+    relation_identity,
+)
 from app.domain.transports import RouteSnapshot
 from app.domain.world import Facility
+from app.domain.world_scopes import WorldScope
+
+
+class FixtureRoutingReadiness:
+    """Expose deterministic prepared evidence without provider work."""
+
+    def __init__(
+        self,
+        world: WorldCatalogue,
+        clock: Callable[[], float],
+    ) -> None:
+        """Index the injected immutable catalogue for local route reads."""
+        self.world = world
+        self.clock = clock
+
+    @contextmanager
+    def reading(
+        self,
+        pairs: Iterable[tuple[str, str]] = (),
+    ) -> Iterator[None]:
+        """Match the production evidence read boundary without I/O."""
+        del pairs
+        yield
+
+    def fingerprint(self, origin: str, destination: str) -> str:
+        """Return a stable test-only evidence fingerprint."""
+        return sha256(f"fixture:{origin}:{destination}".encode()).hexdigest()
+
+    def ready(self, origin: str, destination: str) -> RouteReference:
+        """Return the stable prepared reference for one directed relation."""
+        return RouteReference(
+            relation_identity(origin, destination),
+            self.fingerprint(origin, destination),
+        )
+
+    def current(self, origin: str, destination: str) -> RoutingRelation:
+        """Return current ready evidence for worker projections."""
+        return RoutingRelation(
+            self.ready(origin, destination),
+            origin,
+            destination,
+            self.fingerprint(origin, destination),
+            "ready",
+            None,
+            None,
+            self.clock(),
+        )
+
+    def load(self, origin: str, destination: str) -> RoutePayload:
+        """Build stable local metrics from catalogue coordinates."""
+        scope = WorldScope(self.world.read())
+        start = scope.facility(origin).coordinates
+        end = scope.facility(destination).coordinates
+        if start is None or end is None:
+            raise ValueError("Fixture route requires catalogue coordinates.")
+        return RoutePayload(
+            (
+                (start.longitude, start.latitude),
+                (end.longitude, end.latitude),
+            ),
+            400.0,
+            14400.0,
+            "fixture-router",
+        )
+
+
+class MemoryOfferRouteStore:
+    """Keep fixture offer bindings behind the production store port."""
+
+    def __init__(self) -> None:
+        """Start with no published offer references."""
+        self.items: dict[str, RouteReference] = {}
+
+    def get(self, offer_id: str) -> RouteReference | None:
+        """Return one bound route reference."""
+        return self.items.get(offer_id)
+
+    def get_many(
+        self,
+        offer_ids: tuple[str, ...],
+    ) -> dict[str, RouteReference]:
+        """Return existing bindings for the requested offers."""
+        return {
+            offer_id: self.items[offer_id]
+            for offer_id in offer_ids
+            if offer_id in self.items
+        }
+
+    def replace(
+        self,
+        references: tuple[tuple[str, RouteReference], ...],
+    ) -> None:
+        """Replace all bindings like the relational implementation."""
+        self.items = dict(references)
 
 
 class MemoryAnchorStore:

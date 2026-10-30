@@ -15,7 +15,7 @@ from tests.support.game import other_facility_offer
 from tests.support.game_clock import set_game_clock
 
 
-async def test_same_city_dispatch_preserves_departure_and_prunes_atomically(
+async def test_same_city_dispatch_preserves_departure_and_invalidates_demand(
     game,
 ):
     offer = other_facility_offer(game)
@@ -30,7 +30,10 @@ async def test_same_city_dispatch_preserves_departure_and_prunes_atomically(
     assert trip.journey == quote.journey
     assert trip.operating_cost_eur == quote.economics.operating_cost_eur
     assert vehicle.energy_level == before.energy_level
-    assert game.state_repository.list_offers() == ()
+    assert offer.id not in {
+        item.id for item in game.state_repository.list_offers()
+    }
+    assert game.list_contracts() == []
 
 
 async def test_dispatch_failure_rolls_back_reservation_and_market(game):
@@ -61,13 +64,15 @@ async def test_dispatch_commits_before_followup_market_reads(game):
     assert game.get_vehicle("truck_01").location == trip.dispatch_route.start
     assert game.player_state().cash == cash - trip.operating_cost_eur
     assert game.state_repository.list_active_transports() == (trip,)
-    assert not game.state_repository.list_offers()
-    game.list_contracts()
+    assert offer.id not in {
+        item.id for item in game.state_repository.list_offers()
+    }
+    assert game.list_contracts() == []
     assert game.state_repository.list_active_transports() == (trip,)
     assert game.player_state().cash == cash - trip.operating_cost_eur
 
 
-async def test_dispatch_prunes_stock_without_generation_api(game):
+async def test_dispatch_retains_stock_for_another_idle_vehicle(game):
     offer = other_facility_offer(game)
     first = game.get_vehicle("truck_01")
     model = next(
@@ -127,18 +132,6 @@ async def test_arrival_activates_city_and_preserves_historical_terms(
     assert offers == []
 
 
-def test_local_market_read_projects_coverage_without_durable_demand(game):
-    game.market_lifecycle.demand = None
-
-    result = game.market_lifecycle.read_market("truck_01")
-
-    assert result.contracts
-    assert result.preparation is None
-    assert all(
-        item.vehicle_id == "truck_01" for item in result.vehicle_coverage
-    )
-
-
 def test_retention_filters_without_writing_during_market_reads(game):
     offers = game.list_contracts()
     first = offers[0]
@@ -147,6 +140,7 @@ def test_retention_filters_without_writing_during_market_reads(game):
     )
     expired = replace(first, id="expiring", expires_at=game.now() + 30)
     game.state_repository.replace_offers((*offers, legacy, expired))
+    game.market_services.routes.bind((*offers, legacy, expired))
     assert game.list_contracts() == offers
     assert game.contract_choices(offers)[0].eligible_vehicle_ids == (
         "truck_01",
