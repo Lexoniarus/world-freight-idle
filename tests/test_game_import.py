@@ -9,11 +9,6 @@ from unittest.mock import patch
 
 import pytest
 
-from app.api.v1.game_projection import (
-    project_contract,
-    project_transport,
-    project_vehicle,
-)
 from app.bootstrap import (
     GameRuntime,
     build_game_importer,
@@ -22,9 +17,6 @@ from app.bootstrap import (
 from app.config import Settings
 from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.errors import PersistenceError
-from app.domain.journeys import unmetered_journey
-from app.domain.transports import ActiveTransport, RouteSnapshot
-from app.domain.world_scopes import WorldScope
 from app.repositories.database_backup import backup_database
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameStateRepository
@@ -34,94 +26,11 @@ from app.repositories.legacy_game_import import (
 )
 from app.repositories.legacy_import_mapping import read_legacy_profile
 from app.services.auth import PasswordHasher
-
-
-@pytest.fixture
-def legacy_source(tmp_path, game):
-    now = game.now()
-    vehicle = game.state_repository.list_vehicles()[0]
-    offer = next(
-        o
-        for o in game.state_repository.list_offers()
-        if o.origin.facility_uid == vehicle.facility_uid
-        and o.tons <= vehicle.capacity_tons
-    )
-    offer = replace(
-        offer,
-        created_at=now - 500,
-        expires_at=now + 500,
-        market_model="nhm_v1",
-        market_context=None,
-        payload_band="heavy",
-    )
-    trip = ActiveTransport(
-        "trip-1",
-        vehicle.id,
-        HistoricalContractSnapshot.from_offer(offer),
-        offer.origin,
-        offer.destination,
-        RouteSnapshot(
-            ((13.0, 52.0), (14.0, 53.0)), 100, 120, "saved-provider"
-        ),
-        now - 120,
-        now - 1,
-        987,
-        142,
-        journey=unmetered_journey(
-            100,
-            (now - 1) - (now - 120),
-        ),
-    )
-    vehicle.start_trip()
-    expired = replace(
-        offer, id="expired", created_at=now - 2000, expires_at=now - 1000
-    )
-    state = {
-        "player": {"cash": 123456, "completed": 37, "reputation": 41},
-        "vehicles": [legacy_vehicle_projection(vehicle)],
-        "contracts": [project_contract(offer), project_contract(expired)],
-        "active_trips": [legacy_transport_projection(trip)],
-    }
-    password_hash = PasswordHasher().hash_password("fixture-password-42")
-    path = tmp_path / "legacy.db"
-    with closing(sqlite3.connect(path)) as connection:
-        connection.executescript("""
-CREATE TABLE users(id TEXT PRIMARY KEY,username TEXT,password_hash TEXT,created_at REAL);
-CREATE TABLE kv(key TEXT PRIMARY KEY,value TEXT);
-CREATE TABLE sessions(token_hash TEXT,user_id TEXT,expires_at REAL);
-CREATE TABLE route_cache(cache_key TEXT,payload TEXT,updated_at REAL);
-""")
-        for uid in ("a", "b", "c"):
-            connection.execute(
-                "INSERT INTO users VALUES (?,?,?,?)",
-                (uid, "User_" + uid, password_hash, 100),
-            )
-            connection.executemany(
-                "INSERT INTO kv VALUES (?,?)",
-                [
-                    (f"user:{uid}:{key}", json.dumps(value))
-                    for key, value in state.items()
-                ],
-            )
-        connection.execute(
-            "INSERT INTO sessions VALUES ('old-session','a',9999999999)"
-        )
-        connection.commit()
-    importer = LegacyGameImporter(
-        path,
-        WorldScope(game.world.read()),
-        "nhm_v1",
-        game.catalogue.list_models(),
-    )
-    return path, importer, state, now, password_hash
-
-
-def update_legacy(path, key, value):
-    with closing(sqlite3.connect(path)) as connection:
-        connection.execute(
-            "UPDATE kv SET value=? WHERE key=?", (json.dumps(value), key)
-        )
-        connection.commit()
+from tests.support.legacy_fixtures import (
+    legacy_transport_projection,
+    legacy_vehicle_projection,
+    update_legacy,
+)
 
 
 def without_city_uids(value):
@@ -648,30 +557,3 @@ def test_global_demo_exclusion_requires_explicit_choice(
     update_legacy(path, "user:a:world_state_version", 2)
     with pytest.raises(PersistenceError):
         explicit.inspect(now)
-
-
-def legacy_vehicle_projection(vehicle):
-    """Build only pre-energy fields for the explicit old-format fixture."""
-    return {
-        key: value
-        for key, value in project_vehicle(vehicle).items()
-        if key not in {"energy", "energy_level", "top_speed_kmh"}
-    }
-
-
-def legacy_transport_projection(trip):
-    """Build the pre-energy transport contract, excluding new projections."""
-    return {
-        key: value
-        for key, value in project_transport(trip).items()
-        if key
-        not in {
-            "journey",
-            "progress",
-            "start",
-            "approach_distance_km",
-            "delivery_distance_km",
-            "route_legs",
-            "cost_breakdown",
-        }
-    }

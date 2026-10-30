@@ -23,6 +23,7 @@ from app.services.transport_settlement import TransportSettlementService
 from app.services.vehicle_location import VehicleLocationResolver
 from tests.support.catalogues import WORLD_PATH
 from tests.support.game import create_active_trip
+from tests.support.legacy_fixtures import legacy_source as legacy_source
 from tests.support.market import seed_test_offers
 from tests.support.market_fixtures import (
     city_market as city_market,

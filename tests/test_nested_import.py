@@ -19,8 +19,7 @@ from app.repositories.legacy_import_mapping import (
     read_legacy_sources,
     require_legacy_array,
 )
-from tests.test_game_import import legacy_source as legacy_source
-from tests.test_game_import import update_legacy
+from tests.support.legacy_fixtures import update_legacy
 
 SOURCE = {
     "url": "https://example.test/evidence",
