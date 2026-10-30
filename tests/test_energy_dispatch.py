@@ -106,20 +106,21 @@ async def test_energy_quote_dispatch_pause_and_offline_settlement(
 async def test_dispatch_replans_after_routing_and_settlement_rolls_back(game):
     vehicle = prepare_electric_vehicle(game)
     contract = first_berlin_contract(game)
-    original_route = game.transport_dispatch.planning.router.route
+    readiness = game.market_services.routes.readiness
+    original_load = readiness.load
+    changed = False
 
-    async def route_then_change_energy(*args):
-        route = await original_route(*args)
-        current = game.get_vehicle(vehicle.id)
-        current.refill_energy()
-        game.state_repository.save_vehicle(current)
+    def load_then_change_energy(*args):
+        nonlocal changed
+        route = original_load(*args)
+        if not changed:
+            changed = True
+            current = game.get_vehicle(vehicle.id)
+            current.refill_energy()
+            game.state_repository.save_vehicle(current)
         return route
 
-    with patch.object(
-        game.transport_dispatch.planning.router,
-        "route",
-        side_effect=route_then_change_energy,
-    ):
+    with patch.object(readiness, "load", side_effect=load_then_change_energy):
         trip = await game.dispatch(contract["id"], vehicle.id)
     assert trip.journey.stop_count == 0
     assert trip.journey.segments[0].start_energy == 100
@@ -151,26 +152,30 @@ async def test_dispatch_replans_after_routing_and_settlement_rolls_back(game):
 
 async def test_quote_rejects_offer_changed_during_routing(game):
     contract = first_berlin_contract(game)
-    original_route = game.transport_dispatch.planning.router.route
+    readiness = game.market_services.routes.readiness
+    original_load = readiness.load
+    changed = False
 
-    async def route_then_change_offer(*args):
-        route = await original_route(*args)
-        offers = game.state_repository.list_offers()
-        game.state_repository.replace_offers(
-            tuple(
-                replace(o, rate_eur_per_km_ton=o.rate_eur_per_km_ton + 0.01)
-                if o.id == contract["id"]
-                else o
-                for o in offers
+    def load_then_change_offer(*args):
+        nonlocal changed
+        route = original_load(*args)
+        if not changed:
+            changed = True
+            offers = game.state_repository.list_offers()
+            game.state_repository.replace_offers(
+                tuple(
+                    replace(
+                        offer,
+                        rate_eur_per_km_ton=(offer.rate_eur_per_km_ton + 0.01),
+                    )
+                    if offer.id == contract["id"]
+                    else offer
+                    for offer in offers
+                )
             )
-        )
         return route
 
-    with patch.object(
-        game.transport_dispatch.planning.router,
-        "route",
-        route_then_change_offer,
-    ):
+    with patch.object(readiness, "load", load_then_change_offer):
         with pytest.raises(ValueError, match="geändert"):
             await game.quote_contract(contract["id"], "truck_01")
     assert game.get_vehicle("truck_01").status == "idle"

@@ -228,10 +228,7 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
         selection=MarketSelectionService(market_services.stock.policy),
     )
     planning = DispatchPlanningService(
-        runtime.router,
         VehicleCostResolver(runtime.catalogue),
-        runtime.anchors,
-        runtime.world,
         market_services.routes,
     )
     settlement = TransportSettlementService(

@@ -201,21 +201,26 @@ async def test_parallel_transports_and_offline_settlement(game, catalogue):
 async def test_simultaneous_dispatch_revalidates_after_routing(game):
     arrived = asyncio.Event()
     release = asyncio.Event()
-    original = game.transport_dispatch.planning.router.route
+    original = type(game.transport_dispatch).quote_contract
 
-    async def slow_route(*args):
+    async def slow_quote(service, *args):
+        quote = await original(service, *args)
         arrived.set()
         await release.wait()
-        return await original(*args)
+        return quote
 
-    game.transport_dispatch.planning.router.route = slow_route
     contract = first_berlin_contract(game)
-    task = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
-    await arrived.wait()
-    second = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
-    await asyncio.sleep(0)
-    release.set()
-    results = await asyncio.gather(task, second, return_exceptions=True)
+    with patch.object(
+        type(game.transport_dispatch),
+        "quote_contract",
+        slow_quote,
+    ):
+        task = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
+        await arrived.wait()
+        second = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
+        await asyncio.sleep(0)
+        release.set()
+        results = await asyncio.gather(task, second, return_exceptions=True)
     assert sum(isinstance(result, ActiveTransport) for result in results) == 1
     assert sum(isinstance(result, KeyError) for result in results) == 1
     trip = [project_transport(value) for value in game.list_transports()][0]
@@ -235,9 +240,10 @@ async def test_expired_contract_and_failed_routing_do_not_charge(game):
     with pytest.raises(KeyError):
         project_transport(await game.dispatch(contract.id, "truck_01"))
     game.state_repository.replace_offers((contract,))
+    readiness = game.market_services.routes.readiness
     with patch.object(
-        game.transport_dispatch.planning.router,
-        "route",
+        readiness,
+        "load",
         side_effect=RuntimeError("offline"),
     ):
         with pytest.raises(RuntimeError):

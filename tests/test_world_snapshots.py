@@ -1,6 +1,6 @@
 """Historical game snapshots remain usable without current reference data."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -20,20 +20,12 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
     monkeypatch, game
 ):
     contract = first_berlin_contract(game)
-    original = game.transport_dispatch.planning.router.route
-    game.transport_dispatch.planning.router.route = AsyncMock(
-        side_effect=original
-    )
-    quote = project_quote(
-        await game.quote_contract(contract["id"], "truck_01")
-    )
-    assert game.transport_dispatch.planning.router.route.await_count == 2
-    game.transport_dispatch.planning.router.route.assert_any_await(
-        contract["origin"]["lat"],
-        contract["origin"]["lon"],
-        contract["destination"]["lat"],
-        contract["destination"]["lon"],
-    )
+    readiness = game.market_services.routes.readiness
+    with patch.object(readiness, "load", wraps=readiness.load) as loaded:
+        quote = project_quote(
+            await game.quote_contract(contract["id"], "truck_01")
+        )
+    assert loaded.call_count == 2
     trip = project_transport(await game.dispatch(contract["id"], "truck_01"))
     with patch.object(
         game.world, "read", side_effect=WorldCatalogueError("offline")

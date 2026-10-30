@@ -12,7 +12,6 @@ from app.api.v1.traffic_projection import project_traffic
 from app.domain.dispatch_journey import plan_dispatch_journey
 from app.domain.economics import CostBreakdown
 from app.domain.energy import EnergyProfile
-from app.domain.errors import RoutingError
 from app.domain.geography import City, Coordinates, Country
 from app.domain.pricing import calculate_price
 from app.domain.routes import DispatchRoutePlan, RouteSnapshot
@@ -185,38 +184,38 @@ async def test_planner_routes_from_checkpoint_by_facility_identity(game):
     offer = other_facility_offer(game)
     start = game.get_vehicle("truck_01").location
     assert start is not None
-    router = game.transport_dispatch.planning.router
+    readiness = game.market_services.routes.readiness
 
-    with patch.object(router, "route", wraps=router.route) as routed:
+    with patch.object(readiness, "load", wraps=readiness.load) as loaded:
         plan = await game.transport_dispatch.planning.route(start, offer)
-        assert routed.await_count == 4
+        assert loaded.call_count == 2
         assert plan.start == start
         assert plan.approach is not None
 
-    with patch.object(router, "route", wraps=router.route) as routed:
+    with patch.object(readiness, "load", wraps=readiness.load) as loaded:
         direct = await game.transport_dispatch.planning.route(
             offer.origin, offer
         )
-        assert routed.await_count == 2
+        assert loaded.call_count == 1
         assert direct.approach is None
 
     colocated_display = replace(
         start,
         coordinates=offer.origin.coordinates,
     )
-    with patch.object(router, "route", wraps=router.route) as routed:
+    with patch.object(readiness, "load", wraps=readiness.load) as loaded:
         plan = await game.transport_dispatch.planning.route(
             colocated_display, offer
         )
-        assert routed.await_count == 4
+        assert loaded.call_count == 2
         assert plan.approach is not None
 
     missing_start_display = replace(start, coordinates=None)
-    with patch.object(router, "route", wraps=router.route) as routed:
+    with patch.object(readiness, "load", wraps=readiness.load) as loaded:
         plan = await game.transport_dispatch.planning.route(
             missing_start_display, offer
         )
-        assert routed.await_count == 4
+        assert loaded.call_count == 2
         assert plan.start.coordinates is None
         assert plan.approach is not None
 
@@ -224,12 +223,12 @@ async def test_planner_routes_from_checkpoint_by_facility_identity(game):
         offer,
         destination=replace(offer.destination, coordinates=None),
     )
-    with patch.object(router, "route", wraps=router.route) as routed:
+    with patch.object(readiness, "load", wraps=readiness.load) as loaded:
         plan = await game.transport_dispatch.planning.route(
             start,
             missing_destination_display,
         )
-        assert routed.await_count == 4
+        assert loaded.call_count == 2
         assert plan.destination.coordinates is None
 
 
@@ -238,22 +237,8 @@ async def test_approach_dispatch_reload_public_privacy_and_offline_arrival(
 ):
     offer = other_facility_offer(game)
     start = game.get_vehicle("truck_01").location
-    original_route = game.transport_dispatch.planning.router.route
-
-    async def unlocked_route(*args):
-        # A second connection can acquire the writer while routing awaits.
-        with database.connect() as connection:
-            connection.execute("BEGIN IMMEDIATE")
-            connection.rollback()
-        return await original_route(*args)
-
-    with patch.object(
-        game.transport_dispatch.planning.router,
-        "route",
-        side_effect=unlocked_route,
-    ):
-        quote = await game.quote_contract(offer.id, "truck_01")
-        trip = await game.dispatch(offer.id, "truck_01")
+    quote = await game.quote_contract(offer.id, "truck_01")
+    trip = await game.dispatch(offer.id, "truck_01")
     projected = project_quote(quote)
     assert projected["start"]["facility_uid"] == start.facility_uid
     assert projected["approach_distance_km"] == 400
@@ -328,24 +313,25 @@ async def test_approach_dispatch_reload_public_privacy_and_offline_arrival(
     assert game.player_state().cash == cash + trip.payout_eur
 
 
-async def test_changed_departure_and_provider_failure_never_dispatch(game):
+async def test_changed_departure_and_missing_evidence_never_dispatch(game):
     offer = other_facility_offer(game)
     vehicle = game.get_vehicle("truck_01")
     cash = game.player_state().cash
-    route = game.transport_dispatch.planning.router.route
+    readiness = game.market_services.routes.readiness
+    load = readiness.load
+    changed = False
 
-    async def changed_location(*args):
-        result = await route(*args)
-        current = game.get_vehicle(vehicle.id)
-        current.reposition_within_city(offer.origin)
-        game.state_repository.save_vehicle(current)
+    def changed_location(*args):
+        nonlocal changed
+        result = load(*args)
+        if not changed:
+            changed = True
+            current = game.get_vehicle(vehicle.id)
+            current.reposition_within_city(offer.origin)
+            game.state_repository.save_vehicle(current)
         return result
 
-    with patch.object(
-        game.transport_dispatch.planning.router,
-        "route",
-        side_effect=changed_location,
-    ):
+    with patch.object(readiness, "load", side_effect=changed_location):
         with pytest.raises(ValueError, match="Fahrzeugstandort"):
             await game.dispatch(offer.id, vehicle.id)
     assert game.player_state().cash == cash
@@ -366,11 +352,11 @@ async def test_changed_departure_and_provider_failure_never_dispatch(game):
             await game.dispatch(offer.id, vehicle.id)
     game.state_repository.save_vehicle(vehicle)
     with patch.object(
-        game.transport_dispatch.planning.router,
-        "route",
-        side_effect=RoutingError("offline"),
+        readiness,
+        "load",
+        side_effect=ValueError("Straßenverbindung wird vorbereitet."),
     ):
-        with pytest.raises(RoutingError):
+        with pytest.raises(ValueError, match="vorbereitet"):
             await game.dispatch(offer.id, vehicle.id)
     with patch.object(
         type(game.transport_dispatch),
@@ -390,22 +376,23 @@ async def test_concurrent_approaches_reserve_and_charge_only_once(game):
     offer = other_facility_offer(game)
     before = game.get_vehicle("truck_01")
     cash = game.player_state().cash
-    original = game.transport_dispatch.planning.router.route
     barrier = asyncio.Event()
     calls = 0
+    original = type(game.transport_dispatch).quote_contract
 
-    async def overlapping_routes(*args):
+    async def overlapping_quotes(service, *args):
         nonlocal calls
+        quote = await original(service, *args)
         calls += 1
         if calls == 2:
             barrier.set()
         await barrier.wait()
-        return await original(*args)
+        return quote
 
     with patch.object(
-        game.transport_dispatch.planning.router,
-        "route",
-        side_effect=overlapping_routes,
+        type(game.transport_dispatch),
+        "quote_contract",
+        overlapping_quotes,
     ):
         results = await asyncio.gather(
             game.dispatch(offer.id, before.id),
@@ -420,17 +407,14 @@ async def test_concurrent_approaches_reserve_and_charge_only_once(game):
     assert game.get_vehicle(before.id).status == "enroute"
 
 
-@pytest.mark.parametrize("failure", ["remove_offer", "replace_offers"])
-async def test_approach_pruning_failure_rolls_back_complete_dispatch(
-    game, failure
-):
+async def test_offer_consumption_failure_rolls_back_complete_dispatch(game):
     offer = other_facility_offer(game)
     before = game.get_vehicle("truck_01")
     cash = game.player_state().cash
     offers = game.state_repository.list_offers()
     with patch.object(
         game.state_repository,
-        failure,
+        "remove_offer",
         side_effect=RuntimeError("write failed"),
     ):
         with pytest.raises(RuntimeError, match="write failed"):

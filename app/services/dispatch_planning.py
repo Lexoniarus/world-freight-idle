@@ -1,90 +1,53 @@
 """Plan road sections and quote the selected vehicle without persistence."""
 
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from app.domain.contracts import ContractOffer
 from app.domain.dispatch_journey import plan_dispatch_journey
 from app.domain.economics import journey_costs
 from app.domain.game import OwnedVehicle
-from app.domain.ports import TruckRouter, WorldCatalogue
 from app.domain.pricing import calculate_price
 from app.domain.results import ContractQuote
 from app.domain.routes import DispatchRoutePlan, RouteSnapshot
-from app.domain.routing_anchor_ports import RoutingAnchorResolverPort
-from app.domain.routing_anchors import RoutingCandidate
 from app.domain.world import FacilityLocationSnapshot
-from app.domain.world_scopes import WorldScope
 from app.services.cost_profiles import VehicleCostResolver
 from app.services.player_market_routes import PlayerMarketRouteService
-from app.services.routing_connections import RoutingConnectionValidator
 
 
 @dataclass(slots=True)
 class DispatchPlanningService:
     """Orchestrate injected routing and deterministic dispatch planning."""
 
-    router: TruckRouter
     costs: VehicleCostResolver
-    anchors: RoutingAnchorResolverPort
-    world: WorldCatalogue
-    routes: PlayerMarketRouteService | None = None
-    connections: RoutingConnectionValidator = field(
-        default_factory=RoutingConnectionValidator
-    )
+    routes: PlayerMarketRouteService
 
     async def route(
         self, start: FacilityLocationSnapshot, contract: ContractOffer
     ) -> DispatchRoutePlan:
         """Load prepared approach and delivery before a write transaction."""
-        if self.routes is not None and not self.routes.retained_current(
-            contract
-        ):
+        if not self.routes.retained_current(contract):
             raise ValueError("Straßenverbindung wird vorbereitet.")
         approach = None
-        selected: dict[str, RoutingCandidate] = {}
         if start.facility_uid != contract.origin.facility_uid:
-            approach = await self._route_between(
-                start, contract.origin, selected
-            )
-        delivery = await self._route_between(
-            contract.origin, contract.destination, selected
+            approach = self._load_prepared_route(start, contract.origin)
+        delivery = self._load_prepared_route(
+            contract.origin,
+            contract.destination,
         )
         return DispatchRoutePlan(
             start, contract.origin, contract.destination, delivery, approach
         )
 
-    async def _route_between(
+    def _load_prepared_route(
         self,
         start: FacilityLocationSnapshot,
         destination: FacilityLocationSnapshot,
-        selected: dict[str, RoutingCandidate] | None = None,
     ) -> RouteSnapshot:
-        """Resolve a prepared relation at the dispatch boundary."""
-        if self.routes is not None:
-            return self.routes.readiness.load(
-                start.facility_uid, destination.facility_uid
-            ).to_snapshot()
-        world = WorldScope(self.world.read())
-        connection = await self.connections.validate(
-            world.facility(start.facility_uid),
-            world.facility(destination.facility_uid),
-            self.router,
-            self.anchors,
-            time.time,
-            fixed=selected,
-        )
-        if selected is not None:
-            for anchor in (connection.origin, connection.destination):
-                assert anchor.anchor is not None
-                selected[anchor.facility_uid] = RoutingCandidate(
-                    anchor.anchor,
-                    anchor.snap_distance_m or 0.0,
-                    anchor.provider,
-                    anchor.provider_revision,
-                    anchor.method,
-                )
-        return connection.forward
+        """Load one certified relation without dispatch-time providers."""
+        return self.routes.readiness.load(
+            start.facility_uid,
+            destination.facility_uid,
+        ).to_snapshot()
 
     def quote(
         self,
@@ -94,26 +57,25 @@ class DispatchPlanningService:
         time_scale: float,
     ) -> ContractQuote:
         """Compose journey and economics from revalidated purchased values."""
-        if self.routes is not None:
-            if not self.routes.retained_current(contract):
-                raise ValueError("Straßenverbindung wurde geändert.")
-            current = self.routes.readiness
-            if (
-                current.load(
-                    contract.origin.facility_uid,
-                    contract.destination.facility_uid,
-                ).to_snapshot()
-                != route.delivery
-            ):
-                raise ValueError("Lieferroute wurde geändert.")
-            if (
-                route.approach is not None
-                and current.load(
-                    route.start.facility_uid, contract.origin.facility_uid
-                ).to_snapshot()
-                != route.approach
-            ):
-                raise ValueError("Anfahrtsroute wurde geändert.")
+        if not self.routes.retained_current(contract):
+            raise ValueError("Straßenverbindung wurde geändert.")
+        current = self.routes.readiness
+        if (
+            current.load(
+                contract.origin.facility_uid,
+                contract.destination.facility_uid,
+            ).to_snapshot()
+            != route.delivery
+        ):
+            raise ValueError("Lieferroute wurde geändert.")
+        if (
+            route.approach is not None
+            and current.load(
+                route.start.facility_uid, contract.origin.facility_uid
+            ).to_snapshot()
+            != route.approach
+        ):
+            raise ValueError("Anfahrtsroute wurde geändert.")
         if vehicle.location != route.start:
             raise ValueError(
                 "Fahrzeugstandort wurde während der Planung geändert."

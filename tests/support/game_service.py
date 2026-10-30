@@ -30,8 +30,6 @@ from tests.support.market_state import (
     MemoryPlayerMarketStockStore,
 )
 from tests.support.routing import (
-    FakeRouter,
-    FakeRoutingAnchorResolver,
     FixtureRoutingReadiness,
     MemoryOfferRouteStore,
 )
@@ -78,10 +76,7 @@ def build_fixture_game(
         MarketSelectionService(market_services.stock.policy),
     )
     planning = DispatchPlanningService(
-        FakeRouter(),
         VehicleCostResolver(catalogue),
-        FakeRoutingAnchorResolver(),
-        world,
         market_services.routes,
     )
     settlement = TransportSettlementService(

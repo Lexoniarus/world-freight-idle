@@ -291,9 +291,10 @@ async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(game):
 
 
 def test_market_reads_and_refresh_never_call_providers_or_generate(game):
+    readiness = game.market_services.routes.readiness
     with patch.object(
-        game.transport_dispatch.planning.router,
-        "route",
+        readiness,
+        "load",
         side_effect=AssertionError,
     ):
         retained = game.list_contracts()

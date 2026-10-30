@@ -66,9 +66,9 @@ FUNCTION_TESTS = {
     "app.domain.routes.DispatchRoutePlan.matches_route": "test_dispatch_route_matches_all_saved_facts_without_revalidation",
     "app.domain.routes.DispatchRoutePlan.legs": "test_dispatch_route_invariants_and_historical_mapping",
     "app.domain.dispatch_journey.plan_dispatch_journey": "test_dispatch_journey_preserves_leg_speeds_energy_and_boundary",
-    "app.services.dispatch_planning.DispatchPlanningService.route": "test_planner_routes_from_checkpoint_and_skips_colocated_pickup",
-    "app.services.dispatch_planning.DispatchPlanningService._route_between": "test_planner_routes_from_checkpoint_and_skips_colocated_pickup",
-    "app.services.dispatch_planning.DispatchPlanningService.quote": "test_changed_departure_and_provider_failure_never_dispatch",
+    "app.services.dispatch_planning.DispatchPlanningService.route": "test_planner_routes_from_checkpoint_by_facility_identity",
+    "app.services.dispatch_planning.DispatchPlanningService._load_prepared_route": "test_planner_routes_from_checkpoint_by_facility_identity",
+    "app.services.dispatch_planning.DispatchPlanningService.quote": "test_changed_departure_and_missing_evidence_never_dispatch",
     "app.repositories.transport_mapping.load_route": "test_dispatch_route_invariants_and_historical_mapping",
     "app.repositories.transport_mapping.load_dispatch_route": "test_dispatch_route_invariants_and_historical_mapping",
     "app.api.v1.dispatch_projection.project_dispatch_route": "test_approach_dispatch_reload_public_privacy_and_offline_arrival",
@@ -759,9 +759,6 @@ FUNCTION_TESTS.update(
         "app.services.dispatch_planning.DispatchPlanningService.route": (
             "test_dispatch_approach_uses_facility_identity_not_display_coordinate"
         ),
-        "app.services.dispatch_planning.DispatchPlanningService._route_between": (
-            "test_dispatch_routing_uses_anchors_not_display_coordinates"
-        ),
     }
 )
 
@@ -804,10 +801,7 @@ FUNCTION_TESTS.update(
     }
 )
 
-FUNCTION_TESTS.update(
-    {
-    }
-)
+FUNCTION_TESTS.update({})
 
 FUNCTION_TESTS["app.services.game.GameService.market_presentation"] = (
     "test_market_presentation_filters_coverage_for_requested_vehicle"
