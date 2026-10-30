@@ -17,7 +17,7 @@ from app.bootstrap import (
 from app.main import create_app
 from app.repositories.accounts import AccountRepository
 from app.repositories.relational_traffic import SqliteTrafficReader
-from tests.test_api import make_settings, make_static_files
+from tests.support.api import make_settings, make_static_files
 from tests.transport_fixtures import add_transport
 
 PASSWORD = "test-only-password-42"

@@ -14,8 +14,8 @@ from app.domain.errors import PersistenceError
 from app.main import create_app
 from app.repositories.analytics import SqliteAnalyticsReader
 from app.services.analytics import AnalyticsService, summarize, validate_scope
+from tests.support.api import make_settings, make_static_files
 from tests.support.game_clock import set_game_clock
-from tests.test_api import make_settings, make_static_files
 
 NOW = datetime(2026, 9, 25, 12, tzinfo=UTC).timestamp()
 

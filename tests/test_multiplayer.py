@@ -33,8 +33,8 @@ from tests.routing_fixtures import (
     install_fake_routing,
     prepare_client_market,
 )
+from tests.support.api import make_settings, make_static_files
 from tests.support.game_clock import set_game_clock
-from tests.test_api import make_settings, make_static_files
 from tests.test_game import first_berlin_contract
 from tests.transport_fixtures import add_transport
 

@@ -27,7 +27,7 @@ from app.repositories.database_backup import backup_database
 from app.services.fleet import build_owned_vehicle
 from scripts.update_test_profile import main, parse_assignments
 from tests.conftest import seed_test_offers
-from tests.test_api import make_settings
+from tests.support.api import make_settings
 from tests.test_game import first_berlin_contract
 from tests.transport_fixtures import add_transport
 

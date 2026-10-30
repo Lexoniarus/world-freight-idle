@@ -31,7 +31,7 @@ from app.repositories.state_snapshots import (
     dataclass_document,
     encode_snapshot,
 )
-from tests.test_api import FakeGame, make_settings, make_static_files
+from tests.support.api import FakeGame, make_settings, make_static_files
 
 
 @pytest.fixture

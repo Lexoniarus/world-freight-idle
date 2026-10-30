@@ -8,7 +8,7 @@ from app.domain.errors import WorldCatalogueError
 from app.domain.world import FacilityQuery
 from app.main import create_app
 from app.services.map_locations import MapLocationService
-from tests.test_api import make_settings, make_static_files
+from tests.support.api import make_settings, make_static_files
 
 
 @pytest.mark.asyncio

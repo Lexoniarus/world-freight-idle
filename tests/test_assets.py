@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.main import create_app
-from tests.test_api import make_settings, make_static_files
+from tests.support.api import make_settings, make_static_files
 
 
 def test_vehicle_asset_directory_is_served(tmp_path):
