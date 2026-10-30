@@ -25,16 +25,14 @@ from app.domain.game import OwnedVehicle, PlayerState
 from app.main import create_app
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.services.fleet import FleetService
-from tests.conftest import (
-    BERLIN_UID,
-)
 from tests.routing_fixtures import (
     install_fake_routing,
     prepare_client_market,
 )
 from tests.support.api import make_settings, make_static_files
+from tests.support.catalogues import BERLIN_UID
+from tests.support.game import first_berlin_contract
 from tests.support.game_clock import set_game_clock
-from tests.test_game import first_berlin_contract
 
 
 def test_catalogue_projects_all_offers_without_writing(catalogue):

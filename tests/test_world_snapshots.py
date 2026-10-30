@@ -12,8 +12,8 @@ from app.api.v1.game_projection import (
 from app.domain.energy import EnergyProfile
 from app.domain.errors import WorldCatalogueError
 from app.domain.game import OwnedVehicle
+from tests.support.game import first_berlin_contract
 from tests.support.game_clock import set_game_clock
-from tests.test_game import first_berlin_contract
 
 
 async def test_snapshot_routing_and_settlement_survive_catalogue_failure(

@@ -8,9 +8,6 @@ import pytest
 
 from app.bootstrap import GameRuntime, build_market_components
 from app.domain.contracts import ContractOffer
-from app.domain.transports import RouteSnapshot
-from app.domain.world import Facility
-from app.domain.world_scopes import WorldScope
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.provider_cache import SqliteProviderCache
@@ -25,43 +22,9 @@ from app.services.player_initialization import PlayerInitializationService
 from app.services.transport_dispatch import TransportDispatchService
 from app.services.transport_settlement import TransportSettlementService
 from app.services.vehicle_location import VehicleLocationResolver
-
-
-class FakeRouter:
-    async def route(
-        self,
-        origin_lat: float,
-        origin_lon: float,
-        destination_lat: float,
-        destination_lon: float,
-    ) -> RouteSnapshot:
-        return RouteSnapshot(
-            distance_km=400.0,
-            duration_seconds=14400.0,
-            coordinates=(
-                (origin_lon, origin_lat),
-                (destination_lon, destination_lat),
-            ),
-            provider="fake-router",
-        )
-
-
-class FakeRoutingAnchorResolver:
-    max_snap_distance_m = 1000.0
-
-    async def resolve(self, facility: Facility, *, force: bool = False):
-        from app.domain.routing_anchors import RoutingCandidate
-
-        if facility.coordinates is None:
-            return ()
-        return (
-            RoutingCandidate(
-                facility.coordinates,
-                0.0,
-                "fake-anchor",
-                None,
-            ),
-        )
+from tests.support.catalogues import WORLD_PATH
+from tests.support.game import create_active_trip
+from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 
 
 @pytest.fixture
@@ -69,16 +32,10 @@ def cache(database) -> SqliteProviderCache:
     return SqliteProviderCache(database)
 
 
-WORLD_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "data"
-    / "world_freight_company_facility_mvp.sqlite3"
-)
-BERLIN_UID = (
-    WorldScope(SqliteWorldCatalogue(WORLD_PATH).read())
-    .facility("berlin_westhafen")
-    .facility_uid
-)
+@pytest.fixture
+def active_trip(game):
+    """Persist one active transport for tests that require runtime state."""
+    return create_active_trip(game)
 
 
 @pytest.fixture

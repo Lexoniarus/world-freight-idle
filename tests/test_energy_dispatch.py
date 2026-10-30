@@ -12,8 +12,8 @@ from app.domain.energy import EnergyProfile
 from app.domain.errors import CatalogueError
 from app.repositories.relational_traffic import SqliteTrafficReader
 from tests.conftest import seed_test_offers
+from tests.support.game import first_berlin_contract
 from tests.support.game_clock import set_game_clock
-from tests.test_game import first_berlin_contract
 
 
 def prepare_electric_vehicle(game):

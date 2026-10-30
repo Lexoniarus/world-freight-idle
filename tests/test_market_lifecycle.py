@@ -11,16 +11,8 @@ from app.domain.errors import CatalogueError
 from app.domain.pricing import calculate_price
 from app.repositories.snapshot_mapping import load_historical_contract
 from app.services.fleet import build_owned_vehicle
+from tests.support.game import other_facility_offer
 from tests.support.game_clock import set_game_clock
-
-
-def other_facility_offer(game):
-    vehicle = game.get_vehicle("truck_01")
-    return next(
-        o
-        for o in game.list_contracts()
-        if o.origin.facility_uid != vehicle.facility_uid
-    )
 
 
 async def test_same_city_dispatch_preserves_departure_and_prunes_atomically(

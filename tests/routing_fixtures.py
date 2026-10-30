@@ -7,7 +7,7 @@ from app.bootstrap import (
     build_player_service,
     build_preparation_worker,
 )
-from tests.conftest import FakeRouter, FakeRoutingAnchorResolver
+from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 
 
 def install_fake_routing(runtime: GameRuntime) -> None:

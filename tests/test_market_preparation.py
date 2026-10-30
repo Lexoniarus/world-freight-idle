@@ -34,7 +34,7 @@ from app.services.stock_planning import StockPlanningService
 from app.services.stock_preparation import StockPreparationBatch
 from app.services.stock_publication import StockPublicationService
 from app.services.stock_snapshot import StockSnapshotReader
-from tests.conftest import FakeRouter, FakeRoutingAnchorResolver
+from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 
 T = TypeVar("T")
 

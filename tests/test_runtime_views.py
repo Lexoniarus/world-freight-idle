@@ -1,7 +1,6 @@
 """Compact polling retains authoritative facts without hydrating geometry."""
 
 import json
-import time
 from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -31,19 +30,7 @@ from app.repositories.state_snapshots import (
     dataclass_document,
     encode_snapshot,
 )
-from tests.support.api import FakeGame, make_settings, make_static_files
-
-
-@pytest.fixture
-def active_trip(game):
-    now = time.time()
-    trip = replace(FakeGame(game).trip, departed_at=now, arrives_at=now + 20)
-    with game.unit_of_work.transaction():
-        vehicle = game.get_vehicle(trip.vehicle_id)
-        vehicle.start_trip()
-        game.state_repository.save_vehicle(vehicle)
-        game.state_repository.save_transport(trip)
-    return trip
+from tests.support.api import make_settings, make_static_files
 
 
 def test_runtime_reads_exclude_geometry_and_keep_private_energy(

@@ -22,8 +22,8 @@ from app.repositories.transport_mapping import (
     load_dispatch_route,
     load_transport,
 )
+from tests.support.game import other_facility_offer
 from tests.support.game_clock import set_game_clock
-from tests.test_market_lifecycle import other_facility_offer
 
 
 @pytest.fixture

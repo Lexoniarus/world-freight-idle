@@ -15,11 +15,8 @@ from app.config import Settings
 from app.domain.energy import EnergyProfile
 from app.main import create_app, lifespan
 from app.services.game import GameService
-from tests.conftest import (
-    FakeRouter,
-    FakeRoutingAnchorResolver,
-)
 from tests.support.manual_clock import ManualClock
+from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 
 temporary = TemporaryDirectory(prefix="world-freight-browser-")
 external_database = os.getenv("WFI_BROWSER_DB_PATH")

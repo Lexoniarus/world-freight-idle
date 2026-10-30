@@ -36,8 +36,13 @@ from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.services.routing_anchors import RoutingAnchorResolver
 from app.services.routing_connections import RoutingConnectionValidator
 from app.services.routing_readiness import RoutingReadinessService
-from tests.conftest import WORLD_PATH, FakeRouter, FakeRoutingAnchorResolver
-from tests.support.routing import FakeGeocoder, FakeLocator
+from tests.support.catalogues import WORLD_PATH
+from tests.support.routing import (
+    FakeGeocoder,
+    FakeLocator,
+    FakeRouter,
+    FakeRoutingAnchorResolver,
+)
 
 WOLF = "53e47547-aa34-4234-a41c-4fe81bb86290"
 STENDAL = "18e6c54b-658c-4a10-ab92-d518bca060f7"

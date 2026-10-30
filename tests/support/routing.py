@@ -7,6 +7,7 @@ from app.domain.routing_anchors import (
     RoutingAnchorStatus,
     RoutingCandidate,
 )
+from app.domain.transports import RouteSnapshot
 from app.domain.world import Facility
 
 
@@ -80,6 +81,49 @@ class FakeGeocoder:
         if self.error is not None:
             raise self.error
         return self.result
+
+
+class FakeRouter:
+    """Return one deterministic truck route without provider access."""
+
+    async def route(
+        self,
+        origin_lat: float,
+        origin_lon: float,
+        destination_lat: float,
+        destination_lon: float,
+    ) -> RouteSnapshot:
+        """Connect the requested endpoints with stable route metrics."""
+        return RouteSnapshot(
+            distance_km=400.0,
+            duration_seconds=14400.0,
+            coordinates=(
+                (origin_lon, origin_lat),
+                (destination_lon, destination_lat),
+            ),
+            provider="fake-router",
+        )
+
+
+class FakeRoutingAnchorResolver:
+    """Expose each catalogue coordinate as one local routing candidate."""
+
+    max_snap_distance_m = 1000.0
+
+    async def resolve(
+        self, facility: Facility, *, force: bool = False
+    ) -> tuple[RoutingCandidate, ...]:
+        """Return a candidate only when the facility has coordinates."""
+        if facility.coordinates is None:
+            return ()
+        return (
+            RoutingCandidate(
+                facility.coordinates,
+                0.0,
+                "fake-anchor",
+                None,
+            ),
+        )
 
 
 def facility(

@@ -23,19 +23,9 @@ from app.domain.results import ContractQuote
 from app.domain.transports import RouteSnapshot
 from app.domain.world_scopes import WorldScope
 from app.services.game import GameService
-from tests.conftest import BERLIN_UID
+from tests.support.catalogues import BERLIN_UID
+from tests.support.game import first_berlin_contract
 from tests.transport_fixtures import add_transport
-
-
-def first_berlin_contract(game: GameService) -> dict:
-    return next(
-        contract
-        for contract in [
-            project_contract(item)
-            for item in game.state_repository.list_offers()
-        ]
-        if contract["origin_hub_id"] == BERLIN_UID
-    )
 
 
 def test_now_returns_wall_clock(game: GameService):
