@@ -10,7 +10,6 @@ from unittest.mock import patch
 import pytest
 
 from app.bootstrap import (
-    GameRuntime,
     build_game_importer,
     build_player_service,
 )
@@ -31,6 +30,7 @@ from tests.support.legacy_fixtures import (
     legacy_vehicle_projection,
     update_legacy,
 )
+from tests.support.runtime import build_test_runtime
 
 
 def without_city_uids(value):
@@ -104,16 +104,7 @@ def test_offline_import_preserves_profiles_history_and_settles_once(
         assert without_city_uids(
             legacy_vehicle_projection(repository.list_vehicles()[0])
         ) == without_city_uids(state["vehicles"][0])
-    runtime = GameRuntime(
-        database=database,
-        world=game.world,
-        router=game.transport_dispatch.planning.router,
-        anchors=game.transport_dispatch.planning.anchors,
-        market=game.market,
-        catalogue=game.catalogue,
-        market_scope=game.market_scope,
-        time_scale=1,
-    )
+    runtime = build_test_runtime(game, database)
     service = build_player_service(runtime, "a")
     assert service.reconcile_arrival()
     assert not service.reconcile_arrival()

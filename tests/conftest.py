@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from app.bootstrap import GameRuntime, build_market_components
+from app.bootstrap import build_market_components
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.provider_cache import SqliteProviderCache
@@ -33,6 +33,7 @@ from tests.support.market_fixtures import (
 )
 from tests.support.persistence_fixtures import relational as relational
 from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
+from tests.support.runtime import build_test_runtime
 
 
 @pytest.fixture
@@ -139,13 +140,4 @@ def database(tmp_path):
 
 @pytest.fixture
 def runtime(game, database):
-    return GameRuntime(
-        database,
-        game.world,
-        game.transport_dispatch.planning.router,
-        game.transport_dispatch.planning.anchors,
-        game.market,
-        game.catalogue,
-        game.market_scope,
-        game.time_scale,
-    )
+    return build_test_runtime(game, database)

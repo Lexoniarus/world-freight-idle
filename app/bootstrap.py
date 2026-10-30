@@ -97,10 +97,10 @@ class GameRuntime:
     market: MarketComponents
     catalogue: VehicleCatalogue
     market_scope: MarketScopeResolver
+    readiness: RoutingReadinessService
+    preparation_jobs: SqlitePreparationStore
     time_scale: float
     clock: Callable[[], float] = time.time
-    readiness: RoutingReadinessService | None = None
-    preparation_jobs: SqlitePreparationStore | None = None
 
 
 def build_analytics_service(
@@ -219,26 +219,22 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
         runtime.market,
         runtime.market_scope,
         runtime.clock,
-        market_services.demand if market_services else None,
-        market_services.routes if market_services else None,
-        market_services.stock if market_services else None,
-        selection=(
-            MarketSelectionService(market_services.stock.policy)
-            if market_services
-            else None
-        ),
+        market_services.demand,
+        market_services.routes,
+        market_services.stock,
+        selection=MarketSelectionService(market_services.stock.policy),
     )
     planning = DispatchPlanningService(
         runtime.router,
         VehicleCostResolver(runtime.catalogue),
         runtime.anchors,
         runtime.world,
-        market_services.routes if market_services else None,
+        market_services.routes,
     )
     settlement = TransportSettlementService(
         unit,
         runtime.clock,
-        market_services.demand if market_services else None,
+        market_services.demand,
         lifecycle.refill_after_commit,
     )
     dispatch = TransportDispatchService(
@@ -419,10 +415,8 @@ def build_preferences(runtime: GameRuntime) -> PreferenceService:
 
 def build_player_market_services(
     runtime: GameRuntime, user_id: str
-) -> PlayerMarketServices | None:
+) -> PlayerMarketServices:
     """Bind production routing infrastructure to one player's offers."""
-    if runtime.readiness is None or runtime.preparation_jobs is None:
-        return None
     return PlayerMarketServices(
         PlayerMarketDemandService(
             user_id,
@@ -445,13 +439,10 @@ def build_player_market_services(
 
 def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
     """Assemble owned preparation without initializing player state."""
-    assert runtime.preparation_jobs is not None
-    assert runtime.readiness is not None
 
     def batch(user_id: str) -> StockPreparationBatch:
         """Compose one player's preparation without changing state."""
         market_services = build_player_market_services(runtime, user_id)
-        assert market_services is not None
         unit = SqliteGameUnitOfWork(runtime.database, user_id)
         demand = MarketDemandResolver(runtime.market.candidates)
         return StockPreparationBatch(

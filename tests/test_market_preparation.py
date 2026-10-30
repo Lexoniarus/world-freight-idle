@@ -271,21 +271,16 @@ def test_preparation_store_generation_and_reference_rollback(game, database):
     )
 
 
-def test_preparation_composition_preserves_unconfigured_test_runtime(
+def test_preparation_composition_uses_complete_local_runtime(
     game,
     runtime,
-    database,
 ):
     from app.bootstrap import (
         build_player_market_services,
         build_preparation_worker,
     )
 
-    assert build_player_market_services(runtime, "test-owner") is None
-    preparation = bind_preparation(game, database)
-    runtime.readiness = preparation.routes.readiness
-    runtime.preparation_jobs = preparation.demand.jobs
-    bound = require_value(build_player_market_services(runtime, "test-owner"))
+    bound = build_player_market_services(runtime, "test-owner")
     assert bound.demand.user_id == "test-owner"
     worker = build_preparation_worker(runtime)
     from app.services.stock_preparation import StockPreparationBatch

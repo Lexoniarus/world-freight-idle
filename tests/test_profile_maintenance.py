@@ -360,14 +360,6 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
     _, service, game, _ = maintenance
     route_started = asyncio.Event()
     release_route = asyncio.Event()
-    original_route = game.transport_dispatch.planning.router.route
-
-    async def delayed_route(*args):
-        route_started.set()
-        await release_route.wait()
-        return await original_route(*args)
-
-    game.transport_dispatch.planning.router.route = delayed_route
     before = 112 if limited_cash else 175000
     player = project_player(game.player_state())
     game.state_repository.save_player(
@@ -375,19 +367,42 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
     )
     seed_test_offers(game)
     contract = first_berlin_contract(game)
-    task = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
-    await asyncio.wait_for(route_started.wait(), 2)
-    try:
-        service.update_profile("Selected", {"truck_01": "man_tgx_520"})
-    finally:
-        release_route.set()
+    offer = next(
+        item
+        for item in game.state_repository.list_offers()
+        if item.id == contract["id"]
+    )
+    routes = game.market_lifecycle.routes
+    assert routes is not None
+    await routes.readiness.prepare(
+        offer.origin.facility_uid,
+        offer.destination.facility_uid,
+    )
+    routes.bind((offer,))
+    planning = game.transport_dispatch.planning
+    original_route = planning.route
+
+    async def delayed_route(_planning, *args):
+        route_started.set()
+        await release_route.wait()
+        return await original_route(*args)
+
+    with patch.object(type(planning), "route", delayed_route):
+        task = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
+        await asyncio.wait_for(route_started.wait(), 2)
+        try:
+            service.update_profile("Selected", {"truck_01": "man_tgx_520"})
+        finally:
+            release_route.set()
+        if limited_cash:
+            with pytest.raises(ValueError, match="Nicht genug"):
+                await task
+        else:
+            trip = project_transport(await task)
     if limited_cash:
-        with pytest.raises(ValueError, match="Nicht genug"):
-            await task
         assert game.state_repository.list_transports() == ()
         assert game.player_state().cash == before
     else:
-        trip = project_transport(await task)
         assert trip["cost_breakdown"]["maintenance_eur_per_km"] == 0.085
         assert trip["operating_cost_eur"] == 114
         assert game.player_state().cash == before - trip["operating_cost_eur"]
