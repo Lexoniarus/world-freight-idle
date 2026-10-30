@@ -108,14 +108,15 @@ async def test_vehicle_readiness_requires_approach_and_excludes_stale(
         if c.trade.origin.facility_uid != fleet[0].facility_uid
     )
     readiness = preparation.routes.readiness
+    routing = preparation.route_preparation.preparation
     for candidate in (at_pickup, remote):
-        await readiness.prepare(
+        await routing.prepare(
             candidate.trade.origin.facility_uid,
             candidate.trade.destination.facility_uid,
         )
     ready = preparation.routes.ready_candidates((at_pickup, remote))
     assert len(ready) == 1 and ready[0].trade == at_pickup.trade
-    approach = await readiness.prepare(
+    approach = await routing.prepare(
         fleet[0].facility_uid, remote.trade.origin.facility_uid
     )
     assert approach is not None

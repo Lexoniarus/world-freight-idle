@@ -42,10 +42,10 @@ async def browser_lifespan(application):
         runtime.clock = browser_clock
         runtime.router = FakeRouter()
         runtime.anchors = FakeRoutingAnchorResolver()
-        assert runtime.readiness is not None
-        runtime.readiness.clock = browser_clock
-        runtime.readiness.router = runtime.router
-        runtime.readiness.anchors = runtime.anchors
+        runtime.routing_evidence.clock = browser_clock
+        runtime.routing_preparation.clock = browser_clock
+        runtime.routing_preparation.router = runtime.router
+        runtime.routing_preparation.anchors = runtime.anchors
         return runtime
 
     with patch("app.main.build_game_runtime", side_effect=test_runtime):

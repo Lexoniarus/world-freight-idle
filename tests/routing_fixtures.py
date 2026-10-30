@@ -14,9 +14,8 @@ def install_fake_routing(runtime: GameRuntime) -> None:
     """Keep every background and request path away from live providers."""
     runtime.router = FakeRouter()
     runtime.anchors = FakeRoutingAnchorResolver()
-    assert runtime.readiness is not None
-    runtime.readiness.router = runtime.router
-    runtime.readiness.anchors = runtime.anchors
+    runtime.routing_preparation.router = runtime.router
+    runtime.routing_preparation.anchors = runtime.anchors
 
 
 def prepare_client_market(client: TestClient, runtime: GameRuntime) -> None:

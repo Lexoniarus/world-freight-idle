@@ -33,15 +33,17 @@ from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
 from app.repositories.routing_readiness import SqliteRoutingReadinessStore
 from app.repositories.world_catalogue import SqliteWorldCatalogue
+from app.services.routing.evidence import RoutingEvidenceReader
+from app.services.routing.preparation import RoutingPreparationService
 from app.services.routing_anchors import RoutingAnchorResolver
 from app.services.routing_connections import RoutingConnectionValidator
-from app.services.routing_readiness import RoutingReadinessService
 from tests.support.catalogues import WORLD_PATH
 from tests.support.routing import (
     FakeGeocoder,
     FakeLocator,
     FakeRouter,
     FakeRoutingAnchorResolver,
+    RoutingTestHarness,
 )
 
 WOLF = "53e47547-aa34-4234-a41c-4fe81bb86290"
@@ -63,15 +65,25 @@ def case(tmp_path, connection_world):
     store = SqliteRoutingReadinessStore(database)
     anchors = SqliteRoutingAnchorRepository(database)
     clock = [100.0]
-    service = RoutingReadinessService(
+    anchor_resolver = FakeRoutingAnchorResolver()
+    router = FakeRouter()
+    evidence = RoutingEvidenceReader(
         store,
-        FakeRoutingAnchorResolver(),
         anchors,
-        FakeRouter(),
         connection_world,
         "fake",
         lambda: clock[0],
+        anchor_resolver.max_snap_distance_m,
     )
+    preparation = RoutingPreparationService(
+        evidence,
+        store,
+        anchor_resolver,
+        router,
+        connection_world,
+        lambda: clock[0],
+    )
+    service = RoutingTestHarness(evidence, preparation)
     return SimpleNamespace(
         db=database,
         cache=cache,

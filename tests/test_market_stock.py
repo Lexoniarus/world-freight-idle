@@ -1,7 +1,7 @@
 """Reusable market supply, private consumption and fair preparation."""
 
 from dataclasses import replace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -161,6 +161,7 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
         ),
         MarketRoutePreparationService(
             prep.routes.readiness,
+            prep.route_preparation.preparation,
             prep.demand.clock,
         ),
         PlayerMarketStockContext(
@@ -191,9 +192,11 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
         other.route_preparation,
     )
     with patch.object(
-        prep.routes.readiness,
+            type(prep.route_preparation.preparation),
         "prepare",
-        side_effect=AssertionError("Cached roads must be reused"),
+            new=AsyncMock(
+                side_effect=AssertionError("Cached roads must be reused")
+            ),
     ):
         for _ in range(15):
             if (await second.process()).status == "ready":
@@ -241,18 +244,17 @@ async def test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance
     assert game.state_repository.list_offers() == ()
     assert not batch.publication.publish(snapshot, (), ())
     batch.publication.guard = lambda: True
-    original = prep.routes.readiness.prepare
+    routing = prep.route_preparation.preparation
+    original = routing.prepare
 
-    async def change_vehicle(*args):
+    async def change_vehicle(_service, *args):
         result = await original(*args)
         vehicle = game.get_vehicle("truck")
         vehicle.start_trip()
         game.state_repository.save_vehicle(vehicle)
         return result
 
-    with patch.object(
-        prep.routes.readiness, "prepare", side_effect=change_vehicle
-    ):
+    with patch.object(type(routing), "prepare", change_vehicle):
         assert (await batch.process()).status == "partial"
     assert game.state_repository.list_offers() == ()
 
@@ -582,9 +584,11 @@ async def test_destination_stock_starts_at_dispatch_without_early_settlement(
     assert not game.reconcile_arrival()
     assert game.state_repository.get_player() == after
     with patch.object(
-        prep.routes.readiness,
+        type(prep.route_preparation.preparation),
         "prepare",
-        side_effect=AssertionError("Runtime provider fallback"),
+        new=AsyncMock(
+            side_effect=AssertionError("Runtime provider fallback")
+        ),
     ):
         choices = game.contract_choices(game.list_contracts(), "truck")
         assert choices
@@ -609,7 +613,7 @@ async def test_stale_evidence_reuses_offers_and_backoff_never_releases_stock(
     assert game.list_contracts()
     assert game.state_repository.list_offers() == saved
     with patch.object(
-        prep.routes.readiness.router,
+        prep.route_preparation.preparation.router,
         "route",
         side_effect=AssertionError("Ready routes must remain reusable"),
     ):
@@ -658,10 +662,12 @@ async def test_failed_approaches_and_changed_publication_do_not_create_ready_off
     error = RoutingError("no way")
     error.category = "no_path"
     with patch.object(
-        prep.routes.readiness.router, "route", new=AsyncMock(side_effect=error)
+        prep.route_preparation.preparation.router,
+        "route",
+        new=AsyncMock(side_effect=error),
     ):
         for pair in required_relations(snapshot.candidates):
-            await prep.routes.readiness.prepare(*pair)
+            await prep.route_preparation.preparation.prepare(*pair)
         assert (await batch.process()).status == "exhausted"
     assert game.state_repository.list_offers() == ()
     assert (
@@ -717,9 +723,11 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
     before = game.contract_choices(game.list_contracts(), "second")
     with (
         patch.object(
-            prep.routes.readiness,
+            type(prep.route_preparation.preparation),
             "prepare",
-            side_effect=AssertionError("Runtime calls provider"),
+            new=AsyncMock(
+                side_effect=AssertionError("Runtime calls provider")
+            ),
         ),
         patch.object(
             game.market.candidates,

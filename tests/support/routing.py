@@ -21,6 +21,8 @@ from app.domain.routing_readiness import (
 from app.domain.transports import RouteSnapshot
 from app.domain.world import Facility
 from app.domain.world_scopes import WorldScope
+from app.services.routing.evidence import RoutingEvidenceReader
+from app.services.routing.preparation import RoutingPreparationService
 
 
 class FixtureRoutingReadiness:
@@ -84,6 +86,109 @@ class FixtureRoutingReadiness:
             14400.0,
             "fixture-router",
         )
+
+
+class FixtureRoutingPreparation:
+    """Return the deterministic fixture evidence without provider calls."""
+
+    def __init__(self, evidence: FixtureRoutingReadiness) -> None:
+        """Share the fixture evidence reader used by market projections."""
+        self.evidence = evidence
+
+    async def prepare(self, origin: str, destination: str) -> RoutingRelation:
+        """Return the already prepared fixture relation."""
+        return self.evidence.current(origin, destination)
+
+
+class RoutingTestHarness:
+    """Expose split evidence and preparation through one test handle."""
+
+    def __init__(
+        self,
+        evidence: RoutingEvidenceReader,
+        preparation: RoutingPreparationService,
+    ) -> None:
+        """Keep both production owners explicit in routing tests."""
+        self.evidence = evidence
+        self.preparation = preparation
+
+    def current(self, origin: str, destination: str) -> RoutingRelation | None:
+        """Read one current relation through the evidence owner."""
+        return self.evidence.current(origin, destination)
+
+    def ready(self, origin: str, destination: str) -> RouteReference | None:
+        """Read one ready reference through the evidence owner."""
+        return self.evidence.ready(origin, destination)
+
+    def load(self, origin: str, destination: str) -> RoutePayload:
+        """Load one prepared route payload through the evidence owner."""
+        return self.evidence.load(origin, destination)
+
+    async def prepare(
+        self, origin: str, destination: str
+    ) -> RoutingRelation | None:
+        """Prepare one relation through the provider-work owner."""
+        return await self.preparation.prepare(origin, destination)
+
+    @property
+    def store(self):
+        """Expose the shared evidence store for failure fencing tests."""
+        return self.evidence.store
+
+    @property
+    def anchor_store(self):
+        """Expose persisted anchors for stale-evidence tests."""
+        return self.evidence.anchor_store
+
+    @property
+    def world(self):
+        """Expose the preparation catalogue for revision tests."""
+        return self.preparation.world
+
+    @property
+    def router(self):
+        """Expose the injected provider double."""
+        return self.preparation.router
+
+    @router.setter
+    def router(self, value) -> None:
+        self.preparation.router = value
+
+    @property
+    def anchors(self):
+        """Expose the injected anchor resolver double."""
+        return self.preparation.anchors
+
+    @anchors.setter
+    def anchors(self, value) -> None:
+        self.preparation.anchors = value
+
+    @property
+    def timeout(self) -> float:
+        """Expose the bounded provider deadline."""
+        return self.preparation.timeout_seconds
+
+    @timeout.setter
+    def timeout(self, value: float) -> None:
+        self.preparation.timeout_seconds = value
+
+    @property
+    def provider_identity(self) -> str:
+        """Expose the evidence provider identity."""
+        return self.evidence.provider_identity
+
+    @provider_identity.setter
+    def provider_identity(self, value: str) -> None:
+        self.evidence.provider_identity = value
+
+    @property
+    def provider_revision(self):
+        """Expose the optional provider revision reader."""
+        return self.evidence.provider_revision
+
+    @provider_revision.setter
+    def provider_revision(self, value) -> None:
+        self.evidence.provider_revision = value
 
 
 class MemoryOfferRouteStore:

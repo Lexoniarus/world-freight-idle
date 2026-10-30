@@ -365,7 +365,7 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
     game.state_repository.save_player(
         PlayerState(**{**player, "cash": before})
     )
-    seed_test_offers(game)
+    seed_test_offers(game, bind_routes=False)
     contract = first_berlin_contract(game)
     offer = next(
         item
@@ -374,7 +374,7 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
     )
     routes = game.market_lifecycle.routes
     assert routes is not None
-    await routes.readiness.prepare(
+    await game.market_services.route_preparation.preparation.prepare(
         offer.origin.facility_uid,
         offer.destination.facility_uid,
     )

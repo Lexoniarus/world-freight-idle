@@ -36,11 +36,12 @@ async def test_exhausted_negative_demand_requires_explicit_invalidation(
         candidate.trade.destination.facility_uid,
     )
     readiness = preparation.routes.readiness
+    routing = preparation.route_preparation.preparation
     error = RoutingError("No path")
     error.category = "no_path"
-    readiness.router = AsyncMock()
-    readiness.router.route.side_effect = error
-    await readiness.prepare(*pair)
+    routing.router = AsyncMock()
+    routing.router.route.side_effect = error
+    await routing.prepare(*pair)
     preparation.demand.ensure()
     status = require_value(preparation.demand.jobs.status("test-owner"))
     preparation.demand.jobs.finish(
@@ -57,8 +58,8 @@ async def test_exhausted_negative_demand_requires_explicit_invalidation(
     assert changed.generation != status.generation
     assert changed.status == "partial"
     assert preparation.demand.jobs.next_player(game.now()) == "test-owner"
-    await readiness.prepare(*pair)
-    assert readiness.router.route.await_count == 2
+    await routing.prepare(*pair)
+    assert routing.router.route.await_count == 2
 
 
 @pytest.mark.asyncio
@@ -66,7 +67,7 @@ async def test_reference_replacement_owns_rollback(game, database):
     game, preparation = build_prepared_game(game, database)
     offer = game.state_repository.list_offers()[0]
     pair = offer.origin.facility_uid, offer.destination.facility_uid
-    await preparation.routes.readiness.prepare(*pair)
+    await preparation.route_preparation.preparation.prepare(*pair)
     preparation.routes.bind((offer,))
     reference = require_value(preparation.routes.references.get(offer.id))
     invalid = replace(offer, id="missing-offer")
@@ -153,8 +154,9 @@ async def test_batch_exhausts_deterministic_route_failures(game, database):
     game.market.candidates.build = Mock(return_value=candidates)
     error = RoutingError("No path")
     error.category = "no_path"
-    preparation.routes.readiness.router = AsyncMock()
-    preparation.routes.readiness.router.route.side_effect = error
+    routing = preparation.route_preparation.preparation
+    routing.router = AsyncMock()
+    routing.router.route.side_effect = error
     preparation.demand.ensure()
     result = await batch.process()
     for _ in range(10):

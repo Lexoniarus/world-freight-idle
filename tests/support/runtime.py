@@ -11,7 +11,8 @@ from app.repositories.routing_readiness import SqliteRoutingReadinessStore
 from app.services.market_candidates import MarketCandidateService
 from app.services.market_components import MarketComponents
 from app.services.market_scope import MarketScopeResolver
-from app.services.routing_readiness import RoutingReadinessService
+from app.services.routing.evidence import RoutingEvidenceReader
+from app.services.routing.preparation import RoutingPreparationService
 from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 
 
@@ -28,24 +29,34 @@ def build_test_runtime(game, database) -> GameRuntime:
         game.market.factory,
         game.market.vehicle_coverage,
     )
-    readiness = RoutingReadinessService(
+    anchors = FakeRoutingAnchorResolver()
+    router = FakeRouter()
+    routing_evidence = RoutingEvidenceReader(
         readiness_store,
-        FakeRoutingAnchorResolver(),
         SqliteRoutingAnchorRepository(database),
-        FakeRouter(),
         world,
         "test-provider",
+        game.now,
+        anchors.max_snap_distance_m,
+    )
+    routing_preparation = RoutingPreparationService(
+        routing_evidence,
+        readiness_store,
+        anchors,
+        router,
+        world,
         game.now,
     )
     return GameRuntime(
         database=database,
         world=world,
-        router=readiness.router,
-        anchors=readiness.anchors,
+        router=router,
+        anchors=anchors,
         market=market,
         catalogue=game.catalogue,
         market_scope=MarketScopeResolver(world),
-        readiness=readiness,
+        routing_evidence=routing_evidence,
+        routing_preparation=routing_preparation,
         preparation_jobs=preparation_jobs,
         time_scale=game.time_scale,
         clock=game.now,

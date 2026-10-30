@@ -1,37 +1,27 @@
-"""Prepare certified two-way road connections outside player transactions."""
+"""Read certified routing evidence without invoking external providers."""
 
-import asyncio
-import uuid
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 from hashlib import sha256
 
-from app.domain.errors import RoutingError
-from app.domain.ports import TruckRouter, WorldCatalogue
+from app.domain.ports import WorldCatalogue
 from app.domain.readiness_ports import RoutingReadinessStore
-from app.domain.routing_anchor_ports import (
-    RoutingAnchorResolverPort,
-    RoutingAnchorStore,
-)
+from app.domain.routing_anchor_ports import RoutingAnchorStore
 from app.domain.routing_anchors import (
     NEGATIVE_TTL,
     VALIDATION_VERSION,
     RoutingAnchor,
 )
-from app.domain.routing_connections import anchor_identity, connection_leases
+from app.domain.routing_connections import anchor_identity
 from app.domain.routing_readiness import (
     RoutePayload,
     RouteReference,
-    RoutingAttempt,
     RoutingRelation,
     relation_identity,
 )
 from app.domain.world import WorldSnapshot
-from app.domain.world_scopes import WorldScope
-from app.services.routing_connections import RoutingConnectionValidator
-from app.tracing import get_trace_id
 
 
 @dataclass
@@ -49,35 +39,27 @@ class ReadinessView:
     connected: dict[tuple[str, str], bool] = field(default_factory=dict)
 
 
-class RoutingReadinessService:
-    """Coordinate versioned proofs, global leases and atomic publication."""
+class RoutingEvidenceReader:
+    """Load versioned proofs through one request-scoped read snapshot."""
 
     def __init__(
         self,
         store: RoutingReadinessStore,
-        anchors: RoutingAnchorResolverPort,
         anchor_store: RoutingAnchorStore,
-        router: TruckRouter,
         world: WorldCatalogue,
         provider_identity: str,
         clock: Callable[[], float],
-        timeout_seconds: float = 120,
+        maximum_snap_distance_m: float,
         provider_revision: Callable[[], str | None] | None = None,
-        connections: RoutingConnectionValidator | None = None,
     ) -> None:
-        """Inject infrastructure; enforce the total provider-work deadline."""
-        if timeout_seconds <= 0:
-            raise ValueError("Lease must have a positive timeout.")
+        """Inject immutable policy and the repositories needed for reads."""
         self.store = store
-        self.anchors = anchors
         self.anchor_store = anchor_store
-        self.router = router
         self.world = world
         self.provider_identity = provider_identity
         self.clock = clock
-        self.timeout = min(timeout_seconds, 120)
+        self.maximum_snap_distance_m = maximum_snap_distance_m
         self.provider_revision = provider_revision
-        self.connections = connections or RoutingConnectionValidator()
         self._view: ContextVar[ReadinessView | None] = ContextVar(
             "readiness_view", default=None
         )
@@ -191,7 +173,7 @@ class RoutingReadinessService:
             VALIDATION_VERSION,
             self.provider_identity,
             self.provider_revision() if self.provider_revision else None,
-            self.anchors.max_snap_distance_m,
+            self.maximum_snap_distance_m,
             tuple(
                 (
                     uid,
@@ -278,162 +260,3 @@ class RoutingReadinessService:
         if payload is None:
             raise ValueError("Straßenverbindung wird vorbereitet.")
         return payload
-
-    async def prepare(
-        self, origin: str, destination: str
-    ) -> RoutingRelation | None:
-        """Deduplicate both directions and release all leases on every exit."""
-        if origin == destination:
-            raise ValueError("Connection requires different facilities.")
-        cached = self.current(origin, destination)
-        now = self.clock()
-        if cached and (
-            cached.status in {"ready", "deterministic_failure"}
-            or (cached.retry_at is not None and cached.retry_at > now)
-        ):
-            return cached
-        owner = uuid.uuid4().hex
-        acquired: list[str] = []
-        expected = self.fingerprint(origin, destination)
-        try:
-            for subject in connection_leases(origin, destination):
-                if not self.store.acquire(
-                    subject, owner, now, now + self.timeout + 10
-                ):
-                    return None
-                acquired.append(subject)
-            async with asyncio.timeout(self.timeout):
-                return await self._validate(origin, destination, owner)
-        except TimeoutError:
-            if self.fingerprint(origin, destination) != expected:
-                return None
-            return self._failure(
-                origin, destination, owner, RoutingError("Timeout")
-            )
-        finally:
-            for subject in reversed(acquired):
-                self.store.release(subject, owner)
-
-    async def _validate(
-        self,
-        origin: str,
-        destination: str,
-        owner: str,
-    ) -> RoutingRelation | None:
-        """Revalidate inputs after awaits before committing the proof."""
-        snapshot = self.world.read()
-        scope = WorldScope(snapshot)
-        expected_anchors = (
-            self.anchor_store.get(origin, "truck"),
-            self.anchor_store.get(destination, "truck"),
-        )
-        expected = self.fingerprint(origin, destination)
-        if self.world.read() != snapshot:
-            return None
-        for subject in connection_leases(origin, destination):
-            if not self.store.renew(
-                subject, owner, self.clock(), self.clock() + self.timeout + 10
-            ):
-                return None
-        try:
-            result = await self.connections.validate(
-                scope.facility(origin),
-                scope.facility(destination),
-                self.router,
-                self.anchors,
-                self.clock,
-                self.store.append_attempt,
-            )
-        except RoutingError as error:
-            if (
-                self.world.read() != snapshot
-                or self.fingerprint(origin, destination) != expected
-            ):
-                return None
-            return self._failure(origin, destination, owner, error)
-        if (
-            self.world.read() != snapshot
-            or self.fingerprint(origin, destination) != expected
-        ):
-            return None
-        now = self.clock()
-        forward = RoutingRelation(
-            RouteReference(
-                relation_identity(origin, destination), uuid.uuid4().hex
-            ),
-            origin,
-            destination,
-            self.fingerprint(
-                origin, destination, (result.origin, result.destination)
-            ),
-            "ready",
-            None,
-            None,
-            now,
-        )
-        reverse = RoutingRelation(
-            RouteReference(
-                relation_identity(destination, origin), uuid.uuid4().hex
-            ),
-            destination,
-            origin,
-            self.fingerprint(
-                destination, origin, (result.destination, result.origin)
-            ),
-            "ready",
-            None,
-            None,
-            now,
-        )
-        revision = self.provider_revision() if self.provider_revision else None
-        if self.store.publish_connection(
-            result,
-            forward,
-            reverse,
-            expected_anchors,
-            owner,
-            now,
-            self.provider_identity,
-            revision,
-        ):
-            return forward
-        return None
-
-    def _failure(
-        self,
-        origin: str,
-        destination: str,
-        owner: str,
-        error: RoutingError,
-    ) -> RoutingRelation | None:
-        """Cache negative evidence with its cause for a bounded period."""
-        transient = error.category in {
-            "provider_unavailable",
-            "invalid_response",
-        }
-        relation = RoutingRelation(
-            RouteReference(
-                relation_identity(origin, destination), uuid.uuid4().hex
-            ),
-            origin,
-            destination,
-            self.fingerprint(origin, destination),
-            "transient_failure" if transient else "deterministic_failure",
-            error.category,
-            self.clock() + (60 if transient else NEGATIVE_TTL),
-            self.clock(),
-        )
-        self.store.append_attempt(
-            RoutingAttempt(
-                relation.reference.relation_id,
-                "truck_connection_failure",
-                error.category,
-                self.clock(),
-                get_trace_id(),
-                provider_code=error.provider_code,
-                provider_message=error.provider_message,
-            )
-        )
-        if self.store.publish(relation, None, owner, self.clock()):
-            return relation
-        return None

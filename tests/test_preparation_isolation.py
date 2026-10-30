@@ -120,7 +120,12 @@ async def test_readiness_read_view_reuses_facts_but_never_crosses_publication(
             assert readiness.fingerprint(*pair) == readiness.fingerprint(*pair)
         assert readiness.current(*pair) is None
         get.assert_called_once()
-    assert require_value(await readiness.prepare(*pair)).status == "ready"
+    assert (
+        require_value(
+            await preparation.route_preparation.preparation.prepare(*pair)
+        ).status
+        == "ready"
+    )
     with (
         patch.object(
             readiness.store,

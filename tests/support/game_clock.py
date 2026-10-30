@@ -22,3 +22,5 @@ def set_game_clock(
     game.market_services.routes.readiness.clock = clock
     if route_preparation is not None:
         route_preparation.clock = clock
+        route_preparation.evidence.clock = clock
+        route_preparation.preparation.clock = clock

@@ -25,7 +25,12 @@ def require_value(value: T | None) -> T:
     return value
 
 
-def seed_test_offers(service: GameService, count: int = 30) -> None:
+def seed_test_offers(
+    service: GameService,
+    count: int = 30,
+    *,
+    bind_routes: bool = True,
+) -> None:
     """Store deterministic local offers without invoking runtime refill."""
     market = service.market
     owned = service.state_repository.list_vehicles()
@@ -50,7 +55,8 @@ def seed_test_offers(service: GameService, count: int = 30) -> None:
         for index, candidate in enumerate(selected[:count])
     )
     service.state_repository.replace_offers(offers)
-    service.market_services.routes.bind(offers)
+    if bind_routes:
+        service.market_services.routes.bind(offers)
 
 
 def make_stock_batch(game, preparation):

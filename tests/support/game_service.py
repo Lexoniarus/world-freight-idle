@@ -20,7 +20,8 @@ from app.services.player_market_demand import PlayerMarketDemandService
 from app.services.player_market_routes import PlayerMarketRouteService
 from app.services.player_market_services import PlayerMarketServices
 from app.services.player_market_stock import PlayerMarketStockContext
-from app.services.routing_readiness import RoutingReadinessService
+from app.services.routing.evidence import RoutingEvidenceReader
+from app.services.routing.preparation import RoutingPreparationService
 from app.services.transport_dispatch import TransportDispatchService
 from app.services.transport_settlement import TransportSettlementService
 from app.services.vehicle_location import VehicleLocationResolver
@@ -30,6 +31,7 @@ from tests.support.market_state import (
     MemoryPlayerMarketStockStore,
 )
 from tests.support.routing import (
+    FixtureRoutingPreparation,
     FixtureRoutingReadiness,
     MemoryOfferRouteStore,
 )
@@ -46,9 +48,11 @@ def build_fixture_game(
 ) -> GameService:
     """Compose every mandatory player dependency without provider access."""
     jobs = FixturePreparationStore()
-    readiness = cast(
-        RoutingReadinessService,
-        FixtureRoutingReadiness(world, clock),
+    fixture_evidence = FixtureRoutingReadiness(world, clock)
+    readiness = cast(RoutingEvidenceReader, fixture_evidence)
+    preparation = cast(
+        RoutingPreparationService,
+        FixtureRoutingPreparation(fixture_evidence),
     )
     unit = SqliteGameUnitOfWork(database, user_id)
     scope = MarketScopeResolver(world)
@@ -59,7 +63,7 @@ def build_fixture_game(
             MemoryOfferRouteStore(),
             database,
         ),
-        MarketRoutePreparationService(readiness, clock),
+        MarketRoutePreparationService(readiness, preparation, clock),
         PlayerMarketStockContext(
             MemoryPlayerMarketStockStore(),
             MemoryMarketTemplateStore(),

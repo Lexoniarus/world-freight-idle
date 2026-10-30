@@ -7,7 +7,8 @@ from time import perf_counter
 
 from app.domain.market import MarketCandidate
 from app.domain.market_preparation import required_relations
-from app.services.routing_readiness import RoutingReadinessService
+from app.services.routing.evidence import RoutingEvidenceReader
+from app.services.routing.preparation import RoutingPreparationService
 
 LOGGER = logging.getLogger(__name__)
 
@@ -16,7 +17,8 @@ LOGGER = logging.getLogger(__name__)
 class MarketRoutePreparationService:
     """Prepare missing route evidence outside player read transactions."""
 
-    readiness: RoutingReadinessService
+    evidence: RoutingEvidenceReader
+    preparation: RoutingPreparationService
     clock: Callable[[], float]
 
     async def prepare(
@@ -31,7 +33,7 @@ class MarketRoutePreparationService:
         retry_at = None
         started = perf_counter()
         for origin, destination in pairs:
-            current = self.readiness.current(origin, destination)
+            current = self.evidence.current(origin, destination)
             if current and current.status in {
                 "ready",
                 "deterministic_failure",
@@ -50,7 +52,7 @@ class MarketRoutePreparationService:
                 retry_at = self.clock()
                 break
             count += 1
-            result = await self.readiness.prepare(origin, destination)
+            result = await self.preparation.prepare(origin, destination)
             if result is None or result.status == "transient_failure":
                 waiting = True
                 next_try = (result.retry_at if result else None) or (

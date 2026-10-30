@@ -76,8 +76,9 @@ from app.services.player_market_stock import PlayerMarketStockContext
 from app.services.preferences import PreferenceService
 from app.services.preparation_worker import MarketPreparationWorker
 from app.services.profile_maintenance import ProfileMaintenanceService
+from app.services.routing.evidence import RoutingEvidenceReader
+from app.services.routing.preparation import RoutingPreparationService
 from app.services.routing_anchors import RoutingAnchorResolver
-from app.services.routing_readiness import RoutingReadinessService
 from app.services.runtime_views import RuntimeViewService
 from app.services.stock_planning import StockPlanningService
 from app.services.stock_preparation import StockPreparationBatch
@@ -100,7 +101,8 @@ class GameRuntime:
     market: MarketComponents
     catalogue: VehicleCatalogue
     market_scope: MarketScopeResolver
-    readiness: RoutingReadinessService
+    routing_evidence: RoutingEvidenceReader
+    routing_preparation: RoutingPreparationService
     preparation_jobs: SqlitePreparationStore
     time_scale: float
     clock: Callable[[], float] = time.time
@@ -184,20 +186,28 @@ def build_game_runtime(
     anchors = build_routing_anchor_resolver(
         database, settings, routing_client, clock, limiter, evidence
     )
-    readiness = RoutingReadinessService(
+    routing_evidence = RoutingEvidenceReader(
         evidence,
-        anchors,
         SqliteRoutingAnchorRepository(database),
-        router,
         world,
         settings.valhalla_url,
         clock,
+        anchors.max_snap_distance_m,
         provider_revision=partial(
             evidence.provider_revision, settings.valhalla_url
         ),
     )
+    routing_preparation = RoutingPreparationService(
+        routing_evidence,
+        evidence,
+        anchors,
+        router,
+        world,
+        clock,
+    )
     return GameRuntime(
-        readiness=readiness,
+        routing_evidence=routing_evidence,
+        routing_preparation=routing_preparation,
         preparation_jobs=jobs,
         database=database,
         world=world,
@@ -423,11 +433,15 @@ def build_player_market_services(
             runtime.database,
         ),
         PlayerMarketRouteService(
-            runtime.readiness,
+            runtime.routing_evidence,
             SqliteOfferRouteStore(runtime.database, user_id),
             runtime.database,
         ),
-        MarketRoutePreparationService(runtime.readiness, runtime.clock),
+        MarketRoutePreparationService(
+            runtime.routing_evidence,
+            runtime.routing_preparation,
+            runtime.clock,
+        ),
         PlayerMarketStockContext(
             SqlitePlayerMarketStockStore(runtime.database, user_id),
             SqliteMarketTemplateStore(runtime.database),
