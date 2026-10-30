@@ -115,11 +115,13 @@ Market-, Distance-, Scale- und Capability-Profile sind eigene Domainwerte.
 | MarketCandidateService | Distanz, Warenprofile und Fahrzeugkompatibilität |
 | ContractFactory | Ziehung, Konditionsableitung und Snapshot-Erzeugung getrennt orchestrieren |
 | MarketComponents | Candidate-, Factory- und Coverage-Diagnose explizit bündeln; keine Generierungsmethode |
-| MarketLifecycleService | Retention, Pruning, Markttransaktion und Projektion der Eignung koordinieren |
+| MarketLifecycleService | Vorbereiteten Bestand filtern und fahrzeugbezogen präsentieren |
 | MarketDemandResolver | Konkrete idle Fahrzeuge und gespeicherte Transportziele projizieren |
 | PlayerMarketDemandService | Bedarfsversion, Status und atomare Coverage-Diagnose eines Spielers besitzen |
 | PlayerMarketRouteService | Offer-Bindungen und mengenbasiert gelesene Routenfakten anwenden |
 | MarketRoutePreparationService | Fehlende Relationen begrenzt und ausschließlich im Worker vorbereiten |
+| RoutingEvidenceReader | Persistierte Relationen in einem mengenbasierten Lesesnapshot prüfen und laden |
+| RoutingPreparationService | Provider, Anchor-Auflösung, Leases und atomare Routenpublikation besitzen |
 | PlayerMarketStockContext | Persönlichen Bestand, gemeinsame Vorlagen und Stock-Policy explizit bündeln |
 | StockPlanningService | Sichtbare Defizite vor Reserven priorisieren und Vielfalt wählen |
 | MarketTemplateService | Wiederverwendbare Vorlagen zu genau einem Angebot materialisieren |
@@ -138,13 +140,14 @@ ehrlich benannte Composition-Grenze. Auswahl liegt in `StockPlanningService`,
 Materialisierung in `MarketTemplateService`, Diagnostik in
 `VehicleCoverageService`; SQL und Transaktionen bleiben außerhalb davon.
 
-Routing findet vor der Dispatch-Schreibtransaktion statt. Danach werden alle
-veränderlichen Voraussetzungen einschließlich Abfahrtscheckpoint erneut
-gelesen. Reservierung, Abbuchung, Transportanlage, Offer-Verbrauch und notwendiges
-Pruning committen gemeinsam. Erst anschließend startet eine separate
-Markttransaktion mit erneut gelesener Flotte und Retention. Refill-Fehler rollen
-nur diese zweite Transaktion zurück und protokollieren `market.refill_failed`.
-Der erfolgreiche Transport wird zurückgegeben; ein späterer Refresh füllt auf.
+Dispatch lädt ausschließlich vorbereitete Routennachweise vor der
+Schreibtransaktion. Danach werden alle veränderlichen Voraussetzungen
+einschließlich Abfahrtscheckpoint erneut gelesen. Reservierung, Abbuchung,
+Transportanlage, Offer-Verbrauch und Bedarfsinvalidierung committen gemeinsam.
+Der Worker füllt den verbliebenen Pool später in eigenen begrenzten Runden
+bedarfsgesteuert auf. Ein Fehler dieser Vorbereitung verändert den bereits
+erfolgreich gestarteten Transport nicht; der persistierte Bedarf bleibt für
+einen späteren Worker-Durchlauf erhalten.
 
 ## Frontend
 

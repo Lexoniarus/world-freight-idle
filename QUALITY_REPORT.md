@@ -45,20 +45,29 @@ besitzt Anlage und Reset, `TransportDispatchService` Quote und Dispatch und
 Validierung, Trip-Bau, Preisberechnung und Commit nicht mehr neben fachfremden
 Read-/Reset-Abläufen in einer einzelnen Klasse.
 
+Die abschließende Härtung entfernt auch die letzten optionalen Marktpfade.
+`DispatchPlanningService` lädt nur vorbereitete Evidenz; Providerarbeit liegt
+vollständig in `RoutingPreparationService`, während `RoutingEvidenceReader`
+die mengenbasierten Lesesnapshots besitzt. Tests komponieren vollständige
+Objektgraphen statt Services nachträglich umzuschreiben. Die Paketstruktur
+trennt Gameplay, Markt-Stock und Routing sichtbar. Ein Dispatch entfernt nur
+das gewählte Angebot und invalidiert Bedarf, statt den wiederverwendbaren Pool
+zu leeren.
+
 Der Scheduler wählt ausschließlich fällige `partial`-Jobs. Ein neues Fahrzeug
 wird in begrenzten Einzelrunden bis zu drei sichtbaren und zehn gespeicherten
 Angeboten je Distanzband versorgt; ein `ready`-Job wird nicht erneut ausgewählt.
 
 Der abschließende Lauf von `.venv/Scripts/python.exe -X utf8
-scripts/quality.py` ist mit Exitcode 0 bestanden: **593 Python-Tests**,
-**100,00 % app-Statement-Coverage** (6.799 von 6.799 Statements),
+scripts/quality.py` ist mit Exitcode 0 bestanden: **590 Python-Tests**,
+**100,00 % app-Statement-Coverage** (6.747 von 6.747 Statements),
 **118 Frontend-Verhaltenstests** sowie Ruff, Formatierung, mypy, Pyright,
 ESLint, Stylelint, Prettier, checkJs, Produktionsbuild und compileall. Die
-Python-Suite benötigte 15 Minuten 33 Sekunden. Der langsamste einzelne
-Python-Test lief 6,10 Sekunden; kein Python-Test überschritt zehn Sekunden.
+Python-Suite benötigte 13 Minuten 25 Sekunden. Der langsamste einzelne
+Python-Test lief 5,88 Sekunden; kein Python-Test überschritt zehn Sekunden.
 Architektur- und Funktionsmanifestprüfungen sind Teil dieses Laufs.
 
-`npm run test:e2e`: **36 bestanden** in 3,7 Minuten. Die Suite lief gegen
+`npm run test:e2e`: **36 bestanden** in 3,8 Minuten. Die Suite lief gegen
 einen isolierten lokalen Einprozess-Server mit lokaler Datenbank und lokalem
 Routing-Fixture. Marktaufbau, sichtbare Einzelpublikation, Refresh,
 Fahrzeugfilter, Desktop/Mobil, Offline-Ankunft und Kartenregressionen sind
@@ -67,8 +76,8 @@ gezielte Mehrfahrzeug-Kostentest liest anschließend die Detailprojektion. Der
 Energie-Gegentest schaltet die isolierte Serverzeit vor und synchronisiert die
 Runtime gezielt, statt reale Fahrt- oder Pollzeiten abzuwarten. Kartenlebenszyklus,
 parallele Transporte, Energieanzeige und Offline-Abrechnung sind getrennte
-Fälle. Drei vollständige Integrationsketten benötigen auf dem Windows-Host
-10,9 bis 12,4 Sekunden; alle übrigen Browserfälle bleiben höchstens bei zehn
+Fälle. Vier vollständige Integrationsketten benötigen auf dem Windows-Host
+10,7 bis 12,9 Sekunden; alle übrigen Browserfälle bleiben höchstens bei zehn
 Sekunden.
 Diese Laufzeit wird sichtbar akzeptiert, weil sie echte Registrierung,
 Marktvorbereitung, Routing und Dispatch umfasst und nicht durch direkte Test-SQL
@@ -87,10 +96,9 @@ Beim Browserlauf wurde eine echte Benachrichtigungsrace sichtbar: Ein
 Thread-weckender Callback konnte vor dem äußeren Datenbank-Commit laufen und
 den noch unsichtbaren Job verpassen. Nach-Commit-Callbacks gehören nun der
 lokalen Unit-of-Work-Grenze; Rollbacks verwerfen sie, und der Worker weckt den
-fremden Eventloop threadsicher. Die 59 vorhandenen Warnungen stammen
-überwiegend aus absichtlich beschädigten Katalog-/SQLite-Testfällen; hinzu
-kommt die bekannte Starlette/httpx-Deprecation. Sie bleiben als Testhygiene
-sichtbar, und kein Test oder Gate wurde dafür ausgenommen.
+fremden Eventloop threadsicher. Der aktuelle Python-Lauf meldet eine bekannte
+Starlette/httpx-Deprecation. Sie bleibt als Testhygiene sichtbar, und kein Test
+oder Gate wurde dafür ausgenommen.
 
 ---
 

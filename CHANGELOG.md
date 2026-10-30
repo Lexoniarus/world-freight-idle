@@ -1,5 +1,25 @@
 # Changelog
 
+## Abschließende OOP-Härtung der lokalen Runtime – 30.10.2026
+
+- Spieler-Lifecycle, Initialisierung, Dispatch und Settlement verlangen immer
+  vollständige Marktservices; optionale Test-/Produktionsmodi sind entfernt.
+- Dispatch verwendet ausschließlich vorbereitete Routen. Router,
+  Anchor-Auflösung und Provider-Fallback gehören nicht mehr zum
+  `DispatchPlanningService`.
+- `RoutingEvidenceReader` besitzt nur Lesesnapshots und Payload-Zugriff;
+  `RoutingPreparationService` besitzt Providerarbeit, Leases und Publikation.
+- Gameplay-Use-Cases liegen unter `app/services/gameplay`, Stock-Planung und
+  -Publikation unter `app/services/market/stock`, Routing unter
+  `app/services/routing`.
+- Dispatch löscht nicht länger den übrigen vorbereiteten Pool. Er konsumiert
+  genau ein Offer und invalidiert den Bedarf atomar; der Worker füllt später
+  auf.
+- Worker-Tests prüfen den öffentlichen Lifecycle statt privater Task-/Event-
+  Attribute. Direkte SQLite-Testverbindungen werden zuverlässig geschlossen.
+- Sämtliche Prüfungen bleiben lokal; es gab keine Supabase- oder
+  Live-Providerzugriffe.
+
 ## Zuständigkeitsrefactor der lokalen Runtime – 28.10.2026
 
 - Die lokale `GameRuntime` besitzt immer Preparation-Store und
