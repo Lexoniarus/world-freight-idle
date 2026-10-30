@@ -72,7 +72,7 @@ test("world map cleanup reaches native map removal after component errors", () =
   const WorldMap = worldMapClass();
   const calls = [];
   const map = Object.create(WorldMap.prototype);
-  for (const name of ["animator", "groups", "opportunities", "vehicleIcons"]) {
+  for (const name of ["animator", "interactions", "groups", "opportunities", "vehicleIcons"]) {
     map[name] = {
       destroy() {
         calls.push(name);
@@ -80,12 +80,6 @@ test("world map cleanup reaches native map removal after component errors", () =
       },
     };
   }
-  map.hoverPopup = {
-    remove() {
-      calls.push("popup");
-      throw new Error("popup");
-    },
-  };
   map.map = {
     remove() {
       calls.push("native-map");
@@ -95,9 +89,9 @@ test("world map cleanup reaches native map removal after component errors", () =
   map.destroy();
   assert.deepEqual(calls, [
     "animator",
+    "interactions",
     "groups",
     "opportunities",
-    "popup",
     "vehicleIcons",
     "native-map",
   ]);
