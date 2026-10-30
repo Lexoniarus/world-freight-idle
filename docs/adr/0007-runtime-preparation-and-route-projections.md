@@ -37,14 +37,14 @@ auf Arbeit für andere Spieler. Wiederkehrende Frontend-Abfragen luden dieselben
 historischen Geometrien mehrfach. Ein ungültiger optionaler Anfahrtsplan in
 Alttransporten verhinderte außerdem das Laden eines betroffenen Spielstands.
 
-## Entscheidung
+## Historische Entscheidung vom 27.09.2026 (aufgehoben)
 
-`python main.py` überwacht zwei Prozesse. `--role runtime` startet ausschließlich
-HTTP, `--role prewarm` ausschließlich die nachfragegesteuerte Vorbereitung.
-Ein ausgefallener Worker startet mit 1 bis maximal 30 Sekunden Backoff erneut;
-die API bleibt erreichbar. EOF der Supervisor-Pipe fordert geordneten Shutdown
-an, anschließend gelten begrenzte Terminate-/Kill-Fristen. Docker benutzt
-weiterhin den Standardeinstieg.
+In diesem historischen Stand überwachte `python main.py` zwei Prozesse.
+`--role runtime` startete ausschließlich HTTP, `--role prewarm` ausschließlich
+die nachfragegesteuerte Vorbereitung. Ein ausgefallener Worker startete mit 1
+bis maximal 30 Sekunden Backoff erneut; die API blieb erreichbar. EOF der
+Supervisor-Pipe forderte geordneten Shutdown an. Diese Prozessentscheidung ist
+durch die Änderung vom 27.10.2026 aufgehoben.
 
 Beide Prozesse benutzen dieselbe relationale SQLite-Datenbank. Nach erfolgreicher
 Schema-Prüfung gilt WAL, jede Verbindung verwendet `synchronous=FULL` und

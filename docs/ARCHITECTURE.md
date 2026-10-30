@@ -70,8 +70,10 @@ nicht bei späteren Katalogänderungen neu aufgelöst.
 GameUnitOfWork besitzt BEGIN IMMEDIATE. Kauf, Startinitialisierung, Reset,
 Disposition und Settlement speichern zusammengehörige Mutationen atomar.
 Routing läuft außerhalb der Schreibtransaktion. Danach werden Angebot,
-Fahrzeug, Energieausstattung, Startfüllstand, Kosten und Guthaben erneut geprüft. Markterzeugung erfolgt erst nach
-committeter Auszahlung. Details: [RELATIONAL_STATE.md](RELATIONAL_STATE.md).
+Fahrzeug, Energieausstattung, Startfüllstand, Kosten und Guthaben erneut geprüft.
+Dispatch verbraucht das gewählte Angebot und invalidiert den Bedarf atomar;
+erst nach dem Commit darf der Worker den verbliebenen Pool auffüllen. Details:
+[RELATIONAL_STATE.md](RELATIONAL_STATE.md).
 
 Accounts besitzen getrennte Spielzustände; dieselbe lokale Fahrzeugkennung
 mehrerer Spieler ist erlaubt. Rangliste und Mehrspielerkarte verwenden eigene
@@ -236,8 +238,9 @@ explizit frei. Karteninstanz und Bildknoten überleben Navigation und Polls.
 
 Analytics API → AnalyticsService → AnalyticsReader (Port) → SqliteAnalyticsReader.
 Die Session liefert die Nutzer-ID, niemals ein Queryparameter. Vor dem Read
-führt die API ausschließlich bestehende Arrival-Reconciliation samt getrenntem
-Refill aus. Der Reader öffnet einen konsistenten SQLite-Lesestand. Kein Schema-
+führt die API ausschließlich bestehende Arrival-Reconciliation samt
+Bedarfsinvalidierung aus. Der Reader öffnet einen konsistenten
+SQLite-Lesestand. Kein Schema-
 Update und keine Analytics-Schreibverantwortung im GameService.
 
 Nutzer, Status und oberer Zeitstempel werden relational gefiltert; all-time
@@ -381,7 +384,7 @@ orchestriert keine Providerrequests. Auch partial Markets veröffentlichen
 
 Globale gerichtete Relationen, Anchor-Versuche und Leases verwenden zusätzliche
 Tabellen derselben SqliteGameDatabase. Keine zweite Runtime-Datenbank. Das
-Player-State-Schema 1.1.0 bleibt unverändert; Offer-Referenzen liegen separat in
+Runtime-Schema 1.2.0 umfasst Vorrat und Routingevidenz; Offer-Referenzen liegen in
 `offer_route_references` und werden mit Marktänderungen atomar geschrieben.
 Die Offer-Dokumentversion 1 und Transport-Dokumentversion 2 bleiben erhalten.
 RoutePayload benennt Straßenkilometer und Providerzeit explizit; Mapping zu

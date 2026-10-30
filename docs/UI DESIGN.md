@@ -888,8 +888,8 @@ bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATAL
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
-WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.2.0) und
+WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
 Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).

@@ -54,6 +54,13 @@ trennt Gameplay, Markt-Stock und Routing sichtbar. Ein Dispatch entfernt nur
 das gewählte Angebot und invalidiert Bedarf, statt den wiederverwendbaren Pool
 zu leeren.
 
+Der abschließende Dokumentationsabgleich bestätigt README, Product, Goal,
+Target, Milestones, UI Design, Architektur und ADR 0007 gegen diesen Stand.
+Aktuelle Verträge nennen Schema 1.2.0, WorldCatalogue 4.2.0, den einzelnen
+Lifespan-Worker und den asynchronen bedarfsgesteuerten Refill. Frühere
+Branch-/Supervisor-Angaben sind eindeutig als historische, aufgehobene
+Zwischenstände gekennzeichnet.
+
 Der Scheduler wählt ausschließlich fällige `partial`-Jobs. Ein neues Fahrzeug
 wird in begrenzten Einzelrunden bis zu drei sichtbaren und zehn gespeicherten
 Angeboten je Distanzband versorgt; ein `ready`-Job wird nicht erneut ausgewählt.
@@ -63,11 +70,11 @@ scripts/quality.py` ist mit Exitcode 0 bestanden: **590 Python-Tests**,
 **100,00 % app-Statement-Coverage** (6.747 von 6.747 Statements),
 **118 Frontend-Verhaltenstests** sowie Ruff, Formatierung, mypy, Pyright,
 ESLint, Stylelint, Prettier, checkJs, Produktionsbuild und compileall. Die
-Python-Suite benötigte 13 Minuten 25 Sekunden. Der langsamste einzelne
-Python-Test lief 5,88 Sekunden; kein Python-Test überschritt zehn Sekunden.
+Python-Suite benötigte 13 Minuten 13 Sekunden. Der langsamste einzelne
+Python-Test lief 5,59 Sekunden; kein Python-Test überschritt zehn Sekunden.
 Architektur- und Funktionsmanifestprüfungen sind Teil dieses Laufs.
 
-`npm run test:e2e`: **36 bestanden** in 3,8 Minuten. Die Suite lief gegen
+`npm run test:e2e`: **36 bestanden** in 3,9 Minuten. Die Suite lief gegen
 einen isolierten lokalen Einprozess-Server mit lokaler Datenbank und lokalem
 Routing-Fixture. Marktaufbau, sichtbare Einzelpublikation, Refresh,
 Fahrzeugfilter, Desktop/Mobil, Offline-Ankunft und Kartenregressionen sind
@@ -76,8 +83,8 @@ gezielte Mehrfahrzeug-Kostentest liest anschließend die Detailprojektion. Der
 Energie-Gegentest schaltet die isolierte Serverzeit vor und synchronisiert die
 Runtime gezielt, statt reale Fahrt- oder Pollzeiten abzuwarten. Kartenlebenszyklus,
 parallele Transporte, Energieanzeige und Offline-Abrechnung sind getrennte
-Fälle. Vier vollständige Integrationsketten benötigen auf dem Windows-Host
-10,7 bis 12,9 Sekunden; alle übrigen Browserfälle bleiben höchstens bei zehn
+Fälle. Fünf vollständige Integrationsketten benötigen auf dem Windows-Host
+11,0 bis 12,5 Sekunden; alle übrigen Browserfälle bleiben höchstens bei zehn
 Sekunden.
 Diese Laufzeit wird sichtbar akzeptiert, weil sie echte Registrierung,
 Marktvorbereitung, Routing und Dispatch umfasst und nicht durch direkte Test-SQL

@@ -66,7 +66,7 @@ Der MVP muss einen vollständigen Road-Freight-Loop liefern:
 - Echtzeit-Timestamps
 
 **Simuliert:**
-- 273 ausdrücklich geschätzte Facility-Positionen, getrennt von verifizierten Koordinaten
+- 464 ausdrücklich geschätzte Facility-Positionen, getrennt von 95 verifizierten Koordinaten
 - Konkrete Geschäftsbeziehung
 - Tonnage und konkrete Lieferung
 - Auftragsentstehung
@@ -154,6 +154,11 @@ auch wenn die Einfärbung eines Fahrzeugs auf kleinem Kartenmaßstab dezent ist.
 
 ## Aktuelle technische Grundlage
 
+Die nachfolgenden datierten Implementierungsstände sind eine Chronik. Alte
+Branch-, Prüf- und Veröffentlichungsangaben beschreiben nur ihren damaligen
+Stand; aktuelles Verhalten und aktuelle Abnahme stehen in Architektur und
+Qualitätsbericht.
+
 Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.2.0) und
 WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
@@ -187,10 +192,12 @@ Endfüllstand mit Auszahlung und Settlement atomar gespeichert.
 Stadtmärkte eigener idle Fahrzeuge ersetzen Nutzlastklassen und Viewport-Scope.
 V2 bewahrt gültige fahrbare Angebote und ergänzt Facility-/Distanz-Coverage.
 Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Die tatsächliche
-Anfahrt wird mitgeplant; Dispatch und anschließender Markt-Refill besitzen
-getrennte Transaktionen. Historische Transporte und gespeicherte Konditionen
-bleiben erhalten. Trailer, Versicherungen und weitere Simulationen sind nicht
-Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
+Anfahrt wird mitgeplant. Dispatch verbraucht genau das gewählte Angebot und
+invalidiert den dauerhaften Bedarf in derselben Transaktion. Der Lifespan-Worker
+füllt den Pool später bedarfsgesteuert auf. Historische Transporte und
+gespeicherte Konditionen bleiben erhalten. Trailer, Versicherungen und weitere
+Simulationen sind nicht Bestandteil dieser Änderung. World 4.2.0 und Vehicle
+2.2.0 sind die einzigen
 Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
 den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
 Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
@@ -309,15 +316,19 @@ Tonnagenverteilung, Tarif, Anfahrt, Energie und historische Transporte bleiben
 unverändert. Ein Generierungsfahrzeug reserviert weiterhin kein Angebot.
 
 
-## Runtime-Trennung und Alttransport-Reparatur (27.09.2026)
+## Historischer Zwischenstand: Runtime-Trennung (27.09.2026)
 
-Die neue verbindliche Abschlussvoraussetzung ersetzt die fruehere Beschraenkung
-auf gezielte Routingtests: vollstaendiges Quality-Gate mit 100 % app-Statement-
-Coverage sowie komplette Browserregression vor Commit/Push auf feature/frontend-v2.
-Runtime und Vorbereitung laufen getrennt; Spielstand und Flotte erscheinen vor
-Geometrien und Markt. Read-Ziel p95 <= 250 ms, weitere Spielerstarts <= 2 s
+Dieser Zwischenstand verlangte ein vollstaendiges Quality-Gate mit 100 %
+app-Statement-Coverage sowie die komplette Browserregression vor Commit/Push
+auf `feature/frontend-v2`. Runtime und Vorbereitung liefen damals in getrennten
+Prozessen; Spielstand und Flotte erschienen vor Geometrien und Markt. Das
+Read-Ziel lag bei p95 <= 250 ms, weitere Spielerstarts bei <= 2 s
 (einmaliger Kaltstart mit Settlement bei 3,39 s am 28.09.2026 akzeptiert),
 Runtime plus Verkehr <= 250 KiB pro Poll. Keine unveraenderten Geometrien im Polling.
+
+Die Zwei-Prozess-Entscheidung ist aufgehoben. Aktuell besitzt ein
+FastAPI-Lifespan genau einen bedarfsgesteuerten Worker; verbindlich ist
+[ADR 0007](adr/0007-runtime-preparation-and-route-projections.md).
 
 Die beiden bestaetigten optionalen Alt-Anfahrtsplaene werden nur offline auf
 einer gesicherten Kopie repariert. Live-Aktivierung und echte iPad-Abnahme bleiben

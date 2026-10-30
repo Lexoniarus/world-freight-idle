@@ -17,6 +17,10 @@
   auf.
 - Worker-Tests prüfen den öffentlichen Lifecycle statt privater Task-/Event-
   Attribute. Direkte SQLite-Testverbindungen werden zuverlässig geschlossen.
+- README, Produkt-, Ziel-, Meilenstein-, UI- und Architekturdokumentation nennen
+  einheitlich Schema 1.2.0, WorldCatalogue 4.2.0, den Lifespan-Worker und den
+  bedarfsgesteuerten Refill. Die frühere Zwei-Prozess-Entscheidung bleibt nur
+  noch ausdrücklich als aufgehobene Historie erhalten.
 - Sämtliche Prüfungen bleiben lokal; es gab keine Supabase- oder
   Live-Providerzugriffe.
 

@@ -108,6 +108,11 @@ Diese Arbeit ist noch offen; lokale Tests sind keine Produktionsfreigabe.
 
 ## Standards-Bereinigung der vorhandenen UI-Basis
 
+Die folgenden datierten Abschnitte sind die Implementierungs- und
+Abnahmechronik. Branch-, Prüf- und Veröffentlichungsangaben gelten für ihren
+jeweiligen damaligen Stand. Die aktuellen Meilensteine stehen oben; aktuelle
+Prüfergebnisse ausschließlich im Qualitätsbericht.
+
 Vor weiterem M1-Backend-Ausbau: Einstieg und Zuständigkeiten aufgeteilt,
 Lifecycle/DI ergänzt, DOM-Ausgabe vereinheitlicht, D3-/Mehrseiten-Altbestand
 entfernt und Frontend-Gates eingeführt. Bestehende Core-Regeln, Konten und
@@ -177,10 +182,11 @@ Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abn
 Stadtmärkte eigener idle Fahrzeuge ersetzen Nutzlastklassen und Viewport-Scope.
 V2 bewahrt gültige fahrbare Angebote und ergänzt Facility-/Distanz-Coverage.
 Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Die tatsächliche
-Anfahrt wird mitgeplant; Dispatch und anschließender Markt-Refill besitzen
-getrennte Transaktionen. Historische Transporte und gespeicherte Konditionen
-bleiben erhalten. Trailer, Versicherungen und weitere Simulationen sind nicht
-Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
+Anfahrt wird mitgeplant. Dispatch verbraucht genau das gewählte Angebot und
+invalidiert den dauerhaften Bedarf in derselben Transaktion. Der Lifespan-Worker
+füllt später bedarfsgesteuert auf. Historische Transporte und gespeicherte
+Konditionen bleiben erhalten. Trailer, Versicherungen und weitere Simulationen
+sind nicht Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
 Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
 den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
 Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
@@ -212,7 +218,8 @@ SRP-Review; die ausgeführten Ergebnisse stehen im aktuellen Qualitätsbericht.
 ## Frontend-v2: Wirtschaft und Darstellung
 
 Ergänzt: Beta(3,1)-Beladung, gespeicherter NHM-Tarif, getrennte Wartung und
-Energieeinkäufe, global atomarer Marktneuaufbau, persistente Firmenfarben,
+Energieeinkäufe, atomare bedarfsgesteuerte Marktveröffentlichung, persistente
+Firmenfarben,
 Asset-Gruppen und Analyticsnamen. Lokale Umsetzung auf dem erhaltenen
 Anfahrtsfix. Aktuelle Gates und Review: [Qualitätsbericht](../QUALITY_REPORT.md).
 
@@ -277,15 +284,19 @@ Spielstand unverändert. Gezielte Prüfungen siehe
 Vollständige Suite und Gesamtintegration verbleiben ausdrücklich beim Nutzer.
 
 
-## Runtime-Trennung und Alttransport-Reparatur (27.09.2026)
+## Historischer Zwischenstand: Runtime-Trennung (27.09.2026)
 
-Die neue verbindliche Abschlussvoraussetzung ersetzt die fruehere Beschraenkung
-auf gezielte Routingtests: vollstaendiges Quality-Gate mit 100 % app-Statement-
-Coverage sowie komplette Browserregression vor Commit/Push auf feature/frontend-v2.
-Runtime und Vorbereitung laufen getrennt; Spielstand und Flotte erscheinen vor
-Geometrien und Markt. Read-Ziel p95 <= 250 ms, weitere Spielerstarts <= 2 s
+Dieser Zwischenstand verlangte ein vollstaendiges Quality-Gate mit 100 %
+app-Statement-Coverage sowie die komplette Browserregression vor Commit/Push
+auf `feature/frontend-v2`. Runtime und Vorbereitung liefen damals in getrennten
+Prozessen; Spielstand und Flotte erschienen vor Geometrien und Markt. Das
+Read-Ziel lag bei p95 <= 250 ms, weitere Spielerstarts bei <= 2 s
 (einmaliger Kaltstart mit Settlement bei 3,39 s am 28.09.2026 akzeptiert),
 Runtime plus Verkehr <= 250 KiB pro Poll. Keine unveraenderten Geometrien im Polling.
+
+Die Zwei-Prozess-Entscheidung ist aufgehoben. Aktuell besitzt ein
+FastAPI-Lifespan genau einen bedarfsgesteuerten Worker; verbindlich ist
+[ADR 0007](adr/0007-runtime-preparation-and-route-projections.md).
 
 Die beiden bestaetigten optionalen Alt-Anfahrtsplaene werden nur offline auf
 einer gesicherten Kopie repariert. Live-Aktivierung und echte iPad-Abnahme bleiben
