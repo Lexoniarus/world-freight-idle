@@ -114,7 +114,9 @@ produktive Ablauf besitzt nun genau diese Kette:
 1. `MarketLifecycleService.published` liest vorhandene persönliche Angebote
    und schreibt nur bei ausdrücklichem Refresh eine neue Bedarfsversion.
 2. `PlayerMarketDemandService` besitzt Bedarfsversion, Status und Diagnose;
-   `PlayerMarketRouteService` besitzt Offer-Bindungen und Routenfakten.
+   `PlayerMarketRouteService` besitzt Offer-Bindungen und gelesene
+   Routenfakten. `MarketRoutePreparationService` besitzt als einziger
+   Marktbaustein die begrenzte Providerbereitung im Worker.
 3. `PlayerMarketStockContext` benennt persönlichen Bestand, gemeinsame
    Vorlagen und Policy, ohne eine weitere Ablaufklasse einzuführen.
 4. `MarketPreparationWorker` plant ausschließlich fällige `partial`-Jobs.
@@ -141,7 +143,9 @@ Fassade dupliziert diese Regeln nicht. Sämtliche neuen konkreten Callables sind
 im Function-Test-Manifest einzeln gegengeprüft.
 
 Im Frontend übersetzt `MapSelectionController` typisierte Kartenobjektauswahl
-in Navigation. `WorldMap` kennt keine URL-Ziele. `PanelView` verwendet konkrete
+in Navigation. `MapInteractions` besitzt MapLibre-Hit-Testing, Hover-Popup und
+Listener-Cleanup; `WorldMap` komponiert und rendert. Beide kennen keine
+URL-Ziele. `PanelView` verwendet konkrete
 Zustandsslices; die Firmenansicht heißt `company-dashboard.js`, während
 `ReferenceCompany` die Katalogfirma eindeutig von der künftigen Spielerfirma
 trennt. Diese Vorbereitung schafft Erweiterungspunkte für Firma, Depot und

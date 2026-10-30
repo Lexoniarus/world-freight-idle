@@ -2,6 +2,15 @@
 
 ## Zuständigkeitsrefactor der lokalen Runtime – 28.10.2026
 
+- Die lokale `GameRuntime` besitzt immer Preparation-Store und
+  Routing-Readiness; der frühere halb konfigurierte Testmodus ist entfernt.
+- `PlayerMarketRouteService` liest und bindet ausschließlich vorhandene
+  Routenfakten. Providerarbeit liegt getrennt im
+  `MarketRoutePreparationService` und wird nur vom Stock-Worker aufgerufen.
+- Wiederverwendbare Testaufbauten liegen unter `tests/support`; ausführbare
+  Testmodule importieren einander nicht mehr als versteckte Bibliothek.
+- `MapInteractions` besitzt Hit-Testing, Hover-Popup und MapLibre-Listener
+  samt Cleanup. `WorldMap` bleibt Renderer- und Composition-Orchestrator.
 - Dispatch-Eignung ist eine reine Prüfung; die Standortauflösung liegt in einem
   eigenen injizierten Service und mutiert keine Fahrzeuge während der Prüfung.
 - Routing-Relationen, Anker und Verbindungsevidenz werden pro Planungsrunde

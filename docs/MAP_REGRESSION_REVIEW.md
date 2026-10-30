@@ -56,8 +56,11 @@ Kein Python-Core-Callable wurde eingeführt oder fachlich geändert.
 | `VehicleGroups.updatePoses` | Gruppen-Präsentation | Badge an aktuelle Representative-Koordinate binden | aktuelle Features, Marker | Positionsupdates auch ohne Neugruppierung |
 | `VehicleGroups.renderVisual` | Gruppen-Präsentation | Count und zugängliche Representative-Metadaten zeigen | explizites erstes stabiles Mitglied | DOM; weder Bildauswahl noch Rotation |
 | `VehicleGroups.destroy` | Gruppen-Präsentation | Marker und Popup entsorgen | eigene Marker/Popup | keine fremden Bild-Leases |
+| `MapInteractions.constructor` | Karteninteraktion | Hit-Testing und Hover-Listener besitzen | MapLibre, Gruppen, typisierte Selection-Callback | bindet ausschließlich eigene native Listener |
+| `MapInteractions.selectFeature` | Karteninteraktion | Kartenhit in semantische Auswahl übersetzen | sichtbare Layer und Clusterquelle | keine Navigation oder Marktanfrage |
+| `MapInteractions.destroy` | Karten-Lifecycle | eigene Listener und Hover-Popup freigeben | MapLibre | idempotenter Aufrufer im WorldMap-Cleanup |
 | `WorldMap.constructor` | Karten-Composition | Kartenkomponenten verdrahten | OverlayData, Registry, Gruppen und Kamera | Initialisierung; Zustandsgrenzen bleiben getrennt |
-| `WorldMap.bindMapEvents` | Karten-Lifecycle | Kartenevents an Darstellungsaktionen binden | MapLibre, bestehende Interaktionsmethoden | Listener; move aktualisiert Darstellung, keine Marktrequests |
+| `WorldMap.bindMapEvents` | Karten-Lifecycle | Render- und Bewegungsereignisse binden | MapLibre und bestehende Projektionen | Interaktionslistener gehören MapInteractions |
 | `WorldMap.update` | Karten-Orchestrierung | neuen Snapshot an Darstellungsbesitzer verteilen | OverlayData und Layeradapter | keine Kamerabewegung |
 | `WorldMap.syncVehicleIcons` | Karten-Orchestrierung | fertige Atlasmetadaten ins Read-Modell übernehmen | Registry, OverlayData | async Disposal-Schutz; keine Navigation |
 | `WorldMap.drawTraffic` | Karten-Orchestrierung | aktuelle Bewegungsfeatures und Auswahl veröffentlichen | Read-Modell, Gruppen, Source-Adapter | kein Pricing, Routing oder Kamerafokus |

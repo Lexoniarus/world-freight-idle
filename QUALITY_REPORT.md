@@ -1,6 +1,6 @@
 # Qualitätsbericht: lokaler bedarfsgesteuerter Frachtpool
 
-Stand: 28.10.2026. Branch `refactor/local-market-pool`, Basis aktuelles lokales
+Stand: 30.10.2026. Branch `refactor/local-market-pool`, Basis aktuelles lokales
 `main`. Dieser Abschnitt ist der aktuelle Prüfstand; die folgenden Berichte sind
 historische Abnahmen früherer Architekturen.
 
@@ -32,7 +32,12 @@ Commit. Die Helper halten nur lokale Zwischenwerte ihrer bestehenden Klasse
 und eröffnen weder neue Daten- noch Providerpfade. `MarketComponents` ist nur
 noch die explizite Composition-Grenze. Spielerbedarf, Routenfakten und
 Stock-Abhängigkeiten liegen getrennt in `PlayerMarketDemandService`,
-`PlayerMarketRouteService` und `PlayerMarketStockContext`.
+`PlayerMarketRouteService`, `MarketRoutePreparationService` und
+`PlayerMarketStockContext`. Die lokale Test-Runtime besitzt dieselben
+Preparation-/Readiness-Grenzen wie Produktion; gemeinsame Fixtures liegen in
+`tests/support`, ohne Test-zu-Test-Importe. Im Browser besitzt
+`MapInteractions` Hit-Testing, Hover und Listener-Cleanup getrennt vom
+`WorldMap`-Renderer.
 
 `GameService` ist eine delegierende Spielfassade. `PlayerInitializationService`
 besitzt Anlage und Reset, `TransportDispatchService` Quote und Dispatch und
@@ -46,11 +51,11 @@ Angeboten je Distanzband versorgt; ein `ready`-Job wird nicht erneut ausgewählt
 
 Der abschließende Lauf von `.venv/Scripts/python.exe -X utf8
 scripts/quality.py` ist mit Exitcode 0 bestanden: **593 Python-Tests**,
-**100,00 % app-Statement-Coverage** (6.796 von 6.796 Statements),
+**100,00 % app-Statement-Coverage** (6.799 von 6.799 Statements),
 **118 Frontend-Verhaltenstests** sowie Ruff, Formatierung, mypy, Pyright,
 ESLint, Stylelint, Prettier, checkJs, Produktionsbuild und compileall. Die
-Python-Suite benötigte 16 Minuten 55 Sekunden. Der langsamste einzelne
-Python-Test lief 9,56 Sekunden; kein Python-Test überschritt zehn Sekunden.
+Python-Suite benötigte 15 Minuten 33 Sekunden. Der langsamste einzelne
+Python-Test lief 6,10 Sekunden; kein Python-Test überschritt zehn Sekunden.
 Architektur- und Funktionsmanifestprüfungen sind Teil dieses Laufs.
 
 `npm run test:e2e`: **36 bestanden** in 3,7 Minuten. Die Suite lief gegen
@@ -63,7 +68,8 @@ Energie-Gegentest schaltet die isolierte Serverzeit vor und synchronisiert die
 Runtime gezielt, statt reale Fahrt- oder Pollzeiten abzuwarten. Kartenlebenszyklus,
 parallele Transporte, Energieanzeige und Offline-Abrechnung sind getrennte
 Fälle. Drei vollständige Integrationsketten benötigen auf dem Windows-Host
-11,0 bis 11,7 Sekunden; alle übrigen Browserfälle bleiben unter zehn Sekunden.
+10,9 bis 12,4 Sekunden; alle übrigen Browserfälle bleiben höchstens bei zehn
+Sekunden.
 Diese Laufzeit wird sichtbar akzeptiert, weil sie echte Registrierung,
 Marktvorbereitung, Routing und Dispatch umfasst und nicht durch direkte Test-SQL
 oder höhere Timeouts kaschiert wird. Absichtlich abgebrochene Browserrequests

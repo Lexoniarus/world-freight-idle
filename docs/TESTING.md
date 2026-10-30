@@ -17,6 +17,12 @@ werden strukturell ausgenommen. Das Gate weist zusätzlich die 20 langsamsten
 Python-Testphasen aus, damit Laufzeitregressionen nicht hinter der grünen
 Gesamtsumme verschwinden.
 
+Gemeinsame Fixtures und lokale Provider-Doubles liegen ausschließlich unter
+`tests/support`. Testmodule importieren keine anderen ausführbaren Testmodule;
+damit entstehen weder implizite Collection-Abhängigkeiten noch alternative
+Produktionsarchitekturen. Die Runtime-Fixture verdrahtet dieselben lokalen
+Preparation-, Readiness- und Stock-Grenzen wie der Composition Root.
+
 ## Verhalten und Grenzen
 
 - Domain: Invarianten, immutable Werte, unzulässige Zustandswechsel, Mengen,

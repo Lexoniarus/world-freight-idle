@@ -118,7 +118,8 @@ Market-, Distance-, Scale- und Capability-Profile sind eigene Domainwerte.
 | MarketLifecycleService | Retention, Pruning, Markttransaktion und Projektion der Eignung koordinieren |
 | MarketDemandResolver | Konkrete idle Fahrzeuge und gespeicherte Transportziele projizieren |
 | PlayerMarketDemandService | Bedarfsversion, Status und atomare Coverage-Diagnose eines Spielers besitzen |
-| PlayerMarketRouteService | Offer-Bindungen und mengenbasiert gelesene Routenfakten anwenden und begrenzt vorbereiten |
+| PlayerMarketRouteService | Offer-Bindungen und mengenbasiert gelesene Routenfakten anwenden |
+| MarketRoutePreparationService | Fehlende Relationen begrenzt und ausschließlich im Worker vorbereiten |
 | PlayerMarketStockContext | Persönlichen Bestand, gemeinsame Vorlagen und Stock-Policy explizit bündeln |
 | StockPlanningService | Sichtbare Defizite vor Reserven priorisieren und Vielfalt wählen |
 | MarketTemplateService | Wiederverwendbare Vorlagen zu genau einem Angebot materialisieren |
@@ -225,8 +226,10 @@ Native ES-Module bleiben: Views rendern sichere DOM-Fragmente, Requests laufen
 routenlokale Stadtauswahl; LayerStateController besitzt Presets/Overrides nach
 stabiler `user.id`; AnalyticsController besitzt bedarfsgeladene Statistikreads.
 Separate LatestRequest-Instanzen schützen Marktbestand und Auftragsdetail.
-WorldMap rendert; VehicleGroups, Opportunities, Layerdefinitionen und Kamera
-bleiben eigene Module. Karteninstanz und Bildknoten überleben Navigation/Polls.
+WorldMap rendert; MapInteractions besitzt Hit-Testing, Hover und seine nativen
+MapLibre-Listener. VehicleGroups, Opportunities, Layerdefinitionen und Kamera
+bleiben eigene Module. Jeder zustandsbehaftete Baustein gibt seine Ressourcen
+explizit frei. Karteninstanz und Bildknoten überleben Navigation und Polls.
 
 Analytics API → AnalyticsService → AnalyticsReader (Port) → SqliteAnalyticsReader.
 Die Session liefert die Nutzer-ID, niemals ein Queryparameter. Vor dem Read
