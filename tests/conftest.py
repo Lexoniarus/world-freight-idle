@@ -11,7 +11,7 @@ from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.services.gameplay.game import GameService
-from tests.support.catalogues import WORLD_PATH
+from tests.support.catalogues import REFERENCE_WORLD_PATH
 from tests.support.game import create_active_trip
 from tests.support.game_service import build_fixture_game
 from tests.support.legacy_fixtures import legacy_source as legacy_source
@@ -42,7 +42,7 @@ def world_catalogue(tmp_path):
     import shutil
 
     path = tmp_path / "world.sqlite3"
-    shutil.copyfile(WORLD_PATH, path)
+    shutil.copyfile(REFERENCE_WORLD_PATH, path)
     return SqliteWorldCatalogue(path)
 
 

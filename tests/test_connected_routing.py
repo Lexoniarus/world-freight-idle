@@ -37,7 +37,7 @@ from app.services.routing.evidence import RoutingEvidenceReader
 from app.services.routing.preparation import RoutingPreparationService
 from app.services.routing_anchors import RoutingAnchorResolver
 from app.services.routing_connections import RoutingConnectionValidator
-from tests.support.catalogues import WORLD_PATH
+from tests.support.catalogues import REFERENCE_WORLD_PATH
 from tests.support.routing import (
     FakeGeocoder,
     FakeLocator,
@@ -52,7 +52,7 @@ STENDAL = "18e6c54b-658c-4a10-ab92-d518bca060f7"
 
 @pytest.fixture(scope="module")
 def connection_world():
-    world = CachedWorldCatalogue(SqliteWorldCatalogue(WORLD_PATH))
+    world = CachedWorldCatalogue(SqliteWorldCatalogue(REFERENCE_WORLD_PATH))
     world.read()
     return world
 
