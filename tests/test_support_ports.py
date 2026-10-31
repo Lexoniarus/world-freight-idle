@@ -19,16 +19,16 @@ from app.repositories.relational_traffic import SqliteTrafficReader
 
 
 def test_relational_public_reads_preserve_privacy_and_offline_progress(
-    relational, game
+    relational, synthetic_game
 ):
     SqlitePreferenceStore(relational)
     ranking = SqliteLeaderboardReader(relational)
     traffic = SqliteTrafficReader(relational)
     assert traffic.list_active_transports(12) == ()
     assert len(ranking.list_ranking(12)) == 2
-    vehicle = game.state_repository.list_vehicles()[0]
+    vehicle = synthetic_game.state_repository.list_vehicles()[0]
     vehicle.start_trip()
-    offer = game.state_repository.list_offers()[0]
+    offer = synthetic_game.state_repository.list_offers()[0]
     route = RouteSnapshot(((1, 1), (2, 2)), 3, 10, "fixture")
     trip = ActiveTransport(
         "shared",

@@ -20,10 +20,12 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 class FakeGame:
     """Expose deterministic application responses behind the game facade."""
 
-    def __init__(self, game) -> None:
-        self.market_lifecycle = game.market_lifecycle
-        self.offer = replace(game.state_repository.list_offers()[0], id="c1")
-        self.vehicle = game.state_repository.list_vehicles()[0]
+    def __init__(self, synthetic_game) -> None:
+        self.market_lifecycle = synthetic_game.market_lifecycle
+        self.offer = replace(
+            synthetic_game.state_repository.list_offers()[0], id="c1"
+        )
+        self.vehicle = synthetic_game.state_repository.list_vehicles()[0]
         self.route = RouteSnapshot(((1, 1), (2, 2)), 10, 20, "fixture")
         self.trip = ActiveTransport(
             "trip1",

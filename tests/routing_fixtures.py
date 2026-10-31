@@ -10,25 +10,29 @@ from app.bootstrap import (
 from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 
 
-def install_fake_routing(runtime: GameRuntime) -> None:
+def install_fake_routing(synthetic_runtime: GameRuntime) -> None:
     """Keep every background and request path away from live providers."""
-    runtime.router = FakeRouter()
-    runtime.anchors = FakeRoutingAnchorResolver()
-    runtime.routing_preparation.router = runtime.router
-    runtime.routing_preparation.anchors = runtime.anchors
+    synthetic_runtime.router = FakeRouter()
+    synthetic_runtime.anchors = FakeRoutingAnchorResolver()
+    synthetic_runtime.routing_preparation.router = synthetic_runtime.router
+    synthetic_runtime.routing_preparation.anchors = synthetic_runtime.anchors
 
 
-def prepare_client_market(client: TestClient, runtime: GameRuntime) -> None:
+def prepare_client_market(
+    client: TestClient, synthetic_runtime: GameRuntime
+) -> None:
     """Prepare one real candidate through readiness on the app event loop."""
     user_id = client.get("/api/v1/auth/me").json()["id"]
     assert client.portal is not None
-    client.portal.call(prepare_player_market, runtime, user_id)
+    client.portal.call(prepare_player_market, synthetic_runtime, user_id)
 
 
-async def prepare_player_market(runtime: GameRuntime, user_id: str) -> None:
+async def prepare_player_market(
+    synthetic_runtime: GameRuntime, user_id: str
+) -> None:
     """Publish a usable offer through the actual local stock worker."""
-    game = build_player_service(runtime, user_id)
-    worker = build_preparation_worker(runtime)
+    game = build_player_service(synthetic_runtime, user_id)
+    worker = build_preparation_worker(synthetic_runtime)
     try:
         for _ in range(4):
             await worker.process(user_id)

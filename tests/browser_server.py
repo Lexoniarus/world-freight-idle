@@ -93,12 +93,14 @@ def pause_previous_test_profiles() -> dict:
 @app.post("/__tests__/energy-fixture")
 def prepare_energy_fixture(
     single_stop: bool = False,
-    game: GameService = Depends(get_game_service),
+    synthetic_game: GameService = Depends(get_game_service),
 ) -> dict:
     """Configure short-range test energy solely inside the isolated server."""
-    vehicle = game.get_vehicle("truck_01")
+    vehicle = synthetic_game.get_vehicle("truck_01")
     model = next(
-        m for m in game.catalogue.list_models() if m.id == vehicle.model_id
+        m
+        for m in synthetic_game.catalogue.list_models()
+        if m.id == vehicle.model_id
     )
     capacity = 1000 if single_stop else 100
     vehicle.apply_model(
@@ -109,31 +111,31 @@ def prepare_energy_fixture(
     )
     vehicle.refill_energy()
     vehicle.consume_energy(capacity * 0.9)
-    offers = game.state_repository.list_offers()
+    offers = synthetic_game.state_repository.list_offers()
     if offers:
         vehicle.reposition_within_city(offers[0].origin)
-    with game.unit_of_work.transaction():
-        game.state_repository.save_vehicle(vehicle)
-        game.market_services.demand.invalidate()
+    with synthetic_game.unit_of_work.transaction():
+        synthetic_game.state_repository.save_vehicle(vehicle)
+        synthetic_game.market_services.demand.invalidate()
     return {"vehicle_id": vehicle.id}
 
 
 @app.post("/__tests__/approach-fixture")
 def prepare_approach_fixture(
-    game: GameService = Depends(get_game_service),
+    synthetic_game: GameService = Depends(get_game_service),
 ) -> dict:
     """Place the isolated idle truck away from its saved offer's pickup."""
-    vehicle = game.get_vehicle("truck_01")
-    offer = game.state_repository.list_offers()[0]
+    vehicle = synthetic_game.get_vehicle("truck_01")
+    offer = synthetic_game.state_repository.list_offers()[0]
     facility = next(
         item
-        for item in game.world.read().facilities
+        for item in synthetic_game.world.read().facilities
         if item.address.city.city_uid == offer.origin.city.city_uid
         and item.facility_uid != offer.origin.facility_uid
         and item.coordinates is not None
     )
     vehicle.reposition_within_city(facility.location_snapshot())
-    with game.unit_of_work.transaction():
-        game.state_repository.save_vehicle(vehicle)
-        game.market_services.demand.invalidate()
+    with synthetic_game.unit_of_work.transaction():
+        synthetic_game.state_repository.save_vehicle(vehicle)
+        synthetic_game.market_services.demand.invalidate()
     return {"vehicle_id": vehicle.id, "offer_id": offer.id}

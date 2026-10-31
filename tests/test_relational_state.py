@@ -118,12 +118,12 @@ def test_schema_rejects_version_only_upgrade_with_mandatory_expiry(tmp_path):
 
 
 def test_relational_entities_roundtrip_isolate_and_protect_history(
-    relational, game
+    relational, synthetic_game
 ):
     alice = SqliteGameStateRepository(relational, "alice")
     bob = SqliteGameStateRepository(relational, "bob")
-    vehicle = game.state_repository.list_vehicles()[0]
-    offer = game.state_repository.list_offers()[0]
+    vehicle = synthetic_game.state_repository.list_vehicles()[0]
+    offer = synthetic_game.state_repository.list_offers()[0]
     route = RouteSnapshot(((13, 52), (9, 53)), 400, 100, "fixture")
     trip = ActiveTransport(
         "trip",
@@ -206,7 +206,7 @@ def test_relational_entities_roundtrip_isolate_and_protect_history(
 
 
 def test_snapshot_envelopes_and_corrupt_records_fail_explicitly(
-    relational, game
+    relational, synthetic_game
 ):
     assert decode_snapshot("sample", encode_snapshot("sample", {"x": 1})) == {
         "x": 1
@@ -226,8 +226,8 @@ def test_snapshot_envelopes_and_corrupt_records_fail_explicitly(
             decode_snapshot("sample", encoded)
     repository = SqliteGameStateRepository(relational, "alice")
     repository.save_player(PlayerState(1, 0, 0))
-    vehicle = game.state_repository.list_vehicles()[0]
-    offer = game.state_repository.list_offers()[0]
+    vehicle = synthetic_game.state_repository.list_vehicles()[0]
+    offer = synthetic_game.state_repository.list_offers()[0]
     repository.save_vehicle(vehicle)
     repository.replace_offers((offer,))
     trip = ActiveTransport(
@@ -303,15 +303,15 @@ def test_corrupt_player_values_are_normalized_at_repository_boundary(
         repository.get_player()
 
 
-def test_transport_queries_filter_before_decoding(relational, game):
+def test_transport_queries_filter_before_decoding(relational, synthetic_game):
     from unittest.mock import patch
 
     import app.repositories.game_state as mapping
 
     alice = SqliteGameStateRepository(relational, "alice")
     bob = SqliteGameStateRepository(relational, "bob")
-    vehicle = game.state_repository.list_vehicles()[0]
-    offer = game.state_repository.list_offers()[0]
+    vehicle = synthetic_game.state_repository.list_vehicles()[0]
+    offer = synthetic_game.state_repository.list_offers()[0]
     trip = ActiveTransport(
         "due",
         vehicle.id,
@@ -377,28 +377,28 @@ def test_transport_queries_filter_before_decoding(relational, game):
     assert any("arrivals" in row[3] for row in plan)
 
 
-def test_dashboard_does_not_decode_settled_history(game):
+def test_dashboard_does_not_decode_settled_history(synthetic_game):
     from unittest.mock import patch
 
     import app.repositories.game_state as mapping
     from tests.transport_fixtures import add_transport
 
-    trip = add_transport(game)
-    game.state_repository.save_transport(trip.settle(3))
+    trip = add_transport(synthetic_game)
+    synthetic_game.state_repository.save_transport(trip.settle(3))
     for index in range(99):
-        game.state_repository.save_transport(
+        synthetic_game.state_repository.save_transport(
             replace(trip.settle(3), id=f"history-{index}")
         )
     with patch.object(
         mapping, "load_transport_record", wraps=mapping.load_transport_record
     ) as decode:
-        game.dashboard()
+        synthetic_game.dashboard()
         assert decode.call_count == 0
-    assert len(game.state_repository.list_transports()) == 100
+    assert len(synthetic_game.state_repository.list_transports()) == 100
 
 
 def test_transport_validation_cache_rechecks_changed_rows_and_bounds_memory(
-    game,
+    synthetic_game,
     database,
 ):
     from unittest.mock import patch
@@ -406,8 +406,8 @@ def test_transport_validation_cache_rechecks_changed_rows_and_bounds_memory(
     import app.repositories.game_state as mapping
     from tests.transport_fixtures import add_transport
 
-    trip = add_transport(game)
-    repository = game.state_repository
+    trip = add_transport(synthetic_game)
+    repository = synthetic_game.state_repository
     with patch.object(
         mapping, "load_transport_record", wraps=mapping.load_transport_record
     ) as decode:

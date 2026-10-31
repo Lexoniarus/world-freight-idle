@@ -43,7 +43,7 @@ def build_fixture_game(
     database: SqliteGameDatabase,
     user_id: str,
     world: WorldCatalogue,
-    catalogue: VehicleCatalogue,
+    synthetic_vehicle_catalogue: VehicleCatalogue,
     market: MarketComponents,
     clock: Callable[[], float],
     time_scale: float = 1.0,
@@ -82,7 +82,7 @@ def build_fixture_game(
         MarketSelectionService(market_services.stock.policy),
     )
     planning = DispatchPlanningService(
-        VehicleCostResolver(catalogue),
+        VehicleCostResolver(synthetic_vehicle_catalogue),
         market_services.routes,
     )
     settlement = TransportSettlementService(
@@ -106,7 +106,7 @@ def build_fixture_game(
         unit,
         world,
         market,
-        catalogue,
+        synthetic_vehicle_catalogue,
         scope,
         clock,
         time_scale,
@@ -114,7 +114,7 @@ def build_fixture_game(
         PlayerInitializationService(
             unit,
             world,
-            catalogue,
+            synthetic_vehicle_catalogue,
             market_services.demand,
         ),
         settlement,

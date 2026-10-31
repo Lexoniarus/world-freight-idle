@@ -59,24 +59,24 @@ def seed_test_offers(
         service.market_services.routes.bind(offers)
 
 
-def make_stock_batch(game, preparation):
+def make_stock_batch(synthetic_game, preparation):
     """Compose the production stock batch for worker behavior tests."""
     database = preparation.routes.transactions
     SqliteMarketTemplateStore.initialize(database)
     SqlitePlayerMarketStockStore.initialize(database)
-    demand = MarketDemandResolver(game.market.candidates)
+    demand = MarketDemandResolver(synthetic_game.market.candidates)
     return StockPreparationBatch(
         StockPublicationService(
-            game.unit_of_work,
-            game.market,
+            synthetic_game.unit_of_work,
+            synthetic_game.market,
             preparation.demand,
             preparation.routes,
             preparation.stock,
             lambda: True,
         ),
         StockSnapshotReader(
-            game.unit_of_work,
-            game.market,
+            synthetic_game.unit_of_work,
+            synthetic_game.market,
             preparation.demand,
             preparation.routes,
             preparation.stock,
@@ -84,7 +84,7 @@ def make_stock_batch(game, preparation):
         ),
         StockPlanningService(preparation.stock.policy),
         MarketTemplateService(
-            game.market.factory,
+            synthetic_game.market.factory,
             preparation.stock.policy,
             preparation.demand.clock,
         ),
@@ -92,10 +92,10 @@ def make_stock_batch(game, preparation):
     )
 
 
-def build_prepared_game(game, database):
+def build_prepared_game(synthetic_game, database):
     """Recompose one game with real local preparation collaborators."""
     prepared = build_player_service(
-        build_test_runtime(game, database),
+        build_test_runtime(synthetic_game, database),
         "test-owner",
     )
     return prepared, prepared.market_services

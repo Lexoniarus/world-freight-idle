@@ -36,9 +36,9 @@ def cache(database) -> SqliteProviderCache:
 
 
 @pytest.fixture
-def active_trip(game):
+def active_trip(synthetic_game):
     """Persist one active transport for tests that require runtime state."""
-    return create_active_trip(game)
+    return create_active_trip(synthetic_game)
 
 
 @pytest.fixture
@@ -52,21 +52,27 @@ def reference_world_catalogue(tmp_path):
 
 
 @pytest.fixture
-def world_catalogue():
+def synthetic_world_catalogue():
     """Provide the compact world used by domain and service tests."""
     return build_synthetic_world_catalogue()
 
 
 @pytest.fixture
-def game(database, catalogue, world_catalogue) -> GameService:
+def synthetic_game(
+    database,
+    synthetic_vehicle_catalogue,
+    synthetic_world_catalogue,
+) -> GameService:
     market = build_market_components(
-        world_catalogue, random.Random(7), catalogue
+        synthetic_world_catalogue,
+        random.Random(7),
+        synthetic_vehicle_catalogue,
     )
     service = build_fixture_game(
         database,
         "test-owner",
-        world_catalogue,
-        catalogue,
+        synthetic_world_catalogue,
+        synthetic_vehicle_catalogue,
         market,
         time.time,
     )
@@ -88,7 +94,7 @@ def reference_vehicle_catalogue(tmp_path):
 
 
 @pytest.fixture
-def catalogue():
+def synthetic_vehicle_catalogue():
     """Provide compact vehicle models to domain and service tests."""
     return build_synthetic_vehicle_catalogue()
 
@@ -108,5 +114,5 @@ def database(tmp_path):
 
 
 @pytest.fixture
-def runtime(game, database):
-    return build_test_runtime(game, database)
+def synthetic_runtime(synthetic_game, database):
+    return build_test_runtime(synthetic_game, database)

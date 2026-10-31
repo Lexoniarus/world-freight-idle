@@ -21,8 +21,8 @@ from tests.transport_fixtures import add_transport
 
 
 @pytest.fixture
-def old_energy_state(game, database, tmp_path):
-    trip = add_transport(game, departed_at=10, arrives_at=20)
+def old_energy_state(synthetic_game, database, tmp_path):
+    trip = add_transport(synthetic_game, departed_at=10, arrives_at=20)
     source = tmp_path / "pre-energy.db"
     with closing(sqlite3.connect(source)) as target:
         target.executescript(SOURCE_SCHEMA)
@@ -62,7 +62,7 @@ def old_energy_state(game, database, tmp_path):
                     )
         target.commit()
     upgrade = VehicleEnergyUpgradeRepository(
-        source, game.catalogue.list_models()
+        source, synthetic_game.catalogue.list_models()
     )
     return source, upgrade, trip
 

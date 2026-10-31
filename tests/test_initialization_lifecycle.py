@@ -18,16 +18,16 @@ from app.main import lifespan
 @pytest.mark.parametrize("failure", ["catalogue", "write"])
 @pytest.mark.parametrize("existing_player", [False, True])
 def test_initialization_direct_failure_is_atomic(
-    game, failure, existing_player
+    synthetic_game, failure, existing_player
 ):
-    repository = game.state_repository
+    repository = synthetic_game.state_repository
     repository.reset()
     if existing_player:
         repository.save_player(PlayerState(123, 4, 4))
     before = repository.get_player()
     failures = {
         "catalogue": patch.object(
-            game.catalogue,
+            synthetic_game.catalogue,
             "list_models",
             side_effect=CatalogueError("unavailable"),
         ),
@@ -38,37 +38,37 @@ def test_initialization_direct_failure_is_atomic(
         ),
     }
     with failures[failure], pytest.raises((CatalogueError, RuntimeError)):
-        game.ensure_initial_state()
+        synthetic_game.ensure_initial_state()
     assert repository.get_player() == before
     assert repository.list_vehicles() == ()
-    game.ensure_initial_state()
+    synthetic_game.ensure_initial_state()
     player = repository.get_player()
     vehicles = repository.list_vehicles()
-    game.ensure_initial_state()
+    synthetic_game.ensure_initial_state()
     assert repository.get_player() == player
     assert repository.list_vehicles() == vehicles
     assert player.cash == (123 if existing_player else 175000)
 
 
-def test_initialization_creates_no_market_stock(game):
-    game.state_repository.reset()
-    assert not hasattr(game.market, "generate")
-    game.ensure_initial_state()
-    assert game.state_repository.list_offers() == ()
+def test_initialization_creates_no_market_stock(synthetic_game):
+    synthetic_game.state_repository.reset()
+    assert not hasattr(synthetic_game.market, "generate")
+    synthetic_game.ensure_initial_state()
+    assert synthetic_game.state_repository.list_offers() == ()
 
 
-def test_reset_failure_restores_deleted_state(game):
-    repository = game.state_repository
+def test_reset_failure_restores_deleted_state(synthetic_game):
+    repository = synthetic_game.state_repository
     player = repository.get_player()
     vehicles = repository.list_vehicles()
     offers = repository.list_offers()
     with patch.object(
-        game.catalogue,
+        synthetic_game.catalogue,
         "list_models",
         side_effect=CatalogueError("catalogue failed"),
     ):
         with pytest.raises(CatalogueError):
-            project_state(game.reset())
+            project_state(synthetic_game.reset())
     assert repository.get_player() == player
     assert repository.list_vehicles() == vehicles
     assert repository.list_offers() == offers

@@ -11,9 +11,9 @@ from app.domain.world_scopes import WorldScope
 
 
 def test_world_scopes_filter_facilities_without_reparenting_companies(
-    world_catalogue,
+    synthetic_world_catalogue,
 ):
-    snapshot = world_catalogue.read()
+    snapshot = synthetic_world_catalogue.read()
     berlin = WorldScope(snapshot).facility("berlin_westhafen")
     company = berlin.company
     assert company is not None
@@ -75,9 +75,9 @@ def test_world_scopes_filter_facilities_without_reparenting_companies(
 
 
 def test_world_scopes_report_ambiguity_and_keep_uid_queries_exact(
-    world_catalogue,
+    synthetic_world_catalogue,
 ):
-    snapshot = world_catalogue.read()
+    snapshot = synthetic_world_catalogue.read()
     berlin = WorldScope(snapshot).facility("berlin_westhafen")
     company = berlin.company
     assert company is not None

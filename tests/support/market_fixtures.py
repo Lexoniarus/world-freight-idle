@@ -25,9 +25,9 @@ from tests.support.market import build_prepared_game
 
 
 @pytest.fixture
-def city_market(world_catalogue, catalogue):
+def city_market(synthetic_world_catalogue, synthetic_vehicle_catalogue):
     """Build a compact three-band city market for behavior tests."""
-    snapshot = world_catalogue.read()
+    snapshot = synthetic_world_catalogue.read()
     base = WorldScope(snapshot).facility("berlin_westhafen")
     cargo = NhmProduct(1, "7308", "Structural modules", (1,))
     output = FacilityNhmProfile(cargo, "output", "derived", 0.8, 0.7, None)
@@ -82,7 +82,9 @@ def city_market(world_catalogue, catalogue):
         )
     )
     model = next(
-        item for item in catalogue.list_models() if item.id == "iveco_sway_500"
+        item
+        for item in synthetic_vehicle_catalogue.list_models()
+        if item.id == "iveco_sway_500"
     )
     models = Mock(list_models=Mock(return_value=(model,)))
     owned = build_owned_vehicle(model, "truck", origin.location_snapshot())
@@ -92,14 +94,14 @@ def city_market(world_catalogue, catalogue):
 
 
 @pytest.fixture
-def vehicle_game(city_market, database, catalogue):
+def vehicle_game(city_market, database, synthetic_vehicle_catalogue):
     """Compose a compact city game with real preparation collaborators."""
     market, owned, _, world, _ = city_market
     game = build_fixture_game(
         database,
         "test-owner",
         world,
-        catalogue,
+        synthetic_vehicle_catalogue,
         market,
         time.time,
     )

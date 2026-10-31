@@ -33,7 +33,11 @@ from tests.transport_fixtures import add_transport
 
 
 def test_profile_update_preserves_other_players_and_trip_snapshots(
-    database, runtime, game, reference_vehicle_catalogue, tmp_path
+    database,
+    synthetic_runtime,
+    synthetic_game,
+    reference_vehicle_catalogue,
+    tmp_path,
 ):
     service = build_profile_maintenance_service(
         replace(
@@ -45,9 +49,9 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
 
     accounts = AccountRepository(database)
     user = accounts.create_user("Selected", "not-a-real-hash")
-    selected = build_player_service(runtime, user["id"])
+    selected = build_player_service(synthetic_runtime, user["id"])
     other = accounts.create_user("Untouched", "not-a-real-hash")
-    other_game = build_player_service(runtime, other["id"])
+    other_game = build_player_service(synthetic_runtime, other["id"])
     add_transport(selected, payout=123, arrives_at=9999999999, tons=24)
     selected_location = selected.get_vehicle("truck_01").location
     assert selected_location is not None
@@ -112,7 +116,11 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
 
 @pytest.fixture
 def maintenance(
-    database, runtime, game, reference_vehicle_catalogue, tmp_path
+    database,
+    synthetic_runtime,
+    synthetic_game,
+    reference_vehicle_catalogue,
+    tmp_path,
 ):
     settings = replace(
         make_settings(tmp_path),
@@ -121,7 +129,7 @@ def maintenance(
     )
     accounts = AccountRepository(database)
     user = accounts.create_user("Selected", "test-hash")
-    selected = build_player_service(runtime, user["id"])
+    selected = build_player_service(synthetic_runtime, user["id"])
     service = build_profile_maintenance_service(settings)
     return settings, service, selected, accounts
 

@@ -21,14 +21,17 @@ from tests.support.market import (
 
 @pytest.mark.asyncio
 async def test_exhausted_negative_demand_requires_explicit_invalidation(
-    game, database
+    synthetic_game, database
 ):
-    game, preparation = build_prepared_game(game, database)
-    fleet = game.market.candidates.resolve_fleet(
-        game.state_repository.list_vehicles()
+    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    fleet = synthetic_game.market.candidates.resolve_fleet(
+        synthetic_game.state_repository.list_vehicles()
     )
-    pool = game.market.candidates.build(
-        game.market_scope.resolve(game.state_repository.list_vehicles()), fleet
+    pool = synthetic_game.market.candidates.build(
+        synthetic_game.market_scope.resolve(
+            synthetic_game.state_repository.list_vehicles()
+        ),
+        fleet,
     )
     candidate = pool[0]
     pair = (
@@ -45,10 +48,14 @@ async def test_exhausted_negative_demand_requires_explicit_invalidation(
     preparation.demand.ensure()
     status = require_value(preparation.demand.jobs.status("test-owner"))
     preparation.demand.jobs.finish(
-        "test-owner", status.generation, "exhausted", None, game.now()
+        "test-owner",
+        status.generation,
+        "exhausted",
+        None,
+        synthetic_game.now(),
     )
     preparation.demand.ensure()
-    assert preparation.demand.jobs.next_player(game.now()) is None
+    assert preparation.demand.jobs.next_player(synthetic_game.now()) is None
     before = preparation.routes.demand_state(*pair)
     readiness.provider_revision = lambda: "new-graph"
     after = preparation.routes.demand_state(*pair)
@@ -57,15 +64,18 @@ async def test_exhausted_negative_demand_requires_explicit_invalidation(
     changed = require_value(preparation.demand.jobs.status("test-owner"))
     assert changed.generation != status.generation
     assert changed.status == "partial"
-    assert preparation.demand.jobs.next_player(game.now()) == "test-owner"
+    assert (
+        preparation.demand.jobs.next_player(synthetic_game.now())
+        == "test-owner"
+    )
     await routing.prepare(*pair)
     assert routing.router.route.await_count == 2
 
 
 @pytest.mark.asyncio
-async def test_reference_replacement_owns_rollback(game, database):
-    game, preparation = build_prepared_game(game, database)
-    offer = game.state_repository.list_offers()[0]
+async def test_reference_replacement_owns_rollback(synthetic_game, database):
+    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    offer = synthetic_game.state_repository.list_offers()[0]
     pair = offer.origin.facility_uid, offer.destination.facility_uid
     await preparation.route_preparation.preparation.prepare(*pair)
     preparation.routes.bind((offer,))
@@ -77,11 +87,11 @@ async def test_reference_replacement_owns_rollback(game, database):
     with pytest.raises(PersistenceError):
         preparation.routes.references.replace((("missing-offer", reference),))
     assert preparation.routes.references.get(offer.id) == reference
-    before = game.state_repository.list_offers()
+    before = synthetic_game.state_repository.list_offers()
     with pytest.raises(PersistenceError), database.transaction():
-        game.state_repository.remove_offer(offer.id)
+        synthetic_game.state_repository.remove_offer(offer.id)
         preparation.routes.bind((invalid,))
-    assert game.state_repository.list_offers() == before
+    assert synthetic_game.state_repository.list_offers() == before
     assert preparation.routes.references.get(offer.id) == reference
 
 
@@ -142,16 +152,18 @@ async def test_worker_vanished_job_and_start_failure():
 
 
 @pytest.mark.asyncio
-async def test_batch_exhausts_deterministic_route_failures(game, database):
-    game, preparation = build_prepared_game(game, database)
-    batch = make_stock_batch(game, preparation)
+async def test_batch_exhausts_deterministic_route_failures(
+    synthetic_game, database
+):
+    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    batch = make_stock_batch(synthetic_game, preparation)
     # Bound the structural pool so exhausting it is deterministic and fast.
-    owned = game.state_repository.list_vehicles()
-    fleet = game.market.candidates.resolve_fleet(owned)
-    candidates = game.market.candidates.build(
-        game.market_scope.resolve(owned), fleet
+    owned = synthetic_game.state_repository.list_vehicles()
+    fleet = synthetic_game.market.candidates.resolve_fleet(owned)
+    candidates = synthetic_game.market.candidates.build(
+        synthetic_game.market_scope.resolve(owned), fleet
     )[:2]
-    game.market.candidates.build = Mock(return_value=candidates)
+    synthetic_game.market.candidates.build = Mock(return_value=candidates)
     error = RoutingError("No path")
     error.category = "no_path"
     routing = preparation.route_preparation.preparation
@@ -164,7 +176,7 @@ async def test_batch_exhausts_deterministic_route_failures(game, database):
         if result.status == "exhausted":
             break
     assert result.status == "exhausted"
-    assert game.list_contracts() == []
+    assert synthetic_game.list_contracts() == []
 
 
 def test_economy_audit_is_typed_and_reproducible():

@@ -97,9 +97,9 @@ def test_catalogue_requires_non_diesel_stop_time(reference_vehicle_catalogue):
 
 
 def test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction(
-    game,
+    synthetic_game,
 ):
-    vehicle = game.state_repository.list_vehicles()[0]
+    vehicle = synthetic_game.state_repository.list_vehicles()[0]
     from typing import Any
 
     from app.domain.game import OwnedVehicle
@@ -128,13 +128,15 @@ def test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction(
         with pytest.raises(ValueError):
             vehicle.consume_energy(amount)
     model = next(
-        m for m in game.catalogue.list_models() if m.energy.kind == "electric"
+        m
+        for m in synthetic_game.catalogue.list_models()
+        if m.energy.kind == "electric"
     )
     vehicle.apply_model(model)
     assert vehicle.energy == model.energy
     assert vehicle.energy_level == model.energy.capacity / 2
-    game.state_repository.save_vehicle(vehicle)
-    loaded = game.state_repository.list_vehicles()[0]
+    synthetic_game.state_repository.save_vehicle(vehicle)
+    loaded = synthetic_game.state_repository.list_vehicles()[0]
     assert loaded == vehicle
     vehicle.refill_energy()
     assert vehicle.energy_level == model.energy.capacity

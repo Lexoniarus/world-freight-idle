@@ -133,7 +133,7 @@ def test_repair_reconciliation_and_archive_reject_any_unapproved_change(
     active_trip,
     database,
     tmp_path,
-    game,
+    synthetic_game,
 ):
     damage_approach(database, active_trip)
     tool = build_transport_repair(database.path)
@@ -177,11 +177,11 @@ def test_repair_reconciliation_and_archive_reject_any_unapproved_change(
     repaired_game = build_fixture_game(
         repaired_database,
         "test-owner",
-        game.world,
-        game.catalogue,
-        game.market,
-        game.now,
-        game.time_scale,
+        synthetic_game.world,
+        synthetic_game.catalogue,
+        synthetic_game.market,
+        synthetic_game.now,
+        synthetic_game.time_scale,
     )
     set_game_clock(repaired_game, lambda: active_trip.arrives_at + 1)
     assert repaired_game.reconcile_arrival()

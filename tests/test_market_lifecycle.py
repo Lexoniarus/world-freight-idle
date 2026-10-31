@@ -16,13 +16,13 @@ from tests.support.game_clock import set_game_clock
 
 
 async def test_same_city_dispatch_preserves_departure_and_invalidates_demand(
-    game,
+    synthetic_game,
 ):
-    offer = other_facility_offer(game)
-    before = game.get_vehicle("truck_01")
-    quote = await game.quote_contract(offer.id, before.id)
-    trip = await game.dispatch(offer.id, before.id)
-    vehicle = game.get_vehicle(before.id)
+    offer = other_facility_offer(synthetic_game)
+    before = synthetic_game.get_vehicle("truck_01")
+    quote = await synthetic_game.quote_contract(offer.id, before.id)
+    trip = await synthetic_game.dispatch(offer.id, before.id)
+    vehicle = synthetic_game.get_vehicle(before.id)
     assert vehicle.facility_uid == before.facility_uid
     assert vehicle.location == before.location == trip.dispatch_route.start
     assert trip.origin == offer.origin
@@ -31,73 +31,83 @@ async def test_same_city_dispatch_preserves_departure_and_invalidates_demand(
     assert trip.operating_cost_eur == quote.economics.operating_cost_eur
     assert vehicle.energy_level == before.energy_level
     assert offer.id not in {
-        item.id for item in game.state_repository.list_offers()
+        item.id for item in synthetic_game.state_repository.list_offers()
     }
-    assert game.list_contracts() == []
+    assert synthetic_game.list_contracts() == []
 
 
-async def test_dispatch_failure_rolls_back_reservation_and_market(game):
-    offer = other_facility_offer(game)
-    before_vehicle = game.get_vehicle("truck_01")
-    before_cash = game.player_state().cash
-    before_offers = game.state_repository.list_offers()
+async def test_dispatch_failure_rolls_back_reservation_and_market(
+    synthetic_game,
+):
+    offer = other_facility_offer(synthetic_game)
+    before_vehicle = synthetic_game.get_vehicle("truck_01")
+    before_cash = synthetic_game.player_state().cash
+    before_offers = synthetic_game.state_repository.list_offers()
     with patch.object(
-        game.state_repository,
+        synthetic_game.state_repository,
         "save_transport",
         side_effect=RuntimeError("write failed"),
     ):
         with pytest.raises(RuntimeError, match="write failed"):
-            await game.dispatch(offer.id, "truck_01")
-    assert game.get_vehicle("truck_01").location == before_vehicle.location
-    assert game.get_vehicle("truck_01").status == "idle"
-    assert game.player_state().cash == before_cash
-    assert game.state_repository.list_offers() == before_offers
-    assert game.state_repository.list_active_transports() == ()
+            await synthetic_game.dispatch(offer.id, "truck_01")
+    assert (
+        synthetic_game.get_vehicle("truck_01").location
+        == before_vehicle.location
+    )
+    assert synthetic_game.get_vehicle("truck_01").status == "idle"
+    assert synthetic_game.player_state().cash == before_cash
+    assert synthetic_game.state_repository.list_offers() == before_offers
+    assert synthetic_game.state_repository.list_active_transports() == ()
 
 
-async def test_dispatch_commits_before_followup_market_reads(game):
-    offer = other_facility_offer(game)
-    cash = game.player_state().cash
-    assert not hasattr(game.market, "generate")
-    trip = await game.dispatch(offer.id, "truck_01")
-    assert game.get_vehicle("truck_01").status == "enroute"
-    assert game.get_vehicle("truck_01").location == trip.dispatch_route.start
-    assert game.player_state().cash == cash - trip.operating_cost_eur
-    assert game.state_repository.list_active_transports() == (trip,)
+async def test_dispatch_commits_before_followup_market_reads(synthetic_game):
+    offer = other_facility_offer(synthetic_game)
+    cash = synthetic_game.player_state().cash
+    assert not hasattr(synthetic_game.market, "generate")
+    trip = await synthetic_game.dispatch(offer.id, "truck_01")
+    assert synthetic_game.get_vehicle("truck_01").status == "enroute"
+    assert (
+        synthetic_game.get_vehicle("truck_01").location
+        == trip.dispatch_route.start
+    )
+    assert synthetic_game.player_state().cash == cash - trip.operating_cost_eur
+    assert synthetic_game.state_repository.list_active_transports() == (trip,)
     assert offer.id not in {
-        item.id for item in game.state_repository.list_offers()
+        item.id for item in synthetic_game.state_repository.list_offers()
     }
-    assert game.list_contracts() == []
-    assert game.state_repository.list_active_transports() == (trip,)
-    assert game.player_state().cash == cash - trip.operating_cost_eur
+    assert synthetic_game.list_contracts() == []
+    assert synthetic_game.state_repository.list_active_transports() == (trip,)
+    assert synthetic_game.player_state().cash == cash - trip.operating_cost_eur
 
 
-async def test_dispatch_retains_stock_for_another_idle_vehicle(game):
-    offer = other_facility_offer(game)
-    first = game.get_vehicle("truck_01")
+async def test_dispatch_retains_stock_for_another_idle_vehicle(synthetic_game):
+    offer = other_facility_offer(synthetic_game)
+    first = synthetic_game.get_vehicle("truck_01")
     model = next(
-        m for m in game.catalogue.list_models() if m.id == first.model_id
+        m
+        for m in synthetic_game.catalogue.list_models()
+        if m.id == first.model_id
     )
     second = build_owned_vehicle(model, "second", first.location)
-    game.state_repository.save_vehicle(second)
-    assert not hasattr(game.market, "generate")
-    trip = await game.dispatch(offer.id, first.id)
-    assert game.state_repository.list_active_transports() == (trip,)
-    remaining = game.state_repository.list_offers()
+    synthetic_game.state_repository.save_vehicle(second)
+    assert not hasattr(synthetic_game.market, "generate")
+    trip = await synthetic_game.dispatch(offer.id, first.id)
+    assert synthetic_game.state_repository.list_active_transports() == (trip,)
+    remaining = synthetic_game.state_repository.list_offers()
     assert offer.id not in {o.id for o in remaining}
     assert remaining
-    assert game.list_contracts() == list(remaining)
+    assert synthetic_game.list_contracts() == list(remaining)
 
 
 async def test_arrival_activates_city_and_preserves_historical_terms(
-    game, monkeypatch
+    synthetic_game, monkeypatch
 ):
     offer = next(
         o
-        for o in game.list_contracts()
+        for o in synthetic_game.list_contracts()
         if o.destination.city.city_uid != o.origin.city.city_uid
     )
-    build_trip = game.transport_dispatch.build_trip
+    build_trip = synthetic_game.transport_dispatch.build_trip
 
     def historical_trip(*args):
         trip = build_trip(*args)
@@ -112,57 +122,69 @@ async def test_arrival_activates_city_and_preserves_historical_terms(
         )
 
     with patch.object(
-        type(game.transport_dispatch),
+        type(synthetic_game.transport_dispatch),
         "build_trip",
         lambda self, *args: historical_trip(*args),
     ):
-        historical = await game.dispatch(offer.id, "truck_01")
+        historical = await synthetic_game.dispatch(offer.id, "truck_01")
     trip = historical
-    set_game_clock(game, lambda: trip.arrives_at + 1)
+    set_game_clock(synthetic_game, lambda: trip.arrives_at + 1)
     with patch.object(
-        game.catalogue, "list_models", side_effect=CatalogueError("offline")
+        synthetic_game.catalogue,
+        "list_models",
+        side_effect=CatalogueError("offline"),
     ):
-        assert game.reconcile_arrival()
-        assert not game.reconcile_arrival()
-    settled = game.state_repository.list_transports()[0]
+        assert synthetic_game.reconcile_arrival()
+        assert not synthetic_game.reconcile_arrival()
+    settled = synthetic_game.state_repository.list_transports()[0]
     assert settled.contract == historical.contract
     assert settled.payout_eur == trip.payout_eur
-    assert game.get_vehicle("truck_01").location == trip.destination
-    offers = game.list_contracts()
+    assert synthetic_game.get_vehicle("truck_01").location == trip.destination
+    offers = synthetic_game.list_contracts()
     assert offers == []
 
 
-def test_retention_filters_without_writing_during_market_reads(game):
-    offers = game.list_contracts()
+def test_retention_filters_without_writing_during_market_reads(synthetic_game):
+    offers = synthetic_game.list_contracts()
     first = offers[0]
     legacy = replace(
         first, id="legacy", market_model="nhm_v1", market_context=None
     )
-    expired = replace(first, id="expiring", expires_at=game.now() + 30)
-    game.state_repository.replace_offers((*offers, legacy, expired))
-    game.market_services.routes.bind((*offers, legacy, expired))
-    assert game.list_contracts() == offers
-    assert game.contract_choices(offers)[0].eligible_vehicle_ids == (
+    expired = replace(
+        first, id="expiring", expires_at=synthetic_game.now() + 30
+    )
+    synthetic_game.state_repository.replace_offers((*offers, legacy, expired))
+    synthetic_game.market_services.routes.bind((*offers, legacy, expired))
+    assert synthetic_game.list_contracts() == offers
+    assert synthetic_game.contract_choices(offers)[0].eligible_vehicle_ids == (
         "truck_01",
     )
-    vehicle = game.get_vehicle("truck_01")
+    vehicle = synthetic_game.get_vehicle("truck_01")
     vehicle._capacity_tons = 0.1
-    game.state_repository.save_vehicle(vehicle)
-    new = game.list_contracts()
+    synthetic_game.state_repository.save_vehicle(vehicle)
+    new = synthetic_game.list_contracts()
     assert new == []
     with patch.object(
-        game.catalogue, "list_models", side_effect=CatalogueError("offline")
+        synthetic_game.catalogue,
+        "list_models",
+        side_effect=CatalogueError("offline"),
     ):
         with pytest.raises(CatalogueError):
-            game.list_contracts()
-    assert game.state_repository.list_offers() == (*offers, legacy, expired)
+            synthetic_game.list_contracts()
+    assert synthetic_game.state_repository.list_offers() == (
+        *offers,
+        legacy,
+        expired,
+    )
 
 
-def test_reposition_rejects_busy_other_city_and_missing_location(game):
-    vehicle = game.get_vehicle("truck_01")
+def test_reposition_rejects_busy_other_city_and_missing_location(
+    synthetic_game,
+):
+    vehicle = synthetic_game.get_vehicle("truck_01")
     offer = next(
         o
-        for o in game.list_contracts()
+        for o in synthetic_game.list_contracts()
         if o.destination.city.city_uid != vehicle.location.city.city_uid
     )
     with pytest.raises(ValueError, match="same city"):
@@ -176,8 +198,8 @@ def test_reposition_rejects_busy_other_city_and_missing_location(game):
         vehicle.reposition_within_city(offer.origin)
 
 
-def test_freight_rate_changes_payout_but_cargo_value_does_not(game):
-    offer = game.list_contracts()[0]
+def test_freight_rate_changes_payout_but_cargo_value_does_not(synthetic_game):
+    offer = synthetic_game.list_contracts()[0]
     costs = CostBreakdown("test", 0.5, "diesel", "l", 1.5, 80, 200, (), 0, 280)
     base = calculate_price(offer.tons, 400, costs, offer.rate_eur_per_km_ton)
     assert (
@@ -224,10 +246,12 @@ def test_freight_rate_changes_payout_but_cargo_value_does_not(game):
     )
 
 
-def test_historical_v2_and_missing_context_roundtrip_without_catalogue(game):
+def test_historical_v2_and_missing_context_roundtrip_without_catalogue(
+    synthetic_game,
+):
     from dataclasses import asdict
 
-    offer = game.list_contracts()[0]
+    offer = synthetic_game.list_contracts()[0]
     historical = HistoricalContractSnapshot.from_offer(offer)
     assert load_historical_contract(asdict(historical)) == historical
     old = asdict(historical)
@@ -238,9 +262,11 @@ def test_historical_v2_and_missing_context_roundtrip_without_catalogue(game):
     assert restored.tons == offer.tons
 
 
-async def test_dispatch_resolves_only_missing_exact_facility_snapshot(game):
-    offer = other_facility_offer(game)
-    vehicle = game.get_vehicle("truck_01")
+async def test_dispatch_resolves_only_missing_exact_facility_snapshot(
+    synthetic_game,
+):
+    offer = other_facility_offer(synthetic_game)
+    vehicle = synthetic_game.get_vehicle("truck_01")
     location = vehicle.location
     assert location is not None
     with pytest.raises(ValueError, match="stored facility"):
@@ -250,27 +276,31 @@ async def test_dispatch_resolves_only_missing_exact_facility_snapshot(game):
         vehicle.restore_location(changed)
     vehicle.restore_location(location)
     vehicle._location = None
-    game.state_repository.save_vehicle(vehicle)
-    await game.quote_contract(offer.id, vehicle.id)
-    assert game.get_vehicle(vehicle.id).location is None
-    trip = await game.dispatch(offer.id, vehicle.id)
-    assert game.get_vehicle(vehicle.id).location == location
+    synthetic_game.state_repository.save_vehicle(vehicle)
+    await synthetic_game.quote_contract(offer.id, vehicle.id)
+    assert synthetic_game.get_vehicle(vehicle.id).location is None
+    trip = await synthetic_game.dispatch(offer.id, vehicle.id)
+    assert synthetic_game.get_vehicle(vehicle.id).location == location
     assert trip.dispatch_route.start == location
 
 
-async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(game):
-    offer = game.list_contracts()[0]
-    vehicle = game.get_vehicle("truck_01")
-    quote = await game.quote_contract(offer.id, vehicle.id)
+async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(
+    synthetic_game,
+):
+    offer = synthetic_game.list_contracts()[0]
+    vehicle = synthetic_game.get_vehicle("truck_01")
+    quote = await synthetic_game.quote_contract(offer.id, vehicle.id)
     vehicle._operating_cost_eur_per_km = None
     assert (
-        game.transport_dispatch.calculate_quote(
+        synthetic_game.transport_dispatch.calculate_quote(
             offer, quote.dispatch_route, vehicle
         ).economics
         == quote.economics
     )
     model = next(
-        m for m in game.catalogue.list_models() if m.id == vehicle.model_id
+        m
+        for m in synthetic_game.catalogue.list_models()
+        if m.id == vehicle.model_id
     )
     unsupported = replace(
         model,
@@ -280,27 +310,29 @@ async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(game):
         ),
     )
     with patch.object(
-        game.catalogue, "list_models", return_value=(unsupported,)
+        synthetic_game.catalogue, "list_models", return_value=(unsupported,)
     ):
         with pytest.raises(ValueError, match="Transportklasse"):
-            await game.quote_contract(offer.id, vehicle.id)
+            await synthetic_game.quote_contract(offer.id, vehicle.id)
         with pytest.raises(ValueError, match="Transportklasse"):
-            await game.dispatch(offer.id, vehicle.id)
-        assert not game.list_contracts()
-    assert not game.state_repository.list_active_transports()
+            await synthetic_game.dispatch(offer.id, vehicle.id)
+        assert not synthetic_game.list_contracts()
+    assert not synthetic_game.state_repository.list_active_transports()
 
 
-def test_market_reads_and_refresh_never_call_providers_or_generate(game):
-    readiness = game.market_services.routes.readiness
+def test_market_reads_and_refresh_never_call_providers_or_generate(
+    synthetic_game,
+):
+    readiness = synthetic_game.market_services.routes.readiness
     with patch.object(
         readiness,
         "load",
         side_effect=AssertionError,
     ):
-        retained = game.list_contracts()
-        assert game.list_contracts() == retained
-        regenerated = game.refresh_contracts()
+        retained = synthetic_game.list_contracts()
+        assert synthetic_game.list_contracts() == retained
+        regenerated = synthetic_game.refresh_contracts()
         assert regenerated == retained
         assert {o.origin.city.city_uid for o in regenerated} == {
-            game.get_vehicle("truck_01").location.city.city_uid
+            synthetic_game.get_vehicle("truck_01").location.city.city_uid
         }

@@ -33,8 +33,10 @@ def test_wal_read_snapshot_rejects_writes_and_resets_after_failure(database):
         assert db.execute("SELECT created_at FROM users").fetchone()[0] == 2
 
 
-def test_durable_demand_coalesces_and_fences_stale_diagnostics(game, database):
-    game, preparation = build_prepared_game(game, database)
+def test_durable_demand_coalesces_and_fences_stale_diagnostics(
+    synthetic_game, database
+):
+    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
     jobs = preparation.demand.jobs
     assert isinstance(jobs, SqlitePreparationStore)
     notify = Mock()
@@ -71,38 +73,38 @@ def test_durable_demand_coalesces_and_fences_stale_diagnostics(game, database):
 
 
 def test_runtime_never_builds_candidates_and_worker_plans_outside_writer(
-    game, database
+    synthetic_game, database
 ):
-    game, _ = build_prepared_game(game, database)
+    synthetic_game, _ = build_prepared_game(synthetic_game, database)
     with patch.object(
-        type(game.market.candidates),
+        type(synthetic_game.market.candidates),
         "build",
         side_effect=AssertionError("Runtime planned"),
     ):
-        assert game.list_contracts() == []
-        assert game.refresh_contracts() == []
-        assert game.market_lifecycle.vehicle_diagnostics() == ()
-        game.ensure_initial_state()
-        game.reconcile_arrival()
+        assert synthetic_game.list_contracts() == []
+        assert synthetic_game.refresh_contracts() == []
+        assert synthetic_game.market_lifecycle.vehicle_diagnostics() == ()
+        synthetic_game.ensure_initial_state()
+        synthetic_game.reconcile_arrival()
     with patch.object(
         database,
         "transaction",
         side_effect=AssertionError("Read acquired writer"),
     ):
-        game.ensure_initial_state()
-        game.reconcile_arrival()
-        game.list_contracts()
+        synthetic_game.ensure_initial_state()
+        synthetic_game.reconcile_arrival()
+        synthetic_game.list_contracts()
 
 
 @pytest.mark.asyncio
 async def test_readiness_read_view_reuses_facts_but_never_crosses_publication(
-    game, database
+    synthetic_game, database
 ):
-    game, preparation = build_prepared_game(game, database)
+    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
     readiness = preparation.routes.readiness
     assert readiness.store.get_many(()) == {}
     assert readiness.anchor_store.get_many((), "truck") == {}
-    offer = game.state_repository.list_offers()[0]
+    offer = synthetic_game.state_repository.list_offers()[0]
     pair = offer.origin.facility_uid, offer.destination.facility_uid
     with (
         patch.object(readiness.store, "get", wraps=readiness.store.get) as get,

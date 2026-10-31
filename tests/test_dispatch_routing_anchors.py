@@ -66,11 +66,11 @@ class OffsetAnchorResolver:
 
 @pytest.mark.asyncio
 async def test_dispatch_routing_uses_anchors_not_display_coordinates(
-    world_catalogue,
+    synthetic_world_catalogue,
 ):
     facilities = [
         item
-        for item in world_catalogue.read().facilities
+        for item in synthetic_world_catalogue.read().facilities
         if item.coordinates is not None
     ]
     start, destination = facilities[:2]
@@ -103,10 +103,12 @@ async def test_dispatch_routing_uses_anchors_not_display_coordinates(
 
 
 @pytest.mark.asyncio
-async def test_dispatch_routing_rejects_failed_anchor(world_catalogue):
+async def test_dispatch_routing_rejects_failed_anchor(
+    synthetic_world_catalogue,
+):
     facilities = [
         item
-        for item in world_catalogue.read().facilities
+        for item in synthetic_world_catalogue.read().facilities
         if item.coordinates is not None
     ]
     start, destination = facilities[:2]
@@ -122,13 +124,13 @@ async def test_dispatch_routing_rejects_failed_anchor(world_catalogue):
 
 @pytest.mark.asyncio
 async def test_dispatch_approach_uses_facility_identity_not_display_coordinate(
-    game,
+    synthetic_game,
 ):
-    offer = game.state_repository.list_offers()[0]
+    offer = synthetic_game.state_repository.list_offers()[0]
     origin_uid = offer.origin.facility_uid
     same_city = [
         item
-        for item in game.world.read().facilities
+        for item in synthetic_game.world.read().facilities
         if item.address.city.city_uid == offer.origin.city.city_uid
         and item.facility_uid != origin_uid
         and item.coordinates is not None
@@ -138,13 +140,15 @@ async def test_dispatch_approach_uses_facility_identity_not_display_coordinate(
         same_city[0].location_snapshot(),
         coordinates=offer.origin.coordinates,
     )
-    readiness = game.market_services.routes.readiness
+    readiness = synthetic_game.market_services.routes.readiness
     with patch.object(
         readiness,
         "load",
         wraps=readiness.load,
     ) as loaded:
-        route = await game.transport_dispatch.planning.route(start, offer)
+        route = await synthetic_game.transport_dispatch.planning.route(
+            start, offer
+        )
 
     assert route.approach is not None
     assert loaded.call_args_list == [

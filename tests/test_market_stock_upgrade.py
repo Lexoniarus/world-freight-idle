@@ -18,10 +18,10 @@ from tests.transport_fixtures import add_transport
 
 
 @pytest.fixture
-def old_market_source(game, database, tmp_path):
-    add_transport(game)
+def old_market_source(synthetic_game, database, tmp_path):
+    add_transport(synthetic_game)
     path = tmp_path / "old-market.db"
-    now = game.now()
+    now = synthetic_game.now()
     with (
         closing(sqlite3.connect(path)) as target,
         database.connect() as source,

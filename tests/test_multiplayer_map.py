@@ -29,16 +29,16 @@ ROUTE = {
 
 def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
     database,
-    runtime,
-    game,
+    synthetic_runtime,
+    synthetic_game,
     caplog,
 ):
     accounts = AccountRepository(database)
     alice = accounts.create_user("Alice", "unused")
     bob = accounts.create_user("Bob", "unused")
-    alice_game = build_player_service(runtime, alice["id"])
-    bob_game = build_player_service(runtime, bob["id"])
-    now = game.now()
+    alice_game = build_player_service(synthetic_runtime, alice["id"])
+    bob_game = build_player_service(synthetic_runtime, bob["id"])
+    now = synthetic_game.now()
 
     bob_vehicle = bob_game.state_repository.list_vehicles()[0]
     model = next(
@@ -58,7 +58,7 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
             arrives_at=now + 100,
             transport_id=identity,
         )
-    build_preferences(runtime).update(bob["id"], "#e45756")
+    build_preferences(synthetic_runtime).update(bob["id"], "#e45756")
     repository = SqliteTrafficReader(database)
     assert repository.list_active_transports(now + 200) == ()
     rows = repository.list_active_transports(now)
@@ -87,7 +87,7 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
         "end_km",
     }
 
-    reader = build_traffic_reader(runtime)
+    reader = build_traffic_reader(synthetic_runtime)
     with caplog.at_level(logging.INFO):
         traffic = project_traffic(
             reader.list_active_transports(now), alice["id"]

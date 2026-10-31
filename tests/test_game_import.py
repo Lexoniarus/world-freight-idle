@@ -47,7 +47,7 @@ def without_city_uids(value):
 
 
 def test_offline_import_preserves_profiles_history_and_settles_once(
-    legacy_source, tmp_path, game
+    legacy_source, tmp_path, synthetic_game
 ):
     path, importer, state, now, password_hash = legacy_source
     original = path.read_bytes()
@@ -105,7 +105,7 @@ def test_offline_import_preserves_profiles_history_and_settles_once(
         assert without_city_uids(
             legacy_vehicle_projection(repository.list_vehicles()[0])
         ) == without_city_uids(state["vehicles"][0])
-    runtime = build_test_runtime(game, database)
+    runtime = build_test_runtime(synthetic_game, database)
     service = build_player_service(runtime, "a")
     assert service.reconcile_arrival()
     assert not service.reconcile_arrival()
@@ -384,7 +384,7 @@ def test_backup_failure_removes_only_its_own_incomplete_output(tmp_path):
 
 
 def test_historical_terms_preserve_non_nhm_evidence_and_reject_invalid_values(
-    game,
+    synthetic_game,
 ):
     from dataclasses import asdict
 
@@ -394,7 +394,7 @@ def test_historical_terms_preserve_non_nhm_evidence_and_reject_invalid_values(
         load_historical_contract,
     )
 
-    offer = game.state_repository.list_offers()[0]
+    offer = synthetic_game.state_repository.list_offers()[0]
     saved = HistoricalContractSnapshot.from_offer(offer)
     assert load_historical_contract(asdict(saved)) == saved
     goods = DocumentedCargo("10", "Metals", "output", True, "official", None)

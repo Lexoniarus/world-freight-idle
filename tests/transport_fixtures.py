@@ -9,7 +9,7 @@ from app.services.gameplay.game import GameService
 
 
 def add_transport(
-    game: GameService,
+    synthetic_game: GameService,
     payout: int = 1000,
     departed_at: float = 1,
     arrives_at: float = 2,
@@ -17,10 +17,10 @@ def add_transport(
     transport_id: str = "fixture-trip",
 ) -> ActiveTransport:
     """Reserve a real owned vehicle and persist a complete test snapshot."""
-    owned = game.state_repository.list_vehicles()
-    fleet = game.market.candidates.resolve_fleet(owned)
-    candidates = game.market.candidates.build(
-        game.market_scope.resolve(owned), fleet
+    owned = synthetic_game.state_repository.list_vehicles()
+    fleet = synthetic_game.market.candidates.resolve_fleet(owned)
+    candidates = synthetic_game.market.candidates.build(
+        synthetic_game.market_scope.resolve(owned), fleet
     )
     candidate = next(
         item
@@ -28,7 +28,7 @@ def add_transport(
         if item.trade.origin.facility_uid == owned[0].facility_uid
     )
     offer = ContractOffer.from_snapshot(
-        game.market.factory.build(candidate, game.now())
+        synthetic_game.market.factory.build(candidate, synthetic_game.now())
     )
     offer = replace(offer, created_at=0, expires_at=max(arrives_at, 10))
     if tons is not None:
@@ -40,7 +40,7 @@ def add_transport(
             cargo_value_eur=round(tons * context.cargo_value_eur_per_t),
         )
         offer = replace(offer, tons=tons, market_context=context)
-    vehicle = game.state_repository.list_vehicles()[0]
+    vehicle = synthetic_game.state_repository.list_vehicles()[0]
     vehicle.reposition_within_city(offer.origin)
     vehicle.start_trip()
     trip = ActiveTransport(
@@ -59,8 +59,8 @@ def add_transport(
             (arrives_at) - (departed_at),
         ),
     )
-    with game.unit_of_work.transaction():
-        game.state_repository.save_vehicle(vehicle)
-        game.state_repository.save_transport(trip)
-        game.state_repository.remove_offer(offer.id)
+    with synthetic_game.unit_of_work.transaction():
+        synthetic_game.state_repository.save_vehicle(vehicle)
+        synthetic_game.state_repository.save_transport(trip)
+        synthetic_game.state_repository.remove_offer(offer.id)
     return trip

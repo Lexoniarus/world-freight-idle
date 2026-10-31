@@ -17,7 +17,7 @@ from tests.support.market import seed_test_offers
 
 
 @pytest.fixture
-def relational_game(game, tmp_path):
+def relational_game(synthetic_game, tmp_path):
     database = SqliteGameDatabase(tmp_path / "port-state.db")
     database.initialize()
     with database.connect() as connection:
@@ -27,10 +27,10 @@ def relational_game(game, tmp_path):
     return build_fixture_game(
         database,
         "owner",
-        game.world,
-        game.catalogue,
-        game.market,
-        game.now,
+        synthetic_game.world,
+        synthetic_game.catalogue,
+        synthetic_game.market,
+        synthetic_game.now,
     )
 
 
@@ -94,7 +94,7 @@ async def test_relational_dispatch_rolls_back_all_mutations(
 
 
 async def test_game_workflows_return_typed_values_and_reject_changed_offer(
-    game, monkeypatch
+    synthetic_game, monkeypatch
 ):
     from dataclasses import replace
 
@@ -103,16 +103,16 @@ async def test_game_workflows_return_typed_values_and_reject_changed_offer(
     from app.domain.results import ContractQuote, GameSnapshot
     from app.domain.transports import RouteSnapshot
 
-    assert isinstance(game.dashboard(), GameSnapshot)
-    assert isinstance(game.state(), GameSnapshot)
-    offer = game.list_contracts()[0]
+    assert isinstance(synthetic_game.dashboard(), GameSnapshot)
+    assert isinstance(synthetic_game.state(), GameSnapshot)
+    offer = synthetic_game.list_contracts()[0]
     assert isinstance(offer, ContractOffer)
-    assert isinstance(game.get_vehicle("truck_01"), OwnedVehicle)
-    quote = await game.quote_contract(offer.id, "truck_01")
+    assert isinstance(synthetic_game.get_vehicle("truck_01"), OwnedVehicle)
+    quote = await synthetic_game.quote_contract(offer.id, "truck_01")
     assert isinstance(quote, ContractQuote)
     assert isinstance(quote.route, RouteSnapshot)
-    player = game.state_repository.get_player()
-    readiness = game.market_services.routes.readiness
+    player = synthetic_game.state_repository.get_player()
+    readiness = synthetic_game.market_services.routes.readiness
     original_load = readiness.load
     changed = False
 
@@ -121,7 +121,7 @@ async def test_game_workflows_return_typed_values_and_reject_changed_offer(
         route = original_load(*facilities)
         if not changed:
             changed = True
-            game.state_repository.replace_offers(
+            synthetic_game.state_repository.replace_offers(
                 tuple(
                     replace(
                         item,
@@ -129,7 +129,7 @@ async def test_game_workflows_return_typed_values_and_reject_changed_offer(
                     )
                     if item.id == offer.id
                     else item
-                    for item in game.state_repository.list_offers()
+                    for item in synthetic_game.state_repository.list_offers()
                 )
             )
 
@@ -137,29 +137,29 @@ async def test_game_workflows_return_typed_values_and_reject_changed_offer(
 
     monkeypatch.setattr(readiness, "load", load_while_offer_changes)
     with pytest.raises(ValueError, match="geändert"):
-        await game.dispatch(offer.id, "truck_01")
-    assert game.state_repository.get_player() == player
-    assert game.get_vehicle("truck_01").status == "idle"
-    assert game.list_transports() == ()
+        await synthetic_game.dispatch(offer.id, "truck_01")
+    assert synthetic_game.state_repository.get_player() == player
+    assert synthetic_game.get_vehicle("truck_01").status == "idle"
+    assert synthetic_game.list_transports() == ()
 
 
 async def test_quote_loads_prepared_route_by_facility_identity(
-    game,
+    synthetic_game,
 ):
     from dataclasses import replace
     from unittest.mock import patch
 
-    offer = game.state_repository.list_offers()[0]
-    game.state_repository.replace_offers(
+    offer = synthetic_game.state_repository.list_offers()[0]
+    synthetic_game.state_repository.replace_offers(
         (replace(offer, origin=replace(offer.origin, coordinates=None)),)
     )
-    readiness = game.market_services.routes.readiness
+    readiness = synthetic_game.market_services.routes.readiness
     with patch.object(
         readiness,
         "load",
         wraps=readiness.load,
     ) as loaded:
-        quote = await game.quote_contract(offer.id, "truck_01")
+        quote = await synthetic_game.quote_contract(offer.id, "truck_01")
 
     assert quote.contract.origin.coordinates is None
     assert quote.dispatch_route is not None

@@ -15,8 +15,10 @@ from app.repositories.snapshot_mapping import (
 )
 
 
-def test_canonical_snapshots_preserve_facts_and_reject_public_documents(game):
-    offer = game.state_repository.list_offers()[0]
+def test_canonical_snapshots_preserve_facts_and_reject_public_documents(
+    synthetic_game,
+):
+    offer = synthetic_game.state_repository.list_offers()[0]
     encoded = json.loads(json.dumps(asdict(offer)))
     assert load_offer(encoded) == offer
     assert load_location(encoded["origin"]) == offer.origin

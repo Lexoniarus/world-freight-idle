@@ -85,9 +85,9 @@ def test_auth_sessions_expire_revoke_and_throttle(database):
 
 
 def test_player_service_isolation_and_atomic_purchases(
-    runtime, game, catalogue
+    synthetic_runtime, synthetic_game, synthetic_vehicle_catalogue
 ):
-    with runtime.database.connect() as connection:
+    with synthetic_runtime.database.connect() as connection:
         connection.execute(
             "INSERT INTO users VALUES (?, ?, ?, 0)",
             ("alice", "alice", "test-only"),
@@ -96,13 +96,13 @@ def test_player_service_isolation_and_atomic_purchases(
             "INSERT INTO users VALUES (?, ?, ?, 0)",
             ("bob", "bob", "test-only"),
         )
-    alice = build_player_service(runtime, "alice")
-    bob = build_player_service(runtime, "bob")
+    alice = build_player_service(synthetic_runtime, "alice")
+    bob = build_player_service(synthetic_runtime, "bob")
     assert alice.world is bob.world
     vehicle = project_vehicle(
-        FleetService(alice.unit_of_work, catalogue, alice.world).purchase(
-            "iveco_sway_500"
-        )
+        FleetService(
+            alice.unit_of_work, synthetic_vehicle_catalogue, alice.world
+        ).purchase("iveco_sway_500")
     )
     assert alice.get_vehicle(vehicle["id"]).capacity_tons == 24.2
     assert alice.state().player.cash == 26000
@@ -110,19 +110,19 @@ def test_player_service_isolation_and_atomic_purchases(
     assert len(bob.list_vehicles()) == 1
     with pytest.raises(ValueError, match="Nicht genug"):
         project_vehicle(
-            FleetService(alice.unit_of_work, catalogue, alice.world).purchase(
-                "renault_t_high_520"
-            )
+            FleetService(
+                alice.unit_of_work, synthetic_vehicle_catalogue, alice.world
+            ).purchase("renault_t_high_520")
         )
     with pytest.raises(ValueError, match="Unbekanntes"):
         project_vehicle(
-            FleetService(alice.unit_of_work, catalogue, alice.world).purchase(
-                "fake"
-            )
+            FleetService(
+                alice.unit_of_work, synthetic_vehicle_catalogue, alice.world
+            ).purchase("fake")
         )
     with pytest.raises(KeyError):
         bob.get_vehicle(vehicle["id"])
-    restored = build_player_service(runtime, "alice")
+    restored = build_player_service(synthetic_runtime, "alice")
     assert project_state(restored.state())["player"]["cash"] == 26000
     assert (
         project_vehicle(restored.get_vehicle(vehicle["id"]))["hub_id"]
@@ -130,20 +130,24 @@ def test_player_service_isolation_and_atomic_purchases(
     )
 
 
-def test_concurrent_purchases_cannot_overdraw(runtime, game, catalogue):
-    with runtime.database.connect() as connection:
+def test_concurrent_purchases_cannot_overdraw(
+    synthetic_runtime, synthetic_game, synthetic_vehicle_catalogue
+):
+    with synthetic_runtime.database.connect() as connection:
         connection.execute(
             "INSERT INTO users VALUES (?, ?, ?, 0)",
             ("race", "race", "test-only"),
         )
-    first = build_player_service(runtime, "race")
-    second = build_player_service(runtime, "race")
+    first = build_player_service(synthetic_runtime, "race")
+    second = build_player_service(synthetic_runtime, "race")
 
     def purchase(service):
         try:
             return project_vehicle(
                 FleetService(
-                    service.unit_of_work, catalogue, service.world
+                    service.unit_of_work,
+                    synthetic_vehicle_catalogue,
+                    service.world,
                 ).purchase("iveco_sway_500")
             )
         except ValueError:
@@ -158,38 +162,48 @@ def test_concurrent_purchases_cannot_overdraw(runtime, game, catalogue):
     )
 
 
-async def test_parallel_transports_and_offline_settlement(game, catalogue):
+async def test_parallel_transports_and_offline_settlement(
+    synthetic_game, synthetic_vehicle_catalogue
+):
     second_vehicle = project_vehicle(
-        FleetService(game.unit_of_work, catalogue, game.world).purchase(
-            "iveco_sway_500"
-        )
+        FleetService(
+            synthetic_game.unit_of_work,
+            synthetic_vehicle_catalogue,
+            synthetic_game.world,
+        ).purchase("iveco_sway_500")
     )
-    [project_contract(value) for value in game.refresh_contracts()]
+    [project_contract(value) for value in synthetic_game.refresh_contracts()]
     contracts = [
         item
         for item in [
-            project_contract(value) for value in game.list_contracts()
+            project_contract(value)
+            for value in synthetic_game.list_contracts()
         ]
         if item["origin_hub_id"] == BERLIN_UID
     ]
     first = project_transport(
-        await game.dispatch(contracts[0]["id"], "truck_01")
+        await synthetic_game.dispatch(contracts[0]["id"], "truck_01")
     )
     second = project_transport(
-        await game.dispatch(contracts[1]["id"], second_vehicle["id"])
+        await synthetic_game.dispatch(contracts[1]["id"], second_vehicle["id"])
     )
     assert (
-        len([project_transport(value) for value in game.list_transports()])
+        len(
+            [
+                project_transport(value)
+                for value in synthetic_game.list_transports()
+            ]
+        )
         == 2
     )
-    before = project_state(game.state())["player"]["cash"]
+    before = project_state(synthetic_game.state())["player"]["cash"]
     set_game_clock(
-        game,
+        synthetic_game,
         lambda: max(first["arrives_at"], second["arrives_at"]) + 1,
     )
-    assert game.reconcile_arrival()
-    assert not game.reconcile_arrival()
-    state = project_state(game.state())
+    assert synthetic_game.reconcile_arrival()
+    assert not synthetic_game.reconcile_arrival()
+    state = project_state(synthetic_game.state())
     assert state["active_trips"] == []
     assert state["player"]["completed"] == 2
     assert (
@@ -199,10 +213,10 @@ async def test_parallel_transports_and_offline_settlement(game, catalogue):
     assert all(vehicle["status"] == "idle" for vehicle in state["vehicles"])
 
 
-async def test_simultaneous_dispatch_revalidates_after_routing(game):
+async def test_simultaneous_dispatch_revalidates_after_routing(synthetic_game):
     arrived = asyncio.Event()
     release = asyncio.Event()
-    original = type(game.transport_dispatch).quote_contract
+    original = type(synthetic_game.transport_dispatch).quote_contract
 
     async def slow_quote(service, *args):
         quote = await original(service, *args)
@@ -210,68 +224,82 @@ async def test_simultaneous_dispatch_revalidates_after_routing(game):
         await release.wait()
         return quote
 
-    contract = first_berlin_contract(game)
+    contract = first_berlin_contract(synthetic_game)
     with patch.object(
-        type(game.transport_dispatch),
+        type(synthetic_game.transport_dispatch),
         "quote_contract",
         slow_quote,
     ):
-        task = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
+        task = asyncio.create_task(
+            synthetic_game.dispatch(contract["id"], "truck_01")
+        )
         await arrived.wait()
-        second = asyncio.create_task(game.dispatch(contract["id"], "truck_01"))
+        second = asyncio.create_task(
+            synthetic_game.dispatch(contract["id"], "truck_01")
+        )
         await asyncio.sleep(0)
         release.set()
         results = await asyncio.gather(task, second, return_exceptions=True)
     assert sum(isinstance(result, ActiveTransport) for result in results) == 1
     assert sum(isinstance(result, KeyError) for result in results) == 1
-    trip = [project_transport(value) for value in game.list_transports()][0]
+    trip = [
+        project_transport(value) for value in synthetic_game.list_transports()
+    ][0]
     assert (
-        project_state(game.state())["player"]["cash"]
+        project_state(synthetic_game.state())["player"]["cash"]
         == 175000 - trip["operating_cost_eur"]
     )
 
 
-async def test_expired_contract_and_failed_routing_do_not_charge(game):
-    contract = game.transport_dispatch.find_contract(
-        first_berlin_contract(game)["id"]
+async def test_expired_contract_and_failed_routing_do_not_charge(
+    synthetic_game,
+):
+    contract = synthetic_game.transport_dispatch.find_contract(
+        first_berlin_contract(synthetic_game)["id"]
     )
-    game.state_repository.replace_offers(
+    synthetic_game.state_repository.replace_offers(
         (replace(contract, created_at=0, expires_at=1),)
     )
     with pytest.raises(KeyError):
-        project_transport(await game.dispatch(contract.id, "truck_01"))
-    game.state_repository.replace_offers((contract,))
-    readiness = game.market_services.routes.readiness
+        project_transport(
+            await synthetic_game.dispatch(contract.id, "truck_01")
+        )
+    synthetic_game.state_repository.replace_offers((contract,))
+    readiness = synthetic_game.market_services.routes.readiness
     with patch.object(
         readiness,
         "load",
         side_effect=RuntimeError("offline"),
     ):
         with pytest.raises(RuntimeError):
-            project_transport(await game.dispatch(contract.id, "truck_01"))
-    assert project_state(game.state())["player"]["cash"] == 175000
-    assert [project_transport(value) for value in game.list_transports()] == []
+            project_transport(
+                await synthetic_game.dispatch(contract.id, "truck_01")
+            )
+    assert project_state(synthetic_game.state())["player"]["cash"] == 175000
+    assert [
+        project_transport(value) for value in synthetic_game.list_transports()
+    ] == []
 
 
 def test_leaderboard_counts_offline_arrivals_without_double_counting(
-    database, runtime, game
+    database, synthetic_runtime, synthetic_game
 ):
     accounts = AccountRepository(database)
     alice = accounts.create_user("Alice", "unused")
     accounts.create_user("Bob", "unused")
-    service = build_player_service(runtime, alice["id"])
+    service = build_player_service(synthetic_runtime, alice["id"])
     service.state_repository.save_player(
         PlayerState(cash=175000, completed=2, reputation=2)
     )
     add_transport(service, payout=100)
-    reader = build_leaderboard_reader(runtime)
-    assert list(reader.list_ranking(game.now())) == [
+    reader = build_leaderboard_reader(synthetic_runtime)
+    assert list(reader.list_ranking(synthetic_game.now())) == [
         {"username": "Alice", "completed": 3},
         {"username": "TestOwner", "completed": 0},
         {"username": "Bob", "completed": 0},
     ]
     service.reconcile_arrival()
-    assert reader.list_ranking(game.now())[0]["completed"] == 3
+    assert reader.list_ranking(synthetic_game.now())[0]["completed"] == 3
 
 
 def test_auth_api_and_private_game_resources(tmp_path):
@@ -430,14 +458,14 @@ async def test_initialization_does_not_implicitly_import_legacy_trips(
     assert settings.db_path.read_bytes() == original
 
 
-def test_concurrent_arrivals_pay_once(runtime, game):
-    with runtime.database.connect() as connection:
+def test_concurrent_arrivals_pay_once(synthetic_runtime, synthetic_game):
+    with synthetic_runtime.database.connect() as connection:
         connection.execute(
             "INSERT INTO users VALUES (?, ?, ?, 0)",
             ("arrival", "arrival", "test-only"),
         )
-    alice = build_player_service(runtime, "arrival")
-    other = build_player_service(runtime, "arrival")
+    alice = build_player_service(synthetic_runtime, "arrival")
+    other = build_player_service(synthetic_runtime, "arrival")
     add_transport(alice)
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures = [

@@ -35,11 +35,11 @@ from tests.support.api import make_settings, make_static_files
 
 def test_runtime_reads_exclude_geometry_and_keep_private_energy(
     active_trip,
-    runtime,
+    synthetic_runtime,
     tmp_path,
 ):
-    reader = build_runtime_reader(runtime)
-    service = build_runtime_view(runtime, "test-owner")
+    reader = build_runtime_reader(synthetic_runtime)
+    service = build_runtime_view(synthetic_runtime, "test-owner")
     with patch(
         "app.repositories.runtime_views.load_transport_record",
         side_effect=AssertionError("Geometry hydrated during polling"),
@@ -65,7 +65,9 @@ def test_runtime_reads_exclude_geometry_and_keep_private_energy(
         state=replace(view.state, transports=(metered,)),
         server_time=transport.departed_at + 1,
     )
-    projected = project_runtime(metered_view, "test-owner", runtime.catalogue)
+    projected = project_runtime(
+        metered_view, "test-owner", synthetic_runtime.catalogue
+    )
     assert projected["vehicles"][0]["energy_level"] < 100
     assert view.state.transports[0].id == active_trip.id
     assert public[0].coordinates == ()
@@ -97,9 +99,11 @@ def test_runtime_reads_exclude_geometry_and_keep_private_energy(
 
     make_static_files(tmp_path)
     app = create_app(make_settings(tmp_path))
-    app.state.game = runtime
+    app.state.game = synthetic_runtime
     app.dependency_overrides[get_current_user] = lambda: {"id": "test-owner"}
-    app.dependency_overrides[get_vehicle_catalogue] = lambda: runtime.catalogue
+    app.dependency_overrides[get_vehicle_catalogue] = lambda: (
+        synthetic_runtime.catalogue
+    )
     client = TestClient(app)
     summary = client.get("/api/v1/runtime")
     assert summary.status_code == 200
@@ -182,9 +186,9 @@ def test_route_references_reject_malformed_or_unsupported_identifiers(value):
 
 
 def test_runtime_geometry_preserves_shared_and_distinct_leg_boundaries(
-    active_trip, runtime, game
+    active_trip, synthetic_runtime, synthetic_game
 ):
-    reader = build_runtime_reader(runtime)
+    reader = build_runtime_reader(synthetic_runtime)
     base = active_trip.route
     for same in (True, False):
         start = replace(active_trip.origin, facility_uid="departure")
@@ -203,9 +207,9 @@ def test_runtime_geometry_preserves_shared_and_distinct_leg_boundaries(
             route=plan.total_route,
             journey=unmetered_journey(plan.total_route.distance_km, 20),
         )
-        with runtime.database.connect() as db:
+        with synthetic_runtime.database.connect() as db:
             db.execute("DELETE FROM transports")
-        game.state_repository.save_transport(updated)
+        synthetic_game.state_repository.save_transport(updated)
         shape = reader.geometry("test-owner", active_trip.id)
         assert shape.coordinates == plan.total_route.coordinates
         assert shape.legs[1].start_index == (1 if same else 2)
@@ -228,16 +232,16 @@ def test_runtime_geometry_preserves_shared_and_distinct_leg_boundaries(
             base,
         ),
     )
-    with runtime.database.connect() as db:
+    with synthetic_runtime.database.connect() as db:
         db.execute("DELETE FROM transports")
-    game.state_repository.save_transport(single)
+    synthetic_game.state_repository.save_transport(single)
     assert len(reader.geometry("test-owner", active_trip.id).legs) == 1
 
 
 def test_runtime_projection_rejects_corrupt_scalars_without_reading_history(
-    active_trip, runtime
+    active_trip, synthetic_runtime
 ):
-    reader = build_runtime_reader(runtime)
+    reader = build_runtime_reader(synthetic_runtime)
     trip = reader.read("test-owner").transports[0]
     for changes in (
         {"id": ""},
@@ -258,7 +262,7 @@ def test_runtime_projection_rejects_corrupt_scalars_without_reading_history(
         )
     with pytest.raises(PersistenceError):
         load_runtime_transport({"version": 2, "kind": "transport"})
-    with runtime.database.connect() as db:
+    with synthetic_runtime.database.connect() as db:
         raw = db.execute(
             "SELECT transport_snapshot FROM transports"
         ).fetchone()[0]

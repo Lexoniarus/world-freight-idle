@@ -180,20 +180,24 @@ def test_approach_costs_do_not_pay_freight_or_duplicate_base():
     assert quote.profit_eur == -60
 
 
-async def test_planner_routes_from_checkpoint_by_facility_identity(game):
-    offer = other_facility_offer(game)
-    start = game.get_vehicle("truck_01").location
+async def test_planner_routes_from_checkpoint_by_facility_identity(
+    synthetic_game,
+):
+    offer = other_facility_offer(synthetic_game)
+    start = synthetic_game.get_vehicle("truck_01").location
     assert start is not None
-    readiness = game.market_services.routes.readiness
+    readiness = synthetic_game.market_services.routes.readiness
 
     with patch.object(readiness, "load", wraps=readiness.load) as loaded:
-        plan = await game.transport_dispatch.planning.route(start, offer)
+        plan = await synthetic_game.transport_dispatch.planning.route(
+            start, offer
+        )
         assert loaded.call_count == 2
         assert plan.start == start
         assert plan.approach is not None
 
     with patch.object(readiness, "load", wraps=readiness.load) as loaded:
-        direct = await game.transport_dispatch.planning.route(
+        direct = await synthetic_game.transport_dispatch.planning.route(
             offer.origin, offer
         )
         assert loaded.call_count == 1
@@ -204,7 +208,7 @@ async def test_planner_routes_from_checkpoint_by_facility_identity(game):
         coordinates=offer.origin.coordinates,
     )
     with patch.object(readiness, "load", wraps=readiness.load) as loaded:
-        plan = await game.transport_dispatch.planning.route(
+        plan = await synthetic_game.transport_dispatch.planning.route(
             colocated_display, offer
         )
         assert loaded.call_count == 2
@@ -212,7 +216,7 @@ async def test_planner_routes_from_checkpoint_by_facility_identity(game):
 
     missing_start_display = replace(start, coordinates=None)
     with patch.object(readiness, "load", wraps=readiness.load) as loaded:
-        plan = await game.transport_dispatch.planning.route(
+        plan = await synthetic_game.transport_dispatch.planning.route(
             missing_start_display, offer
         )
         assert loaded.call_count == 2
@@ -224,7 +228,7 @@ async def test_planner_routes_from_checkpoint_by_facility_identity(game):
         destination=replace(offer.destination, coordinates=None),
     )
     with patch.object(readiness, "load", wraps=readiness.load) as loaded:
-        plan = await game.transport_dispatch.planning.route(
+        plan = await synthetic_game.transport_dispatch.planning.route(
             start,
             missing_destination_display,
         )
@@ -233,12 +237,12 @@ async def test_planner_routes_from_checkpoint_by_facility_identity(game):
 
 
 async def test_approach_dispatch_reload_public_privacy_and_offline_arrival(
-    game, database
+    synthetic_game, database
 ):
-    offer = other_facility_offer(game)
-    start = game.get_vehicle("truck_01").location
-    quote = await game.quote_contract(offer.id, "truck_01")
-    trip = await game.dispatch(offer.id, "truck_01")
+    offer = other_facility_offer(synthetic_game)
+    start = synthetic_game.get_vehicle("truck_01").location
+    quote = await synthetic_game.quote_contract(offer.id, "truck_01")
+    trip = await synthetic_game.dispatch(offer.id, "truck_01")
     projected = project_quote(quote)
     assert projected["start"]["facility_uid"] == start.facility_uid
     assert projected["approach_distance_km"] == 400
@@ -253,10 +257,10 @@ async def test_approach_dispatch_reload_public_privacy_and_offline_arrival(
         offer.rate_eur_per_km_ton,
         minimum_eur_per_km=context.tariff.minimum_eur_per_km,
     )
-    restored = game.state_repository.list_active_transports()[0]
+    restored = synthetic_game.state_repository.list_active_transports()[0]
     assert restored == trip
     assert restored.dispatch_route.start == start
-    assert game.get_vehicle("truck_01").location == start
+    assert synthetic_game.get_vehicle("truck_01").location == start
     boundary = next(
         s.ends_at for s in trip.journey.segments if s.end_km == 400
     )
@@ -266,10 +270,10 @@ async def test_approach_dispatch_reload_public_privacy_and_offline_arrival(
         (boundary + 1, 400),
     ):
         now = trip.departed_at + elapsed
-        set_game_clock(game, lambda: now)
-        assert not game.reconcile_arrival()
+        set_game_clock(synthetic_game, lambda: now)
+        assert not synthetic_game.reconcile_arrival()
         assert (
-            game.get_transport(trip.id).progress_at(now).distance_km
+            synthetic_game.get_transport(trip.id).progress_at(now).distance_km
             >= leg_distance
         )
     public = project_traffic(
@@ -305,19 +309,21 @@ async def test_approach_dispatch_reload_public_privacy_and_offline_arrival(
     assert historical.dispatch_route is None
     assert project_transport(historical)["approach_distance_km"] == 0
     assert project_transport(historical)["route_legs"] == []
-    cash = game.player_state().cash
-    set_game_clock(game, lambda: trip.arrives_at + 1)
-    assert game.reconcile_arrival()
-    assert not game.reconcile_arrival()
-    assert game.get_vehicle("truck_01").location == trip.destination
-    assert game.player_state().cash == cash + trip.payout_eur
+    cash = synthetic_game.player_state().cash
+    set_game_clock(synthetic_game, lambda: trip.arrives_at + 1)
+    assert synthetic_game.reconcile_arrival()
+    assert not synthetic_game.reconcile_arrival()
+    assert synthetic_game.get_vehicle("truck_01").location == trip.destination
+    assert synthetic_game.player_state().cash == cash + trip.payout_eur
 
 
-async def test_changed_departure_and_missing_evidence_never_dispatch(game):
-    offer = other_facility_offer(game)
-    vehicle = game.get_vehicle("truck_01")
-    cash = game.player_state().cash
-    readiness = game.market_services.routes.readiness
+async def test_changed_departure_and_missing_evidence_never_dispatch(
+    synthetic_game,
+):
+    offer = other_facility_offer(synthetic_game)
+    vehicle = synthetic_game.get_vehicle("truck_01")
+    cash = synthetic_game.player_state().cash
+    readiness = synthetic_game.market_services.routes.readiness
     load = readiness.load
     changed = False
 
@@ -326,59 +332,61 @@ async def test_changed_departure_and_missing_evidence_never_dispatch(game):
         result = load(*args)
         if not changed:
             changed = True
-            current = game.get_vehicle(vehicle.id)
+            current = synthetic_game.get_vehicle(vehicle.id)
             current.reposition_within_city(offer.origin)
-            game.state_repository.save_vehicle(current)
+            synthetic_game.state_repository.save_vehicle(current)
         return result
 
     with patch.object(readiness, "load", side_effect=changed_location):
         with pytest.raises(ValueError, match="Fahrzeugstandort"):
-            await game.dispatch(offer.id, vehicle.id)
-    assert game.player_state().cash == cash
-    assert not game.state_repository.list_active_transports()
+            await synthetic_game.dispatch(offer.id, vehicle.id)
+    assert synthetic_game.player_state().cash == cash
+    assert not synthetic_game.state_repository.list_active_transports()
 
     # The departure must be checked again inside the committing transaction.
-    game.state_repository.save_vehicle(vehicle)
-    quote = await game.quote_contract(offer.id, vehicle.id)
-    current = game.get_vehicle(vehicle.id)
+    synthetic_game.state_repository.save_vehicle(vehicle)
+    quote = await synthetic_game.quote_contract(offer.id, vehicle.id)
+    current = synthetic_game.get_vehicle(vehicle.id)
     current.reposition_within_city(offer.origin)
-    game.state_repository.save_vehicle(current)
+    synthetic_game.state_repository.save_vehicle(current)
     with patch.object(
-        type(game.transport_dispatch),
+        type(synthetic_game.transport_dispatch),
         "quote_contract",
         AsyncMock(return_value=quote),
     ):
         with pytest.raises(ValueError, match="Fahrzeugstandort"):
-            await game.dispatch(offer.id, vehicle.id)
-    game.state_repository.save_vehicle(vehicle)
+            await synthetic_game.dispatch(offer.id, vehicle.id)
+    synthetic_game.state_repository.save_vehicle(vehicle)
     with patch.object(
         readiness,
         "load",
         side_effect=ValueError("Straßenverbindung wird vorbereitet."),
     ):
         with pytest.raises(ValueError, match="vorbereitet"):
-            await game.dispatch(offer.id, vehicle.id)
+            await synthetic_game.dispatch(offer.id, vehicle.id)
     with patch.object(
-        type(game.transport_dispatch),
+        type(synthetic_game.transport_dispatch),
         "quote_contract",
         AsyncMock(return_value=replace(quote, dispatch_route=None)),
     ):
         with pytest.raises(ValueError, match="departure plan"):
-            await game.dispatch(offer.id, vehicle.id)
-    assert game.get_vehicle(vehicle.id).location == vehicle.location
-    assert game.get_vehicle(vehicle.id).status == "idle"
-    assert game.player_state().cash == cash
-    assert game.get_contract(offer.id) == offer
-    assert not game.state_repository.list_active_transports()
+            await synthetic_game.dispatch(offer.id, vehicle.id)
+    assert synthetic_game.get_vehicle(vehicle.id).location == vehicle.location
+    assert synthetic_game.get_vehicle(vehicle.id).status == "idle"
+    assert synthetic_game.player_state().cash == cash
+    assert synthetic_game.get_contract(offer.id) == offer
+    assert not synthetic_game.state_repository.list_active_transports()
 
 
-async def test_concurrent_approaches_reserve_and_charge_only_once(game):
-    offer = other_facility_offer(game)
-    before = game.get_vehicle("truck_01")
-    cash = game.player_state().cash
+async def test_concurrent_approaches_reserve_and_charge_only_once(
+    synthetic_game,
+):
+    offer = other_facility_offer(synthetic_game)
+    before = synthetic_game.get_vehicle("truck_01")
+    cash = synthetic_game.player_state().cash
     barrier = asyncio.Event()
     calls = 0
-    original = type(game.transport_dispatch).quote_contract
+    original = type(synthetic_game.transport_dispatch).quote_contract
 
     async def overlapping_quotes(service, *args):
         nonlocal calls
@@ -390,37 +398,42 @@ async def test_concurrent_approaches_reserve_and_charge_only_once(game):
         return quote
 
     with patch.object(
-        type(game.transport_dispatch),
+        type(synthetic_game.transport_dispatch),
         "quote_contract",
         overlapping_quotes,
     ):
         results = await asyncio.gather(
-            game.dispatch(offer.id, before.id),
-            game.dispatch(offer.id, before.id),
+            synthetic_game.dispatch(offer.id, before.id),
+            synthetic_game.dispatch(offer.id, before.id),
             return_exceptions=True,
         )
     assert sum(isinstance(result, KeyError) for result in results) == 1
-    saved = game.state_repository.list_active_transports()
+    saved = synthetic_game.state_repository.list_active_transports()
     assert len(saved) == 1
-    assert game.player_state().cash == cash - saved[0].operating_cost_eur
-    assert game.get_vehicle(before.id).location == before.location
-    assert game.get_vehicle(before.id).status == "enroute"
+    assert (
+        synthetic_game.player_state().cash
+        == cash - saved[0].operating_cost_eur
+    )
+    assert synthetic_game.get_vehicle(before.id).location == before.location
+    assert synthetic_game.get_vehicle(before.id).status == "enroute"
 
 
-async def test_offer_consumption_failure_rolls_back_complete_dispatch(game):
-    offer = other_facility_offer(game)
-    before = game.get_vehicle("truck_01")
-    cash = game.player_state().cash
-    offers = game.state_repository.list_offers()
+async def test_offer_consumption_failure_rolls_back_complete_dispatch(
+    synthetic_game,
+):
+    offer = other_facility_offer(synthetic_game)
+    before = synthetic_game.get_vehicle("truck_01")
+    cash = synthetic_game.player_state().cash
+    offers = synthetic_game.state_repository.list_offers()
     with patch.object(
-        game.state_repository,
+        synthetic_game.state_repository,
         "remove_offer",
         side_effect=RuntimeError("write failed"),
     ):
         with pytest.raises(RuntimeError, match="write failed"):
-            await game.dispatch(offer.id, before.id)
-    assert game.player_state().cash == cash
-    assert game.get_vehicle(before.id).status == "idle"
-    assert game.get_vehicle(before.id).location == before.location
-    assert game.state_repository.list_offers() == offers
-    assert not game.state_repository.list_active_transports()
+            await synthetic_game.dispatch(offer.id, before.id)
+    assert synthetic_game.player_state().cash == cash
+    assert synthetic_game.get_vehicle(before.id).status == "idle"
+    assert synthetic_game.get_vehicle(before.id).location == before.location
+    assert synthetic_game.state_repository.list_offers() == offers
+    assert not synthetic_game.state_repository.list_active_transports()

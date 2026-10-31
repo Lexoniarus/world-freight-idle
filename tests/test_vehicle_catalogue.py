@@ -149,20 +149,22 @@ def test_catalogue_numeric_nonfinite_and_negative_cost(
 
 
 def test_purchase_reputation_snapshots_and_rollback(
-    game, reference_vehicle_catalogue
+    synthetic_game, reference_vehicle_catalogue
 ):
     fleet = FleetService(
-        game.unit_of_work, reference_vehicle_catalogue, game.world
+        synthetic_game.unit_of_work,
+        reference_vehicle_catalogue,
+        synthetic_game.world,
     )
     with pytest.raises(ValueError, match="Reputation"):
         project_vehicle(fleet.purchase("daf_xg_plus_480"))
-    player = project_player(game.player_state())
+    player = project_player(synthetic_game.player_state())
     player.update(cash=500000, reputation=25)
-    game.state_repository.save_player(PlayerState(**player))
+    synthetic_game.state_repository.save_player(PlayerState(**player))
     vehicle = project_vehicle(fleet.purchase("daf_xg_plus_480"))
     rate = vehicle["operating_cost_eur_per_km"]
     assert vehicle["capacity_tons"] == 24.3
-    assert game.player_state().cash == 338000
+    assert synthetic_game.player_state().cash == 338000
     with (
         closing(
             sqlite3.connect(reference_vehicle_catalogue.path)
@@ -173,32 +175,34 @@ def test_purchase_reputation_snapshots_and_rollback(
             "UPDATE vehicle_balance SET operating_cost_eur_per_km_game=9"
         )
     assert (
-        project_vehicle(game.get_vehicle(vehicle["id"]))[
+        project_vehicle(synthetic_game.get_vehicle(vehicle["id"]))[
             "operating_cost_eur_per_km"
         ]
         == rate
     )
-    before = project_player(game.player_state())
+    before = project_player(synthetic_game.player_state())
     vehicles = [
-        project_vehicle(item) for item in game.state_repository.list_vehicles()
+        project_vehicle(item)
+        for item in synthetic_game.state_repository.list_vehicles()
     ]
     with patch.object(
-        game.state_repository,
+        synthetic_game.state_repository,
         "save_vehicle",
         side_effect=RuntimeError("persistence failed"),
     ):
         with pytest.raises(RuntimeError):
             project_vehicle(fleet.purchase("iveco_sway_500"))
-    assert project_player(game.player_state()) == before
+    assert project_player(synthetic_game.player_state()) == before
     assert [
-        project_vehicle(item) for item in game.state_repository.list_vehicles()
+        project_vehicle(item)
+        for item in synthetic_game.state_repository.list_vehicles()
     ] == vehicles
 
 
 async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
-    monkeypatch, game, reference_vehicle_catalogue
+    monkeypatch, synthetic_game, reference_vehicle_catalogue
 ):
-    original = game.state_repository.list_vehicles()[0]
+    original = synthetic_game.state_repository.list_vehicles()[0]
     legacy = OwnedVehicle(
         original.id,
         original.name,
@@ -211,39 +215,44 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
         energy_level=100,
         top_speed_kmh=90,
     )
-    contract = first_berlin_contract(game)
-    game.state_repository.save_vehicle(legacy)
+    contract = first_berlin_contract(synthetic_game)
+    synthetic_game.state_repository.save_vehicle(legacy)
     with pytest.raises(ValueError, match="Bestand"):
-        await game.quote_contract(contract["id"], "truck_01")
-    game.state_repository.save_vehicle(original)
+        await synthetic_game.quote_contract(contract["id"], "truck_01")
+    synthetic_game.state_repository.save_vehicle(original)
     original._operating_cost_eur_per_km = 0.5
-    game.state_repository.save_vehicle(original)
+    synthetic_game.state_repository.save_vehicle(original)
     first = project_quote(
-        await game.quote_contract(contract["id"], "truck_01")
+        await synthetic_game.quote_contract(contract["id"], "truck_01")
     )
     assert first["maintenance_eur_per_km"] == 0.078
     assert first["vehicle_id"] == "truck_01"
     vehicle = project_vehicle(
         FleetService(
-            game.unit_of_work, reference_vehicle_catalogue, game.world
+            synthetic_game.unit_of_work,
+            reference_vehicle_catalogue,
+            synthetic_game.world,
         ).purchase("iveco_sway_500")
     )
     quote = project_quote(
-        await game.quote_contract(contract["id"], vehicle["id"])
+        await synthetic_game.quote_contract(contract["id"], vehicle["id"])
     )
     assert quote["operating_cost_eur"] == round(
         80 + quote["distance_km"] * quote["maintenance_eur_per_km"]
     )
     assert quote["payout_eur"] == first["payout_eur"]
     assert quote["operating_cost_eur"] == first["operating_cost_eur"]
-    before = game.player_state().cash
+    before = synthetic_game.player_state().cash
     trip = project_transport(
-        await game.dispatch(contract["id"], vehicle["id"])
+        await synthetic_game.dispatch(contract["id"], vehicle["id"])
     )
     assert trip["operating_cost_eur"] == quote["operating_cost_eur"]
-    assert game.player_state().cash == before - quote["operating_cost_eur"]
+    assert (
+        synthetic_game.player_state().cash
+        == before - quote["operating_cost_eur"]
+    )
     # Old balances and models are not migrated by reinitialization.
-    game.state_repository.save_player(
+    synthetic_game.state_repository.save_player(
         PlayerState(cash=25000, reputation=0, completed=0)
     )
     for model_id in (None, "rigid_12t", "semi_24t"):
@@ -260,18 +269,18 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
             energy_level=100,
             top_speed_kmh=90,
         )
-        game.state_repository.save_vehicle(legacy)
-        game.ensure_initial_state()
-        assert game.player_state().cash == 25000
+        synthetic_game.state_repository.save_vehicle(legacy)
+        synthetic_game.ensure_initial_state()
+        assert synthetic_game.player_state().cash == 25000
         assert (
-            project_vehicle(game.get_vehicle("truck_01"))["model_id"]
+            project_vehicle(synthetic_game.get_vehicle("truck_01"))["model_id"]
             == model_id
         )
     # Already running transport economics are independent of the catalogue.
-    set_game_clock(game, lambda: trip["arrives_at"] + 1)
-    assert game.get_vehicle(vehicle["id"]).status == "enroute"
-    assert game.reconcile_arrival()
-    assert game.player_state().cash == 25000 + trip["payout_eur"]
+    set_game_clock(synthetic_game, lambda: trip["arrives_at"] + 1)
+    assert synthetic_game.get_vehicle(vehicle["id"]).status == "enroute"
+    assert synthetic_game.reconcile_arrival()
+    assert synthetic_game.player_state().cash == 25000 + trip["payout_eur"]
 
 
 def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
@@ -325,9 +334,9 @@ def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
 
 
 def test_catalogue_builder_default_path(
-    runtime, game, reference_vehicle_catalogue
+    synthetic_runtime, synthetic_game, reference_vehicle_catalogue
 ):
-    with runtime.database.connect() as connection:
+    with synthetic_runtime.database.connect() as connection:
         connection.execute(
             "INSERT INTO users VALUES (?, ?, ?, 0)",
             ("new-account", "new-account", "test-only"),
@@ -337,9 +346,9 @@ def test_catalogue_builder_default_path(
         vehicle_catalogue_path=None,
         base_dir=Path(__file__).resolve().parents[1],
     )
-    fleet = build_fleet_service(game, settings)
+    fleet = build_fleet_service(synthetic_game, settings)
     assert len(project_catalogue(fleet.list_catalogue())["models"]) >= 8
-    isolated = build_player_service(runtime, "new-account")
+    isolated = build_player_service(synthetic_runtime, "new-account")
     assert project_state(isolated.state())["player"]["cash"] == 175000
 
 
@@ -378,9 +387,9 @@ def test_packaged_catalogue_works_outside_project_directory(
 
 
 def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
-    database, runtime, game
+    database, synthetic_runtime, synthetic_game
 ):
-    with runtime.database.connect() as connection:
+    with synthetic_runtime.database.connect() as connection:
         connection.execute(
             "INSERT INTO users VALUES (?, ?, ?, 0)",
             ("failed", "failed", "test-only"),
@@ -391,41 +400,43 @@ def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
         )
     model = next(
         item
-        for item in game.catalogue.list_models()
+        for item in synthetic_game.catalogue.list_models()
         if item.id == "iveco_sway_500"
     )
-    starter = project_vehicle(game.get_vehicle("truck_01"))
+    starter = project_vehicle(synthetic_game.get_vehicle("truck_01"))
     assert starter["model_id"] == model.id
     assert starter["name"] == model.name
     assert starter["capacity_tons"] == model.capacity_tons
     assert (
         starter["operating_cost_eur_per_km"] == model.operating_cost_eur_per_km
     )
-    assert game.player_state().cash == 175000
+    assert synthetic_game.player_state().cash == 175000
     before = [
-        project_vehicle(item) for item in game.state_repository.list_vehicles()
+        project_vehicle(item)
+        for item in synthetic_game.state_repository.list_vehicles()
     ]
     changed = replace(model, operating_cost_eur_per_km=7)
-    runtime.catalogue = InMemoryVehicleCatalogue(
+    synthetic_runtime.catalogue = InMemoryVehicleCatalogue(
         tuple(
             changed if item.id == changed.id else item
-            for item in game.catalogue.list_models()
+            for item in synthetic_game.catalogue.list_models()
         )
     )
-    game.ensure_initial_state()
+    synthetic_game.ensure_initial_state()
     assert [
-        project_vehicle(item) for item in game.state_repository.list_vehicles()
+        project_vehicle(item)
+        for item in synthetic_game.state_repository.list_vehicles()
     ] == before
-    fresh = build_player_service(runtime, "fresh")
+    fresh = build_player_service(synthetic_runtime, "fresh")
     assert (
         project_vehicle(fresh.get_vehicle("truck_01"))[
             "operating_cost_eur_per_km"
         ]
         == 7
     )
-    runtime.catalogue = InMemoryVehicleCatalogue(())
+    synthetic_runtime.catalogue = InMemoryVehicleCatalogue(())
     with pytest.raises(CatalogueError, match="Startfahrzeug"):
-        build_player_service(runtime, "failed")
+        build_player_service(synthetic_runtime, "failed")
     from app.repositories.game_state import SqliteGameStateRepository
 
     failed = SqliteGameStateRepository(database, "failed")

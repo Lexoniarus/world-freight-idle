@@ -13,8 +13,10 @@ from app.main import create_app
 from tests.support.api import FakeGame, make_settings, make_static_files
 
 
-def test_route_reference_belongs_only_to_available_market_projection(game):
-    offer = game.state_repository.list_offers()[0]
+def test_route_reference_belongs_only_to_available_market_projection(
+    synthetic_game,
+):
+    offer = synthetic_game.state_repository.list_offers()[0]
     reference = RouteReference("relation1", "revision1")
     available = AvailableContract(offer, ("truck_01",), reference)
     assert project_contract(available)["route_reference"] == {
@@ -26,11 +28,15 @@ def test_route_reference_belongs_only_to_available_market_projection(game):
     assert "route_reference" not in project_contract(historical)
 
 
-def test_v1_resource_endpoints_and_error_mapping(tmp_path: Path, game):
+def test_v1_resource_endpoints_and_error_mapping(
+    tmp_path: Path, synthetic_game
+):
     make_static_files(tmp_path)
     app = create_app(make_settings(tmp_path))
     with TestClient(app) as client:
-        app.dependency_overrides[get_game_service] = lambda: FakeGame(game)
+        app.dependency_overrides[get_game_service] = lambda: FakeGame(
+            synthetic_game
+        )
         client.headers["X-Freight-Request"] = "1"
         assert client.get("/api/v1/dashboard").status_code == 200
         assert client.get("/api/v1/contracts").status_code == 422
@@ -180,14 +186,16 @@ def test_persistence_outage_does_not_expose_database_details(tmp_path):
     assert response.headers["x-trace-id"]
 
 
-def test_market_reference_errors_have_explicit_http_responses(tmp_path, game):
+def test_market_reference_errors_have_explicit_http_responses(
+    tmp_path, synthetic_game
+):
     from unittest.mock import patch
 
     from app.domain.errors import CatalogueError, UnresolvedVehicleModel
 
     make_static_files(tmp_path)
     app = create_app(make_settings(tmp_path))
-    app.dependency_overrides[get_game_service] = lambda: game
+    app.dependency_overrides[get_game_service] = lambda: synthetic_game
     with TestClient(app) as client:
         for error, status, message in (
             (CatalogueError("private path"), 503, "Fahrzeugkatalog"),
@@ -197,7 +205,9 @@ def test_market_reference_errors_have_explicit_http_responses(tmp_path, game):
                 "Bestand prüfen",
             ),
         ):
-            with patch.object(game, "read_market", side_effect=error):
+            with patch.object(
+                synthetic_game, "read_market", side_effect=error
+            ):
                 response = client.get("/api/v1/contracts?vehicle_id=truck_01")
             assert response.status_code == status
             assert message in response.json()["detail"]

@@ -16,18 +16,20 @@ from app.services.routing.preparation import RoutingPreparationService
 from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 
 
-def build_test_runtime(game, database) -> GameRuntime:
+def build_test_runtime(synthetic_game, database) -> GameRuntime:
     """Compose a complete local runtime without external providers."""
     SqliteMarketTemplateStore.initialize(database)
     SqlitePlayerMarketStockStore.initialize(database)
     SqliteProviderCache(database)
     readiness_store = SqliteRoutingReadinessStore(database)
     preparation_jobs = SqlitePreparationStore(database)
-    world = CachedWorldCatalogue(game.world)
+    world = CachedWorldCatalogue(synthetic_game.world)
     market = MarketComponents(
-        MarketCandidateService(world, game.market.candidates.catalogue),
-        game.market.factory,
-        game.market.vehicle_coverage,
+        MarketCandidateService(
+            world, synthetic_game.market.candidates.catalogue
+        ),
+        synthetic_game.market.factory,
+        synthetic_game.market.vehicle_coverage,
     )
     anchors = FakeRoutingAnchorResolver()
     router = FakeRouter()
@@ -36,7 +38,7 @@ def build_test_runtime(game, database) -> GameRuntime:
         SqliteRoutingAnchorRepository(database),
         world,
         "test-provider",
-        game.now,
+        synthetic_game.now,
         anchors.max_snap_distance_m,
     )
     routing_preparation = RoutingPreparationService(
@@ -45,7 +47,7 @@ def build_test_runtime(game, database) -> GameRuntime:
         anchors,
         router,
         world,
-        game.now,
+        synthetic_game.now,
     )
     return GameRuntime(
         database=database,
@@ -53,11 +55,11 @@ def build_test_runtime(game, database) -> GameRuntime:
         router=router,
         anchors=anchors,
         market=market,
-        catalogue=game.catalogue,
+        catalogue=synthetic_game.catalogue,
         market_scope=MarketScopeResolver(world),
         routing_evidence=routing_evidence,
         routing_preparation=routing_preparation,
         preparation_jobs=preparation_jobs,
-        time_scale=game.time_scale,
-        clock=game.now,
+        time_scale=synthetic_game.time_scale,
+        clock=synthetic_game.now,
     )
