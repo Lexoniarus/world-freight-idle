@@ -41,27 +41,25 @@ def test_images_preserve_provenance_and_never_change_gameplay(
     ["javascript:alert(1)", "https://[broken", "https://elsewhere.test/a.jpg"],
 )
 def test_invalid_image_links_do_not_break_catalogue(
-    reference_vehicle_catalogue, url
+    small_vehicle_catalogue, url
 ):
-    with closing(sqlite3.connect(reference_vehicle_catalogue.path)) as db, db:
+    with closing(sqlite3.connect(small_vehicle_catalogue.path)) as db, db:
         db.execute("UPDATE vehicle_images SET direct_image_url=?", (url,))
     assert all(
-        model.image is None
-        for model in reference_vehicle_catalogue.list_models()
+        model.image is None for model in small_vehicle_catalogue.list_models()
     )
 
 
-def test_unverified_images_are_not_presented(reference_vehicle_catalogue):
-    with closing(sqlite3.connect(reference_vehicle_catalogue.path)) as db, db:
+def test_unverified_images_are_not_presented(small_vehicle_catalogue):
+    with closing(sqlite3.connect(small_vehicle_catalogue.path)) as db, db:
         db.execute("UPDATE vehicle_images SET verification_status='pending'")
     assert all(
-        model.image is None
-        for model in reference_vehicle_catalogue.list_models()
+        model.image is None for model in small_vehicle_catalogue.list_models()
     )
 
 
-def test_image_selection_prefers_verified_primary(reference_vehicle_catalogue):
-    with closing(sqlite3.connect(reference_vehicle_catalogue.path)) as db, db:
+def test_image_selection_prefers_verified_primary(small_vehicle_catalogue):
+    with closing(sqlite3.connect(small_vehicle_catalogue.path)) as db, db:
         db.execute(
             "UPDATE vehicle_images SET is_primary=0 WHERE vehicle_id='iveco_sway_500'"
         )
@@ -72,7 +70,7 @@ def test_image_selection_prefers_verified_primary(reference_vehicle_catalogue):
             WHERE vehicle_id='iveco_sway_500'""")
     selected = next(
         item
-        for item in reference_vehicle_catalogue.list_models()
+        for item in small_vehicle_catalogue.list_models()
         if item.id == "iveco_sway_500"
     )
     assert selected.image is not None

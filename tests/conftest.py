@@ -10,6 +10,10 @@ from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.services.gameplay.game import GameService
+from tests.support.catalogue_databases import (
+    create_small_vehicle_catalogue,
+    create_small_world_catalogue,
+)
 from tests.support.catalogues import (
     REFERENCE_VEHICLE_PATH,
     REFERENCE_WORLD_PATH,
@@ -58,6 +62,12 @@ def synthetic_world_catalogue():
 
 
 @pytest.fixture
+def small_world_catalogue(tmp_path):
+    """Provide a compact SQL world for repository failure tests."""
+    return create_small_world_catalogue(tmp_path / "small-world.sqlite3")
+
+
+@pytest.fixture
 def synthetic_game(
     database,
     synthetic_vehicle_catalogue,
@@ -97,6 +107,12 @@ def reference_vehicle_catalogue(tmp_path):
 def synthetic_vehicle_catalogue():
     """Provide compact vehicle models to domain and service tests."""
     return build_synthetic_vehicle_catalogue()
+
+
+@pytest.fixture
+def small_vehicle_catalogue(tmp_path):
+    """Provide a compact SQL vehicle catalogue for repository tests."""
+    return create_small_vehicle_catalogue(tmp_path / "small-vehicles.sqlite3")
 
 
 @pytest.fixture

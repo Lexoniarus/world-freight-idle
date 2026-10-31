@@ -36,14 +36,14 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
     database,
     synthetic_runtime,
     synthetic_game,
-    reference_vehicle_catalogue,
+    small_vehicle_catalogue,
     tmp_path,
 ):
     service = build_profile_maintenance_service(
         replace(
             make_settings(tmp_path),
             db_path=database.path,
-            vehicle_catalogue_path=reference_vehicle_catalogue.path,
+            vehicle_catalogue_path=small_vehicle_catalogue.path,
         )
     )
 
@@ -57,7 +57,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
     assert selected_location is not None
     selected.state_repository.save_vehicle(
         build_owned_vehicle(
-            reference_vehicle_catalogue.list_models()[0],
+            small_vehicle_catalogue.list_models()[0],
             "free",
             selected_location,
         )
@@ -119,13 +119,13 @@ def maintenance(
     database,
     synthetic_runtime,
     synthetic_game,
-    reference_vehicle_catalogue,
+    small_vehicle_catalogue,
     tmp_path,
 ):
     settings = replace(
         make_settings(tmp_path),
         db_path=database.path,
-        vehicle_catalogue_path=reference_vehicle_catalogue.path,
+        vehicle_catalogue_path=small_vehicle_catalogue.path,
     )
     accounts = AccountRepository(database)
     user = accounts.create_user("Selected", "test-hash")

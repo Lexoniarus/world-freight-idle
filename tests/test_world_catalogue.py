@@ -145,10 +145,10 @@ def test_nhm_ancestor_reader_rejects_invalid_hierarchy():
     connection.close()
 
 
-def test_cached_world_catalogue_reads_source_once(reference_world_catalogue):
+def test_cached_world_catalogue_reads_source_once(small_world_catalogue):
     from app.repositories.cached_world_catalogue import CachedWorldCatalogue
 
-    snapshot = reference_world_catalogue.read()
+    snapshot = small_world_catalogue.read()
     source = Mock()
     source.read.return_value = snapshot
     cached = CachedWorldCatalogue(source)
@@ -157,7 +157,7 @@ def test_cached_world_catalogue_reads_source_once(reference_world_catalogue):
     source.read.assert_called_once_with()
 
 
-def test_world_repository_readonly_and_cleanup(reference_world_catalogue):
+def test_world_repository_readonly_and_cleanup(small_world_catalogue):
     original = sqlite3.connect
     connections = []
 
@@ -182,7 +182,7 @@ def test_world_repository_readonly_and_cleanup(reference_world_catalogue):
             module, "read_world_snapshot", side_effect=read_and_check
         ),
     ):
-        reference_world_catalogue.read()
+        small_world_catalogue.read()
     with pytest.raises(sqlite3.ProgrammingError, match="closed"):
         connections[0].execute("SELECT 1")
     with (
@@ -192,16 +192,16 @@ def test_world_repository_readonly_and_cleanup(reference_world_catalogue):
         ),
         pytest.raises(WorldCatalogueError),
     ):
-        reference_world_catalogue.read()
+        small_world_catalogue.read()
     with pytest.raises(sqlite3.ProgrammingError, match="closed"):
         connections[1].execute("SELECT 1")
-    reference_world_catalogue.path.unlink()
+    small_world_catalogue.path.unlink()
     with pytest.raises(WorldCatalogueError):
-        reference_world_catalogue.read()
-    assert not reference_world_catalogue.path.exists()
-    reference_world_catalogue.path.write_text("not sqlite", encoding="utf-8")
+        small_world_catalogue.read()
+    assert not small_world_catalogue.path.exists()
+    small_world_catalogue.path.write_text("not sqlite", encoding="utf-8")
     with pytest.raises(WorldCatalogueError):
-        reference_world_catalogue.read()
+        small_world_catalogue.read()
 
 
 @pytest.mark.parametrize(
@@ -223,26 +223,26 @@ def test_world_repository_readonly_and_cleanup(reference_world_catalogue):
     ],
 )
 def test_world_repository_rejects_incompatible_data(
-    reference_world_catalogue, mutation
+    small_world_catalogue, mutation
 ):
     with (
-        closing(sqlite3.connect(reference_world_catalogue.path)) as connection,
+        closing(sqlite3.connect(small_world_catalogue.path)) as connection,
         connection,
     ):
         connection.executescript(mutation)
     with pytest.raises(WorldCatalogueError):
-        reference_world_catalogue.read()
+        small_world_catalogue.read()
 
 
 def test_world_uid_validation_and_duplicate_detection(
-    reference_world_catalogue,
+    small_world_catalogue,
 ):
     from app.repositories.world_catalogue import validate_uid
 
     with pytest.raises(ValueError):
         validate_uid("AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")
     with (
-        closing(sqlite3.connect(reference_world_catalogue.path)) as connection,
+        closing(sqlite3.connect(small_world_catalogue.path)) as connection,
         connection,
     ):
         connection.executescript("""
@@ -251,13 +251,13 @@ def test_world_uid_validation_and_duplicate_detection(
             UPDATE companies SET company_uid=(SELECT company_uid FROM companies LIMIT 1);
         """)
     with pytest.raises(WorldCatalogueError, match="Weltkatalog"):
-        reference_world_catalogue.read()
+        small_world_catalogue.read()
 
 
 def test_world_coordinates_require_matching_evidence(
-    reference_world_catalogue,
+    small_world_catalogue,
 ):
-    before = reference_world_catalogue.read()
+    before = small_world_catalogue.read()
     berlin = WorldScope(before).facility("berlin_westhafen")
     estimated = next(
         facility
@@ -266,14 +266,14 @@ def test_world_coordinates_require_matching_evidence(
         and facility.coordinate_evidence[0].url.startswith("internal://")
     )
     with (
-        closing(sqlite3.connect(reference_world_catalogue.path)) as connection,
+        closing(sqlite3.connect(small_world_catalogue.path)) as connection,
         connection,
     ):
         connection.execute(
             "UPDATE facility_geocoding_evidence SET source_url='invalid' WHERE facility_id=(SELECT facility_id FROM facilities WHERE facility_uid=?)",
             (berlin.facility_uid,),
         )
-    after = WorldScope(reference_world_catalogue.read()).facility(
+    after = WorldScope(small_world_catalogue.read()).facility(
         berlin.facility_uid
     )
     assert not after.is_routable()
@@ -286,11 +286,11 @@ def test_world_coordinates_require_matching_evidence(
 
 
 def test_world_uids_survive_internal_primary_key_changes(
-    reference_world_catalogue,
+    small_world_catalogue,
 ):
-    before = reference_world_catalogue.read()
+    before = small_world_catalogue.read()
     with (
-        closing(sqlite3.connect(reference_world_catalogue.path)) as connection,
+        closing(sqlite3.connect(small_world_catalogue.path)) as connection,
         connection,
     ):
         tables = [
@@ -312,19 +312,19 @@ def test_world_uids_survive_internal_primary_key_changes(
         connection.execute(
             "UPDATE external_identifiers SET entity_id=entity_id+10000"
         )
-    after = reference_world_catalogue.read()
+    after = small_world_catalogue.read()
     assert after == before
 
 
 def test_delivery_requires_verified_catalogue_endpoint(
-    reference_world_catalogue,
+    small_world_catalogue,
 ):
     from unittest.mock import Mock
 
     from app.services.gameplay.fleet import resolve_delivery_facility
 
-    snapshot = reference_world_catalogue.read()
-    delivery = resolve_delivery_facility(reference_world_catalogue)
+    snapshot = small_world_catalogue.read()
+    delivery = resolve_delivery_facility(small_world_catalogue)
     berlin = WorldScope(snapshot).facility("berlin_westhafen")
     assert delivery.facility_uid == berlin.facility_uid
     assert delivery.resolution_status == "resolved"
@@ -354,10 +354,10 @@ def test_delivery_requires_verified_catalogue_endpoint(
 
 
 def test_world_repository_rejects_half_null_coordinates(
-    reference_world_catalogue,
+    small_world_catalogue,
 ):
     with (
-        closing(sqlite3.connect(reference_world_catalogue.path)) as connection,
+        closing(sqlite3.connect(small_world_catalogue.path)) as connection,
         connection,
     ):
         connection.executescript(
@@ -366,12 +366,12 @@ def test_world_repository_rejects_half_null_coordinates(
             "UPDATE facilities SET latitude=NULL WHERE longitude IS NOT NULL"
         )
     with pytest.raises(WorldCatalogueError):
-        reference_world_catalogue.read()
+        small_world_catalogue.read()
 
 
-def test_world_repository_rejects_empty_catalogue(reference_world_catalogue):
+def test_world_repository_rejects_empty_catalogue(small_world_catalogue):
     with (
-        closing(sqlite3.connect(reference_world_catalogue.path)) as connection,
+        closing(sqlite3.connect(small_world_catalogue.path)) as connection,
         connection,
     ):
         tables = [
@@ -384,7 +384,7 @@ def test_world_repository_rejects_empty_catalogue(reference_world_catalogue):
             if table != "metadata":
                 connection.execute(f'DELETE FROM "{table}"')
     with pytest.raises(WorldCatalogueError):
-        reference_world_catalogue.read()
+        small_world_catalogue.read()
 
 
 def test_world_catalogue_is_packaged_independently_of_player_state(
@@ -416,9 +416,9 @@ def test_world_catalogue_is_packaged_independently_of_player_state(
 
 
 def test_world_geography_shares_identities_and_rejects_broken_references(
-    reference_world_catalogue,
+    small_world_catalogue,
 ):
-    snapshot = reference_world_catalogue.read()
+    snapshot = small_world_catalogue.read()
     facility = WorldScope(snapshot).facility("berlin_westhafen")
     city = facility.address.city
     assert city is next(
@@ -440,7 +440,7 @@ def test_world_geography_shares_identities_and_rejects_broken_references(
         ("cities", "country_code", "XX"),
     ):
         with closing(
-            sqlite3.connect(reference_world_catalogue.path)
+            sqlite3.connect(small_world_catalogue.path)
         ) as connection:
             old = connection.execute(
                 f"SELECT rowid,{column} FROM {table} LIMIT 1"
@@ -450,7 +450,7 @@ def test_world_geography_shares_identities_and_rejects_broken_references(
             )
             connection.commit()
             with pytest.raises(WorldCatalogueError):
-                reference_world_catalogue.read()
+                small_world_catalogue.read()
             connection.execute(
                 f"UPDATE {table} SET {column}=? WHERE rowid=?",
                 (old[1], old[0]),

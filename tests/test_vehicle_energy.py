@@ -73,9 +73,9 @@ def test_catalogue_energy_values_match_all_fourteen_models(
     ],
 )
 def test_catalogue_rejects_incomplete_energy(
-    reference_vehicle_catalogue, column, value
+    small_vehicle_catalogue, column, value
 ):
-    with closing(sqlite3.connect(reference_vehicle_catalogue.path)) as db, db:
+    with closing(sqlite3.connect(small_vehicle_catalogue.path)) as db, db:
         db.execute("PRAGMA ignore_check_constraints=ON")
         db.execute(
             f"UPDATE vehicle_models SET {column}=? "
@@ -83,17 +83,17 @@ def test_catalogue_rejects_incomplete_energy(
             (value,),
         )
     with pytest.raises(CatalogueError):
-        reference_vehicle_catalogue.list_models()
+        small_vehicle_catalogue.list_models()
 
 
-def test_catalogue_requires_non_diesel_stop_time(reference_vehicle_catalogue):
-    with closing(sqlite3.connect(reference_vehicle_catalogue.path)) as db, db:
+def test_catalogue_requires_non_diesel_stop_time(small_vehicle_catalogue):
+    with closing(sqlite3.connect(small_vehicle_catalogue.path)) as db, db:
         db.execute(
             "UPDATE vehicle_balance SET energy_stop_minutes_game=NULL "
             "WHERE vehicle_id='mercedes_eactros_600'"
         )
     with pytest.raises(CatalogueError):
-        reference_vehicle_catalogue.list_models()
+        small_vehicle_catalogue.list_models()
 
 
 def test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction(

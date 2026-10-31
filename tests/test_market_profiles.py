@@ -21,9 +21,9 @@ from app.domain.market_profiles import (
 
 
 def test_market_profiles_require_complete_immutable_values(
-    reference_world_catalogue,
+    synthetic_world_catalogue,
 ):
-    world = reference_world_catalogue.read()
+    world = synthetic_world_catalogue.read()
     profiles = {p.nhm_row_id: p for p in world.market_profiles}
     assert profiles
     for facility in world.facilities:
@@ -103,13 +103,13 @@ def test_market_profile_small_values_reject_invalid_weights():
     ],
 )
 def test_world_market_profile_corruption_is_rejected(
-    reference_world_catalogue, mutation
+    small_world_catalogue, mutation
 ):
-    with closing(sqlite3.connect(reference_world_catalogue.path)) as db, db:
+    with closing(sqlite3.connect(small_world_catalogue.path)) as db, db:
         db.execute("PRAGMA ignore_check_constraints=ON")
         db.execute(mutation)
     with pytest.raises(WorldCatalogueError):
-        reference_world_catalogue.read()
+        small_world_catalogue.read()
 
 
 @pytest.mark.parametrize(
@@ -125,19 +125,19 @@ def test_world_market_profile_corruption_is_rejected(
     ],
 )
 def test_vehicle_market_profile_corruption_is_rejected(
-    reference_vehicle_catalogue, mutation
+    small_vehicle_catalogue, mutation
 ):
-    with closing(sqlite3.connect(reference_vehicle_catalogue.path)) as db, db:
+    with closing(sqlite3.connect(small_vehicle_catalogue.path)) as db, db:
         db.execute("PRAGMA ignore_check_constraints=ON")
         db.execute(mutation)
     with pytest.raises(CatalogueError):
-        reference_vehicle_catalogue.list_models()
+        small_vehicle_catalogue.list_models()
 
 
 def test_vehicle_model_capabilities_are_explicit_and_unique(
-    reference_vehicle_catalogue,
+    synthetic_vehicle_catalogue,
 ):
-    for model in reference_vehicle_catalogue.list_models():
+    for model in synthetic_vehicle_catalogue.list_models():
         assert model.segment in SEGMENT_SCALES
         assert model.transport_capabilities
         for changes in (

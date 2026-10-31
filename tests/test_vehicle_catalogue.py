@@ -79,17 +79,17 @@ def test_catalogue_projects_all_offers_without_writing(
         "range",
     ],
 )
-def test_catalogue_failures_are_explicit(reference_vehicle_catalogue, failure):
+def test_catalogue_failures_are_explicit(small_vehicle_catalogue, failure):
     if failure == "missing":
-        reference_vehicle_catalogue = SqliteVehicleCatalogue(
-            reference_vehicle_catalogue.path.parent / "missing.db"
+        small_vehicle_catalogue = SqliteVehicleCatalogue(
+            small_vehicle_catalogue.path.parent / "missing.db"
         )
     elif failure == "corrupt":
-        reference_vehicle_catalogue.path.write_bytes(b"not sqlite")
+        small_vehicle_catalogue.path.write_bytes(b"not sqlite")
     else:
         with (
             closing(
-                sqlite3.connect(reference_vehicle_catalogue.path)
+                sqlite3.connect(small_vehicle_catalogue.path)
             ) as connection,
             connection,
         ):
@@ -115,16 +115,14 @@ def test_catalogue_failures_are_explicit(reference_vehicle_catalogue, failure):
                 ):
                     connection.execute(f"DELETE FROM {table}")
     with pytest.raises(CatalogueError, match="nicht verfügbar"):
-        reference_vehicle_catalogue.list_models()
+        small_vehicle_catalogue.list_models()
 
 
 def test_catalogue_numeric_nonfinite_and_negative_cost(
-    reference_vehicle_catalogue,
+    small_vehicle_catalogue,
 ):
     with (
-        closing(
-            sqlite3.connect(reference_vehicle_catalogue.path)
-        ) as connection,
+        closing(sqlite3.connect(small_vehicle_catalogue.path)) as connection,
         connection,
     ):
         connection.execute("PRAGMA ignore_check_constraints=ON")
@@ -133,11 +131,9 @@ def test_catalogue_numeric_nonfinite_and_negative_cost(
             (math.inf,),
         )
     with pytest.raises(CatalogueError):
-        reference_vehicle_catalogue.list_models()
+        small_vehicle_catalogue.list_models()
     with (
-        closing(
-            sqlite3.connect(reference_vehicle_catalogue.path)
-        ) as connection,
+        closing(sqlite3.connect(small_vehicle_catalogue.path)) as connection,
         connection,
     ):
         connection.execute("PRAGMA ignore_check_constraints=ON")
@@ -145,15 +141,15 @@ def test_catalogue_numeric_nonfinite_and_negative_cost(
             "UPDATE vehicle_balance SET operating_cost_eur_per_km_game=-1"
         )
     with pytest.raises(CatalogueError):
-        reference_vehicle_catalogue.list_models()
+        small_vehicle_catalogue.list_models()
 
 
 def test_purchase_reputation_snapshots_and_rollback(
-    synthetic_game, reference_vehicle_catalogue
+    synthetic_game, small_vehicle_catalogue
 ):
     fleet = FleetService(
         synthetic_game.unit_of_work,
-        reference_vehicle_catalogue,
+        small_vehicle_catalogue,
         synthetic_game.world,
     )
     with pytest.raises(ValueError, match="Reputation"):
@@ -166,9 +162,7 @@ def test_purchase_reputation_snapshots_and_rollback(
     assert vehicle["capacity_tons"] == 24.3
     assert synthetic_game.player_state().cash == 338000
     with (
-        closing(
-            sqlite3.connect(reference_vehicle_catalogue.path)
-        ) as connection,
+        closing(sqlite3.connect(small_vehicle_catalogue.path)) as connection,
         connection,
     ):
         connection.execute(
@@ -200,7 +194,7 @@ def test_purchase_reputation_snapshots_and_rollback(
 
 
 async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
-    monkeypatch, synthetic_game, reference_vehicle_catalogue
+    monkeypatch, synthetic_game, small_vehicle_catalogue
 ):
     original = synthetic_game.state_repository.list_vehicles()[0]
     legacy = OwnedVehicle(
@@ -230,7 +224,7 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
     vehicle = project_vehicle(
         FleetService(
             synthetic_game.unit_of_work,
-            reference_vehicle_catalogue,
+            small_vehicle_catalogue,
             synthetic_game.world,
         ).purchase("iveco_sway_500")
     )
@@ -487,12 +481,10 @@ def test_missing_catalogue_blocks_start_and_repaired_start_is_retryable(
 
 @pytest.mark.parametrize("value", [-1, math.inf, "invalid"])
 def test_catalogue_rejects_invalid_explicit_maintenance(
-    reference_vehicle_catalogue, value
+    small_vehicle_catalogue, value
 ):
     with (
-        closing(
-            sqlite3.connect(reference_vehicle_catalogue.path)
-        ) as connection,
+        closing(sqlite3.connect(small_vehicle_catalogue.path)) as connection,
         connection,
     ):
         connection.execute("PRAGMA ignore_check_constraints=ON")
@@ -501,16 +493,14 @@ def test_catalogue_rejects_invalid_explicit_maintenance(
             (value,),
         )
     with pytest.raises(CatalogueError):
-        reference_vehicle_catalogue.list_models()
+        small_vehicle_catalogue.list_models()
 
 
 def test_catalogue_requires_explicit_maintenance_column(
-    reference_vehicle_catalogue,
+    small_vehicle_catalogue,
 ):
     with (
-        closing(
-            sqlite3.connect(reference_vehicle_catalogue.path)
-        ) as connection,
+        closing(sqlite3.connect(small_vehicle_catalogue.path)) as connection,
         connection,
     ):
         connection.execute(
@@ -518,4 +508,4 @@ def test_catalogue_requires_explicit_maintenance_column(
             "maintenance_eur_per_1000_km_game TO unavailable_maintenance"
         )
     with pytest.raises(CatalogueError):
-        reference_vehicle_catalogue.list_models()
+        small_vehicle_catalogue.list_models()
