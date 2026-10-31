@@ -326,6 +326,7 @@ def test_import_cli_requires_backup_and_separate_paths(
             cli.main()
     settings = Settings.from_env()
     built = build_game_importer(path, settings)
+    assert isinstance(built, LegacyGameImporter)
     assert built.reader.world.facility(BERLIN_UID).facility_uid == BERLIN_UID
     with pytest.raises(PersistenceError):
         build_game_importer(tmp_path / "missing.db", settings).inspect(now)
