@@ -1,8 +1,31 @@
 # Qualitätsbericht: lokaler bedarfsgesteuerter Frachtpool
 
-Stand: 30.10.2026. Branch `refactor/local-market-pool`, Basis aktuelles lokales
+Stand: 31.10.2026. Branch `refactor/local-market-pool`, Basis aktuelles lokales
 `main`. Dieser Abschnitt ist der aktuelle Prüfstand; die folgenden Berichte sind
 historische Abnahmen früherer Architekturen.
+
+## Aktuelle Testpyramide
+
+Service- und Domaintests verwenden kompakte typisierte In-Memory-Kataloge mit
+sechs Fahrzeugmodellen, sechs Standorten, drei Waren und drei Distanzbändern.
+Die ausgelieferten Binärkataloge werden ausschließlich in expliziten
+Repositoryabnahmen gelesen. Generische `game`-, `runtime`-, `catalogue`- und
+`world_catalogue`-Fixtures wurden durch `synthetic_*`-Namen ersetzt.
+Repositoryfehler verwenden zwei kleine SQL-Kataloge mit zwei Standorten und
+vier Fahrzeugmodellen; die großen Referenzdateien bleiben dabei unverändert.
+
+Der lokale Python-Diagnoselauf bestand alle **591 Tests in 61 Sekunden**; der
+langsamste Fall benötigte 5,19 Sekunden. Die **122 Frontendtests** bestanden in
+3,2 Sekunden. Playwright besteht aus **15** getrennten UI-Grenzen und lief in
+1,0 Minute; der langsamste Browserfall benötigte 6,9 Sekunden. Öffentliche
+Tiles, echte Provider und Supabase waren in allen Läufen ausgeschlossen.
+
+`VehicleGroups` besitzt nun die lesbaren Schritte `activateGroup`,
+`zoomToGroup` und `showVehicleList`. MapLibre bleibt in genau einem nativen
+Enter-/Fokus-Komponententest; Gruppierung, Auswahlpayload und Fokus liegen in
+vier kleinen DOM-Tests. Python-, Frontend- und Browserqualität sind in CI drei
+parallele Jobs mit jeweils 20 Minuten hartem Timeout. Ein fehlgeschlagener Job
+wird nicht automatisch wiederholt.
 
 ## Aktuelles Verhalten und Review
 
@@ -65,32 +88,24 @@ Der Scheduler wählt ausschließlich fällige `partial`-Jobs. Ein neues Fahrzeug
 wird in begrenzten Einzelrunden bis zu drei sichtbaren und zehn gespeicherten
 Angeboten je Distanzband versorgt; ein `ready`-Job wird nicht erneut ausgewählt.
 
-Der abschließende Lauf von `.venv/Scripts/python.exe -X utf8
-scripts/quality.py` ist mit Exitcode 0 bestanden: **590 Python-Tests**,
-**100,00 % app-Statement-Coverage** (6.747 von 6.747 Statements),
-**118 Frontend-Verhaltenstests** sowie Ruff, Formatierung, mypy, Pyright,
-ESLint, Stylelint, Prettier, checkJs, Produktionsbuild und compileall. Die
-Python-Suite benötigte 13 Minuten 13 Sekunden. Der langsamste einzelne
-Python-Test lief 5,59 Sekunden; kein Python-Test überschritt zehn Sekunden.
-Architektur- und Funktionsmanifestprüfungen sind Teil dieses Laufs.
-
-`npm run test:e2e`: **36 bestanden** in 3,9 Minuten. Die Suite lief gegen
-einen isolierten lokalen Einprozess-Server mit lokaler Datenbank und lokalem
-Routing-Fixture. Marktaufbau, sichtbare Einzelpublikation, Refresh,
-Fahrzeugfilter, Desktop/Mobil, Offline-Ankunft und Kartenregressionen sind
-abgedeckt. Marktlisten werden im Browsertest je Fahrzeug angefragt; nur der
-gezielte Mehrfahrzeug-Kostentest liest anschließend die Detailprojektion. Der
-Energie-Gegentest schaltet die isolierte Serverzeit vor und synchronisiert die
-Runtime gezielt, statt reale Fahrt- oder Pollzeiten abzuwarten. Kartenlebenszyklus,
-parallele Transporte, Energieanzeige und Offline-Abrechnung sind getrennte
-Fälle. Fünf vollständige Integrationsketten benötigen auf dem Windows-Host
-11,0 bis 12,5 Sekunden; alle übrigen Browserfälle bleiben höchstens bei zehn
+Der abschließende kombinierte Lauf von `.venv/Scripts/python.exe -X utf8
+scripts/quality.py` prüft **591 Python-Tests** mit **100,00 %
+app-Statement-Coverage**, **122 Frontend-Verhaltenstests** sowie Ruff,
+Formatierung, mypy, Pyright, ESLint, Stylelint, Prettier, checkJs,
+Produktionsbuild und compileall. Architektur- und
+Funktionsmanifestprüfungen sind Teil dieses Laufs. Der langsamste einzelne
+Python-Test benötigt 5,19 Sekunden; kein Python-Test überschreitet zehn
 Sekunden.
-Diese Laufzeit wird sichtbar akzeptiert, weil sie echte Registrierung,
-Marktvorbereitung, Routing und Dispatch umfasst und nicht durch direkte Test-SQL
-oder höhere Timeouts kaschiert wird. Absichtlich abgebrochene Browserrequests
-können unter Windows den bekannten `WinError 10054` im Socket-Cleanup
-protokollieren; die zugehörigen Fehlerpfade bestehen.
+
+`npm run test:e2e` umfasst **15** klar abgegrenzte Browserfälle gegen einen
+isolierten lokalen Einprozess-Server mit lokaler Datenbank und lokalem
+Routing-Fixture. Die Suite benötigt eine Minute; der langsamste Browserfall
+6,9 Sekunden. Backendberechnungen liegen in Python-, Controllerdarstellung in
+DOM-Tests. Browserfälle prüfen nur Authentifizierung und Navigation,
+Dispositionsgrenzen, Markt-, Firmen- und Kartenoberflächen. Absichtlich
+abgebrochene Browserrequests können unter Windows den bekannten
+`WinError 10054` im Socket-Cleanup protokollieren; die zugehörigen Fehlerpfade
+bestehen.
 
 Der manuelle Start `python main.py` wurde mit einer neuen temporären lokalen
 SQLite-Datei und lokalen, unerreichbaren Dummy-Provider-URLs geprüft. Startup

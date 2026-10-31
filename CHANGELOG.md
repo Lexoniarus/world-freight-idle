@@ -1,5 +1,25 @@
 # Changelog
 
+## Kleine synthetische Testpyramide – 31.10.2026
+
+- Domain-, Service- und Gameplaytests verwenden kleine typisierte In-Memory-
+  Kataloge statt pro Test den 23-MiB-Weltkatalog zu kopieren.
+- Echte Welt- und Fahrzeugkataloge werden nur noch in ausdrücklich benannten
+  Repositoryabnahmen geprüft; alle anderen Fixtures heißen `synthetic_*`.
+- Repositoryfehler mutieren zwei kleine, lesbare SQL-Kataloge statt Kopien der
+  ausgelieferten Binärdateien.
+- Python-Tests laufen lokal in rund einer Minute; der langsamste Einzelfall
+  bleibt unter zehn Sekunden bei unverändert 100 % Core-Coverage-Ziel.
+- `VehicleGroups` trennt Aktivierung, Zoom und Fahrzeugliste; vier kleine DOM-
+  Tests prüfen die Klick-/Fokus-/Payloadverträge. Generische Frontendtestmodule
+  tragen jetzt Zuständigkeitsnamen.
+- Playwright wurde von überlappenden Sammelabläufen auf 15 Browsergrenzen in
+  Auth/Navigation, Dispatch, Market, Company, Map und Assets reduziert. Jeder
+  lokale Fall blieb im Abnahmelauf unter sieben Sekunden.
+- Python-, Frontend- und Browserqualität laufen in CI parallel mit hartem
+  20-Minuten-Timeout und ohne automatische Wiederholung.
+- Keine Supabase-, Provider- oder öffentlichen Tile-Aufrufe wurden ausgeführt.
+
 ## Abschließende OOP-Härtung der lokalen Runtime – 30.10.2026
 
 - Spieler-Lifecycle, Initialisierung, Dispatch und Settlement verlangen immer

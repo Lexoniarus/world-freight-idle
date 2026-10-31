@@ -179,6 +179,12 @@ Coverage**, Frontendtests, ESLint, Stylelint, Prettier, checkJs und Produktionsb
 Browserprüfung verwendet lokal Microsoft Edge. Alternativ Chromium installieren
 und PLAYWRIGHT_CHANNEL=chromium setzen; CI verwendet Chromium.
 
+Für lokale Diagnose können die unveränderten Teilgates mit
+`python scripts/quality.py --python` und `python scripts/quality.py --frontend`
+einzeln ausgeführt werden. CI führt beide Bereiche und die Browserregression
+parallel mit jeweils 20 Minuten hartem Timeout aus; lokal bleibt die gemeinsame
+Abnahme vor Integration erforderlich.
+
 Browsertests starten einen isolierten Server auf Port 8011 mit temporären Daten
 und simulierten externen Medien/Providern. Aktuelle ausgeführte Ergebnisse,
 Architekturreview und Abnahmegrenzen: [QUALITY_REPORT](QUALITY_REPORT.md).

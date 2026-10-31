@@ -7,6 +7,8 @@ mypy, Pyright, pytest mit 100 % app-Statement-Coverage, Function-Test-Manifest,
 Architekturtests, Frontend-Verhaltenstests, ESLint, Stylelint, Prettier, checkJs,
 Vite-Produktionsbuild und compileall aus. Node 24, requirements-dev.txt und
 npm ci sind Voraussetzung. Die Offline-CLIs gehören zu Lint und Typprüfung.
+`python scripts/quality.py --python` und `--frontend` führen dieselben Bereiche
+getrennt aus; ohne Option bleibt das gemeinsame lokale Gate verbindlich.
 
 Vor Arbeitscommits müssen die betroffenen Tests samt direkten Aufrufern grün
 sein. Das vollständige Gate und E2E sind vor der abschließenden Integration
@@ -22,6 +24,24 @@ Gemeinsame Fixtures und lokale Provider-Doubles liegen ausschließlich unter
 damit entstehen weder implizite Collection-Abhängigkeiten noch alternative
 Produktionsarchitekturen. Die Runtime-Fixture verdrahtet dieselben lokalen
 Preparation-, Readiness- und Stock-Grenzen wie der Composition Root.
+
+## Synthetische Standarddaten
+
+Domain-, Service- und Gameplaytests verwenden ausdrücklich benannte
+`synthetic_*`-Fixtures. `InMemoryWorldCatalogue` enthält sechs kleine
+Standorte, stabile UUIDs, mehrere Waren und alle drei Distanzbänder;
+`InMemoryVehicleCatalogue` enthält die sechs für Gameplayfälle benötigten
+Modelle. Kein solcher Test kopiert oder öffnet einen produktiven Binärkatalog.
+
+`reference_world_catalogue` und `reference_vehicle_catalogue` sind allein den
+expliziten Repository-/Katalogabnahmen vorbehalten. Dort werden Version,
+Referenzmengen, FKs, stabile Identitäten, Evidenz, Marktprofile, 14
+Fahrzeugmodelle, Energieprofile, Fähigkeiten, Bilder und unveränderte Dateien
+geprüft. Repository- und Fehlerfälle mutieren ausschließlich zwei kleine
+temporäre SQLite-Kataloge, deren Schema und Daten als lesbares SQL in
+`tests/support/catalogue_databases.py` liegen. Diese Trennung ist fachlich:
+synthetische Szenarien prüfen Verhalten; Binärkataloge prüfen das ausgelieferte
+Referenzartefakt.
 
 ## Verhalten und Grenzen
 
@@ -63,9 +83,9 @@ nur für den ausdrücklich freigegebenen kontolosen Demostand vorgesehen.
 
 `npm run test:e2e` startet den FastAPI-Kern mit separater temporärer Datenbank,
 Mock-Routing und lokalen Tiles auf Port 8011. Öffentliche OSM-Tiles werden nicht
-automatisiert vorgeladen. Der Lauf umfasst Registrierung, Anmeldung, Kauf,
-parallele Transporte, Offline-Ankunft, Rangliste, Mehrspielerkarte, Bildstabilität,
-Deep Links, Fehlerfälle und Tastaturbedienung.
+automatisiert vorgeladen. Die 15 Fälle liegen in Auth/Navigation, Dispatch,
+Market, Company, Map und Asset-Abnahme. Backendberechnungen bleiben in Python,
+Controllerzustände in Node-/DOM-Tests; Playwright prüft nur Browsergrenzen.
 
 Transportzeit wird im isolierten Browserserver über eine injizierte Testuhr
 fortgeschaltet. Tests warten weder auf reale Fahrtzeiten noch passiv auf den
@@ -181,7 +201,7 @@ und im zugehörigen [SRP-Review](MARKET_V2_REVIEW.md). Die dortigen Befunde sind
 zusätzlich zum expliziten Function-Test-Manifest erforderlich.
 
 
-## Frontend v2 – Regressionen
+## Frontend-Komponentengrenzen
 
 `tests/test_analytics.py` prüft Authentifizierung, Nutzertrennung, alle Zeiträume
 und Scopes, UTC-Grenzen, leere/negative/V1-Historie, beschädigte Hüllen, laufende
@@ -191,16 +211,17 @@ im Reader. Große Koordinatenarrays bleiben in SQLite; Python erhält nur Skalar
 Zusätzlich erzwingt PRAGMA query_only die rein lesende Aggregation.
 Neue Core-Callables stehen im Function-Test-Manifest.
 
-`frontend/frontend-v2.test.mjs` ergänzt UUID-Stadtauswahl, bekannte inaktive
-Städte, Deep Links/Legacy-Auflösung, verspätete Antworten, accountgebundene
-Layer-Presets/Overrides, Gruppierung ohne Koordinatenänderungen, serverseitige
-Eligibility, getrennte Listen-/Detailzustände, Assetrollen und Charttabellen.
+`frontend/layer-and-market-controllers.test.mjs` ergänzt UUID-Stadtauswahl,
+bekannte inaktive Städte, Deep Links/Legacy-Auflösung, verspätete Antworten,
+accountgebundene Layer-Presets/Overrides, Gruppierung ohne
+Koordinatenänderungen, serverseitige Eligibility, getrennte
+Listen-/Detailzustände, Assetrollen und Charttabellen.
 Vorhandene Quote-/Dispatch-/Cleanup-/Bildstabilitätsprüfungen bleiben erhalten.
 
-Playwright prüft den kompletten Dispositionsablauf sowie mobile Sheets,
-Browserhistorie, Kamera-/Canvas-Kontinuität und keine Marktrequests bei Pan/Zoom.
-Frontend-v2-Prüfungen ergänzen Unternehmens-Scopes, Auswahl-/Layerkontinuität,
-Gruppenbedienung und Desktop 1440×900, Tablet 1024×768, Mobile 390×844.
+Playwright prüft einen Dispositions-/Settlement-Ablauf sowie mobile Sheets,
+Kamera-/Canvas-Kontinuität und keine Marktrequests bei Pan/Zoom. Kleine DOM-
+Tests besitzen Layer-, Gruppen-, Auswahl- und Requestzustände. Desktop
+1440×900 und Mobile 390×844 bleiben Browser-Smokes.
 Automatisierte OSM-Tiles werden durch lokale Testbilder ersetzt; reale
 Kartenlesbarkeit wird separat manuell geprüft, ohne automatisierte Tile-Downloads.
 
@@ -223,10 +244,9 @@ explizite Gegenfälle. Markt-Lifecycle-Tests sichern weiterhin Refill-Isolation.
 `frontend/approach.test.mjs` nutzt bewusst gegensätzliche Geometrie-/Straßenlängen:
 B muss exakt am Kilometer-/Zeitwechsel erreicht werden, auch mit Energiehalten
 auf beiden Seiten. Eigene und öffentliche Fahrzeuge teilen diese Grenzen;
-Alttransporte behalten ihre Einzelfahrt. Browserfälle prüfen Start A, automatische
-Abholung, getrennte Kilometer, Reload in beiden Phasen und Reduced Motion auf
-Desktop/Mobil. Die bestehenden Auswahl-, Quote-, Pan-/Zoom- und Offline-Tests
-bleiben Teil des vollständigen Regressionslaufs.
+Alttransporte behalten ihre Einzelfahrt. Ein Browser-Journey prüft den sichtbaren
+Quote-/Dispatch-/Settlement-Übergang; exakte Phasen- und Routengrenzen bleiben
+bei den zuständigen Python- und DOM-Tests.
 
 ## Frontend-v2: Wirtschaft, Start und Assets
 
@@ -249,15 +269,14 @@ Quality-Gate einschließlich Build abschließen, danach `npm run test:e2e`.
 
 ## Karten-, Paint- und Fokusregressionen
 
-`map-regressions.test.mjs` prüft Überschneidung statt Mittelpunkt-Radius,
+`map-rendering.test.mjs` prüft Überschneidung statt Mittelpunkt-Radius,
 Status-/Eigentümerpartitionen, Pose-Aktualisierung, Maskenmathematik,
 Fokusverbrauch und schnelle/fehlgeschlagene Farbwechsel.
 `tests/browser/map-regressions.spec.js` verwendet echte MapLibre-Layer
 mit den Produktionsmodulen in einer ausschließlich im Test abgefangenen
-Modulumgebung. Richtungen werden an gerenderten Pixeln und Screenshots
-geprüft; alle 42 Rollen erhalten Alpha-/Bauteil-/Farb-Gegenproben.
-Die normalen Browserfälle ergänzen sichtbare Palette, Retry, Navigation
-sowie einen und mehrere tatsächliche Energieeinkäufe. Keine OSM-Downloads.
+Modulumgebung. Genau ein Komponententest prüft native Enter-/Fokussemantik mit
+zwei synthetischen Fahrzeugen. Masken, Richtungen, Gruppierung und alle 42
+Assetrollen werden schneller auf Datei-/DOM-Ebene geprüft. Keine OSM-Downloads.
 
 Vollständiges Quality-Gate und E2E nacheinander ausführen; ein Vite-Build
 darf dem laufenden Browserregressionsserver nicht seine Assets entfernen.
