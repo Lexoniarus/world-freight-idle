@@ -108,6 +108,7 @@ def build_synthetic_world_catalogue() -> InMemoryWorldCatalogue:
             Coordinates(53.540, 9.990),
             products,
             "input",
+            ("hamburg_cta",),
         ),
         _facility(
             "10000000-0000-4000-8000-000000000005",
@@ -214,6 +215,27 @@ def _vehicle_model(
     manufacturer: str,
     powertrain: str,
 ) -> VehicleModel:
+    balances = {
+        "iveco_sway_500": ("IVECO S-Way 500 XC13", 24.2, 149_000, 0.51, 78),
+        "renault_t_high_520": (
+            "Renault Trucks T High 520",
+            24.1,
+            154_000,
+            0.52,
+            81,
+        ),
+        "man_tgx_520": ("MAN TGX 520 / D3066", 24.2, 158_000, 0.53, 85),
+        "daf_xg_plus_480": ("DAF XG+ 480 MX-13", 24.3, 162_000, 0.49, 80),
+        "scania_r460_gas": ("Scania R 460 Gas", 23.6, 188_000, 0.46, 94),
+        "mercedes_eactros_600": (
+            "Mercedes-Benz eActros 600",
+            22,
+            238_000,
+            0.31,
+            62,
+        ),
+    }
+    name, capacity, price, operating_cost, maintenance = balances[model_id]
     energy = {
         "diesel": EnergyProfile("diesel", "l", 900, 25, 10, 0.1),
         "gas": EnergyProfile("gas", "kg", 400, 22, 25, 0.1),
@@ -235,10 +257,10 @@ def _vehicle_model(
         name,
         manufacturer,
         powertrain,
-        24 - index * 0.2,
-        149_000 + index * 12_000,
-        0.5,
-        80,
+        capacity,
+        price,
+        operating_cost,
+        maintenance,
         index * 5,
         energy,
         90,

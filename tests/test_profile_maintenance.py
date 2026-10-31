@@ -33,13 +33,13 @@ from tests.transport_fixtures import add_transport
 
 
 def test_profile_update_preserves_other_players_and_trip_snapshots(
-    database, runtime, game, catalogue, tmp_path
+    database, runtime, game, reference_vehicle_catalogue, tmp_path
 ):
     service = build_profile_maintenance_service(
         replace(
             make_settings(tmp_path),
             db_path=database.path,
-            vehicle_catalogue_path=catalogue.path,
+            vehicle_catalogue_path=reference_vehicle_catalogue.path,
         )
     )
 
@@ -53,7 +53,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
     assert selected_location is not None
     selected.state_repository.save_vehicle(
         build_owned_vehicle(
-            catalogue.list_models()[0],
+            reference_vehicle_catalogue.list_models()[0],
             "free",
             selected_location,
         )
@@ -111,11 +111,13 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
 
 
 @pytest.fixture
-def maintenance(database, runtime, game, catalogue, tmp_path):
+def maintenance(
+    database, runtime, game, reference_vehicle_catalogue, tmp_path
+):
     settings = replace(
         make_settings(tmp_path),
         db_path=database.path,
-        vehicle_catalogue_path=catalogue.path,
+        vehicle_catalogue_path=reference_vehicle_catalogue.path,
     )
     accounts = AccountRepository(database)
     user = accounts.create_user("Selected", "test-hash")

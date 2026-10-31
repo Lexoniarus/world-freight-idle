@@ -20,8 +20,10 @@ from app.domain.market_profiles import (
 )
 
 
-def test_market_profiles_require_complete_immutable_values(world_catalogue):
-    world = world_catalogue.read()
+def test_market_profiles_require_complete_immutable_values(
+    reference_world_catalogue,
+):
+    world = reference_world_catalogue.read()
     profiles = {p.nhm_row_id: p for p in world.market_profiles}
     assert profiles
     for facility in world.facilities:
@@ -101,13 +103,13 @@ def test_market_profile_small_values_reject_invalid_weights():
     ],
 )
 def test_world_market_profile_corruption_is_rejected(
-    world_catalogue, mutation
+    reference_world_catalogue, mutation
 ):
-    with closing(sqlite3.connect(world_catalogue.path)) as db, db:
+    with closing(sqlite3.connect(reference_world_catalogue.path)) as db, db:
         db.execute("PRAGMA ignore_check_constraints=ON")
         db.execute(mutation)
     with pytest.raises(WorldCatalogueError):
-        world_catalogue.read()
+        reference_world_catalogue.read()
 
 
 @pytest.mark.parametrize(
@@ -122,16 +124,20 @@ def test_world_market_profile_corruption_is_rejected(
         "UPDATE vehicle_models SET segment='unknown'",
     ],
 )
-def test_vehicle_market_profile_corruption_is_rejected(catalogue, mutation):
-    with closing(sqlite3.connect(catalogue.path)) as db, db:
+def test_vehicle_market_profile_corruption_is_rejected(
+    reference_vehicle_catalogue, mutation
+):
+    with closing(sqlite3.connect(reference_vehicle_catalogue.path)) as db, db:
         db.execute("PRAGMA ignore_check_constraints=ON")
         db.execute(mutation)
     with pytest.raises(CatalogueError):
-        catalogue.list_models()
+        reference_vehicle_catalogue.list_models()
 
 
-def test_vehicle_model_capabilities_are_explicit_and_unique(catalogue):
-    for model in catalogue.list_models():
+def test_vehicle_model_capabilities_are_explicit_and_unique(
+    reference_vehicle_catalogue,
+):
+    for model in reference_vehicle_catalogue.list_models():
         assert model.segment in SEGMENT_SCALES
         assert model.transport_capabilities
         for changes in (

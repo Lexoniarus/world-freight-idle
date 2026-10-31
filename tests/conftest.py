@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import random
 import time
-from pathlib import Path
 
 import pytest
 
@@ -11,7 +10,12 @@ from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.services.gameplay.game import GameService
-from tests.support.catalogues import REFERENCE_WORLD_PATH
+from tests.support.catalogues import (
+    REFERENCE_VEHICLE_PATH,
+    REFERENCE_WORLD_PATH,
+    build_synthetic_vehicle_catalogue,
+    build_synthetic_world_catalogue,
+)
 from tests.support.game import create_active_trip
 from tests.support.game_service import build_fixture_game
 from tests.support.legacy_fixtures import legacy_source as legacy_source
@@ -38,12 +42,19 @@ def active_trip(game):
 
 
 @pytest.fixture
-def world_catalogue(tmp_path):
+def reference_world_catalogue(tmp_path):
+    """Copy the packaged world only for repository acceptance tests."""
     import shutil
 
     path = tmp_path / "world.sqlite3"
     shutil.copyfile(REFERENCE_WORLD_PATH, path)
     return SqliteWorldCatalogue(path)
+
+
+@pytest.fixture
+def world_catalogue():
+    """Provide the compact world used by domain and service tests."""
+    return build_synthetic_world_catalogue()
 
 
 @pytest.fixture
@@ -65,19 +76,21 @@ def game(database, catalogue, world_catalogue) -> GameService:
 
 
 @pytest.fixture
-def catalogue(tmp_path):
+def reference_vehicle_catalogue(tmp_path):
+    """Copy the packaged vehicle catalogue for repository acceptance."""
     import shutil
 
     from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 
     path = tmp_path / "catalogue.sqlite3"
-    shutil.copyfile(
-        Path(__file__).resolve().parents[1]
-        / "data"
-        / "world_freight_vehicle_catalog.sqlite3",
-        path,
-    )
+    shutil.copyfile(REFERENCE_VEHICLE_PATH, path)
     return SqliteVehicleCatalogue(path)
+
+
+@pytest.fixture
+def catalogue():
+    """Provide compact vehicle models to domain and service tests."""
+    return build_synthetic_vehicle_catalogue()
 
 
 @pytest.fixture

@@ -31,14 +31,18 @@ from tests.routing_fixtures import (
     prepare_client_market,
 )
 from tests.support.api import make_settings, make_static_files
-from tests.support.catalogues import BERLIN_UID
+from tests.support.catalogues import BERLIN_UID, InMemoryVehicleCatalogue
 from tests.support.game import first_berlin_contract
 from tests.support.game_clock import set_game_clock
 
 
-def test_catalogue_projects_all_offers_without_writing(catalogue):
-    before = hashlib.sha256(catalogue.path.read_bytes()).digest()
-    models = catalogue.list_models()
+def test_catalogue_projects_all_offers_without_writing(
+    reference_vehicle_catalogue,
+):
+    before = hashlib.sha256(
+        reference_vehicle_catalogue.path.read_bytes()
+    ).digest()
+    models = reference_vehicle_catalogue.list_models()
     assert len(models) >= 8
     assert [(m.price_eur, m.id) for m in models] == sorted(
         (m.price_eur, m.id) for m in models
@@ -49,11 +53,14 @@ def test_catalogue_projects_all_offers_without_writing(catalogue):
     assert first.capacity_tons == 24.2
     assert first.name.startswith("Iveco") or first.name.startswith("IVECO")
     assert first.operating_cost_eur_per_km >= 0
-    assert hashlib.sha256(catalogue.path.read_bytes()).digest() == before
+    assert (
+        hashlib.sha256(reference_vehicle_catalogue.path.read_bytes()).digest()
+        == before
+    )
     # File remains replaceable after read: the repository owns no open handle.
-    renamed = catalogue.path.with_suffix(".moved")
-    catalogue.path.rename(renamed)
-    renamed.rename(catalogue.path)
+    renamed = reference_vehicle_catalogue.path.with_suffix(".moved")
+    reference_vehicle_catalogue.path.rename(renamed)
+    renamed.rename(reference_vehicle_catalogue.path)
 
 
 @pytest.mark.parametrize(
@@ -72,16 +79,18 @@ def test_catalogue_projects_all_offers_without_writing(catalogue):
         "range",
     ],
 )
-def test_catalogue_failures_are_explicit(catalogue, failure):
+def test_catalogue_failures_are_explicit(reference_vehicle_catalogue, failure):
     if failure == "missing":
-        catalogue = SqliteVehicleCatalogue(
-            catalogue.path.parent / "missing.db"
+        reference_vehicle_catalogue = SqliteVehicleCatalogue(
+            reference_vehicle_catalogue.path.parent / "missing.db"
         )
     elif failure == "corrupt":
-        catalogue.path.write_bytes(b"not sqlite")
+        reference_vehicle_catalogue.path.write_bytes(b"not sqlite")
     else:
         with (
-            closing(sqlite3.connect(catalogue.path)) as connection,
+            closing(
+                sqlite3.connect(reference_vehicle_catalogue.path)
+            ) as connection,
             connection,
         ):
             connection.execute("PRAGMA ignore_check_constraints=ON")
@@ -106,29 +115,45 @@ def test_catalogue_failures_are_explicit(catalogue, failure):
                 ):
                     connection.execute(f"DELETE FROM {table}")
     with pytest.raises(CatalogueError, match="nicht verfügbar"):
-        catalogue.list_models()
+        reference_vehicle_catalogue.list_models()
 
 
-def test_catalogue_numeric_nonfinite_and_negative_cost(catalogue):
-    with closing(sqlite3.connect(catalogue.path)) as connection, connection:
+def test_catalogue_numeric_nonfinite_and_negative_cost(
+    reference_vehicle_catalogue,
+):
+    with (
+        closing(
+            sqlite3.connect(reference_vehicle_catalogue.path)
+        ) as connection,
+        connection,
+    ):
         connection.execute("PRAGMA ignore_check_constraints=ON")
         connection.execute(
             "UPDATE vehicle_balance SET operating_cost_eur_per_km_game=?",
             (math.inf,),
         )
     with pytest.raises(CatalogueError):
-        catalogue.list_models()
-    with closing(sqlite3.connect(catalogue.path)) as connection, connection:
+        reference_vehicle_catalogue.list_models()
+    with (
+        closing(
+            sqlite3.connect(reference_vehicle_catalogue.path)
+        ) as connection,
+        connection,
+    ):
         connection.execute("PRAGMA ignore_check_constraints=ON")
         connection.execute(
             "UPDATE vehicle_balance SET operating_cost_eur_per_km_game=-1"
         )
     with pytest.raises(CatalogueError):
-        catalogue.list_models()
+        reference_vehicle_catalogue.list_models()
 
 
-def test_purchase_reputation_snapshots_and_rollback(game, catalogue):
-    fleet = FleetService(game.unit_of_work, catalogue, game.world)
+def test_purchase_reputation_snapshots_and_rollback(
+    game, reference_vehicle_catalogue
+):
+    fleet = FleetService(
+        game.unit_of_work, reference_vehicle_catalogue, game.world
+    )
     with pytest.raises(ValueError, match="Reputation"):
         project_vehicle(fleet.purchase("daf_xg_plus_480"))
     player = project_player(game.player_state())
@@ -138,7 +163,12 @@ def test_purchase_reputation_snapshots_and_rollback(game, catalogue):
     rate = vehicle["operating_cost_eur_per_km"]
     assert vehicle["capacity_tons"] == 24.3
     assert game.player_state().cash == 338000
-    with closing(sqlite3.connect(catalogue.path)) as connection, connection:
+    with (
+        closing(
+            sqlite3.connect(reference_vehicle_catalogue.path)
+        ) as connection,
+        connection,
+    ):
         connection.execute(
             "UPDATE vehicle_balance SET operating_cost_eur_per_km_game=9"
         )
@@ -166,7 +196,7 @@ def test_purchase_reputation_snapshots_and_rollback(game, catalogue):
 
 
 async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
-    monkeypatch, game, catalogue
+    monkeypatch, game, reference_vehicle_catalogue
 ):
     original = game.state_repository.list_vehicles()[0]
     legacy = OwnedVehicle(
@@ -194,9 +224,9 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
     assert first["maintenance_eur_per_km"] == 0.078
     assert first["vehicle_id"] == "truck_01"
     vehicle = project_vehicle(
-        FleetService(game.unit_of_work, catalogue, game.world).purchase(
-            "iveco_sway_500"
-        )
+        FleetService(
+            game.unit_of_work, reference_vehicle_catalogue, game.world
+        ).purchase("iveco_sway_500")
     )
     quote = project_quote(
         await game.quote_contract(contract["id"], vehicle["id"])
@@ -294,14 +324,16 @@ def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
         )
 
 
-def test_catalogue_builder_default_path(runtime, game, catalogue):
+def test_catalogue_builder_default_path(
+    runtime, game, reference_vehicle_catalogue
+):
     with runtime.database.connect() as connection:
         connection.execute(
             "INSERT INTO users VALUES (?, ?, ?, 0)",
             ("new-account", "new-account", "test-only"),
         )
     settings = replace(
-        make_settings(catalogue.path.parent),
+        make_settings(reference_vehicle_catalogue.path.parent),
         vehicle_catalogue_path=None,
         base_dir=Path(__file__).resolve().parents[1],
     )
@@ -346,7 +378,7 @@ def test_packaged_catalogue_works_outside_project_directory(
 
 
 def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
-    database, runtime, game, catalogue
+    database, runtime, game
 ):
     with runtime.database.connect() as connection:
         connection.execute(
@@ -358,7 +390,9 @@ def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
             ("fresh", "fresh", "test-only"),
         )
     model = next(
-        item for item in catalogue.list_models() if item.id == "iveco_sway_500"
+        item
+        for item in game.catalogue.list_models()
+        if item.id == "iveco_sway_500"
     )
     starter = project_vehicle(game.get_vehicle("truck_01"))
     assert starter["model_id"] == model.id
@@ -371,10 +405,13 @@ def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
     before = [
         project_vehicle(item) for item in game.state_repository.list_vehicles()
     ]
-    with closing(sqlite3.connect(catalogue.path)) as db, db:
-        db.execute(
-            "UPDATE vehicle_balance SET operating_cost_eur_per_km_game=7"
+    changed = replace(model, operating_cost_eur_per_km=7)
+    runtime.catalogue = InMemoryVehicleCatalogue(
+        tuple(
+            changed if item.id == changed.id else item
+            for item in game.catalogue.list_models()
         )
+    )
     game.ensure_initial_state()
     assert [
         project_vehicle(item) for item in game.state_repository.list_vehicles()
@@ -386,9 +423,9 @@ def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
         ]
         == 7
     )
-    with patch.object(game.catalogue, "list_models", return_value=()):
-        with pytest.raises(CatalogueError, match="Startfahrzeug"):
-            build_player_service(runtime, "failed")
+    runtime.catalogue = InMemoryVehicleCatalogue(())
+    with pytest.raises(CatalogueError, match="Startfahrzeug"):
+        build_player_service(runtime, "failed")
     from app.repositories.game_state import SqliteGameStateRepository
 
     failed = SqliteGameStateRepository(database, "failed")
@@ -438,22 +475,36 @@ def test_missing_catalogue_blocks_start_and_repaired_start_is_retryable(
 
 
 @pytest.mark.parametrize("value", [-1, math.inf, "invalid"])
-def test_catalogue_rejects_invalid_explicit_maintenance(catalogue, value):
-    with closing(sqlite3.connect(catalogue.path)) as connection, connection:
+def test_catalogue_rejects_invalid_explicit_maintenance(
+    reference_vehicle_catalogue, value
+):
+    with (
+        closing(
+            sqlite3.connect(reference_vehicle_catalogue.path)
+        ) as connection,
+        connection,
+    ):
         connection.execute("PRAGMA ignore_check_constraints=ON")
         connection.execute(
             "UPDATE vehicle_balance SET maintenance_eur_per_1000_km_game=?",
             (value,),
         )
     with pytest.raises(CatalogueError):
-        catalogue.list_models()
+        reference_vehicle_catalogue.list_models()
 
 
-def test_catalogue_requires_explicit_maintenance_column(catalogue):
-    with closing(sqlite3.connect(catalogue.path)) as connection, connection:
+def test_catalogue_requires_explicit_maintenance_column(
+    reference_vehicle_catalogue,
+):
+    with (
+        closing(
+            sqlite3.connect(reference_vehicle_catalogue.path)
+        ) as connection,
+        connection,
+    ):
         connection.execute(
             "ALTER TABLE vehicle_balance RENAME COLUMN "
             "maintenance_eur_per_1000_km_game TO unavailable_maintenance"
         )
     with pytest.raises(CatalogueError):
-        catalogue.list_models()
+        reference_vehicle_catalogue.list_models()
