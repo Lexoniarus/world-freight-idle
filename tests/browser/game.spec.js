@@ -851,13 +851,13 @@ test("frontend v2: account layer overrides, group keyboard access and persistent
   });
   expect(purchase.ok()).toBeTruthy();
   await page.reload();
-  await expect(page.locator(".vehicle-group.own")).toHaveText("2");
-  for (let step = 0; step < 3; step++) {
-    await page.locator(".vehicle-group.own").focus();
-    await page.keyboard.press("Enter");
+  const ownGroup = page.locator(".vehicle-group.own");
+  await expect(ownGroup).toHaveText("2");
+  await ownGroup.focus();
+  await expect(ownGroup).toBeFocused();
+  for (let step = 0; step < 4; step++) {
+    await page.locator(".vehicle-group.own").press("Enter");
   }
-  await page.locator(".vehicle-group.own").focus();
-  await page.keyboard.press("Enter");
   await expect(page.locator(".map-object-list button")).toHaveCount(2);
   await page.locator(".map-object-list button").first().click();
   await expect(page).toHaveURL(/fleet\//);

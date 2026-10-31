@@ -67,6 +67,28 @@ async function setupMap(page) {
  });
 }
 
+test(
+  "vehicle group keyboard activation zooms before opening its accessible list",
+  async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await setupMap(page);
+    await page.evaluate(async () => {
+      const { feature } = window.proof;
+      await window.drawProof([feature("a"), feature("b")]);
+    });
+    const group = page.locator(".vehicle-group");
+    await group.focus();
+    await expect(group).toBeFocused();
+    await group.press("Enter");
+    await expect.poll(() => page.evaluate(() => window.proof.map.getZoom())).toBe(16);
+    await page.locator(".vehicle-group").press("Enter");
+    await expect.poll(() => page.evaluate(() => window.proof.map.getZoom())).toBe(17);
+    await page.locator(".vehicle-group").press("Enter");
+    await expect(page.locator(".map-object-list button")).toHaveCount(2);
+    await expect(page.locator(".map-object-list button").first()).toBeFocused();
+  },
+);
+
 test('real singleton and grouped sprites render compass bearings, status separation and transparent badges',async({page})=>{
  await setupMap(page);
  test.setTimeout(60000);
