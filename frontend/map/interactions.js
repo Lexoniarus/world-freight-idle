@@ -95,7 +95,7 @@ export class MapInteractions {
       ).values(),
     ];
     if (vehicleHits.length > 1) {
-      this.groups.showList(vehicleHits, event.lngLat);
+      this.groups.showVehicleList(vehicleHits, event.lngLat);
       return;
     }
     const feature = hits[0];
