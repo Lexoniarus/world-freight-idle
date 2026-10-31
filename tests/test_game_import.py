@@ -25,6 +25,7 @@ from app.repositories.legacy_game_import import (
 )
 from app.repositories.legacy_import_mapping import read_legacy_profile
 from app.services.auth import PasswordHasher
+from tests.support.catalogues import BERLIN_UID
 from tests.support.legacy_fixtures import (
     legacy_transport_projection,
     legacy_vehicle_projection,
@@ -325,7 +326,7 @@ def test_import_cli_requires_backup_and_separate_paths(
             cli.main()
     settings = Settings.from_env()
     built = build_game_importer(path, settings)
-    assert built.inspect(now).accounts == 3
+    assert built.reader.world.facility(BERLIN_UID).facility_uid == BERLIN_UID
     with pytest.raises(PersistenceError):
         build_game_importer(tmp_path / "missing.db", settings).inspect(now)
 

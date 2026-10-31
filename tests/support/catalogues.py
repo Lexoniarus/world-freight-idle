@@ -18,7 +18,7 @@ from app.domain.market_profiles import (
     VehicleScaleProfile,
 )
 from app.domain.vehicles import VehicleModel
-from app.domain.world import Facility, WorldSnapshot
+from app.domain.world import Facility, ReferenceCompany, WorldSnapshot
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 REFERENCE_WORLD_PATH = (
@@ -38,7 +38,7 @@ _SOURCE = SourceReference(
 )
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass
 class InMemoryWorldCatalogue:
     """Return one immutable synthetic world snapshot without file access."""
 
@@ -49,7 +49,7 @@ class InMemoryWorldCatalogue:
         return self.snapshot
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass
 class InMemoryVehicleCatalogue:
     """Return immutable vehicle models without a database dependency."""
 
@@ -65,10 +65,23 @@ def build_synthetic_world_catalogue() -> InMemoryWorldCatalogue:
     germany = Country("DE", "Germany")
     france = Country("FR", "France")
     cities = (
-        _city(1, "Berlin", germany),
+        City(
+            "842dac5f-42b4-4fc7-bed1-5b487351e675",
+            "Berlin",
+            germany,
+            "Berlin",
+        ),
         _city(2, "Potsdam", germany),
         _city(3, "Hamburg", germany),
         _city(4, "Paris", france),
+    )
+    company = ReferenceCompany(
+        "57f4d779-539c-4be8-a920-753bc205b5be",
+        "BEHALA Berliner Hafen- und Lagerhausgesellschaft mbH",
+        "BEHALA Berliner Hafen- und Lagerhausgesellschaft mbH",
+        germany,
+        "https://example.test/synthetic-freight",
+        (_SOURCE,),
     )
     products = (
         NhmProduct(100, "0100", "Machine parts", (100,)),
@@ -80,6 +93,7 @@ def build_synthetic_world_catalogue() -> InMemoryWorldCatalogue:
             BERLIN_UID,
             "Berlin Westhafen",
             cities[0],
+            company,
             Coordinates(52.536, 13.343),
             products,
             "output",
@@ -89,6 +103,7 @@ def build_synthetic_world_catalogue() -> InMemoryWorldCatalogue:
             "10000000-0000-4000-8000-000000000002",
             "Berlin South Depot",
             cities[0],
+            company,
             Coordinates(52.450, 13.430),
             products,
             "output",
@@ -97,40 +112,44 @@ def build_synthetic_world_catalogue() -> InMemoryWorldCatalogue:
             "10000000-0000-4000-8000-000000000003",
             "Potsdam Freight Yard",
             cities[1],
+            company,
             Coordinates(52.390, 13.060),
             products,
-            "input",
+            "both",
         ),
         _facility(
             "10000000-0000-4000-8000-000000000004",
             "Hamburg Port",
             cities[2],
+            company,
             Coordinates(53.540, 9.990),
             products,
-            "input",
+            "both",
             ("hamburg_cta",),
         ),
         _facility(
             "10000000-0000-4000-8000-000000000005",
             "Paris Logistics North",
             cities[3],
+            company,
             Coordinates(48.930, 2.350),
             products,
-            "input",
+            "both",
         ),
         _facility(
             "10000000-0000-4000-8000-000000000006",
             "Paris Logistics South",
             cities[3],
+            company,
             Coordinates(48.790, 2.360),
             products,
-            "input",
+            "both",
         ),
     )
     profiles = tuple(_market_profile(product) for product in products)
     snapshot = WorldSnapshot(
         TEST_CATALOGUE_VERSION,
-        (),
+        (company,),
         facilities,
         (germany, france),
         cities,
@@ -169,6 +188,7 @@ def _facility(
     identifier: str,
     label: str,
     city: City,
+    company: ReferenceCompany,
     coordinates: Coordinates,
     products: tuple[NhmProduct, ...],
     role: str,
@@ -180,7 +200,7 @@ def _facility(
     )
     return Facility(
         identifier,
-        None,
+        company,
         label,
         "freight_terminal",
         Address(city),
@@ -237,10 +257,15 @@ def _vehicle_model(
     }
     name, capacity, price, operating_cost, maintenance = balances[model_id]
     energy = {
-        "diesel": EnergyProfile("diesel", "l", 900, 25, 10, 0.1),
-        "gas": EnergyProfile("gas", "kg", 400, 22, 25, 0.1),
-        "electric": EnergyProfile("electric", "kWh", 600, 103, 35, 0.1),
-    }[powertrain]
+        "iveco_sway_500": EnergyProfile("diesel", "l", 1010, 24.5, 10, 0.1),
+        "renault_t_high_520": EnergyProfile("diesel", "l", 900, 25.5, 10, 0.1),
+        "man_tgx_520": EnergyProfile("diesel", "l", 910, 24.5, 10, 0.1),
+        "daf_xg_plus_480": EnergyProfile("diesel", "l", 845, 22.3, 10, 0.1),
+        "scania_r460_gas": EnergyProfile("gas", "kg", 400, 22.2, 25, 0.1),
+        "mercedes_eactros_600": EnergyProfile(
+            "electric", "kWh", 600, 103, 35, 0.1
+        ),
+    }[model_id]
     capabilities = tuple(
         TransportCapability(transport_class, suitability)
         for transport_class, suitability in (
@@ -261,7 +286,7 @@ def _vehicle_model(
         price,
         operating_cost,
         maintenance,
-        index * 5,
+        0,
         energy,
         90,
         "heavy_long_haul_tractor",

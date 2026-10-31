@@ -250,7 +250,7 @@ FUNCTION_TESTS.update(
         "app.services.gameplay.fleet.FleetService.__init__": "test_purchase_reputation_snapshots_and_rollback",
         "app.services.gameplay.fleet.FleetService.list_catalogue": "test_catalogue_api_errors_and_vehicle_quote_validation",
         "app.services.gameplay.game.GameService.__post_init__": "test_player_service_isolation_and_atomic_purchases",
-        "app.services.map_locations.MapLocationService.__init__": "test_map_hubs_resolve_and_preserve_partial_failures",
+        "app.services.map_locations.MapLocationService.__init__": "test_map_hubs_resolve_and_preserve_read_failures",
     }
 )
 
@@ -315,7 +315,7 @@ FUNCTION_TESTS.update(
         "app.repositories.world_catalogue.validate_uid": "test_world_repository_rejects_incompatible_data",
         "app.repositories.world_catalogue.validate_world_schema": "test_world_repository_rejects_incompatible_data",
         "app.services.gameplay.fleet.resolve_delivery_facility": "test_delivery_requires_verified_catalogue_endpoint",
-        "app.services.map_locations.MapLocationService.list_facilities": "test_map_hubs_resolve_and_preserve_partial_failures",
+        "app.services.map_locations.MapLocationService.list_facilities": "test_map_hubs_resolve_and_preserve_read_failures",
     }
 )
 

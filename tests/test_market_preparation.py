@@ -52,9 +52,11 @@ async def test_partial_market_never_publishes_unchecked_offers(game, database):
         assert game.list_contracts() == []
         await readiness.prepare(owned[0].facility_uid, origin)
     assert result.status == "ready"
+    original_router = readiness.router
     readiness.router = AsyncMock()
     assert await readiness.prepare(origin, destination) == result
     readiness.router.route.assert_not_called()
+    readiness.router = original_router
     for _ in range(30):
         await batch.process()
         if game.list_contracts():
