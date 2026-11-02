@@ -35,11 +35,11 @@ def test_energy_profile_validates_measurements_and_consumption():
             replace(profile, **changes)
 
 
-def test_catalogue_energy_values_match_all_fourteen_models(
-    reference_vehicle_catalogue,
+def test_synthetic_catalogue_energy_values_cover_supported_powertrains(
+    synthetic_vehicle_catalogue,
 ):
-    models = reference_vehicle_catalogue.list_models()
-    assert len(models) == 14
+    models = synthetic_vehicle_catalogue.list_models()
+    assert len(models) == 6
     for model in models:
         assert model.energy.capacity > 0
         assert model.top_speed_kmh > 0

@@ -53,6 +53,23 @@ def test_catalogue_projects_all_offers_without_writing(
     assert first.capacity_tons == 24.2
     assert first.name.startswith("Iveco") or first.name.startswith("IVECO")
     assert first.operating_cost_eur_per_km >= 0
+    assert all(model.energy.capacity > 0 for model in models)
+    assert all(model.top_speed_kmh > 0 for model in models)
+    assert all(model.transport_capabilities for model in models)
+    assert all(model.image is not None for model in models)
+    assert first.energy == EnergyProfile("diesel", "l", 1010, 24.5, 10, 0.1)
+    electric = next(
+        model for model in models if model.id == "mercedes_eactros_600"
+    )
+    assert electric.energy == EnergyProfile(
+        "electric", "kWh", 600, 103, 35, 0.1
+    )
+    gas = next(model for model in models if model.id == "scania_r460_gas")
+    assert gas.energy == EnergyProfile("gas", "kg", 400, 22.2, 25, 0.1)
+    assert first.image is not None
+    assert first.image.url.startswith("https://upload.wikimedia.org/")
+    assert first.image.author
+    assert first.image.license_name == "CC0 1.0"
     assert (
         hashlib.sha256(reference_vehicle_catalogue.path.read_bytes()).digest()
         == before
@@ -328,7 +345,7 @@ def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
 
 
 def test_catalogue_builder_default_path(
-    synthetic_runtime, synthetic_game, reference_vehicle_catalogue
+    synthetic_runtime, synthetic_game, tmp_path
 ):
     with synthetic_runtime.database.connect() as connection:
         connection.execute(
@@ -336,7 +353,7 @@ def test_catalogue_builder_default_path(
             ("new-account", "new-account", "test-only"),
         )
     settings = replace(
-        make_settings(reference_vehicle_catalogue.path.parent),
+        make_settings(tmp_path),
         vehicle_catalogue_path=None,
         base_dir=Path(__file__).resolve().parents[1],
     )

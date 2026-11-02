@@ -9,29 +9,29 @@ from app.api.v1.vehicle_presentation import present_vehicles
 
 
 def test_images_preserve_provenance_and_never_change_gameplay(
-    reference_vehicle_catalogue,
+    small_vehicle_catalogue,
 ):
-    models = reference_vehicle_catalogue.list_models()
-    assert all(model.image for model in models)
+    models = small_vehicle_catalogue.list_models()
     model = next(item for item in models if item.id == "iveco_sway_500")
+    assert model.image is not None
     vehicle = {
         "id": "owned",
         "model_id": model.id,
         "capacity_tons": 99,
         "name": "Custom",
     }
-    result = present_vehicles([vehicle], reference_vehicle_catalogue)[0]
+    result = present_vehicles([vehicle], small_vehicle_catalogue)[0]
     assert result["image"]["url"].startswith("https://upload.wikimedia.org/")
     assert result["image"]["author"]
     assert result["image"]["license_name"] == "CC0 1.0"
     assert result["image"]["scope"] == "model_family"
     assert result["capacity_tons"] == 99 and result["name"] == "Custom"
     assert "image" not in vehicle
-    reference_vehicle_catalogue.path.rename(
-        reference_vehicle_catalogue.path.with_suffix(".unavailable")
+    small_vehicle_catalogue.path.rename(
+        small_vehicle_catalogue.path.with_suffix(".unavailable")
     )
     assert (
-        present_vehicles([vehicle], reference_vehicle_catalogue)[0]["image"]
+        present_vehicles([vehicle], small_vehicle_catalogue)[0]["image"]
         is None
     )
 

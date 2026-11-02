@@ -98,11 +98,10 @@ def test_cost_values_reject_invalid_or_inconsistent_components():
 
 
 def test_tariff_uses_concrete_nhm_and_explicit_maintenance(
-    reference_vehicle_catalogue, reference_world_catalogue
+    synthetic_vehicle_catalogue,
 ):
-    models = reference_vehicle_catalogue.list_models()
-    assert len(models) == 14
-    resolver = VehicleCostResolver(reference_vehicle_catalogue)
+    models = synthetic_vehicle_catalogue.list_models()
+    resolver = VehicleCostResolver(synthetic_vehicle_catalogue)
     for model in models:
         costs = resolver.resolve(model.id)
         assert (
@@ -213,7 +212,7 @@ def test_analytics_labels_keep_identity_and_disambiguate_current_names():
 
 
 def test_economy_audit_uses_actual_distribution_and_separates_cashflow(
-    reference_vehicle_catalogue, reference_world_catalogue
+    synthetic_vehicle_catalogue, synthetic_world_catalogue
 ):
     from app.domain.economy_audit import audit_economy_case
     from app.domain.market import MarketVehicle
@@ -221,10 +220,18 @@ def test_economy_audit_uses_actual_distribution_and_separates_cashflow(
     from app.domain.market_compatibility import vehicle_suitability
     from app.domain.market_profiles import vehicle_scale_for_segment
 
-    profiles = reference_world_catalogue.read().market_profiles
+    profiles = synthetic_world_catalogue.read().market_profiles
     reference = min(p.freight_rate_factor_game for p in profiles)
     covered = set()
-    for model in reference_vehicle_catalogue.list_models():
+    base_model = synthetic_vehicle_catalogue.list_models()[0]
+    segments = (
+        "light_commercial_van",
+        "light_distribution_truck",
+        "medium_distribution_truck",
+        "heavy_long_haul_tractor",
+    )
+    for index, segment in enumerate(segments):
+        model = replace(base_model, id=f"audit-{index}", segment=segment)
         vehicle = MarketVehicle(
             "audit",
             model.id,
