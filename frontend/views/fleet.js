@@ -1,5 +1,4 @@
-import { selectFleetGroups } from "../fleet-selection.js";
-export { fleetGroups } from "../fleet-selection.js";
+import { selectFleetSections } from "../fleet-selection.js";
 import { renderEnergyMeter, renderEnergySpecification } from "../ui/vehicle-energy.js";
 import { phaseLabel, transportProgress } from "../journey.js";
 import { html } from "../ui/dom.js";
@@ -25,7 +24,7 @@ export function renderFleet(view) {
   }
   const model = url.searchParams.get("model");
   const status = url.searchParams.get("status");
-  const groups = selectFleetGroups(state, url, view.cityUid);
+  const sections = selectFleetSections(state, url, view.cityUid);
   return html`${fleetTabs()}
     <div class="filter-grid">
       ${cityFilter(view)}
@@ -42,25 +41,19 @@ export function renderFleet(view) {
       ${searchFilter("search", "Fahrzeugname", url)}
     </div>
     ${
-      groups.length
-        ? groups.map(
-            (group) =>
+      sections.length
+        ? sections.map(
+            (section) =>
               html`<section class="fleet-city">
-                <h2>${group.city.city}</h2>
-                ${[
-                  ["stationed", "Hier stationiert"],
-                  ["outbound", "Von hier unterwegs"],
-                  ["inbound", "Hierhin unterwegs"],
-                ].map(([role, label]) =>
-                  group[role].length
-                    ? html`<h3 class="group-heading">
-                          ${label}<span>${group[role].length} Fahrzeuge</span>
-                        </h3>
-                        <div class="card-list">
-                          ${group[role].map(({ vehicle, trip }) => renderVehicle(vehicle, trip, now))}
-                        </div>`
-                    : null,
-                )}
+                <h2>${section.label}</h2>
+                <h3 class="group-heading">
+                  ${section.kind === "enroute" ? "Aktive Transporte" : "Hier stationiert"}<span
+                    >${section.entries.length} Fahrzeuge</span
+                  >
+                </h3>
+                <div class="card-list">
+                  ${section.entries.map(({ vehicle, trip }) => renderVehicle(vehicle, trip, now))}
+                </div>
               </section>`,
           )
         : emptyState("Keine Fahrzeuge in dieser Auswahl", "Passe Stadt oder Filter an.")

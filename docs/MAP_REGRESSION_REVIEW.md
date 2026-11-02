@@ -79,8 +79,10 @@ Kein Python-Core-Callable wurde eingeführt oder fachlich geändert.
 | `PreferencesController.publish` | UI-Projektion | eine Farbe an Darstellungseigentümer verteilen | Panel, Map, Document | keine Requests oder Asset-Kompositionslogik |
 | `PreferencesController.destroy` | UI-Lifecycle | Reads, Writes und Listener invalidieren | eigene AbortController | späte Ergebnisse können nicht mehr publizieren |
 | `renderCompanyPreferences` | View | Ladezustand, Retry und Palette darstellen | typisiertes Panel-Read-Modell | nur DOM; keine Requests |
-| `fleetGroups` | Read-Modell | Flotte nach vorhandener Stadt-/Fahrtrichtungssicht gliedern | Snapshot | unverändert aus View verschoben; keine Kamera |
-| `selectFleetGroups` | Read-Modell | sichtbare Flottenfilter gemeinsam auswerten | URL, Snapshot, Stadt | rein; View und Fokus erhalten identische Auswahl |
+| `fleetEntries` | Read-Modell | jedes eigene Fahrzeug höchstens einmal mit seinem aktiven Transport verbinden | Snapshot | rein; Fahrzeug-ID bleibt eindeutig |
+| `matchesFleetCity` | Read-Modell | stationierten Standort oder Endpunkte einer aktiven Fahrt mit einem Stadtfilter vergleichen | Flotteneintrag, Stadt-ID | rein; keine zweite Fahrzeugprojektion |
+| `groupFleetEntries` | Read-Modell | stationierte Fahrzeuge nach Ort und aktive Fahrzeuge einmal unter „Unterwegs“ gliedern | eindeutige Flotteneinträge | rein; keine Kamera |
+| `selectFleetEntries`, `selectFleetSections` | Read-Modell | sichtbare Flottenfilter gemeinsam auswerten und anschließend gruppieren | URL, Snapshot, Stadt | rein; View und Fokus erhalten dieselbe eindeutige Auswahl |
 | `renderFleet` | View | gemeinsam selektierte Flotte darstellen | fleet-selection und UI-Renderer | keine eigene zweite Filterdefinition |
 | `coordinates` | Fokusprojektion | endliche Snapshot-Koordinaten projizieren | Locationwerte | rein; keine Standort-Erfindung |
 | `vehiclePosition` | Fokusprojektion | aktuellen Fahrzeugpunkt bestimmen | gespeicherter Transport, Journey-Interpolation | rein; kein Routenfit im Fahrzeugdetail |

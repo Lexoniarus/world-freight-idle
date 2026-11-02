@@ -340,7 +340,9 @@ bestätigte/vorgemerkte Farbe. Views projizieren Zustände ohne Requests.
 `MapFocusController` konsumiert genau einen Fokus pro Navigationswechsel.
 `focusCoordinates` projiziert gespeicherte Routen und aktuelle Journey-Posen;
 `MapCamera` übernimmt nur Geometrie, Padding und Bewegungseinstellungen.
-Flottenfilter sind aus der View in `fleet-selection` ausgelagert.
+`fleet-selection` verbindet jedes eigene Fahrzeug höchstens einmal mit seinem
+aktiven Transport. Stadt-, Modell-, Status- und Namensfilter arbeiten auf
+diesem eindeutigen Read-Modell; die View erzeugt keine Abfahrts-/Zielduplikate.
 Einzelreview und Abnahme: [MAP_REGRESSION_REVIEW.md](MAP_REGRESSION_REVIEW.md).
 
 

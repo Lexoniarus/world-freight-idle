@@ -82,11 +82,14 @@ Cargo, konkrete Facility/Adresse und Wirtschaft sind getrennt. Warenwert ist
 kein Transporterlös. Exakte Straßenstrecke und Ergebnis erscheinen erst nach
 Quote. Visuelle Fahrzeugrows ergänzen eine tastaturbedienbare Auswahlliste.
 
-Die Flotte gruppiert nach Stadt und stationierten, ausgehenden oder ankommenden
-Fahrzeugen. Lokale Fahrten zählen innerhalb der Stadtgruppe einmal. Modell,
-Status und Name sind filterbar. Front ist dominant bei idle Fahrzeugen und im
-Shop, Side bei aktiven Transporten. Details kombinieren Front/Side. Vorhandene
-Map-/Front-/Side-Dateien, Fallbacks, Spielerfarben und stabile Bildknoten bleiben.
+Die Flotte stellt jede Fahrzeug-ID genau einmal dar. Stationierte Fahrzeuge
+gruppieren nach ihrem tatsächlichen Standort; aktive Fahrzeuge stehen einmal
+unter „Unterwegs“ und zeigen Abfahrt sowie Ziel. Stadtfilter dürfen eine Fahrt
+über Abfahrt oder Ziel finden, erzeugen aber keinen zweiten Fahrzeugeintrag.
+Modell, Status und Name sind filterbar. Front ist dominant bei idle Fahrzeugen
+und im Shop, Side bei aktiven Transporten. Details kombinieren Front/Side.
+Vorhandene Map-/Front-/Side-Dateien, Fallbacks, Spielerfarben und stabile
+Bildknoten bleiben.
 
 ## Layer und Kartenlesbarkeit
 

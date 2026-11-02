@@ -12,7 +12,6 @@ import { GameState } from "./state.js";
 import { layerPresets } from "./layer-presets.js";
 import { groupVehicles } from "./map/grouping.js";
 import { filterContracts, renderContracts } from "./views/contracts.js";
-import { fleetGroups } from "./views/fleet.js";
 import { renderVehicleImage } from "./ui/vehicle-image.js";
 import { html } from "./ui/dom.js";
 import { renderChart } from "./ui/charts.js";
@@ -208,22 +207,6 @@ test("offer filters use server IDs exclusively even with incompatible-looking ve
       filterContracts(contracts, "a", new URLSearchParams("vehicle=v1&" + query)),
       [],
     );
-});
-
-test("fleet city roles never count an arriving truck as stationed or double count local trips", () => {
-  const state = {
-    vehicles: [vehicle],
-    transports: [{ vehicle_id: "v1", origin: berlin, destination: other }],
-  };
-  const groups = fleetGroups(state, "");
-  assert.equal(groups[0].outbound.length, 1);
-  assert.equal(groups[0].stationed.length, 0);
-  assert.equal(groups[1].inbound.length, 1);
-  assert.equal(groups[1].stationed.length, 0);
-  state.transports[0].destination = berlin;
-  const local = fleetGroups(state, "a");
-  assert.equal(local[0].outbound.length, 1);
-  assert.equal(local[0].inbound.length, 0);
 });
 
 test("detail updates never replace list and analytics ignores late scope responses", async () => {
