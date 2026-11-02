@@ -12,8 +12,8 @@ from app.services.gameplay.dispatch_eligibility import (
     DispatchEligibilityService,
 )
 from app.services.gameplay.dispatch_planning import DispatchPlanningService
-from app.services.gameplay.game import GameService
 from app.services.gameplay.initialization import PlayerInitializationService
+from app.services.gameplay.player_game import PlayerGameFacade
 from app.services.gameplay.settlement import TransportSettlementService
 from app.services.gameplay.vehicle_costs import VehicleCostResolver
 from app.services.gameplay.vehicle_location import VehicleLocationResolver
@@ -44,7 +44,7 @@ from tests.support.routing import (
 class FixtureGameContext:
     """Keep test-only collaborators outside the production game facade."""
 
-    service: GameService
+    service: PlayerGameFacade
     world: WorldCatalogue
     catalogue: VehicleCatalogue
     market_generation: MarketGenerationServices
@@ -114,7 +114,7 @@ def build_fixture_game(
         player_market.demand,
         player_market.stores,
     )
-    service = GameService(
+    service = PlayerGameFacade(
         unit,
         clock,
         time_scale,

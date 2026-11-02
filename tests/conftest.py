@@ -9,7 +9,7 @@ from app.bootstrap import build_market_generation_services
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
-from app.services.gameplay.game import GameService
+from app.services.gameplay.player_game import PlayerGameFacade
 from tests.support.catalogue_databases import (
     create_small_vehicle_catalogue,
     create_small_world_catalogue,
@@ -98,7 +98,7 @@ def synthetic_game_context(
 
 
 @pytest.fixture
-def synthetic_game(synthetic_game_context) -> GameService:
+def synthetic_game(synthetic_game_context) -> PlayerGameFacade:
     """Expose only the production facade to ordinary game tests."""
     return synthetic_game_context.service
 

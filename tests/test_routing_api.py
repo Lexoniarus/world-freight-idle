@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from app.api.v1.contracts import accept_contract, quote_contract
 from app.api.v1.schemas import DispatchRequest, QuoteRequest
 from app.domain.errors import RoutingError
-from app.services.gameplay.game import GameService
+from app.services.gameplay.player_game import PlayerGameFacade
 
 
 class FailingRoutingGame:
@@ -29,7 +29,7 @@ class FailingRoutingGame:
 
 @pytest.mark.asyncio
 async def test_contract_api_hides_routing_provider_details():
-    game = cast(GameService, FailingRoutingGame())
+    game = cast(PlayerGameFacade, FailingRoutingGame())
 
     with pytest.raises(HTTPException) as quote_failure:
         await quote_contract(

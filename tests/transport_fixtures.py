@@ -5,11 +5,11 @@ from dataclasses import replace
 from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.journeys import unmetered_journey
 from app.domain.transports import ActiveTransport, RouteSnapshot
-from app.services.gameplay.game import GameService
+from app.services.gameplay.player_game import PlayerGameFacade
 
 
 def add_transport(
-    synthetic_game: GameService,
+    synthetic_game: PlayerGameFacade,
     payout: int = 1000,
     departed_at: float = 1,
     arrives_at: float = 2,

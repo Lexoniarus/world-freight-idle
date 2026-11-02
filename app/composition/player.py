@@ -18,8 +18,8 @@ from app.services.gameplay.dispatch_eligibility import (
 )
 from app.services.gameplay.dispatch_planning import DispatchPlanningService
 from app.services.gameplay.fleet import FleetService
-from app.services.gameplay.game import GameService
 from app.services.gameplay.initialization import PlayerInitializationService
+from app.services.gameplay.player_game import PlayerGameFacade
 from app.services.gameplay.settlement import TransportSettlementService
 from app.services.gameplay.vehicle_costs import VehicleCostResolver
 from app.services.gameplay.vehicle_location import VehicleLocationResolver
@@ -49,7 +49,9 @@ def build_analytics_service(
     return AnalyticsService(SqliteAnalyticsReader(runtime.database, user_id))
 
 
-def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
+def build_player_service(
+    runtime: GameRuntime, user_id: str
+) -> PlayerGameFacade:
     """Bind one authenticated owner to the shared relational transaction."""
     player_market = build_player_market_services(runtime, user_id)
     unit = SqliteGameUnitOfWork(runtime.database, user_id)
@@ -84,7 +86,7 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
         player_market.demand,
         player_market.stores,
     )
-    game = GameService(
+    game = PlayerGameFacade(
         unit,
         runtime.clock,
         runtime.time_scale,
@@ -105,7 +107,7 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
 
 def build_fleet_service(
     runtime: GameRuntime,
-    game: GameService,
+    game: PlayerGameFacade,
 ) -> FleetService:
     """Assemble purchasing against the authenticated player's unit of work."""
     return FleetService(

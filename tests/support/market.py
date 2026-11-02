@@ -7,7 +7,7 @@ from app.bootstrap import build_player_service
 from app.domain.contracts import ContractOffer
 from app.repositories.market_stock import SqlitePlayerMarketStockStore
 from app.repositories.market_templates import SqliteMarketTemplateStore
-from app.services.gameplay.game import GameService
+from app.services.gameplay.player_game import PlayerGameFacade
 from app.services.market.demand import MarketDemandResolver
 from app.services.market.stock.planning import StockPlanningService
 from app.services.market.stock.preparation import StockPreparationBatch
@@ -27,7 +27,7 @@ def require_value(value: T | None) -> T:
 
 
 def seed_test_offers(
-    service: GameService,
+    service: PlayerGameFacade,
     count: int = 30,
     *,
     bind_routes: bool = True,
@@ -60,7 +60,7 @@ def seed_test_offers(
         service.player_market.routes.bind(offers)
 
 
-def make_stock_batch(game: GameService, preparation):
+def make_stock_batch(game: PlayerGameFacade, preparation):
     """Compose the production stock batch for worker behavior tests."""
     market = game.market_lifecycle.generation
     database = preparation.routes.transactions

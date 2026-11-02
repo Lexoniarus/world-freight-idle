@@ -25,7 +25,7 @@ from app.services.market.player_services import PlayerMarketServices
 
 
 @dataclass
-class GameService:
+class PlayerGameFacade:
     """Expose player use cases while delegating stateful workflows."""
 
     unit_of_work: GameUnitOfWork

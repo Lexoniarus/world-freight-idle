@@ -3,14 +3,14 @@
 from dataclasses import dataclass
 
 from app.domain.runtime_views import RuntimeReader, RuntimeView
-from app.services.gameplay.game import GameService
+from app.services.gameplay.player_game import PlayerGameFacade
 
 
 @dataclass(slots=True)
 class RuntimeViewService:
     """Keep read projection separate from game mutations and road downloads."""
 
-    game: GameService
+    game: PlayerGameFacade
     reader: RuntimeReader
     user_id: str
 

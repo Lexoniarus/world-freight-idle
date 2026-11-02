@@ -14,11 +14,13 @@ from app.domain.journeys import unmetered_journey
 from app.domain.pricing import PriceQuote
 from app.domain.results import ContractQuote
 from app.domain.transports import RouteSnapshot
-from app.services.gameplay.game import GameService
+from app.services.gameplay.player_game import PlayerGameFacade
 from tests.support.game import first_berlin_contract
 
 
-def test_reconcile_arrival_moves_vehicle_and_pays(synthetic_game: GameService):
+def test_reconcile_arrival_moves_vehicle_and_pays(
+    synthetic_game: PlayerGameFacade,
+):
     contract = first_berlin_contract(synthetic_game)
     quote = ContractQuote(
         synthetic_game.transport_dispatch.find_contract(contract["id"]),
@@ -51,7 +53,7 @@ def test_reconcile_arrival_moves_vehicle_and_pays(synthetic_game: GameService):
 
 @pytest.mark.asyncio
 async def test_settlement_rejects_transport_without_owned_vehicle(
-    synthetic_game: GameService,
+    synthetic_game: PlayerGameFacade,
 ):
     contract = first_berlin_contract(synthetic_game)
     trip = await synthetic_game.dispatch(contract["id"], "truck_01")

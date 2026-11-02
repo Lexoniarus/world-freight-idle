@@ -14,7 +14,7 @@ from app.bootstrap import build_game_runtime
 from app.config import Settings
 from app.domain.energy import EnergyProfile
 from app.main import create_app, lifespan
-from app.services.gameplay.game import GameService
+from app.services.gameplay.player_game import PlayerGameFacade
 from tests.support.manual_clock import ManualClock
 from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 
@@ -101,7 +101,7 @@ def pause_previous_test_profiles() -> dict:
 @app.post("/__tests__/energy-fixture")
 def prepare_energy_fixture(
     single_stop: bool = False,
-    synthetic_game: GameService = Depends(get_game_service),
+    synthetic_game: PlayerGameFacade = Depends(get_game_service),
 ) -> dict:
     """Configure short-range test energy solely inside the isolated server."""
     vehicle = synthetic_game.get_vehicle("truck_01")
@@ -130,7 +130,7 @@ def prepare_energy_fixture(
 
 @app.post("/__tests__/approach-fixture")
 def prepare_approach_fixture(
-    synthetic_game: GameService = Depends(get_game_service),
+    synthetic_game: PlayerGameFacade = Depends(get_game_service),
 ) -> dict:
     """Place the isolated idle truck away from its saved offer's pickup."""
     vehicle = synthetic_game.get_vehicle("truck_01")

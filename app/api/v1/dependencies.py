@@ -18,7 +18,7 @@ from app.domain.read_ports import LeaderboardReader, TrafficReader
 from app.domain.runtime_views import RuntimeReader
 from app.services.auth import SESSION_COOKIE, AuthService
 from app.services.gameplay.fleet import FleetService
-from app.services.gameplay.game import GameService
+from app.services.gameplay.player_game import PlayerGameFacade
 from app.services.map_locations import MapLocationService
 from app.services.runtime_views import RuntimeViewService
 
@@ -56,7 +56,7 @@ def get_current_user(
 def get_game_service(
     request: Request,
     user: dict = Depends(get_current_user),
-) -> GameService:
+) -> PlayerGameFacade:
     """Build a request-scoped game service for the authenticated owner."""
     try:
         return build_player_service(
@@ -69,7 +69,7 @@ def get_game_service(
 
 def get_fleet_service(
     request: Request,
-    game: GameService = Depends(get_game_service),
+    game: PlayerGameFacade = Depends(get_game_service),
 ) -> FleetService:
     """Resolve the authenticated fleet service through the composition root."""
     return build_fleet_service(request.app.state.game_runtime, game)
@@ -77,7 +77,7 @@ def get_fleet_service(
 
 def get_map_service(
     request: Request,
-    game: GameService = Depends(get_game_service),
+    game: PlayerGameFacade = Depends(get_game_service),
 ) -> MapLocationService:
     """Resolve the authenticated catalogue map service."""
     return build_map_service(request.app.state.game_runtime)

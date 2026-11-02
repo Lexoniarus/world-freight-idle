@@ -2,14 +2,14 @@
 
 from collections.abc import Callable
 
-from app.services.gameplay.game import GameService
+from app.services.gameplay.player_game import PlayerGameFacade
 from app.services.market.route_preparation import (
     MarketRoutePreparationService,
 )
 
 
 def set_game_clock(
-    synthetic_game: GameService,
+    synthetic_game: PlayerGameFacade,
     clock: Callable[[], float],
     route_preparation: MarketRoutePreparationService | None = None,
 ) -> None:

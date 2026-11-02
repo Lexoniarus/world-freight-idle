@@ -16,14 +16,14 @@ from app.api.v1.game_projection import (
 )
 from app.domain.game import OwnedVehicle
 from app.domain.world_scopes import WorldScope
-from app.services.gameplay.game import GameService
+from app.services.gameplay.player_game import PlayerGameFacade
 from tests.support.catalogues import BERLIN_UID
 from tests.support.game import first_berlin_contract
 from tests.transport_fixtures import add_transport
 
 
 def test_contract_reads_never_generate_inside_request(
-    synthetic_game: GameService,
+    synthetic_game: PlayerGameFacade,
 ):
     first = [
         project_contract(value) for value in synthetic_game.list_contracts()
@@ -40,7 +40,7 @@ def test_contract_reads_never_generate_inside_request(
 
 
 def test_state_expands_contract_addresses(
-    synthetic_game_context, synthetic_game: GameService
+    synthetic_game_context, synthetic_game: PlayerGameFacade
 ):
     state = project_state(synthetic_game.state())
     assert (
@@ -53,7 +53,9 @@ def test_state_expands_contract_addresses(
     assert "address" in state["contracts"][0]["origin"]
 
 
-def test_find_contract_returns_match_and_raises(synthetic_game: GameService):
+def test_find_contract_returns_match_and_raises(
+    synthetic_game: PlayerGameFacade,
+):
     contract = first_berlin_contract(synthetic_game)
     assert (
         synthetic_game.transport_dispatch.find_contract(contract["id"]).id
@@ -71,7 +73,7 @@ def test_find_contract_returns_match_and_raises(synthetic_game: GameService):
 
 
 def test_contract_reads_drop_legacy_offers_but_keep_active_trips(
-    synthetic_game: GameService,
+    synthetic_game: PlayerGameFacade,
 ):
     current = synthetic_game.list_contracts()
     legacy = replace(
@@ -95,7 +97,9 @@ def test_contract_reads_drop_legacy_offers_but_keep_active_trips(
         synthetic_game.transport_dispatch.find_contract("legacy-offer")
 
 
-def test_find_vehicle_returns_match_and_raises(synthetic_game: GameService):
+def test_find_vehicle_returns_match_and_raises(
+    synthetic_game: PlayerGameFacade,
+):
     vehicles = synthetic_game.state_repository.list_vehicles()
     assert synthetic_game.transport_dispatch.find_vehicle(
         vehicles, "truck_01"
@@ -105,7 +109,7 @@ def test_find_vehicle_returns_match_and_raises(synthetic_game: GameService):
 
 
 def test_vehicle_location_resolution_is_explicit_and_eligibility_is_pure(
-    synthetic_game: GameService,
+    synthetic_game: PlayerGameFacade,
 ):
     """Eligibility must not hide restoration of persisted vehicle state."""
     contract = synthetic_game.transport_dispatch.find_contract(
@@ -157,7 +161,7 @@ def test_contract_projection_retains_endpoint_snapshots(
 
 
 def test_contract_refresh_without_idle_vehicle_has_no_local_origins(
-    synthetic_game: GameService,
+    synthetic_game: PlayerGameFacade,
 ):
     vehicle = synthetic_game.state_repository.list_vehicles()[0]
     vehicle.start_trip()
@@ -167,7 +171,9 @@ def test_contract_refresh_without_idle_vehicle_has_no_local_origins(
     ] == []
 
 
-def test_dashboard_returns_product_projection(synthetic_game: GameService):
+def test_dashboard_returns_product_projection(
+    synthetic_game: PlayerGameFacade,
+):
     payload = project_dashboard(synthetic_game.dashboard())
     assert payload["player"]["cash"] == 175000
     assert payload["available_contracts"] == 0
@@ -179,7 +185,7 @@ def test_dashboard_returns_product_projection(synthetic_game: GameService):
 
 
 def test_list_and_get_contracts_return_real_addresses(
-    synthetic_game: GameService,
+    synthetic_game: PlayerGameFacade,
 ):
     contracts = [
         project_contract(value) for value in synthetic_game.list_contracts()
@@ -208,7 +214,7 @@ def test_list_and_get_contracts_return_real_addresses(
 
 
 def test_market_presentation_filters_coverage_for_requested_vehicle(
-    synthetic_game: GameService,
+    synthetic_game: PlayerGameFacade,
 ):
     offers = synthetic_game.list_contracts()
     presentation = synthetic_game.market_presentation(offers, "truck_01")
@@ -225,7 +231,7 @@ def test_market_presentation_filters_coverage_for_requested_vehicle(
 
 
 def test_list_get_and_expand_vehicles(
-    synthetic_game_context, synthetic_game: GameService
+    synthetic_game_context, synthetic_game: PlayerGameFacade
 ):
     vehicles = [
         project_vehicle(value) for value in synthetic_game.list_vehicles()
@@ -250,7 +256,7 @@ def test_list_get_and_expand_vehicles(
         project_vehicle(synthetic_game.get_vehicle("missing"))
 
 
-def test_list_and_get_transports(synthetic_game: GameService):
+def test_list_and_get_transports(synthetic_game: PlayerGameFacade):
     assert [
         project_transport(value) for value in synthetic_game.list_transports()
     ] == []

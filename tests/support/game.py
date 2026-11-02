@@ -4,12 +4,12 @@ import time
 from dataclasses import replace
 
 from app.api.v1.game_projection import project_contract
-from app.services.gameplay.game import GameService
+from app.services.gameplay.player_game import PlayerGameFacade
 from tests.support.api import FakeGame
 from tests.support.catalogues import BERLIN_UID
 
 
-def first_berlin_contract(synthetic_game: GameService) -> dict:
+def first_berlin_contract(synthetic_game: PlayerGameFacade) -> dict:
     """Return the first prepared Berlin offer projection."""
     return next(
         contract
@@ -21,7 +21,7 @@ def first_berlin_contract(synthetic_game: GameService) -> dict:
     )
 
 
-def other_facility_offer(synthetic_game: GameService):
+def other_facility_offer(synthetic_game: PlayerGameFacade):
     """Return an offer whose pickup differs from the starter facility."""
     vehicle = synthetic_game.get_vehicle("truck_01")
     return next(
@@ -31,7 +31,7 @@ def other_facility_offer(synthetic_game: GameService):
     )
 
 
-def create_active_trip(synthetic_game: GameService):
+def create_active_trip(synthetic_game: PlayerGameFacade):
     """Persist one active trip through the player's unit of work."""
     now = time.time()
     trip = replace(

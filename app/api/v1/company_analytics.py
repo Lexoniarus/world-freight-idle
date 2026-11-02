@@ -8,7 +8,7 @@ from app.api.v1.analytics_projection import project_analytics
 from app.api.v1.dependencies import get_current_user, get_game_service
 from app.bootstrap import build_analytics_service
 from app.services.analytics import validate_scope
-from app.services.gameplay.game import GameService
+from app.services.gameplay.player_game import PlayerGameFacade
 
 router = APIRouter(prefix="/company", tags=["company"])
 
@@ -20,7 +20,7 @@ def get_analytics(
     scope: str = "company",
     scope_id: str | None = None,
     user: dict = Depends(get_current_user),
-    game: GameService = Depends(get_game_service),
+    game: PlayerGameFacade = Depends(get_game_service),
 ) -> dict[str, Any]:
     """Reconcile due arrivals, then use the independent read model."""
     try:

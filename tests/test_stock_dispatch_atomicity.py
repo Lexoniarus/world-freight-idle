@@ -15,10 +15,10 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
 
     from app.repositories.game_state import SqliteGameUnitOfWork
     from app.services.gameplay.dispatch import TransportDispatchService
-    from app.services.gameplay.game import GameService
     from app.services.gameplay.initialization import (
         PlayerInitializationService,
     )
+    from app.services.gameplay.player_game import PlayerGameFacade
     from app.services.gameplay.settlement import TransportSettlementService
     from app.services.gameplay.vehicle_location import VehicleLocationResolver
     from app.services.market.lifecycle import MarketLifecycleService
@@ -59,7 +59,7 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
         prep.demand,
         prep.stores,
     )
-    other = GameService(
+    other = PlayerGameFacade(
         unit,
         game.now,
         game.time_scale,

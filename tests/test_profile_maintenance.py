@@ -27,7 +27,7 @@ from app.domain.world_scopes import WorldScope
 from app.repositories.accounts import AccountRepository
 from app.repositories.database_backup import backup_database
 from app.services.gameplay.fleet import build_owned_vehicle
-from app.services.gameplay.game import GameService
+from app.services.gameplay.player_game import PlayerGameFacade
 from app.services.profile_maintenance import ProfileMaintenanceService
 from scripts.update_test_profile import main, parse_assignments
 from tests.support.application_settings import (
@@ -44,7 +44,7 @@ class MaintenanceCase:
 
     settings: Settings
     service: ProfileMaintenanceService
-    game: GameService
+    game: PlayerGameFacade
     accounts: AccountRepository
     world: WorldCatalogue
 
