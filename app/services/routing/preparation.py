@@ -18,8 +18,8 @@ from app.domain.routing_readiness import (
     relation_identity,
 )
 from app.domain.world_scopes import WorldScope
+from app.services.routing.connections import RoutingConnectionValidator
 from app.services.routing.evidence import RoutingEvidenceReader
-from app.services.routing_connections import RoutingConnectionValidator
 from app.tracing import get_trace_id
 
 

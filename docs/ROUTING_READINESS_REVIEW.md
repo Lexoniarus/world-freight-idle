@@ -320,7 +320,7 @@ Schicht: Service. Grenze: Injizierte Ports und Domainregeln; kein SQL/HTTP-Parsi
 | `MarketPreparationWorker.close` | Cancel and await owned work before provider resources close. | `task.cancel` | Eine zusammenhängende Aufgabe; Schichtgrenze eingehalten. |
 | `MarketPreparationWorker._run` | Process due batches fairly and isolate failures with backoff. | `LOGGER.exception`, `asyncio.sleep`, `background_trace`, `self.clock`, `self.jobs.finish`, `self.jobs.next_player`, `self.jobs.status`, `self.process` | Eine zusammenhängende Aufgabe; Schichtgrenze eingehalten. |
 | `MarketPreparationWorker.process` | Prepare missing coverage and re-read state before publication. | `Counter`, `LOGGER.info`, `dict`, `dict.fromkeys`, `len`, `lifecycle.generator.candidates.build`, `lifecycle.generator.candidates.resolve_fleet`, `lifecycle.generator.coverage.plan`, `lifecycle.refresh`, `lifecycle.scope.resolve`, `lifecycle.unit_of_work.repository.list_vehicles`, `preparation.prepare_batch`, `preparation.readiness.current`, `self.clock`, `self.jobs.finish`, `self.jobs.status`, `self.lifecycle`, `states.values`, `tuple` | Eine zusammenhängende Aufgabe; Schichtgrenze eingehalten. |
-### `app/services/routing_anchors.py`
+### `app/services/routing/anchors.py`
 
 Schicht: Service. Grenze: Injizierte Ports und Domainregeln; kein SQL/HTTP-Parsing.
 
@@ -331,7 +331,7 @@ Schicht: Service. Grenze: Injizierte Ports und Domainregeln; kein SQL/HTTP-Parsi
 | `RoutingAnchorResolver._repair` | Try facility, postal address and bounded real OSM candidates. | `Coordinates`, `RoutingAnchor`, `attempted.add`, `candidates.extend`, `dict.fromkeys`, `facility.address.display_text`, `self._attempt`, `self._clock`, `self._geocoder.geocode`, `self._record`, `set`, `str`, `tuple` | Eine zusammenhängende Aufgabe; Schichtgrenze eingehalten. |
 | `RoutingAnchorResolver._attempt` | Validate a candidate and append evidence before returning it. | `self._accepted_anchor`, `self._failure`, `self._locator.locate`, `self._record` | Eine zusammenhängende Aufgabe; Schichtgrenze eingehalten. |
 | `RoutingAnchorResolver._record` | Append an attempt without overwriting earlier repair evidence. | `RoutingAttempt`, `get_trace_id`, `logging.getLogger`, `logging.getLogger(__name__).log`, `self._clock`, `self._evidence.append_attempt` | Eine zusammenhängende Aufgabe; Schichtgrenze eingehalten. |
-### `app/services/routing_inventory.py`
+### `app/services/routing/inventory.py`
 
 Schicht: Service. Grenze: Injizierte Ports und Domainregeln; kein SQL/HTTP-Parsing.
 

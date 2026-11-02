@@ -6,7 +6,7 @@ import pytest
 
 from app.domain.errors import WorldCatalogueError
 from app.repositories.routing_audit import SqliteRoutingAudit
-from app.services.routing_inventory import routing_inventory
+from app.services.routing.inventory import routing_inventory
 from tests.support.market import build_prepared_game
 
 

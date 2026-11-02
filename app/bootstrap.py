@@ -85,9 +85,9 @@ from app.services.player_market_stock import PlayerMarketStockContext
 from app.services.preferences import PreferenceService
 from app.services.preparation_worker import MarketPreparationWorker
 from app.services.profile_maintenance import ProfileMaintenanceService
+from app.services.routing.anchors import RoutingAnchorResolver
 from app.services.routing.evidence import RoutingEvidenceReader
 from app.services.routing.preparation import RoutingPreparationService
-from app.services.routing_anchors import RoutingAnchorResolver
 from app.services.runtime_views import RuntimeViewService
 from app.services.vehicle_coverage import VehicleCoverageService
 

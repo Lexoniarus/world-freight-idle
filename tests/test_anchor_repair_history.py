@@ -4,7 +4,7 @@ import pytest
 
 from app.domain.errors import GeocodingError
 from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
-from app.services.routing_anchors import RoutingAnchorResolver
+from app.services.routing.anchors import RoutingAnchorResolver
 from tests.support.readiness import routing_store
 from tests.support.routing import (
     FakeGeocoder,

@@ -11,7 +11,7 @@ from app.domain.geography import Coordinates
 from app.domain.routing_anchors import RoutingCandidate
 from app.domain.transports import RouteSnapshot
 from app.domain.world import Facility
-from app.services.routing_connections import RoutingConnectionValidator
+from app.services.routing.connections import RoutingConnectionValidator
 
 
 class CaptureRouter:

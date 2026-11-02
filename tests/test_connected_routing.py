@@ -33,10 +33,10 @@ from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
 from app.repositories.routing_readiness import SqliteRoutingReadinessStore
 from app.repositories.world_catalogue import SqliteWorldCatalogue
+from app.services.routing.anchors import RoutingAnchorResolver
+from app.services.routing.connections import RoutingConnectionValidator
 from app.services.routing.evidence import RoutingEvidenceReader
 from app.services.routing.preparation import RoutingPreparationService
-from app.services.routing_anchors import RoutingAnchorResolver
-from app.services.routing_connections import RoutingConnectionValidator
 from tests.support.catalogues import BERLIN_UID, REFERENCE_WORLD_PATH
 from tests.support.routing import (
     FakeGeocoder,

@@ -8,7 +8,7 @@ from app.domain.routing_anchors import (
     RoutingAnchor,
     anchor_source_fingerprint,
 )
-from app.services.routing_anchors import RoutingAnchorResolver
+from app.services.routing.anchors import RoutingAnchorResolver
 from tests.support.routing import (
     FakeGeocoder,
     FakeLocator,

@@ -16,7 +16,7 @@ from app.bootstrap import (  # noqa: E402
     build_routing_audit,
 )
 from app.config import Settings  # noqa: E402
-from app.services.routing_inventory import routing_inventory  # noqa: E402
+from app.services.routing.inventory import routing_inventory  # noqa: E402
 from app.tracing import background_trace  # noqa: E402
 
 

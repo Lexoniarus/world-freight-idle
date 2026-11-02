@@ -5,7 +5,7 @@ import httpx
 from app.bootstrap import build_game_runtime
 from app.config import Settings
 from app.providers.routing import ValhallaTruckRouter
-from app.services.routing_anchors import RoutingAnchorResolver
+from app.services.routing.anchors import RoutingAnchorResolver
 
 
 def test_build_game_service_wires_real_provider_adapters(tmp_path: Path):
