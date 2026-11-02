@@ -335,8 +335,6 @@ class ValhallaTruckRouter:
     def _extract_route(self, data: dict[str, Any]) -> RouteSnapshot:
         """Normalize Valhalla JSON into the domain route representation."""
         try:
-            if not isinstance(data, dict):
-                raise ValueError("Expected a route object")
             trip = data["trip"]
             if not isinstance(trip, dict):
                 raise ValueError("Expected a trip object")

@@ -5,7 +5,7 @@ import json
 import sqlite3
 import sys
 from contextlib import closing
-from dataclasses import asdict, replace
+from dataclasses import asdict, dataclass, replace
 from unittest.mock import patch
 
 import pytest
@@ -19,17 +19,32 @@ from app.bootstrap import (
     build_player_service,
     build_profile_maintenance_service,
 )
+from app.config import Settings
 from app.domain.energy import EnergyProfile
 from app.domain.game import OwnedVehicle, PlayerState
+from app.domain.ports import WorldCatalogue
 from app.domain.world_scopes import WorldScope
 from app.repositories.accounts import AccountRepository
 from app.repositories.database_backup import backup_database
 from app.services.gameplay.fleet import build_owned_vehicle
+from app.services.gameplay.game import GameService
+from app.services.profile_maintenance import ProfileMaintenanceService
 from scripts.update_test_profile import main, parse_assignments
 from tests.support.api import make_settings
 from tests.support.game import first_berlin_contract
 from tests.support.market import seed_test_offers
 from tests.transport_fixtures import add_transport
+
+
+@dataclass(frozen=True, slots=True)
+class MaintenanceCase:
+    """Name the dependencies shared by profile-maintenance tests."""
+
+    settings: Settings
+    service: ProfileMaintenanceService
+    game: GameService
+    accounts: AccountRepository
+    world: WorldCatalogue
 
 
 def test_profile_update_preserves_other_players_and_trip_snapshots(
@@ -131,7 +146,13 @@ def maintenance(
     user = accounts.create_user("Selected", "test-hash")
     selected = build_player_service(synthetic_runtime, user["id"])
     service = build_profile_maintenance_service(settings)
-    return settings, service, selected, accounts
+    return MaintenanceCase(
+        settings,
+        service,
+        selected,
+        accounts,
+        synthetic_runtime.world,
+    )
 
 
 @pytest.mark.parametrize(
@@ -148,7 +169,9 @@ def maintenance(
     ],
 )
 def test_maintenance_validation_preserves_state(maintenance, failure):
-    _, service, selected, accounts = maintenance
+    service = maintenance.service
+    selected = maintenance.game
+    accounts = maintenance.accounts
     before = (
         [
             project_vehicle(item)
@@ -186,9 +209,10 @@ def test_maintenance_validation_preserves_state(maintenance, failure):
 def test_maintenance_write_failure_rolls_back_and_retains_unselected(
     maintenance,
 ):
-    _, service, selected, _ = maintenance
+    service = maintenance.service
+    selected = maintenance.game
     vehicle = selected.state_repository.list_vehicles()[0]
-    hamburg = WorldScope(selected.world.read()).facility("hamburg_cta")
+    hamburg = WorldScope(maintenance.world.read()).facility("hamburg_cta")
     vehicle.start_trip()
     vehicle.arrive(hamburg.location_snapshot())
     other = OwnedVehicle(
@@ -279,7 +303,8 @@ def test_cli_rejects_invalid_and_duplicate_assignments(values):
 def test_cli_backs_up_before_mutation_and_preserves_cash(
     maintenance, monkeypatch, capsys, cash
 ):
-    settings, _, selected, _ = maintenance
+    settings = maintenance.settings
+    selected = maintenance.game
     monkeypatch.setattr(
         sys,
         "argv",
@@ -318,7 +343,7 @@ def test_cli_backs_up_before_mutation_and_preserves_cash(
 def test_cli_backup_failure_never_constructs_mutation_service(
     maintenance, monkeypatch
 ):
-    settings, _, _, _ = maintenance
+    settings = maintenance.settings
     monkeypatch.setattr(
         sys,
         "argv",
@@ -367,7 +392,8 @@ def test_cli_argument_error_precedes_backup(monkeypatch):
 async def test_dispatch_reprices_after_concurrent_profile_maintenance(
     maintenance, limited_cash
 ):
-    _, service, game, _ = maintenance
+    service = maintenance.service
+    game = maintenance.game
     route_started = asyncio.Event()
     release_route = asyncio.Event()
     before = 112 if limited_cash else 175000

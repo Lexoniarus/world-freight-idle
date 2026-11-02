@@ -64,6 +64,7 @@ class RoutingAnchorResolver:
         cached_candidate = self._cached_candidate(facility, cached)
         if cached_candidate:
             candidates.append(cached_candidate)
+            assert cached is not None
             if self._cache_is_current(facility, cached):
                 return tuple(candidates)
         if original:
@@ -103,11 +104,9 @@ class RoutingAnchorResolver:
     def _cache_is_current(
         self,
         facility: Facility,
-        cached: RoutingAnchor | None,
+        cached: RoutingAnchor,
     ) -> bool:
         """Return whether a certified anchor still matches current policy."""
-        if cached is None:
-            return False
         revision = (
             self._provider_revision()
             if self._provider_revision
