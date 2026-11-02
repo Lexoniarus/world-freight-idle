@@ -83,8 +83,8 @@ from app.services.market.stock.publication import StockPublicationService
 from app.services.market.stock.snapshot import StockSnapshotReader
 from app.services.market.templates import MarketTemplateService
 from app.services.market.vehicle_coverage import VehicleCoverageService
+from app.services.market.worker import MarketPreparationWorker
 from app.services.preferences import PreferenceService
-from app.services.preparation_worker import MarketPreparationWorker
 from app.services.profile_maintenance import ProfileMaintenanceService
 from app.services.routing.anchors import RoutingAnchorResolver
 from app.services.routing.evidence import RoutingEvidenceReader

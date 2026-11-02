@@ -11,7 +11,7 @@ from app.bootstrap import build_economy_audit
 from app.domain.errors import PersistenceError, RoutingError
 from app.domain.market_preparation import PreparationStatus
 from app.services.economy_audit import summarize_economy
-from app.services.preparation_worker import MarketPreparationWorker
+from app.services.market.worker import MarketPreparationWorker
 from tests.support.market import (
     build_prepared_game,
     make_stock_batch,

@@ -44,11 +44,11 @@ FUNCTION_TESTS = {
     "app.services.market.player_routes.PlayerMarketRouteService.bind": "test_partial_market_never_publishes_unchecked_offers",
     "app.services.market.route_preparation.MarketRoutePreparationService.prepare": "test_preparation_failures_backoff_fencing_and_worker_cleanup",
     "app.services.market.player_routes.PlayerMarketRouteService.retained_current": "test_partial_market_never_publishes_unchecked_offers",
-    "app.services.preparation_worker.MarketPreparationWorker.__init__": "test_worker_fills_ready_market_and_owns_shutdown",
-    "app.services.preparation_worker.MarketPreparationWorker._run": "test_preparation_failures_backoff_fencing_and_worker_cleanup",
-    "app.services.preparation_worker.MarketPreparationWorker.close": "test_worker_fills_ready_market_and_owns_shutdown",
-    "app.services.preparation_worker.MarketPreparationWorker.process": "test_worker_fills_ready_market_and_owns_shutdown",
-    "app.services.preparation_worker.MarketPreparationWorker.start": "test_worker_fills_ready_market_and_owns_shutdown",
+    "app.services.market.worker.MarketPreparationWorker.__init__": "test_worker_fills_ready_market_and_owns_shutdown",
+    "app.services.market.worker.MarketPreparationWorker._run": "test_preparation_failures_backoff_fencing_and_worker_cleanup",
+    "app.services.market.worker.MarketPreparationWorker.close": "test_worker_fills_ready_market_and_owns_shutdown",
+    "app.services.market.worker.MarketPreparationWorker.process": "test_worker_fills_ready_market_and_owns_shutdown",
+    "app.services.market.worker.MarketPreparationWorker.start": "test_worker_fills_ready_market_and_owns_shutdown",
     "app.services.routing.anchors.RoutingAnchorResolver._record": "test_candidate_search_keeps_evidence_and_never_changes_saved_anchor",
     "app.services.routing.inventory.routing_inventory": "test_audit_inventory_is_structural_and_report_preserves_history",
     "app.services.routing.evidence.RoutingEvidenceReader.__init__": "test_global_negative_cache_timeout_and_stale_payload",
@@ -807,11 +807,11 @@ FUNCTION_TESTS.update(
         "app.services.market.player_routes.PlayerMarketRouteService.demand_state": "test_exhausted_negative_demand_requires_explicit_invalidation",
         "app.services.market.player_routes.PlayerMarketRouteService.ready_candidates": "test_vehicle_readiness_requires_approach_and_excludes_stale",
         "app.services.market.player_routes.PlayerMarketRouteService.ready_context": "test_vehicle_readiness_requires_approach_and_excludes_stale",
-        "app.services.preparation_worker.MarketPreparationWorker._iteration": "test_worker_recovers_entire_iteration",
-        "app.services.preparation_worker.MarketPreparationWorker._wait_for_work": "test_worker_fills_ready_market_and_owns_shutdown",
-        "app.services.preparation_worker.MarketPreparationWorker.running": "test_worker_fills_ready_market_and_owns_shutdown",
-        "app.services.preparation_worker.MarketPreparationWorker._drain_due_jobs": "test_worker_recovers_entire_iteration",
-        "app.services.preparation_worker.MarketPreparationWorker._recover_after_failure": "test_worker_recovers_entire_iteration",
+        "app.services.market.worker.MarketPreparationWorker._iteration": "test_worker_recovers_entire_iteration",
+        "app.services.market.worker.MarketPreparationWorker._wait_for_work": "test_worker_fills_ready_market_and_owns_shutdown",
+        "app.services.market.worker.MarketPreparationWorker.running": "test_worker_fills_ready_market_and_owns_shutdown",
+        "app.services.market.worker.MarketPreparationWorker._drain_due_jobs": "test_worker_recovers_entire_iteration",
+        "app.services.market.worker.MarketPreparationWorker._recover_after_failure": "test_worker_recovers_entire_iteration",
         "app.services.market.vehicle_coverage.VehicleCoverageService.diagnose": "test_shared_materialized_offers_cover_identical_vehicles_once",
         "app.services.market.vehicle_coverage.restrict_candidate": "test_vehicle_coverage_reports_only_materialized_vehicle_stock",
         "app.services.market.vehicle_coverage.vehicle_candidates": "test_shared_materialized_offers_cover_identical_vehicles_once",
@@ -1043,7 +1043,7 @@ FUNCTION_TESTS.update(
         "app.services.gameplay.vehicle_location.VehicleLocationResolver.resolve": (
             "test_vehicle_location_resolution_is_explicit_and_eligibility_is_pure"
         ),
-        "app.services.preparation_worker.MarketPreparationWorker.wake": (
+        "app.services.market.worker.MarketPreparationWorker.wake": (
             "test_worker_fills_ready_market_and_owns_shutdown"
         ),
         "app.services.market.stock.planning.StockPlanningService.preferred": (

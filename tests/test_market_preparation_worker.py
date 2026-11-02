@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.domain.errors import RoutingError
-from app.services.preparation_worker import (
+from app.services.market.worker import (
     MarketPreparationWorker,
     PreparationWorkerTiming,
 )
