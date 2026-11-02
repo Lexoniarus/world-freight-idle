@@ -86,7 +86,7 @@ def _build_city_market(
         NhmMarketProfile(
             product.nhm_row_id,
             "general",
-            500 + product.nhm_row_id,
+            499 + product.nhm_row_id,
             1.4,
             tuple(
                 DistanceLoadProfile(band, 1, 0.5, 0.8)

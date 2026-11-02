@@ -17,6 +17,7 @@ from app.domain.market_stock_repair import (
     MarketStockRepairContext,
     RepairableMarketOffer,
 )
+from app.repositories.database_backup import backup_database
 from app.repositories.market_stock_repair import SqliteMarketStockRepairStore
 from app.services.market.selection import MarketSelectionService
 from app.services.market.stock.maintenance import (
@@ -33,6 +34,11 @@ class MemoryMarketStockRepairStore:
 
     def contexts(self):
         return self._contexts
+
+    def repair_to(self, plan, target, archive, now):
+        """Reject writes from the inspection-only test double."""
+        del plan, target, archive, now
+        raise AssertionError("Inspection test must not write repair output")
 
 
 def _repair_context(diverse_stock_game):
@@ -239,6 +245,62 @@ def test_market_stock_repair_rolls_back_failed_artifacts(
     assert not archive.exists()
 
 
+def test_market_stock_repair_rejects_invalid_source_paths_and_archive(
+    diverse_stock_game,
+    database,
+    tmp_path,
+):
+    """Reject unsafe paths, corrupt stock context and archive checksum."""
+    _, preparation, _ = diverse_stock_game
+    _persist_context(
+        _repair_context(diverse_stock_game),
+        preparation,
+        database,
+    )
+    service = build_market_stock_repair(database.path)
+    assert isinstance(service.store, SqliteMarketStockRepairStore)
+    plan = service.planner.plan(service.store.contexts())
+    with pytest.raises(ValueError, match="must differ"):
+        service.store.repair_to(
+            plan,
+            database.path,
+            tmp_path / "archive.jsonl",
+            1234,
+        )
+
+    inconsistent = tmp_path / "inconsistent.db"
+    backup_database(database.path, inconsistent)
+    with closing(sqlite3.connect(inconsistent)) as damaged:
+        damaged.execute(
+            "UPDATE contract_offers SET offer_snapshot=json_set("
+            "offer_snapshot,'$.data.origin.city.city_uid',"
+            "'00000000-0000-0000-0000-000000000099') "
+            "WHERE contract_id='contract-0'"
+        )
+        damaged.commit()
+    with pytest.raises(PersistenceError, match="Marktbestand"):
+        SqliteMarketStockRepairStore(inconsistent).contexts()
+
+    wrong_version = tmp_path / "wrong-version.db"
+    backup_database(database.path, wrong_version)
+    with closing(sqlite3.connect(wrong_version)) as damaged:
+        damaged.execute("UPDATE game_schema SET version='unknown'")
+        damaged.commit()
+    with pytest.raises(PersistenceError, match="Spielstandintegrität"):
+        SqliteMarketStockRepairStore(wrong_version).contexts()
+
+    target = tmp_path / "bad-archive.db"
+    archive = tmp_path / "bad-archive.jsonl"
+    with patch.object(
+        type(service.store),
+        "_checked_record",
+        side_effect=lambda payload: {**payload, "sha256": "invalid"},
+    ):
+        with pytest.raises(PersistenceError, match="archiv"):
+            service.repair_to(target, archive, 1234)
+    assert not target.exists() and not archive.exists()
+
+
 def test_market_stock_repair_reconciliation_rejects_unapproved_changes(
     diverse_stock_game,
     database,
@@ -271,6 +333,98 @@ def test_market_stock_repair_reconciliation_rejects_unapproved_changes(
         output.commit()
         with pytest.raises(PersistenceError, match="Unzulässige"):
             service.store._compare(source, output, plan, 1234)
+
+
+@pytest.mark.parametrize(
+    ("damage", "message"),
+    (
+        ("schema", "schema"),
+        ("offer", "Angebotsbereinigung"),
+        ("progress", "Marktfortschritt"),
+        ("other-job", "Unbeteiligte"),
+        ("affected-job", "neu eingereiht"),
+        ("integrity", "inkonsistent"),
+    ),
+)
+def test_market_stock_repair_reconciliation_fences_each_mutable_boundary(
+    diverse_stock_game,
+    database,
+    tmp_path,
+    damage,
+    message,
+):
+    """Reject schema, stock, scheduler and integrity deviations separately."""
+    _, preparation, _ = diverse_stock_game
+    _persist_context(
+        _repair_context(diverse_stock_game),
+        preparation,
+        database,
+    )
+    with database.transaction(), database.connect() as connection:
+        connection.execute("INSERT INTO users VALUES ('other','Other','x',0)")
+        connection.execute("INSERT INTO player_states VALUES ('other',1,0,0)")
+        connection.execute(
+            "INSERT INTO market_preparations VALUES "
+            "('other','prep','generation','ready',NULL,1)"
+        )
+    service = build_market_stock_repair(database.path)
+    assert isinstance(service.store, SqliteMarketStockRepairStore)
+    plan = service.planner.plan(service.store.contexts())
+    target = tmp_path / f"{damage}.db"
+    service.repair_to(target, tmp_path / f"{damage}.jsonl", 1234)
+
+    class UnhealthyConnection(sqlite3.Connection):
+        def execute(self, sql, parameters=(), /):
+            if sql == "PRAGMA integrity_check":
+                return super().execute("SELECT 'simulated corruption'")
+            return super().execute(sql, parameters)
+
+    with closing(
+        sqlite3.connect(
+            database.path.resolve().as_uri() + "?mode=ro",
+            uri=True,
+        )
+    ) as source:
+        source.row_factory = sqlite3.Row
+        if damage == "integrity":
+            with (
+                closing(sqlite3.connect(target)) as saved,
+                closing(
+                    sqlite3.connect(":memory:", factory=UnhealthyConnection)
+                ) as output,
+            ):
+                output.row_factory = sqlite3.Row
+                saved.backup(output)
+                with pytest.raises(PersistenceError, match=message):
+                    service.store._compare(source, output, plan, 1234)
+            return
+        with closing(sqlite3.connect(target)) as output:
+            output.row_factory = sqlite3.Row
+            if damage == "schema":
+                output.execute("CREATE TABLE unexpected (value TEXT)")
+            elif damage == "offer":
+                output.execute(
+                    "DELETE FROM contract_offers WHERE rowid=("
+                    "SELECT rowid FROM contract_offers LIMIT 1)"
+                )
+            elif damage == "progress":
+                output.execute(
+                    "INSERT INTO market_stock_cursors VALUES "
+                    "('test-owner','unexpected')"
+                )
+            elif damage == "other-job":
+                output.execute(
+                    "UPDATE market_preparations SET status='partial' "
+                    "WHERE user_id='other'"
+                )
+            else:
+                output.execute(
+                    "UPDATE market_preparations SET status='ready' "
+                    "WHERE user_id='test-owner'"
+                )
+            output.commit()
+            with pytest.raises(PersistenceError, match=message):
+                service.store._compare(source, output, plan, 1234)
 
 
 def test_market_stock_repair_cli_requires_independent_artifacts(
