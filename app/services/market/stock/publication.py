@@ -66,11 +66,18 @@ class StockPublicationService:
         snapshot: StockSnapshot,
         templates: tuple[PreparedTemplate, ...],
         issued: tuple[tuple[str, ContractOffer], ...],
+        completed_context: str | None = None,
     ) -> bool:
         """Commit new stock, private snapshots and diagnostics together."""
         started = perf_counter()
         plan = self._build_publication_plan(snapshot, issued)
-        if not self._commit_publication(snapshot, templates, issued, plan):
+        if not self._commit_publication(
+            snapshot,
+            templates,
+            issued,
+            plan,
+            completed_context,
+        ):
             return False
         if templates or issued:
             LOGGER.info(
@@ -134,6 +141,7 @@ class StockPublicationService:
         templates: tuple[PreparedTemplate, ...],
         issued: tuple[tuple[str, ContractOffer], ...],
         plan: StockPublicationPlan,
+        completed_context: str | None = None,
     ) -> bool:
         """Fence and commit one previously calculated publication plan."""
         stock = self.stock_context.stock
@@ -163,6 +171,8 @@ class StockPublicationService:
                 template_store.add(template)
             for template_id, offer in issued:
                 stock.issue(template_id, offer)
+            if completed_context is not None:
+                stock.checkpoint(completed_context, None)
             self.routes.references.replace(plan.bindings)
             self.player_demand.publish_diagnostics(
                 snapshot.status.generation,

@@ -111,10 +111,10 @@ Automatisierte Mobilansicht ist keine reale iPad-Abnahme. Provider-Mocks beweise
 keine öffentliche Dienstverfügbarkeit. Tatsächlich ausgeführte Ergebnisse stehen
 in QUALITY_REPORT.md; historische Läufe sind keine aktuelle Freigabe.
 
-Aktuelle lokale Abnahme vom 02.11.2026: 593 Python-Tests mit 100 %
+Aktuelle lokale Abnahme vom 02.11.2026: 596 Python-Tests mit 100 %
 App-Statement-Coverage, 128 Frontend-Verhaltenstests und 14 Playwright-Fälle.
 Der langsamste Pythonfall lief 5,35 Sekunden, der langsamste Browserfall
-7,2 Sekunden. Alle Tests blieben unter der harten Zehn-Sekunden-Grenze.
+7,6 Sekunden. Alle Tests blieben unter der harten Zehn-Sekunden-Grenze.
 
 ## Regressionen des Persistenzreviews
 
@@ -176,6 +176,9 @@ Routing erneut; ein veränderter Energiecheckpoint verhindert Teilabrechnungen.
 - Exakte Distanzgrenzen, materialisierte Fahrzeug-/Band-Coverage,
   deterministische Vielfalt und dokumentierter Wiederholungsfallback, Tonnage
   und gespeicherte Konditionen.
+- Die sichtbare Dreierauswahl überspringt frühe Duplikate, wenn der gespeicherte
+  Pool eine andere Route, Ware, Zielstadt oder Tonnage enthält. Erfolgreiche
+  Publikation entfernt den Checkpoint; nur halbfertige Routen behalten ihn.
 - Maximalwert für Candidate-Gewicht und getrennte gewichtete Fahrzeugwahl.
 - Retention nach Flottenänderung, V1-Verwerfen, Ankunft, historische Snapshots.
 - Same-City-Reposition, konkurrierender Dispatch und vollständiger Rollback.

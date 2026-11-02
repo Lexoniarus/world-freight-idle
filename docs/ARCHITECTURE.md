@@ -490,7 +490,10 @@ Details und manuelles Verantwortungsreview: [Runtime-Review](RUNTIME_ISOLATION_R
 Die Produktionsverdrahtung verwendet `StockPreparationBatch` mit getrennten
 Bedarfs-, Planungs-, Vorlagen- und Publikationsservices. Sie liest kompakte
 Ankunftsfakten ohne Geometrien und plant Zielstädte unmittelbar ab Dispatch.
-Die reine Dreier-Auswahl bleibt in `MarketSelectionService`.
+Die reine Dreier-Auswahl bleibt in `MarketSelectionService`. Sie wählt aus dem
+gespeicherten Vorrat pro Fahrzeug und Distanzband deterministisch zuerst neue
+Routen, dann neue Waren, Zielstädte und Tonnagen. Erst ein tatsächlich
+erschöpfter Kandidatenbestand erlaubt Wiederholungen.
 SQL, Konsistenzgrenzen und Migrationsregeln sind in ADR 0008 benannt.
 
 `StockSnapshotReader` hält den vollständigen unveränderlichen Bestand für den
@@ -511,6 +514,10 @@ eröffnet eine zweite Marktstruktur oder Einzelabfragen je Relation. Analog tren
 `ContractFactory` die Zufallsziehung von Konditionsableitung und immutablem
 Snapshot. Der nichtdeterministische Pfad behält seine bisherige RNG-Reihenfolge;
 der deterministische Pfad erzeugt weiterhin je Angebot eine neue UUID.
+Ein Preparation-Checkpoint wird zusammen mit der erfolgreichen
+Angebotspublikation gelöscht. Dadurch setzt nur eine unvollständige
+Routenprüfung denselben Trade fort; die nächste erfolgreiche Runde durchläuft
+wieder die Diversitätsauswahl.
 
 Das [manuelle Verantwortungsreview](MARKET_STOCK_REVIEW.md) prüft die konkreten
 Funktionen zusätzlich zu den automatischen Importgrenzen und Manifesttests.

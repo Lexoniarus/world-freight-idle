@@ -185,6 +185,13 @@ def test_market_diversity_counts_only_persisted_offer_dimensions(city_market):
         trade.destination.address.city.city_uid,
     )
     assert diversity.rank(candidate) == (1, 1, 1)
+    offer = ContractOffer.from_snapshot(
+        market.factory.build(candidate, 1, "visible-diversity")
+    )
+    visible = MarketDiversity()
+    assert visible.rank_offer(offer) == (0, 0, 0, 0)
+    visible.record_offer(offer)
+    assert visible.rank_offer(offer) == (1, 1, 1, 1)
 
 
 def test_materialization_snapshots_profile_terms_and_validates_context(

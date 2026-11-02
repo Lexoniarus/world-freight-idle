@@ -91,7 +91,12 @@ class StockPreparationBatch:
                 target,
                 candidate,
             )
-            self.publication.publish(snapshot, templates, issued)
+            self.publication.publish(
+                snapshot,
+                templates,
+                issued,
+                target.key,
+            )
         else:
             self.publication.publish(snapshot, (), ())
         return self._result(snapshot, "partial", 0)
@@ -110,21 +115,8 @@ class StockPreparationBatch:
             ready = tuple(c for c in choices if self._ready(snapshot, c))
             if ready:
                 choices = ready
-            known = {
-                (
-                    t.offer.origin.facility_uid,
-                    t.offer.destination.facility_uid,
-                    t.offer.cargo.nhm_row_id,
-                )
-                for t in snapshot.usable_templates
-                if t.model_id == target.demand.vehicle.model_id
-                and t.template_id not in snapshot.used
-                and t.template_id not in snapshot.bindings
-            }
-            reusable = tuple(c for c in choices if trade_key(c) in known)
-            narrowed = replace(target, choices=reusable or choices)
             return target, self.planning.choose(
-                narrowed,
+                replace(target, choices=choices),
                 stock.pending(target.key),
                 snapshot.usable_templates,
             )

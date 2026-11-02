@@ -33,6 +33,7 @@ class StockTarget:
     priority: int
     choices: tuple[MarketCandidate, ...]
     total_available: int = 0
+    offers: tuple[ContractOffer, ...] = ()
 
     @property
     def key(self) -> str:
@@ -88,14 +89,16 @@ class StockPlanningService:
                 tuple(ready_by_vehicle[vehicle.vehicle_id]),
             )
             for band in DISTANCE_BANDS:
+                band_offers = tuple(
+                    offer
+                    for offer in eligible
+                    if offer.market_context is not None
+                    and offer.market_context.distance_band == band
+                )
                 choices = tuple(
                     c for c in pool if c.distance_profile.distance_band == band
                 )
-                count = sum(
-                    o.market_context is not None
-                    and o.market_context.distance_band == band
-                    for o in eligible
-                )
+                count = len(band_offers)
                 if not choices or count >= self.policy.reserve_per_band:
                     continue
                 priority = (
@@ -111,6 +114,7 @@ class StockPlanningService:
                         priority,
                         choices,
                         len(eligible),
+                        band_offers,
                     )
                 )
         return tuple(result)
@@ -171,8 +175,17 @@ class StockPlanningService:
         target: StockTarget,
         templates: tuple[PreparedTemplate, ...],
     ) -> tuple[MarketCandidate, ...]:
-        """Return the least represented relation, cargo and destination."""
-        coverage = MarketDiversity()
+        """Prefer personal diversity, then shared template diversity."""
+        personal = MarketDiversity()
+        for offer in target.offers:
+            personal.record_offer(offer)
+        personal_rank = min(personal.rank(c) for c in target.choices)
+        personal_choices = tuple(
+            candidate
+            for candidate in target.choices
+            if personal.rank(candidate) == personal_rank
+        )
+        shared = MarketDiversity()
         for template in templates:
             offer = template.offer
             context = offer.market_context
@@ -183,17 +196,17 @@ class StockPlanningService:
                 or context.distance_band != target.band
             ):
                 continue
-            coverage.record(
+            shared.record(
                 offer.origin.facility_uid,
                 offer.destination.facility_uid,
                 offer.cargo.nhm_row_id,
                 offer.destination.city.city_uid,
             )
-        preferred_rank = min(coverage.rank(c) for c in target.choices)
+        preferred_rank = min(shared.rank(c) for c in personal_choices)
         ranked = tuple(
             candidate
-            for candidate in target.choices
-            if coverage.rank(candidate) == preferred_rank
+            for candidate in personal_choices
+            if shared.rank(candidate) == preferred_rank
         )
         unique: dict[TradeKey, MarketCandidate] = {}
         for candidate in ranked:

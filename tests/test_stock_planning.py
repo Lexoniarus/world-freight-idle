@@ -13,6 +13,34 @@ from app.repositories.market_stock import SqlitePlayerMarketStockStore
 from app.services.market.selection import MarketSelectionService
 
 
+def _target_with_alternate(stock_game):
+    """Return one target with two distinct trades for focused assertions."""
+    game, _, batch = stock_game
+    snapshot = batch.snapshots.read()
+    target = batch.planning.targets(
+        snapshot.demands,
+        snapshot.candidates,
+        snapshot.ready,
+        (),
+    )[0]
+    first = target.choices[0]
+    alternate = next(
+        candidate
+        for candidate in target.choices
+        if (
+            candidate.trade.origin.facility_uid,
+            candidate.trade.destination.facility_uid,
+            candidate.trade.cargo.nhm_row_id,
+        )
+        != (
+            first.trade.origin.facility_uid,
+            first.trade.destination.facility_uid,
+            first.trade.cargo.nhm_row_id,
+        )
+    )
+    return game, batch, snapshot, target, first, alternate
+
+
 def test_structural_candidates_are_reused_until_fleet_context_changes(
     stock_game,
 ):
@@ -105,6 +133,104 @@ def test_stock_policy_selection_and_corrupt_storage_are_rejected(
         prep.stock.templates.templates((template.city_uid,))
     with pytest.raises(PersistenceError):
         prep.stock.templates.scoped_templates(((template.city_uid, ""),))
+
+
+def test_visible_market_selection_prefers_a_distinct_ready_trade(stock_game):
+    """Choose a different trade before repeating an earlier publication."""
+    game, _, _, _, first, alternate = _target_with_alternate(stock_game)
+    factory = game.market_lifecycle.market.factory
+    repeated = ContractOffer.from_snapshot(
+        factory.build(first, 1, "visible-repeated")
+    )
+    different = ContractOffer.from_snapshot(
+        factory.build(alternate, 1, "visible-different")
+    )
+    offers = tuple(
+        AvailableContract(replace(repeated, id=f"repeat-{index}"), ("truck",))
+        for index in range(4)
+    ) + (AvailableContract(different, ("truck",)),)
+
+    selected = MarketSelectionService(StockPolicy()).select(offers, "truck")
+
+    assert len(selected) == 3
+    assert selected[0].offer.id == "repeat-0"
+    assert different.id in {item.offer.id for item in selected}
+    assert (
+        len(
+            {
+                (
+                    item.offer.origin.facility_uid,
+                    item.offer.destination.facility_uid,
+                    item.offer.cargo.nhm_row_id,
+                )
+                for item in selected
+            }
+        )
+        == 2
+    )
+
+
+def test_stock_selection_prefers_diversity_before_template_reuse(stock_game):
+    """Do not let an unused duplicate template hide a different ready trade."""
+    game, batch, snapshot, target, first, alternate = _target_with_alternate(
+        stock_game
+    )
+    offer = ContractOffer.from_snapshot(
+        game.market_lifecycle.market.factory.build(
+            first,
+            1,
+            "unused-duplicate-template",
+        )
+    )
+    template = PreparedTemplate(
+        "unused-template",
+        target.demand.vehicle.model_id,
+        target.demand.vehicle.city_uid,
+        offer,
+    )
+    diversified = replace(
+        snapshot,
+        usable_templates=(template,),
+        used=frozenset(),
+        bindings={},
+    )
+    narrowed = replace(target, choices=(first, alternate))
+
+    with (
+        patch.object(type(batch), "_runnable", return_value=True),
+        patch.object(type(batch), "_ready", return_value=True),
+    ):
+        selected = batch._select(diversified, (narrowed,))
+
+    assert selected is not None
+    assert selected[1] == alternate
+
+
+def test_personal_diversity_precedes_shared_template_balance(stock_game):
+    """Keep one player's visible variety ahead of global template balance."""
+    game, batch, _, target, first, alternate = _target_with_alternate(
+        stock_game
+    )
+    factory = game.market_lifecycle.market.factory
+    personal_offer = ContractOffer.from_snapshot(
+        factory.build(first, 1, "personal-existing")
+    )
+    shared_offer = ContractOffer.from_snapshot(
+        factory.build(alternate, 1, "shared-existing")
+    )
+    shared = PreparedTemplate(
+        "shared-template",
+        target.demand.vehicle.model_id,
+        target.demand.vehicle.city_uid,
+        shared_offer,
+    )
+    personal_target = replace(
+        target,
+        choices=(first, alternate),
+        offers=(personal_offer,),
+    )
+
+    assert batch.planning.preferred(personal_target, (shared,)) == (alternate,)
 
 
 def test_complete_stock_target_does_not_materialize_another_offer(stock_game):

@@ -1,5 +1,16 @@
 # Changelog
 
+## Deterministisch vielfältige Stadtmärkte – 02.11.2026
+
+- Die sichtbare Dreierauswahl bevorzugt pro Fahrzeug und Distanzband neue
+  Routen, Waren, Zielstädte und Tonnagen, bevor sie einen vorhandenen Wert
+  wiederholt.
+- Ein ungenutztes altes Template verdrängt keinen vielfältigeren bereits
+  routenbestätigten Kandidaten mehr.
+- Erfolgreich veröffentlichte Aufträge löschen ihren Preparation-Checkpoint
+  atomar. Nur eine tatsächlich halbfertige Routenprüfung wird nach einem
+  Neustart fortgesetzt.
+
 ## Zuständigkeits- und Namenshärtung – 02.11.2026
 
 - Frontend-Zustand und Request-Lebenszyklus liegen getrennt in `GameState` und
@@ -21,7 +32,7 @@
   Protocols, zustandsbehaftete Grenzen Komposition und Dependency Injection.
   Verbleibende große Facades, Entities und Repository-Mapper wurden auf eine
   zusammenhängende Verantwortung geprüft.
-- Die abschließende lokale Abnahme bestand mit 593 Python-Tests, 100 %
+- Die abschließende lokale Abnahme bestand mit 596 Python-Tests, 100 %
   App-Statement-Coverage, 128 Frontendtests und 14 Playwright-Fällen. Kein
   Einzelfall überschritt zehn Sekunden; Supabase und Live-Provider blieben aus.
 

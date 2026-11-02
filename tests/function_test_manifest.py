@@ -633,6 +633,8 @@ FUNCTION_TESTS.update(
         "app.services.market.candidates.MarketCandidateService.structurally_current": "test_retention_requires_structure_and_actual_vehicle_compatibility",
         "app.services.market.diversity.MarketDiversity.record": "test_market_diversity_counts_only_persisted_offer_dimensions",
         "app.services.market.diversity.MarketDiversity.rank": "test_market_diversity_counts_only_persisted_offer_dimensions",
+        "app.services.market.diversity.MarketDiversity.rank_offer": "test_market_diversity_counts_only_persisted_offer_dimensions",
+        "app.services.market.diversity.MarketDiversity.record_offer": "test_market_diversity_counts_only_persisted_offer_dimensions",
         "app.services.market.lifecycle.MarketLifecycleService._retained": "test_retention_filters_without_writing_during_market_reads",
         "app.services.market.lifecycle.MarketLifecycleService.present": "test_retention_filters_without_writing_during_market_reads",
     }
@@ -955,6 +957,7 @@ FUNCTION_TESTS.update(
         "app.repositories.market_stock_upgrade.MarketStockUpgradeRepository.upgrade_to": "test_market_upgrade_preserves_source_history_and_only_converts_live_offers",
         "app.services.market.demand.MarketDemandResolver.resolve": "test_destination_stock_starts_at_dispatch_without_early_settlement",
         "app.services.market.selection.MarketSelectionService.select": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
+        "app.services.market.selection.MarketSelectionService._select_diverse": "test_visible_market_selection_prefers_a_distinct_ready_trade",
         "app.services.market.templates.MarketTemplateService.materialize": "test_templates_are_shared_but_consumption_is_once_per_account",
         "app.services.market.stock.planning.StockPlanningService.choose": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
         "app.services.market.stock.planning.StockPlanningService.order": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",

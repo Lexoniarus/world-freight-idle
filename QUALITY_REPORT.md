@@ -14,10 +14,10 @@ Repositoryabnahmen gelesen. Generische `game`-, `runtime`-, `catalogue`- und
 Repositoryfehler verwenden zwei kleine SQL-Kataloge mit zwei Standorten und
 vier Fahrzeugmodellen; die großen Referenzdateien bleiben dabei unverändert.
 
-Der lokale Python-Abnahmelauf bestand alle **593 Tests in 64,18 Sekunden**; der
+Der lokale Python-Abnahmelauf bestand alle **596 Tests in 63,09 Sekunden**; der
 langsamste Fall benötigte 5,35 Sekunden. Die **128 Frontendtests** bestanden in
-8,86 Sekunden. Playwright besteht aus **14** getrennten UI-Grenzen und lief in
-1,0 Minute; der langsamste Browserfall benötigte 7,2 Sekunden. Öffentliche
+10,83 Sekunden. Playwright besteht aus **14** getrennten UI-Grenzen und lief in
+1,1 Minuten; der langsamste Browserfall benötigte 7,6 Sekunden. Öffentliche
 Tiles, echte Provider und Supabase waren in allen Läufen ausgeschlossen.
 
 Fahrzeuge werden im Flotten-Read-Modell nach ID genau einmal verbunden und
@@ -72,6 +72,15 @@ Erfolgreiche Relationsnachweise und Vorlagen werden wiederverwendet. Pro Runde
 wird höchstens ein persönliches Angebot publiziert; Auswahl und Konditionen sind
 kontextgebunden deterministisch, Identitäten bleiben neu.
 
+Der nachträgliche Sichtbarkeitsreview fand zwei gekoppelte Ursachen für
+wiederholte Angebote: Die Presentation nahm nur die ersten drei gespeicherten
+Slots, und ein erfolgreicher Worker-Durchlauf ließ seinen Trade-Checkpoint
+stehen. Die Auswahl priorisiert nun pro Fahrzeug/Band Route, Ware, Zielstadt und
+Tonnage. Publikation und Checkpoint-Löschung erfolgen atomar; ungenutzte alte
+Templates dürfen die Diversitätsrangfolge nicht mehr vorwegnehmen. Auf einer
+isolierten Kopie des lokalen Bestands wurde ein vollständiger Neuaufbau ohne
+Netzwerkzugriff und ohne Providerrequest durchgeführt.
+
 Entfernt wurden Prozesssupervisor, getrennte Prewarm-Rolle, globale Worker-Lease,
 Startup-Markt-Rebuild, paralleler Legacy-Batch und globale Katalogversorgung.
 `SqliteMarketTemplateStore` besitzt gemeinsame Vorlagen;
@@ -125,18 +134,18 @@ wird in begrenzten Einzelrunden bis zu drei sichtbaren und zehn gespeicherten
 Angeboten je Distanzband versorgt; ein `ready`-Job wird nicht erneut ausgewählt.
 
 Der abschließende kombinierte Lauf von `.venv/Scripts/python.exe -X utf8
-scripts/quality.py` prüft **593 Python-Tests** mit **100,00 %
+ scripts/quality.py` prüft **596 Python-Tests** mit **100,00 %
 app-Statement-Coverage**, **128 Frontend-Verhaltenstests** sowie Ruff,
 Formatierung, mypy, Pyright, ESLint, Stylelint, Prettier, checkJs,
 Produktionsbuild und compileall. Architektur- und
 Funktionsmanifestprüfungen sind Teil dieses Laufs. Der langsamste einzelne
-Python-Test benötigt 5,35 Sekunden; kein Python-Test überschreitet zehn
+ Python-Test benötigt 5,36 Sekunden; kein Python-Test überschreitet zehn
 Sekunden.
 
 `npm run test:e2e` umfasst **14** klar abgegrenzte Browserfälle gegen einen
 isolierten lokalen Einprozess-Server mit lokaler Datenbank und lokalem
 Routing-Fixture. Die Suite benötigt eine Minute; der langsamste Browserfall
-7,2 Sekunden. Backendberechnungen liegen in Python-, Controllerdarstellung in
+7,6 Sekunden. Backendberechnungen liegen in Python-, Controllerdarstellung in
 DOM-Tests. Browserfälle prüfen nur Authentifizierung und Navigation,
 Dispositionsgrenzen, Markt-, Firmen- und Kartenoberflächen. Absichtlich
 abgebrochene Browserrequests können unter Windows den bekannten
