@@ -60,3 +60,16 @@ test("API errors distinguish session, validation and non-JSON failures", async (
   await assert.rejects(api.request("/fleet"), /HTTP 503/);
   api.destroy();
 });
+
+test("asset requests stay same-origin and outside the JSON API prefix", async () => {
+  let requested = "";
+  const api = new GameApiClient(async (url) => {
+    requested = String(url);
+    return new Response("<svg/>", { status: 200 });
+  });
+
+  assert.equal(await api.requestAsset("/assets/test.svg"), "<svg/>");
+  assert.equal(requested, "/assets/test.svg");
+  await assert.rejects(api.requestAsset("/other/test.svg"), /Expected \/assets\//);
+  api.destroy();
+});
