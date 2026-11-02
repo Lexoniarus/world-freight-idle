@@ -24,15 +24,36 @@ from tests.support.game_service import build_fixture_game
 from tests.support.market import build_prepared_game
 
 
-@pytest.fixture
-def city_market(synthetic_world_catalogue, synthetic_vehicle_catalogue):
-    """Build a compact three-band city market for behavior tests."""
+def _build_city_market(
+    synthetic_world_catalogue,
+    synthetic_vehicle_catalogue,
+    cargo_count: int,
+):
+    """Build one compact market with an explicit cargo variety."""
     snapshot = synthetic_world_catalogue.read()
     base = WorldScope(snapshot).facility("berlin_westhafen")
-    cargo = NhmProduct(1, "7308", "Structural modules", (1,))
-    output = FacilityNhmProfile(cargo, "output", "derived", 0.8, 0.7, None)
-    inbound = replace(output, role="input")
-    origin = replace(base, facility_uid="origin-a", nhm_profiles=(output,))
+    products = tuple(
+        NhmProduct(
+            index,
+            f"730{index}",
+            f"Structural modules {index}",
+            (index,),
+        )
+        for index in range(1, cargo_count + 1)
+    )
+    outputs = tuple(
+        FacilityNhmProfile(
+            product,
+            "output",
+            "derived",
+            0.8,
+            0.7,
+            None,
+        )
+        for product in products
+    )
+    inputs = tuple(replace(output, role="input") for output in outputs)
+    origin = replace(base, facility_uid="origin-a", nhm_profiles=outputs)
     other = replace(origin, facility_uid="origin-b")
     destinations = tuple(
         replace(
@@ -46,7 +67,7 @@ def city_market(synthetic_world_catalogue, synthetic_vehicle_catalogue):
                 ),
             ),
             coordinates=point,
-            nhm_profiles=(inbound,),
+            nhm_profiles=inputs,
         )
         for index, point in enumerate(
             (
@@ -59,25 +80,28 @@ def city_market(synthetic_world_catalogue, synthetic_vehicle_catalogue):
     inactive = replace(
         origin,
         facility_uid="inbound-only",
-        nhm_profiles=(inbound,),
+        nhm_profiles=inputs,
     )
-    profile = NhmMarketProfile(
-        1,
-        "general",
-        500,
-        1.4,
-        tuple(
-            DistanceLoadProfile(band, 1, 0.5, 0.8)
-            for band in ("short", "medium", "long")
-        ),
-        tuple(VehicleScaleProfile(scale, 1) for scale in VEHICLE_SCALES),
+    profiles = tuple(
+        NhmMarketProfile(
+            product.nhm_row_id,
+            "general",
+            500 + product.nhm_row_id,
+            1.4,
+            tuple(
+                DistanceLoadProfile(band, 1, 0.5, 0.8)
+                for band in ("short", "medium", "long")
+            ),
+            tuple(VehicleScaleProfile(scale, 1) for scale in VEHICLE_SCALES),
+        )
+        for product in products
     )
     world = Mock(
         read=Mock(
             return_value=replace(
                 snapshot,
                 facilities=(origin, other, inactive, *destinations),
-                market_profiles=(profile,),
+                market_profiles=profiles,
             )
         )
     )
@@ -94,9 +118,56 @@ def city_market(synthetic_world_catalogue, synthetic_vehicle_catalogue):
 
 
 @pytest.fixture
+def city_market(synthetic_world_catalogue, synthetic_vehicle_catalogue):
+    """Build a compact three-band city market for behavior tests."""
+    return _build_city_market(
+        synthetic_world_catalogue,
+        synthetic_vehicle_catalogue,
+        1,
+    )
+
+
+@pytest.fixture
+def diverse_city_market(
+    synthetic_world_catalogue,
+    synthetic_vehicle_catalogue,
+):
+    """Build a compact market with three compatible cargo categories."""
+    return _build_city_market(
+        synthetic_world_catalogue,
+        synthetic_vehicle_catalogue,
+        3,
+    )
+
+
+@pytest.fixture
 def vehicle_game(city_market, database, synthetic_vehicle_catalogue):
     """Compose a compact city game with real preparation collaborators."""
     market, owned, _, world, _ = city_market
+    context = build_fixture_game(
+        database,
+        "test-owner",
+        world,
+        synthetic_vehicle_catalogue,
+        market,
+        time.time,
+    )
+    with database.transaction(), database.connect() as connection:
+        connection.execute("DELETE FROM contract_offers")
+        connection.execute("DELETE FROM owned_vehicles")
+        context.service.state_repository.save_player(PlayerState(175000, 0, 0))
+        context.service.state_repository.save_vehicle(owned)
+    return build_prepared_game(context, database)
+
+
+@pytest.fixture
+def diverse_vehicle_game(
+    diverse_city_market,
+    database,
+    synthetic_vehicle_catalogue,
+):
+    """Compose the diverse city market with production collaborators."""
+    market, owned, _, world, _ = diverse_city_market
     context = build_fixture_game(
         database,
         "test-owner",

@@ -106,15 +106,6 @@ def test_stock_policy_selection_and_corrupt_storage_are_rejected(
     prep.stock.stock.checkpoint("context", None)
     assert prep.stock.stock.pending("context") is None
     prep.stock.stock.consume("unbound-legacy", 1)
-    selected = MarketSelectionService(StockPolicy()).select(
-        tuple(
-            AvailableContract(replace(offer, id=str(i)), ("truck", "other"))
-            for i in range(12)
-        ),
-        "truck",
-    )
-    assert len(selected) == 3
-    assert all(o.eligible_vehicle_ids == ("truck",) for o in selected)
     assert (
         MarketSelectionService(StockPolicy()).select(
             (
@@ -133,6 +124,42 @@ def test_stock_policy_selection_and_corrupt_storage_are_rejected(
         prep.stock.templates.templates((template.city_uid,))
     with pytest.raises(PersistenceError):
         prep.stock.templates.scoped_templates(((template.city_uid, ""),))
+
+
+def test_visible_market_repeats_only_available_trade(stock_game):
+    """Allow repeated structure when the ready pool has one valid trade."""
+    game, _, batch = stock_game
+    candidate = batch.snapshots.read().candidates[0]
+    offer = ContractOffer.from_snapshot(
+        game.market_lifecycle.market.factory.build(candidate, 1, "fallback")
+    )
+    selected = MarketSelectionService(StockPolicy()).select(
+        tuple(
+            AvailableContract(
+                replace(offer, id=str(index)),
+                ("truck", "other"),
+            )
+            for index in range(12)
+        ),
+        "truck",
+    )
+
+    assert [item.offer.id for item in selected] == ["0", "1", "2"]
+    assert all(item.eligible_vehicle_ids == ("truck",) for item in selected)
+    assert {
+        (
+            item.offer.origin.facility_uid,
+            item.offer.destination.facility_uid,
+            item.offer.cargo.nhm_row_id,
+        )
+        for item in selected
+    } == {
+        (
+            offer.origin.facility_uid,
+            offer.destination.facility_uid,
+            offer.cargo.nhm_row_id,
+        )
+    }
 
 
 def test_visible_market_selection_prefers_a_distinct_ready_trade(stock_game):
@@ -168,42 +195,6 @@ def test_visible_market_selection_prefers_a_distinct_ready_trade(stock_game):
         )
         == 2
     )
-
-
-def test_stock_selection_prefers_diversity_before_template_reuse(stock_game):
-    """Do not let an unused duplicate template hide a different ready trade."""
-    game, batch, snapshot, target, first, alternate = _target_with_alternate(
-        stock_game
-    )
-    offer = ContractOffer.from_snapshot(
-        game.market_lifecycle.market.factory.build(
-            first,
-            1,
-            "unused-duplicate-template",
-        )
-    )
-    template = PreparedTemplate(
-        "unused-template",
-        target.demand.vehicle.model_id,
-        target.demand.vehicle.city_uid,
-        offer,
-    )
-    diversified = replace(
-        snapshot,
-        usable_templates=(template,),
-        used=frozenset(),
-        bindings={},
-    )
-    narrowed = replace(target, choices=(first, alternate))
-
-    with (
-        patch.object(type(batch), "_runnable", return_value=True),
-        patch.object(type(batch), "_ready", return_value=True),
-    ):
-        selected = batch._select(diversified, (narrowed,))
-
-    assert selected is not None
-    assert selected[1] == alternate
 
 
 def test_personal_diversity_precedes_shared_template_balance(stock_game):

@@ -28,6 +28,12 @@ from tests.support.market_fixtures import (
     city_market as city_market,
 )
 from tests.support.market_fixtures import (
+    diverse_city_market as diverse_city_market,
+)
+from tests.support.market_fixtures import (
+    diverse_vehicle_game as diverse_vehicle_game,
+)
+from tests.support.market_fixtures import (
     vehicle_game as vehicle_game,
 )
 from tests.support.persistence_fixtures import relational as relational
@@ -101,6 +107,18 @@ def synthetic_game(synthetic_game_context) -> GameService:
 def stock_game(vehicle_game):
     """Compose one player market with local stock preparation services."""
     context, preparation = vehicle_game
+    preparation.demand.ensure()
+    return (
+        context.service,
+        preparation,
+        make_stock_batch(context.service, preparation),
+    )
+
+
+@pytest.fixture
+def diverse_stock_game(diverse_vehicle_game):
+    """Compose a locally routed market with multiple valid trades."""
+    context, preparation = diverse_vehicle_game
     preparation.demand.ensure()
     return (
         context.service,

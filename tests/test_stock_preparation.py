@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.domain.market_preparation import required_relations
 from app.repositories.market_stock import SqlitePlayerMarketStockStore
 from app.repositories.market_templates import SqliteMarketTemplateStore
 from app.services.market.player_demand import PlayerMarketDemandService
@@ -18,6 +19,68 @@ from app.services.market.stock.preparation import StockPreparationBatch
 from app.services.market.stock.publication import StockPublicationService
 from app.services.market.stock.snapshot import StockSnapshotReader
 from tests.support.game_clock import set_game_clock
+
+
+@pytest.mark.asyncio
+async def test_preparation_publishes_three_distinct_ready_trades(
+    diverse_stock_game,
+):
+    """Expose ready structural variety through the public worker boundary."""
+    game, preparation, batch = diverse_stock_game
+    snapshot = batch.snapshots.read()
+    ready_candidates = []
+    signatures = set()
+    for candidate in snapshot.candidates:
+        if candidate.distance_profile.distance_band != "short":
+            continue
+        signature = (
+            candidate.trade.origin.facility_uid,
+            candidate.trade.destination.facility_uid,
+            candidate.trade.cargo.nhm_row_id,
+        )
+        if signature in signatures:
+            continue
+        signatures.add(signature)
+        ready_candidates.append(candidate)
+        for pair in required_relations((candidate,)):
+            await preparation.route_preparation.preparation.prepare(*pair)
+        if len(ready_candidates) == 3:
+            break
+    assert len(ready_candidates) == 3
+
+    observed_counts = [0]
+    visible = ()
+    for _ in range(20):
+        await batch.process()
+        visible = tuple(
+            choice.offer
+            for choice in game.contract_choices(
+                game.list_contracts(),
+                "truck",
+            )
+            if choice.offer.market_context is not None
+            and choice.offer.market_context.distance_band == "short"
+        )
+        if not observed_counts or len(visible) != observed_counts[-1]:
+            observed_counts.append(len(visible))
+        if len(visible) == 3:
+            break
+
+    assert observed_counts == [0, 1, 2, 3]
+
+    assert (
+        len(
+            {
+                (
+                    offer.origin.facility_uid,
+                    offer.destination.facility_uid,
+                    offer.cargo.nhm_row_id,
+                )
+                for offer in visible
+            }
+        )
+        == 3
+    )
 
 
 @pytest.mark.asyncio
