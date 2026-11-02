@@ -84,7 +84,7 @@ class FixturePlayerGameFacade(PlayerGameFacade):
 class FixtureGameContext:
     """Keep test-only collaborators outside the production game facade."""
 
-    service: PlayerGameFacade
+    service: FixturePlayerGameFacade
     world: WorldCatalogue
     catalogue: VehicleCatalogue
     market_generation: MarketGenerationServices

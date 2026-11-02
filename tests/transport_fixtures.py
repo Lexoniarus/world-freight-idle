@@ -1,12 +1,40 @@
 """Coherent typed transport setup for lifecycle tests."""
 
 from dataclasses import replace
+from typing import overload
 
 from app.composition.player import PlayerServiceContext
 from app.domain.contracts import ContractOffer, HistoricalContractSnapshot
 from app.domain.journeys import unmetered_journey
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.services.gameplay.player_game import PlayerGameFacade
+from tests.support.game_service import FixturePlayerGameFacade
+
+
+@overload
+def add_transport(
+    synthetic_game: FixturePlayerGameFacade,
+    payout: int = 1000,
+    departed_at: float = 1,
+    arrives_at: float = 2,
+    tons: float | None = None,
+    transport_id: str = "fixture-trip",
+    *,
+    context: None = None,
+) -> ActiveTransport: ...
+
+
+@overload
+def add_transport(
+    synthetic_game: PlayerGameFacade,
+    payout: int = 1000,
+    departed_at: float = 1,
+    arrives_at: float = 2,
+    tons: float | None = None,
+    transport_id: str = "fixture-trip",
+    *,
+    context: PlayerServiceContext,
+) -> ActiveTransport: ...
 
 
 def add_transport(
@@ -16,24 +44,19 @@ def add_transport(
     arrives_at: float = 2,
     tons: float | None = None,
     transport_id: str = "fixture-trip",
+    *,
     context: PlayerServiceContext | None = None,
 ) -> ActiveTransport:
     """Reserve a real owned vehicle and persist a complete test snapshot."""
-    lifecycle = (
-        context.lifecycle
-        if context is not None
-        else synthetic_game.market_lifecycle
-    )
-    repository = (
-        context.state_repository
-        if context is not None
-        else synthetic_game.state_repository
-    )
-    unit_of_work = (
-        context.unit_of_work
-        if context is not None
-        else synthetic_game.unit_of_work
-    )
+    if context is None:
+        assert isinstance(synthetic_game, FixturePlayerGameFacade)
+        lifecycle = synthetic_game.market_lifecycle
+        repository = synthetic_game.state_repository
+        unit_of_work = synthetic_game.unit_of_work
+    else:
+        lifecycle = context.lifecycle
+        repository = context.state_repository
+        unit_of_work = context.unit_of_work
     market = lifecycle.generation
     market_scope = lifecycle.scope
     owned = repository.list_vehicles()

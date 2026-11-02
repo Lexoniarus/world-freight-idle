@@ -19,7 +19,7 @@ from app.domain.pricing import PriceQuote
 from app.domain.results import ContractQuote
 from app.domain.transports import RouteSnapshot
 from app.domain.world_scopes import WorldScope
-from app.services.gameplay.player_game import PlayerGameFacade
+from tests.support.game_service import FixturePlayerGameFacade
 from tests.support.catalogues import BERLIN_UID
 from tests.support.game import first_berlin_contract
 
@@ -27,7 +27,7 @@ from tests.support.game import first_berlin_contract
 @pytest.mark.asyncio
 async def test_quote_contract_geocodes_routes_and_prices(
     synthetic_game_context,
-    synthetic_game: PlayerGameFacade,
+    synthetic_game: FixturePlayerGameFacade,
 ):
     contract = first_berlin_contract(synthetic_game)
     quote = project_quote(
@@ -50,7 +50,7 @@ async def test_quote_contract_geocodes_routes_and_prices(
 @pytest.mark.asyncio
 async def test_dispatch_builds_persisted_trip_and_debits_cost(
     synthetic_game_context,
-    synthetic_game: PlayerGameFacade,
+    synthetic_game: FixturePlayerGameFacade,
 ):
     contract = first_berlin_contract(synthetic_game)
     before_cash = synthetic_game.player_state().cash
@@ -74,7 +74,7 @@ async def test_dispatch_builds_persisted_trip_and_debits_cost(
 
 def test_validate_dispatch_checks_location_capacity_mode_and_status(
     synthetic_game_context,
-    synthetic_game: PlayerGameFacade,
+    synthetic_game: FixturePlayerGameFacade,
 ):
     contract = first_berlin_contract(synthetic_game)
     vehicle = synthetic_game.state_repository.list_vehicles()[0]
@@ -123,7 +123,7 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
 
 
 def test_build_trip_contains_tracking_timestamps(
-    synthetic_game: PlayerGameFacade,
+    synthetic_game: FixturePlayerGameFacade,
 ):
     contract = first_berlin_contract(synthetic_game)
     quote = ContractQuote(
@@ -153,7 +153,7 @@ def test_build_trip_contains_tracking_timestamps(
 
 @pytest.mark.asyncio
 async def test_dispatch_rejects_insufficient_cash(
-    synthetic_game: PlayerGameFacade,
+    synthetic_game: FixturePlayerGameFacade,
 ):
     contract = first_berlin_contract(synthetic_game)
     synthetic_game.state_repository.save_player(

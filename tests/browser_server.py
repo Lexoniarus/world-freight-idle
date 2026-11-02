@@ -9,12 +9,11 @@ from unittest.mock import patch
 
 from fastapi import Depends, HTTPException
 
-from app.api.v1.dependencies import get_game_service
-from app.bootstrap import build_game_runtime
+from app.api.v1.dependencies import get_player_context
+from app.bootstrap import PlayerServiceContext, build_game_runtime
 from app.config import Settings
 from app.domain.energy import EnergyProfile
 from app.main import create_app, lifespan
-from app.services.gameplay.player_game import PlayerGameFacade
 from tests.support.manual_clock import ManualClock
 from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 
@@ -101,9 +100,10 @@ def pause_previous_test_profiles() -> dict:
 @app.post("/__tests__/energy-fixture")
 def prepare_energy_fixture(
     single_stop: bool = False,
-    synthetic_game: PlayerGameFacade = Depends(get_game_service),
+    context: PlayerServiceContext = Depends(get_player_context),
 ) -> dict:
     """Configure short-range test energy solely inside the isolated server."""
+    synthetic_game = context.game
     vehicle = synthetic_game.get_vehicle("truck_01")
     model = next(
         m
@@ -119,22 +119,23 @@ def prepare_energy_fixture(
     )
     vehicle.refill_energy()
     vehicle.consume_energy(capacity * 0.9)
-    offers = synthetic_game.state_repository.list_offers()
+    offers = context.state_repository.list_offers()
     if offers:
         vehicle.reposition_within_city(offers[0].origin)
-    with synthetic_game.unit_of_work.transaction():
-        synthetic_game.state_repository.save_vehicle(vehicle)
-        synthetic_game.player_market.demand.invalidate()
+    with context.unit_of_work.transaction():
+        context.state_repository.save_vehicle(vehicle)
+        context.market.demand.invalidate()
     return {"vehicle_id": vehicle.id}
 
 
 @app.post("/__tests__/approach-fixture")
 def prepare_approach_fixture(
-    synthetic_game: PlayerGameFacade = Depends(get_game_service),
+    context: PlayerServiceContext = Depends(get_player_context),
 ) -> dict:
     """Place the isolated idle truck away from its saved offer's pickup."""
+    synthetic_game = context.game
     vehicle = synthetic_game.get_vehicle("truck_01")
-    offer = synthetic_game.state_repository.list_offers()[0]
+    offer = context.state_repository.list_offers()[0]
     facility = next(
         item
         for item in app.state.game_runtime.world.read().facilities
@@ -143,7 +144,7 @@ def prepare_approach_fixture(
         and item.coordinates is not None
     )
     vehicle.reposition_within_city(facility.location_snapshot())
-    with synthetic_game.unit_of_work.transaction():
-        synthetic_game.state_repository.save_vehicle(vehicle)
-        synthetic_game.player_market.demand.invalidate()
+    with context.unit_of_work.transaction():
+        context.state_repository.save_vehicle(vehicle)
+        context.market.demand.invalidate()
     return {"vehicle_id": vehicle.id, "offer_id": offer.id}

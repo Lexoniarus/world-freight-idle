@@ -9,7 +9,6 @@ from app.bootstrap import build_market_generation_services
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
-from app.services.gameplay.player_game import PlayerGameFacade
 from tests.support.catalogue_databases import (
     create_small_vehicle_catalogue,
     create_small_world_catalogue,
@@ -21,7 +20,11 @@ from tests.support.catalogues import (
     build_synthetic_world_catalogue,
 )
 from tests.support.game import create_active_trip
-from tests.support.game_service import FixtureGameContext, build_fixture_game
+from tests.support.game_service import (
+    FixtureGameContext,
+    FixturePlayerGameFacade,
+    build_fixture_game,
+)
 from tests.support.legacy_fixtures import legacy_source as legacy_source
 from tests.support.market import make_stock_batch, seed_test_offers
 from tests.support.market_fixtures import (
@@ -98,7 +101,9 @@ def synthetic_game_context(
 
 
 @pytest.fixture
-def synthetic_game(synthetic_game_context) -> PlayerGameFacade:
+def synthetic_game(
+    synthetic_game_context,
+) -> FixturePlayerGameFacade:
     """Expose only the production facade to ordinary game tests."""
     return synthetic_game_context.service
 

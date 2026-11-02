@@ -10,17 +10,19 @@ from app.api.v1.game_projection import (
     project_vehicle,
 )
 from app.domain.game import PlayerState
-from app.services.gameplay.player_game import PlayerGameFacade
+from tests.support.game_service import FixturePlayerGameFacade
 
 
-def test_now_returns_wall_clock(synthetic_game: PlayerGameFacade):
+def test_now_returns_wall_clock(synthetic_game: FixturePlayerGameFacade):
     before = time.time()
     observed = synthetic_game.now()
     after = time.time()
     assert before <= observed <= after
 
 
-def test_ensure_initial_state_is_idempotent(synthetic_game: PlayerGameFacade):
+def test_ensure_initial_state_is_idempotent(
+    synthetic_game: FixturePlayerGameFacade,
+):
     before = [
         project_vehicle(item)
         for item in synthetic_game.state_repository.list_vehicles()
@@ -33,7 +35,9 @@ def test_ensure_initial_state_is_idempotent(synthetic_game: PlayerGameFacade):
     assert synthetic_game.player_state().cash == 175000
 
 
-def test_reset_restores_playable_state(synthetic_game: PlayerGameFacade):
+def test_reset_restores_playable_state(
+    synthetic_game: FixturePlayerGameFacade,
+):
     demand = Mock()
     synthetic_game.initialization.market_demand = demand
     synthetic_game.state_repository.save_player(
