@@ -101,3 +101,35 @@ test("the browser entry only imports assets and starts the composition root", ()
     1,
   );
 });
+
+test("public application, map and controller methods declare module contracts", () => {
+  const files = [
+    "application.js",
+    "map/world-map.js",
+    "map/deferred-map.js",
+    ...readdirSync(join(root, "controllers")).map((name) => `controllers/${name}`),
+  ];
+  for (const file of files) {
+    const source = readFileSync(join(root, file), "utf8");
+    const ast = parse(source, {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      comment: true,
+      range: true,
+    });
+    for (const node of ast.body) {
+      const klass = node.declaration;
+      if (klass?.type !== "ClassDeclaration") continue;
+      for (const method of klass.body.body) {
+        const comment = ast.comments.filter((item) => item.range[1] <= method.range[0]).at(-1);
+        assert.ok(
+          comment && !source.slice(comment.range[1], method.range[0]).trim(),
+          `${file}:${method.key.name}`,
+        );
+        const tags = comment.value.match(/@param /g) ?? [];
+        assert.ok(tags.length >= method.value.params.length, `${file}:${method.key.name} params`);
+        if (method.kind !== "constructor") assert.match(comment.value, /@returns /);
+      }
+    }
+  }
+});
