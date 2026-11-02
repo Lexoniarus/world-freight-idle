@@ -8,9 +8,10 @@ from app.domain.market_stock import StockPolicy
 from app.domain.market_stock_repair import (
     MarketStockRemoval,
     MarketStockRepairContext,
+    MarketStockRepairExecutor,
     MarketStockRepairPlan,
+    MarketStockRepairReader,
     MarketStockRepairReport,
-    MarketStockRepairStore,
 )
 from app.domain.results import AvailableContract
 from app.services.market.selection import MarketSelectionService
@@ -100,12 +101,13 @@ class MarketStockRepairPlanner:
 class MarketStockRepairService:
     """Expose aggregate inspection over an injected offline store."""
 
-    store: MarketStockRepairStore
+    reader: MarketStockRepairReader
+    executor: MarketStockRepairExecutor
     planner: MarketStockRepairPlanner
 
     def inspect(self) -> MarketStockRepairReport:
         """Inspect an immutable source and omit private identities."""
-        plan = self.planner.plan(self.store.contexts())
+        plan = self.planner.plan(self.reader.load_contexts())
         report = MarketStockRepairReport(
             plan.checked_contexts,
             plan.affected_contexts,
@@ -133,8 +135,8 @@ class MarketStockRepairService:
         now: float,
     ) -> MarketStockRepairReport:
         """Create a verified repaired copy from the immutable source."""
-        plan = self.planner.plan(self.store.contexts())
-        self.store.repair_to(plan, target, archive, now)
+        plan = self.planner.plan(self.reader.load_contexts())
+        self.executor.create_repaired_copy(plan, target, archive, now)
         report = MarketStockRepairReport(
             plan.checked_contexts,
             plan.affected_contexts,

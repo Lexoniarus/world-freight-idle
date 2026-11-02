@@ -33,7 +33,10 @@ from app.repositories.leaderboard import SqliteLeaderboardReader
 from app.repositories.legacy_game_import import LegacyGameImporter
 from app.repositories.market_preparation import SqlitePreparationStore
 from app.repositories.market_stock import SqlitePlayerMarketStockStore
-from app.repositories.market_stock_repair import SqliteMarketStockRepairStore
+from app.repositories.market_stock_repair import (
+    SqliteMarketStockRepairExecutor,
+    SqliteMarketStockRepairReader,
+)
 from app.repositories.market_stock_upgrade import MarketStockUpgradeRepository
 from app.repositories.market_templates import SqliteMarketTemplateStore
 from app.repositories.preferences import SqlitePreferenceStore
@@ -334,7 +337,8 @@ def build_market_stock_repair(source: Path) -> MarketStockRepairService:
     """Wire read-only historical stock inspection outside the runtime."""
     policy = StockPolicy()
     return MarketStockRepairService(
-        SqliteMarketStockRepairStore(source),
+        SqliteMarketStockRepairReader(source),
+        SqliteMarketStockRepairExecutor(source),
         MarketStockRepairPlanner(
             policy,
             MarketSelectionService(policy),

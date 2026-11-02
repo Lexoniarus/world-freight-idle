@@ -59,12 +59,16 @@ class MarketStockRepairReport:
     players_to_requeue: int
 
 
-class MarketStockRepairStore(Protocol):
+class MarketStockRepairReader(Protocol):
     """Read persisted repair inputs without deciding market quality."""
 
-    def contexts(self) -> tuple[MarketStockRepairContext, ...]: ...
+    def load_contexts(self) -> tuple[MarketStockRepairContext, ...]: ...
 
-    def repair_to(
+
+class MarketStockRepairExecutor(Protocol):
+    """Create one verified repaired copy from an approved plan."""
+
+    def create_repaired_copy(
         self,
         plan: MarketStockRepairPlan,
         target: Path,

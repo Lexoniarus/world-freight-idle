@@ -18,7 +18,10 @@ from app.domain.market_stock_repair import (
     RepairableMarketOffer,
 )
 from app.repositories.database_backup import backup_database
-from app.repositories.market_stock_repair import SqliteMarketStockRepairStore
+from app.repositories.market_stock_repair import (
+    SqliteMarketStockRepairExecutor,
+    SqliteMarketStockRepairReader,
+)
 from app.services.market.selection import MarketSelectionService
 from app.services.market.stock.maintenance import (
     MarketStockRepairPlanner,
@@ -26,16 +29,20 @@ from app.services.market.stock.maintenance import (
 )
 
 
-class MemoryMarketStockRepairStore:
-    """Expose explicit contexts behind the production maintenance port."""
+class MemoryMarketStockRepairReader:
+    """Expose explicit contexts behind the production read port."""
 
     def __init__(self, contexts):
         self._contexts = contexts
 
-    def contexts(self):
+    def load_contexts(self):
         return self._contexts
 
-    def repair_to(self, plan, target, archive, now):
+
+class RejectingMarketStockRepairExecutor:
+    """Reject output creation from inspection-only service tests."""
+
+    def create_repaired_copy(self, plan, target, archive, now):
         """Reject writes from the inspection-only test double."""
         del plan, target, archive, now
         raise AssertionError("Inspection test must not write repair output")
@@ -102,7 +109,8 @@ def _repair_service(contexts):
     """Compose maintenance with the production diversity selector."""
     policy = StockPolicy()
     return MarketStockRepairService(
-        MemoryMarketStockRepairStore(contexts),
+        MemoryMarketStockRepairReader(contexts),
+        RejectingMarketStockRepairExecutor(),
         MarketStockRepairPlanner(
             policy,
             MarketSelectionService(policy),
@@ -166,7 +174,7 @@ def test_market_stock_repair_store_reads_source_without_mutation(
     _persist_context(context, preparation, database)
     before = sha256(database.path.read_bytes()).hexdigest()
 
-    stored = SqliteMarketStockRepairStore(database.path).contexts()
+    stored = SqliteMarketStockRepairReader(database.path).load_contexts()
 
     assert sha256(database.path.read_bytes()).hexdigest() == before
     selected = next(
@@ -233,8 +241,8 @@ def test_market_stock_repair_rolls_back_failed_artifacts(
     archive = tmp_path / "failed.jsonl"
 
     with patch.object(
-        type(service.store),
-        "_compare",
+        type(service.executor),
+        "verify_repaired_copy",
         side_effect=PersistenceError("simulated mismatch"),
     ):
         with pytest.raises(PersistenceError, match="simulated mismatch"):
@@ -258,10 +266,11 @@ def test_market_stock_repair_rejects_invalid_source_paths_and_archive(
         database,
     )
     service = build_market_stock_repair(database.path)
-    assert isinstance(service.store, SqliteMarketStockRepairStore)
-    plan = service.planner.plan(service.store.contexts())
+    assert isinstance(service.reader, SqliteMarketStockRepairReader)
+    assert isinstance(service.executor, SqliteMarketStockRepairExecutor)
+    plan = service.planner.plan(service.reader.load_contexts())
     with pytest.raises(ValueError, match="must differ"):
-        service.store.repair_to(
+        service.executor.create_repaired_copy(
             plan,
             database.path,
             tmp_path / "archive.jsonl",
@@ -279,7 +288,7 @@ def test_market_stock_repair_rejects_invalid_source_paths_and_archive(
         )
         damaged.commit()
     with pytest.raises(PersistenceError, match="Marktbestand"):
-        SqliteMarketStockRepairStore(inconsistent).contexts()
+        SqliteMarketStockRepairReader(inconsistent).load_contexts()
 
     wrong_version = tmp_path / "wrong-version.db"
     backup_database(database.path, wrong_version)
@@ -287,12 +296,12 @@ def test_market_stock_repair_rejects_invalid_source_paths_and_archive(
         damaged.execute("UPDATE game_schema SET version='unknown'")
         damaged.commit()
     with pytest.raises(PersistenceError, match="Spielstandintegrität"):
-        SqliteMarketStockRepairStore(wrong_version).contexts()
+        SqliteMarketStockRepairReader(wrong_version).load_contexts()
 
     target = tmp_path / "bad-archive.db"
     archive = tmp_path / "bad-archive.jsonl"
     with patch.object(
-        type(service.store),
+        type(service.executor.archive_writer),
         "_checked_record",
         side_effect=lambda payload: {**payload, "sha256": "invalid"},
     ):
@@ -314,8 +323,9 @@ def test_market_stock_repair_reconciliation_rejects_unapproved_changes(
         database,
     )
     service = build_market_stock_repair(database.path)
-    assert isinstance(service.store, SqliteMarketStockRepairStore)
-    plan = service.planner.plan(service.store.contexts())
+    assert isinstance(service.reader, SqliteMarketStockRepairReader)
+    assert isinstance(service.executor, SqliteMarketStockRepairExecutor)
+    plan = service.planner.plan(service.reader.load_contexts())
     target = tmp_path / "reconciled.db"
     archive = tmp_path / "reconciled.jsonl"
     service.repair_to(target, archive, 1234)
@@ -332,7 +342,7 @@ def test_market_stock_repair_reconciliation_rejects_unapproved_changes(
         output.execute("UPDATE player_states SET cash=cash+1")
         output.commit()
         with pytest.raises(PersistenceError, match="Unzulässige"):
-            service.store._compare(source, output, plan, 1234)
+            service.executor.verify_repaired_copy(source, output, plan, 1234)
 
 
 @pytest.mark.parametrize(
@@ -368,8 +378,9 @@ def test_market_stock_repair_reconciliation_fences_each_mutable_boundary(
             "('other','prep','generation','ready',NULL,1)"
         )
     service = build_market_stock_repair(database.path)
-    assert isinstance(service.store, SqliteMarketStockRepairStore)
-    plan = service.planner.plan(service.store.contexts())
+    assert isinstance(service.reader, SqliteMarketStockRepairReader)
+    assert isinstance(service.executor, SqliteMarketStockRepairExecutor)
+    plan = service.planner.plan(service.reader.load_contexts())
     target = tmp_path / f"{damage}.db"
     service.repair_to(target, tmp_path / f"{damage}.jsonl", 1234)
 
@@ -396,7 +407,9 @@ def test_market_stock_repair_reconciliation_fences_each_mutable_boundary(
                 output.row_factory = sqlite3.Row
                 saved.backup(output)
                 with pytest.raises(PersistenceError, match=message):
-                    service.store._compare(source, output, plan, 1234)
+                    service.executor.verify_repaired_copy(
+                        source, output, plan, 1234
+                    )
             return
         with closing(sqlite3.connect(target)) as output:
             output.row_factory = sqlite3.Row
@@ -424,7 +437,9 @@ def test_market_stock_repair_reconciliation_fences_each_mutable_boundary(
                 )
             output.commit()
             with pytest.raises(PersistenceError, match=message):
-                service.store._compare(source, output, plan, 1234)
+                service.executor.verify_repaired_copy(
+                    source, output, plan, 1234
+                )
 
 
 def test_market_stock_repair_cli_requires_independent_artifacts(
