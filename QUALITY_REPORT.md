@@ -14,11 +14,11 @@ Repositoryabnahmen gelesen. Generische `game`-, `runtime`-, `catalogue`- und
 Repositoryfehler verwenden zwei kleine SQL-Kataloge mit zwei Standorten und
 vier Fahrzeugmodellen; die großen Referenzdateien bleiben dabei unverändert.
 
-Der abschließende lokale Abnahmelauf bestand mit **625 Python-Tests** in
-75,50 Sekunden bei 100 % App-Statement-Coverage; der langsamste Pythonfall
-benötigte 2,73 Sekunden. Die **131 Frontendtests** bestanden in 9,90 Sekunden.
+Der abschließende lokale Abnahmelauf bestand mit **656 Python-Tests** in
+73,25 Sekunden bei 100 % App-Statement-Coverage; der langsamste Pythonfall
+benötigte 2,47 Sekunden. Die **131 Frontendtests** bestanden in 8,89 Sekunden.
 Alle **14** getrennten Playwright-Grenzen bestanden in 1,1 Minuten; der
-langsamste Browserfall benötigte 7,6 Sekunden. Kein Einzelfall überschritt die
+langsamste Browserfall benötigte 7,3 Sekunden. Kein Einzelfall überschritt die
 harte Zehn-Sekunden-Grenze. Öffentliche Tiles, echte Provider und Supabase
 waren in allen Läufen ausgeschlossen.
 
@@ -78,6 +78,21 @@ Connection-Adapter. Der Legacy-Import trennt vollständige Snapshot-Montage von
 strikter verschachtelter Wertdecodierung. Beide Änderungen erhalten Schema,
 Dateiformat und öffentliche Repositoryverträge.
 
+Der abschließende Mapper- und Kompositionsreview trennt nun auch die zuvor
+breiten Detailmethoden. `LegacySnapshotReader` besitzt benannte Schritte für
+Standortidentität, Firma, Stadt, Koordinaten und Handling-Evidenz. Der
+Marktreparatur-Reader trennt Schutzmengen, gebundene Angebote, Gruppierung und
+Kontextaufbau; das Marktupgrade prüft Schema, unveränderte Tabellen, Offers,
+Routenbindungen und Integrität separat. Der Weltkatalog liest Facility-Quellen,
+Koordinatenevidenz, Aliase und dokumentierte Güter über eigenständige Mapper.
+
+Die Composition-Namen zeigen ihren Besitz direkt: `GameRuntime` hält
+`market_generation`, `GameService` hält `player_market`,
+`PlayerMarketServices` hält `stores`. `MarketGenerationServices` bündelt nur
+`candidates`, `contract_factory` und `coverage`; `PlayerMarketStores` benennt
+`offers`, `templates` und `policy`. `RoutingConnectionValidator` trennt die
+Suche nach Kandidatenpaaren von der Prüfung einer einzelnen Richtung.
+
 Die Python-Suite besitzt keine Sammelmodule mehr für Multiplayer, Markt, Stock
 Preparation oder Runtime Views. Die jeweiligen Szenarien liegen bei Auth,
 Accountisolation, Nebenläufigkeit, Markt-Scope, Berechnung, Kandidaten,
@@ -85,7 +100,9 @@ Diversität, Publikation, Recovery, Runtime-Snapshot und Routengeometrie. Auch
 die letzten breiten Einzelfälle sind nach Sicherheits-, Sichtbarkeits-,
 Projektion-, Sharing- und Verbrauchsvertrag getrennt. Das Function-Test-
 Manifest prüft neben vollständiger Callable-Abdeckung nun eindeutige
-Testnamen und eine direkte Assertion oder erwartete Ablehnung.
+Testnamen und eine direkte Assertion oder erwartete Ablehnung. Diese Prüfung
+ist bewusst als Strukturindex dokumentiert: Die semantische Relevanz und der
+fachliche Gegenfall werden weiterhin im manuellen Review beurteilt.
 
 Die Arbeitscommits wurden ausschließlich mit ihren Eigentümertests, Ruff,
 mypy beziehungsweise ESLint, Prettier und checkJs geprüft. Danach bestanden
@@ -137,11 +154,11 @@ fehlendes `vehicle_id` mit 422 ab. Das Verantwortungsreview trennt außerdem in
 `StockSnapshotReader` besitzt autoritativen Read, Bedarfsprojektion, Readiness
 und Snapshot-Montage; der `StockPublicationService` ausschließlich Plan und
 Commit. Die Helper halten nur lokale Zwischenwerte ihrer bestehenden Klasse
-und eröffnen weder neue Daten- noch Providerpfade. `MarketComponents` ist nur
+und eröffnen weder neue Daten- noch Providerpfade. `MarketGenerationServices` ist nur
 noch die explizite Composition-Grenze. Spielerbedarf, Routenfakten und
 Stock-Abhängigkeiten liegen getrennt in `PlayerMarketDemandService`,
 `PlayerMarketRouteService`, `MarketRoutePreparationService` und
-`PlayerMarketStockContext`. Die lokale Test-Runtime besitzt dieselben
+`PlayerMarketStores`. Die lokale Test-Runtime besitzt dieselben
 Preparation-/Readiness-Grenzen wie Produktion; gemeinsame Fixtures liegen in
 `tests/support`, ohne Test-zu-Test-Importe. Im Browser besitzt
 `MapInteractions` Hit-Testing, Hover und Listener-Cleanup getrennt vom
@@ -174,18 +191,18 @@ wird in begrenzten Einzelrunden bis zu drei sichtbaren und zehn gespeicherten
 Angeboten je Distanzband versorgt; ein `ready`-Job wird nicht erneut ausgewählt.
 
 Der abschließende kombinierte Lauf von `.venv/Scripts/python.exe -X utf8
- scripts/quality.py` prüft **625 Python-Tests** mit **100,00 %
+ scripts/quality.py` prüft **656 Python-Tests** mit **100,00 %
 app-Statement-Coverage**, **131 Frontend-Verhaltenstests** sowie Ruff,
 Formatierung, mypy, Pyright, ESLint, Stylelint, Prettier, checkJs,
 Produktionsbuild und compileall. Architektur- und
 Funktionsmanifestprüfungen sind Teil dieses Laufs. Der langsamste einzelne
-Python-Test benötigt 2,73 Sekunden; kein Python-Test überschreitet zehn
+Python-Test benötigt 2,47 Sekunden; kein Python-Test überschreitet zehn
 Sekunden.
 
 `npm run test:e2e` umfasst **14** klar abgegrenzte Browserfälle gegen einen
 isolierten lokalen Einprozess-Server mit lokaler Datenbank und lokalem
 Routing-Fixture. Die Suite benötigt 1,1 Minuten; der langsamste Browserfall
-7,6 Sekunden. Backendberechnungen liegen in Python-, Controllerdarstellung in
+7,3 Sekunden. Backendberechnungen liegen in Python-, Controllerdarstellung in
 DOM-Tests. Browserfälle prüfen nur Authentifizierung und Navigation,
 Dispositionsgrenzen, Markt-, Firmen- und Kartenoberflächen. Absichtlich
 abgebrochene Browserrequests können unter Windows den bekannten

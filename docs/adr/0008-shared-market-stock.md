@@ -60,7 +60,7 @@ Zehn ist eine Untergrenze, keine globale Begrenzung oder Löschregel.
 | `MarketSelectionService` | Stabile Dreier-Projektion bereits vorbereiteter Angebote ohne Providerarbeit |
 | `PlayerMarketDemandService` | Bedarfsversion, Status und veröffentlichte Coverage-Diagnose eines Spielers |
 | `PlayerMarketRouteService` | Mengenbasierter Read von Offer-Bindungen und wiederverwendbaren Routenfakten |
-| `PlayerMarketStockContext` | Explizite Zusammenstellung von persönlichem Bestand, gemeinsamen Vorlagen und Policy |
+| `PlayerMarketStores` | Explizite Zusammenstellung von persönlichem Bestand, gemeinsamen Vorlagen und Policy |
 | `StockPreparationBatch` | Eine Verbindung pro Spielerrunde, Wiederaufnahme und Orchestrierung |
 | `StockSnapshotReader` | Kurzer autoritativer Read und unveränderliche Planungsprojektion |
 | `StockPublicationService` | Revisions-Fence, Publikationsplan und atomare Veröffentlichung |

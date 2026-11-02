@@ -1,5 +1,29 @@
 # Changelog
 
+## Abschließende Verantwortungs- und Testhärtung – 02.11.2026
+
+- Contract-, Kandidaten- und Routingtests sind nach API-Übersetzung,
+  Kompatibilität, Evidenzgewichtung, Kandidaten-Recovery,
+  Verbindungsvalidierung und Publikations-Fencing getrennt. Standardtests
+  verwenden kleine synthetische Kataloge; Referenzbinärdateien bleiben auf
+  ausdrücklich benannte Repositoryabnahmen begrenzt.
+- Legacy-Standortdecodierung, Market-Repair-Reads, Market-Upgrade-Abgleich und
+  World-Facility-Mapping besitzen benannte Einzelschritte statt gemischter
+  Mappermethoden. Datenformate, SQL-Schemata und Produktverhalten bleiben
+  unverändert.
+- `MarketGenerationServices`, `PlayerMarketStores`, `market_generation`,
+  `player_market` und `stores` benennen Composition und Besitz ohne zweite
+  Marktarchitektur. Die Routingprüfung benennt Kandidatenpaarsuche und
+  Richtungsvalidierung getrennt.
+- Das Function-Test-Manifest wird nicht mehr als automatischer Beweis eines
+  fachlichen Gegenfalls beschrieben. Es prüft vollständige Zuordnung,
+  eindeutige Testnamen und direkte Assertions; die inhaltliche Relevanz bleibt
+  Teil des verpflichtenden Funktionsreviews.
+- Die abschließende lokale Abnahme bestand mit 656 Python-Tests, 100 %
+  App-Statement-Coverage, 131 Frontendtests und 14 Playwright-Grenzen. Der
+  langsamste Pythonfall benötigte 2,47 Sekunden, der langsamste Browserfall
+  7,3 Sekunden; Supabase, reale Provider und öffentliche Tiles blieben aus.
+
 ## Persistenz- und Gegentestgrenzen – 02.11.2026
 
 - Die Routingpersistenz besitzt getrennte Adapter für Schema, Payloads,
@@ -15,7 +39,7 @@
   Marktberechnung, Kandidaten, Diversität, Publikation, Recovery,
   Runtime-Snapshots und Routengeometrie besitzen benannte Eigentümertests.
 - Das Function-Test-Manifest verlangt nun eindeutige Testnamen und eine
-  direkte Assertion oder erwartete Ablehnung im referenzierten Gegentest.
+  direkte Assertion oder erwartete Ablehnung im referenzierten Test.
   Aufgelöste Sammelmodule dürfen nicht unbemerkt zurückkehren.
 - Die letzten breiten Testabläufe wurden in einzelne Verträge für
   Auth-Sicherheit, Sessionrotation, Kontentrennung, Runtime-Privatsphäre,
@@ -190,11 +214,11 @@
 - Der synchrone Marktgenerator, request-seitige Publikationsvorbereitung und
   die mehrdeutige `refresh_market`-Kompatibilität wurden entfernt. HTTP-Reads
   lesen nur publizierten Bestand; Refresh invalidiert ausdrücklich den Job.
-- `MarketComponents` benennt die verbleibende Composition-Grenze ohne eine
+- `MarketGenerationServices` benennt die verbleibende Composition-Grenze ohne eine
   nicht vorhandene Generierungszuständigkeit vorzutäuschen.
 - Spielerbedarf, Routenfakten und Stock-Abhängigkeiten sind in
   `PlayerMarketDemandService`, `PlayerMarketRouteService` und
-  `PlayerMarketStockContext` getrennt. Der Composition Root bündelt sie nur.
+  `PlayerMarketStores` getrennt. Der Composition Root bündelt sie nur.
 - `StockSnapshotReader` besitzt autoritativen Read, Bedarfsprojektion und
   Readiness-Snapshot; `StockPublicationService` besitzt nur Plan und Commit.
 - `GameService` ist eine schmale Fassade. Initialisierung, Dispatch und

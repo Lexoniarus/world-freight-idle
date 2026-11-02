@@ -14,16 +14,20 @@ Vor Arbeitscommits müssen die betroffenen Tests samt direkten Aufrufern grün
 sein. Das vollständige Gate und E2E sind vor der abschließenden Integration
 verbindlich. Tests werden nicht übersprungen oder abgeschwächt. Jeder konkrete
 Core-Callable inklusive Konstruktor und verschachtelter Funktion erhält einen
-expliziten Gegentest in tests/function_test_manifest.py. Protokolldeklarationen
-werden strukturell ausgenommen. Das Gate weist zusätzlich die 20 langsamsten
-Python-Testphasen aus, damit Laufzeitregressionen nicht hinter der grünen
-Gesamtsumme verschwinden.
+Verhaltenstest und einen Eintrag in `tests/function_test_manifest.py`.
+Protokolldeklarationen werden strukturell ausgenommen. Das Gate weist
+zusätzlich die 20 langsamsten Python-Testphasen aus, damit
+Laufzeitregressionen nicht hinter der grünen Gesamtsumme verschwinden.
 
-Manifestreferenzen sind keine bloßen Namensmarker. Jeder referenzierte
-Top-Level-Testname muss in der Suite genau einmal vorkommen und der Test muss
-selbst mindestens eine direkte Assertion oder erwartete Ablehnung enthalten.
-Die Strukturprüfung verbietet die aufgelösten Sammelmodule `test_market`,
-`test_multiplayer`, `test_review_regressions`, `test_runtime_views` und
+Das Function-Test-Manifest ist ein struktureller Vollständigkeitsindex. Es
+prüft, dass jeder referenzierte Top-Level-Testname in der Suite genau einmal
+vorkommt und selbst mindestens eine direkte Assertion oder erwartete
+Ablehnung enthält. Es beweist nicht automatisch, dass diese Assertion den
+zugeordneten Callable semantisch prüft oder dessen fachlichen Gegenfall
+abdeckt. Diese Zuordnung wird im staged Diff und im verpflichtenden
+Verantwortungsreview inhaltlich geprüft. Die Strukturprüfung verbietet zudem
+die aufgelösten Sammelmodule `test_market`, `test_multiplayer`,
+`test_review_regressions`, `test_runtime_views` und
 `test_stock_preparation`.
 
 Gemeinsame Fixtures und lokale Provider-Doubles liegen ausschließlich unter
@@ -367,8 +371,9 @@ deterministische Auditmatrix.
 Delivery plus individuelle Approaches, stale Eligibility, erschöpfte Pools,
 Abfahrt während Await, API-Besitz/idle-Prüfung und priorisierte Approaches ohne
 Delivery-Batch-Starvation. Stadt-Coverage allein beendet den Worker nicht.
-Die expliziten Manifest-Gegentests bleiben verbindlich; kein Coverage-Limit
-wird gesenkt. Gezielte Coverage ersetzt keinen Nachweis der gesamten Core-Suite.
+Die expliziten Verhaltenstests und Manifestzuordnungen bleiben verbindlich;
+kein Coverage-Limit wird gesenkt. Gezielte Coverage ersetzt keinen Nachweis
+der gesamten Core-Suite.
 Frontend-Cleanup versucht alle Freigaben und meldet danach AggregateError;
 Destroy ist idempotent. Browsertests erwarten passende Offers auch in partial
 Markets, statt globales `ready` vorauszusetzen. Provider bleiben gemockt.
@@ -387,8 +392,10 @@ Kein Build während Playwright. Keine echten Provider-Bulk-Aufrufe.
 ## Gezielte Abnahme: befahrbare Standortverbindungen
 
 Für den Fix auf `5d7ff77` wird auf Nutzerwunsch keine vollständige Suite
-aufgerufen. Der gezielte Lauf umfasst `test_connected_routing`,
-`test_routing_anchors`, `test_anchor_repair_history`,
+aufgerufen. Der frühere Sammeltest `test_connected_routing` ist inzwischen in
+`test_routing_candidate_recovery`, `test_routing_connection_validation` und
+`test_routing_preparation_fencing` getrennt. Der historische gezielte Lauf
+umfasste außerdem `test_routing_anchors`, `test_anchor_repair_history`,
 `test_routing_anchor_provider`, `test_routing_readiness_store`,
 `test_dispatch_routing_anchors`, `test_dispatch_approach`,
 `test_route_readiness`, `test_market_preparation_worker`,

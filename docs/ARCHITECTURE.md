@@ -134,7 +134,7 @@ Market-, Distance-, Scale- und Capability-Profile sind eigene Domainwerte.
 | TradeNetwork | Globale NHM-Zielindizes und lazy Origin-Relationen |
 | MarketCandidateService | Distanz, Warenprofile und Fahrzeugkompatibilität |
 | ContractFactory | Ziehung, Konditionsableitung und Snapshot-Erzeugung getrennt orchestrieren |
-| MarketComponents | Candidate-, Factory- und Coverage-Diagnose explizit bündeln; keine Generierungsmethode |
+| MarketGenerationServices | Candidate-Service, Contract-Factory und Coverage-Diagnose als reine Composition bündeln |
 | MarketLifecycleService | Vorbereiteten Bestand filtern und fahrzeugbezogen präsentieren |
 | MarketDemandResolver | Konkrete idle Fahrzeuge und gespeicherte Transportziele projizieren |
 | PlayerMarketDemandService | Bedarfsversion, Status und atomare Coverage-Diagnose eines Spielers besitzen |
@@ -142,7 +142,7 @@ Market-, Distance-, Scale- und Capability-Profile sind eigene Domainwerte.
 | MarketRoutePreparationService | Fehlende Relationen begrenzt und ausschließlich im Worker vorbereiten |
 | RoutingEvidenceReader | Persistierte Relationen in einem mengenbasierten Lesesnapshot prüfen und laden |
 | RoutingPreparationService | Provider, Anchor-Auflösung, Leases und atomare Routenpublikation besitzen |
-| PlayerMarketStockContext | Persönlichen Bestand, gemeinsame Vorlagen und Stock-Policy explizit bündeln |
+| PlayerMarketStores | Persönliche Offer-Ablage, gemeinsame Vorlagen und Stock-Policy explizit bündeln |
 | StockPlanningService | Sichtbare Defizite vor Reserven priorisieren und Vielfalt wählen |
 | MarketTemplateService | Wiederverwendbare Vorlagen zu genau einem Angebot materialisieren |
 | StockSnapshotReader | Autoritative Inputs, Bedarf und Readiness zu einem unveränderlichen Snapshot montieren |
@@ -155,10 +155,13 @@ Market-, Distance-, Scale- und Capability-Profile sind eigene Domainwerte.
 
 Stateful Services und Repository-Grenzen sind injizierte Klassen. Gemeinsame
 reine Funktionen prüfen Fahrzeugklasse/Scale; Haversine, Band, Gewichtung und
-Tonnage bleiben kleine typisierte Funktionen. `MarketComponents` ist nur eine
-ehrlich benannte Composition-Grenze. Auswahl liegt in `StockPlanningService`,
+Tonnage bleiben kleine typisierte Funktionen. `MarketGenerationServices` ist
+nur eine ehrlich benannte Composition-Grenze mit den Feldern `candidates`,
+`contract_factory` und `coverage`. Auswahl liegt in `StockPlanningService`,
 Materialisierung in `MarketTemplateService`, Diagnostik in
 `VehicleCoverageService`; SQL und Transaktionen bleiben außerhalb davon.
+`PlayerMarketServices.stores` verweist auf `PlayerMarketStores` mit den
+expliziten Grenzen `offers`, `templates` und `policy`.
 
 Die kompatible `SqliteRoutingReadinessStore`-Fassade ist eine reine
 Kompositionsgrenze. Unter `app/repositories/routing` besitzen `schema`,
@@ -338,7 +341,7 @@ Das Funktionsreview steht in [DISPATCH_APPROACH_REVIEW.md](DISPATCH_APPROACH_REV
 Funktionen berechnen getrennt Beladung, Tarif, Einkaufskosten und Auszahlung.
 `ContractFactory` bekommt immutable Kosten-/Energiekontexte im Candidate;
 sie führt keine Katalogabfragen durch. Der minimale NHM-Faktor wird einmal
-je World-Revision bestimmt. `MarketComponents` besitzt selbst keine
+je World-Revision bestimmt. `MarketGenerationServices` besitzt selbst keine
 Orchestrierungs- oder Generierungsmethode.
 
 Der frühere globale Rebuild über `MarketStartupService` ist entfernt. Die API
@@ -427,7 +430,7 @@ Schreibtransaktionen aus; erst danach wird das Ergebnis gespeichert.
 ## Global Routing Readiness
 
 MarketCandidateService bleibt strukturell routerfrei. Market Preparation liegt
-zwischen Candidate-Erzeugung und Planung/Materialisierung; `MarketComponents`
+zwischen Candidate-Erzeugung und Planung/Materialisierung; `MarketGenerationServices`
 orchestriert keine Providerrequests. Auch partial Markets veröffentlichen
 **ausschließlich route-ready Offers**.
 

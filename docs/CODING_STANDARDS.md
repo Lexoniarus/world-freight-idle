@@ -14,6 +14,9 @@
 - Strukturierte Events und Trace-ID verwenden; keine Passwörter/Cookies loggen.
 - Neue Core-Funktionen erhalten Verhaltenstests und einen Eintrag im
   Function-Test-Manifest. Fehlerpfade und konkurrierende Geldmutationen testen.
+  Das Manifest belegt strukturelle Zuordnung, eindeutige Testnamen und eine
+  direkte Assertion; die fachliche Relevanz des Tests bleibt Gegenstand des
+  manuellen Funktions- und Verantwortungsreviews.
 - Ruff und Formatter laufen im Quality Gate. Lange Testbeschreibungen sind
   von E501 ausgenommen; Core-Code hat keine solche Ausnahme.
 - mypy prüft Core und Einstiegspunkt, verlangt annotierte Funktionen und
@@ -89,10 +92,11 @@ entbindet öffentliche Komponenten nicht von ihren Parameterverträgen.
 
 WorldCatalogue-Regeln: Domain-Port und unveränderliche Referenzmodelle, SQL
 ausschließlich im Repository, konkrete Verdrahtung im Composition Root.
-Game-Core/`MarketComponents` importieren weder SQL noch Katalogadapter oder
-Seed-Daten. UUIDs und vollständige Snapshots sichern historische Aufträge.
-Neue konkrete Core-Callables, einschließlich Pflege/Migration, unterliegen
-Manifest, explizitem Gegentest, Pyright/mypy und 100 % Statement-Coverage.
+Game-Core/`MarketGenerationServices` importieren weder SQL noch
+Katalogadapter oder Seed-Daten. UUIDs und vollständige Snapshots sichern
+historische Aufträge. Neue konkrete Core-Callables, einschließlich
+Pflege/Migration, unterliegen Manifest, fachlich geprüftem Verhaltenstest,
+Pyright/mypy und 100 % Statement-Coverage.
 
 Die Laufzeit besitzt genau einen relationalen Persistenzweg. Domainobjekte
 kennen weder KV-Schlüssel noch SQL oder Persistenzserialisierung. Historische

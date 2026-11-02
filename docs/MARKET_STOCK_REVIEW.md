@@ -97,7 +97,8 @@ aktuelle Review bestätigt folgende Verantwortungen:
 
 Legacy-Preparation-Batch, Startup-Rebuild, Prozesssupervisor und globale
 Worker-Lease wurden entfernt, statt als parallele Strukturen weiterzulaufen.
-Neue/geänderte konkrete Python-Callables besitzen Manifest-Gegentests. Die
+Neue/geänderte konkrete Python-Callables besitzen Manifestzuordnungen und
+fachlich geprüfte Verhaltenstests. Die
 historischen Tabellen oben bleiben als Review des damaligen Stands erhalten.
 Die neuen Helper sind keine zweite Fachschicht: Sie halten ausschließlich
 Zwischenwerte ihrer jeweiligen bestehenden Klasse. Gegenproben prüfen jede
@@ -118,7 +119,7 @@ produktive Ablauf besitzt nun genau diese Kette:
    `PlayerMarketRouteService` besitzt Offer-Bindungen und gelesene
    Routenfakten. `MarketRoutePreparationService` besitzt als einziger
    Marktbaustein die begrenzte Providerbereitung im Worker.
-3. `PlayerMarketStockContext` benennt persönlichen Bestand, gemeinsame
+3. `PlayerMarketStores` benennt persönlichen Bestand, gemeinsame
    Vorlagen und Policy, ohne eine weitere Ablaufklasse einzuführen.
 4. `MarketPreparationWorker` plant ausschließlich fällige `partial`-Jobs.
 5. `StockPreparationBatch` wählt einen konkreten Fehlbestand und höchstens eine
@@ -128,7 +129,7 @@ produktive Ablauf besitzt nun genau diese Kette:
 7. `SqliteMarketTemplateStore` und `SqlitePlayerMarketStockStore` besitzen
    getrennte globale beziehungsweise spielerbezogene SQL-Verantwortung.
 
-`MarketComponents` ist eine reine, ehrlich benannte Composition-Struktur für
+`MarketGenerationServices` ist eine reine, ehrlich benannte Composition-Struktur für
 Candidate-Service, Factory und Coverage-Diagnose. Sie besitzt keine
 Generierungsmethode. `VehicleLocationResolver` besitzt Standortauflösung;
 `DispatchEligibilityService` prüft nur Eignung und bleibt der vorbereitete Seam
