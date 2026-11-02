@@ -128,7 +128,6 @@ class PlayerContextFactory:
             dispatch,
             self.market,
         )
-        game.ensure_initial_state()
         return PlayerServiceContext(
             game,
             self.unit_of_work,
@@ -154,7 +153,7 @@ def build_player_context(
     """Compose one player and retain collaborators at the composition edge."""
     player_market = build_player_market_services(runtime, user_id)
     unit = SqliteGameUnitOfWork(runtime.database, user_id)
-    return PlayerContextFactory(
+    context = PlayerContextFactory(
         unit,
         runtime.world,
         runtime.catalogue,
@@ -164,6 +163,8 @@ def build_player_context(
         runtime.clock,
         runtime.time_scale,
     ).create()
+    context.game.ensure_initial_state()
+    return context
 
 
 def build_player_service(

@@ -1,12 +1,16 @@
+import random
 from pathlib import Path
 
 import httpx
 
-from app.bootstrap import build_game_runtime
+from app.bootstrap import build_game_runtime, build_market_generation_services
 from app.config import Settings
 from app.providers.routing import ValhallaTruckRouter
 from app.services.routing.anchors import RoutingAnchorResolver
-from tests.support.game_service import FixturePlayerGameFacade
+from tests.support.game_service import (
+    FixturePlayerGameFacade,
+    build_fixture_game,
+)
 
 
 def test_build_game_runtime_wires_real_provider_adapters(tmp_path: Path):
@@ -39,18 +43,31 @@ def test_build_game_runtime_wires_real_provider_adapters(tmp_path: Path):
     asyncio.run(routing_client.aclose())
 
 
-def test_player_context_factory_reuses_injected_test_boundaries(
-    synthetic_game_context,
+def test_player_context_factory_reuses_boundaries_without_state_changes(
+    database,
+    synthetic_world_catalogue,
+    synthetic_vehicle_catalogue,
 ):
-    """Use the production composition owner with test-only adapters."""
-    service = synthetic_game_context.service
-    assert isinstance(service, FixturePlayerGameFacade)
-    assert service.initialization.world is synthetic_game_context.world
-    assert service.initialization.catalogue is synthetic_game_context.catalogue
-    assert (
-        service.market_lifecycle.generation
-        is synthetic_game_context.market_generation
+    """Compose production workflows without silently initializing state."""
+    market = build_market_generation_services(
+        synthetic_world_catalogue,
+        random.Random(1),
+        synthetic_vehicle_catalogue,
     )
+    context = build_fixture_game(
+        database,
+        "factory-owner",
+        synthetic_world_catalogue,
+        synthetic_vehicle_catalogue,
+        market,
+        lambda: 1,
+    )
+    service = context.service
+    assert isinstance(service, FixturePlayerGameFacade)
+    assert service.state_repository.get_player() is None
+    assert service.initialization.world is synthetic_world_catalogue
+    assert service.initialization.catalogue is synthetic_vehicle_catalogue
+    assert service.market_lifecycle.generation is market
     assert (
         service.transport_dispatch.market_demand
         is service.player_market.demand
