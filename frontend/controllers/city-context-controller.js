@@ -4,10 +4,10 @@ import { marketVehicle, vehicleCity } from "../market-context.js";
 
 /** Resolve route-local city context without scoping the world overview. */
 export class CityContextController {
-  /** @param {{state: import('../game-state.js').GameState, view: import('../types.js').PanelView, request: import('../types.js').RequestJson, notify: import('../types.js').Notify}} dependencies */
-  constructor({ state, view, request, notify }) {
+  /** @param {{state: import('../game-state.js').GameState, panel: import('./panel-controller.js').PanelController, request: import('../types.js').RequestJson, notify: import('../types.js').Notify}} dependencies */
+  constructor({ state, panel, request, notify }) {
     this.state = state;
-    this.view = view;
+    this.panel = panel;
     this.request = request;
     this.notify = notify;
     this.known = new Map();
@@ -35,10 +35,8 @@ export class CityContextController {
       if (!vehicle) this.route.searchParams.delete("vehicle");
       this.writeCity(this.route);
     }
-    this.view.cityUid = this.selected;
-    this.view.cities = [...this.known.values()].sort((a, b) => a.city.localeCompare(b.city));
-    this.view.activeCities = active;
-    this.view.marketCities = this.view.cities.filter((city) => active.includes(city.city_uid));
+    const cities = [...this.known.values()].sort((a, b) => a.city.localeCompare(b.city));
+    this.panel.publishCityContext(this.selected, cities, active);
   }
   /** Normalize only this route's city parameter.
    * @param {URL} url

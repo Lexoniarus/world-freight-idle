@@ -85,7 +85,7 @@ export class InputController {
     if (layers.open) {
       layers.open = false;
       layers.querySelector("summary").focus();
-    } else if (!this.panel.panel.hidden) this.navigate("/");
+    } else if (this.panel.isOpen()) this.navigate("/");
   }
   /** Remove all delegated listeners.
    * @returns {void}

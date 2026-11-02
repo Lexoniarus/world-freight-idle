@@ -4,12 +4,39 @@ import assert from "node:assert/strict";
 import { PreferencesController } from "./controllers/preferences-controller.js";
 import { renderCompanyPreferences } from "./ui/company-preferences.js";
 
-test("preference queue previews immediately, serializes writes and rolls back failed final save", async () => {
-  const responses = [];
-  const panel = {
-    view: { user: { company_color: "#e45756" }, companyPalette: ["#e45756", "#4c78a8", "#54a24b"] },
+function preferencePanel(view) {
+  return {
+    view,
+    acceptsCompanyColor(color) {
+      return view.companyPalette?.includes(color) ?? false;
+    },
+    beginPreferenceLoad() {
+      view.preferenceStatus = "loading";
+    },
+    publishPreferences(palette, color) {
+      view.preferenceStatus = "ready";
+      view.companyPalette = palette;
+      view.user.company_color = color;
+    },
+    failPreferenceLoad() {
+      view.preferenceStatus = "error";
+    },
+    setPreferenceSaveError(failed) {
+      view.preferenceSaveError = failed;
+    },
+    publishCompanyColor(color) {
+      view.user.company_color = color;
+    },
     render() {},
   };
+}
+
+test("preference queue previews immediately, serializes writes and rolls back failed final save", async () => {
+  const responses = [];
+  const panel = preferencePanel({
+    user: { company_color: "#e45756" },
+    companyPalette: ["#e45756", "#4c78a8", "#54a24b"],
+  });
   const controller = new PreferencesController({
     panel,
     map: null,
@@ -52,10 +79,7 @@ test("palette renders explicit loading, error retry and all accessible selected 
 
 test("late preference reads cannot overwrite a confirmed color change", async () => {
   const responses = [];
-  const panel = {
-    view: { user: {}, companyPalette: ["#4c78a8"] },
-    render() {},
-  };
+  const panel = preferencePanel({ user: {}, companyPalette: ["#4c78a8"] });
   const published = [];
   const controller = new PreferencesController({
     request: () => new Promise((resolve) => responses.push(resolve)),

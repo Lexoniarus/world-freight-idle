@@ -21,20 +21,18 @@ export class AnalyticsController {
     });
     if (view.url.searchParams.has("scope_id"))
       params.set("scope_id", view.url.searchParams.get("scope_id"));
-    view.analyticsLoading = true;
-    view.analyticsError = false;
+    this.panel.beginAnalyticsLoad();
     this.panel.render();
     try {
       const result = await this.request("/company/analytics?" + params, { signal: pending.signal });
       if (!pending.isCurrent()) return;
-      view.analytics = result;
-      if (result.scope.type === "company") view.analyticsChoices = result.breakdowns;
+      this.panel.publishAnalytics(result);
     } catch (error) {
       if (!pending.isCurrent() || error.name === "AbortError") return;
-      view.analyticsError = true;
+      this.panel.failAnalyticsLoad();
     } finally {
       if (pending.isCurrent()) {
-        view.analyticsLoading = false;
+        this.panel.finishAnalyticsLoad();
         this.panel.render();
       }
     }

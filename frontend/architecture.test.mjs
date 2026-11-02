@@ -39,6 +39,13 @@ function assertBoundaries(name, text) {
     if (name === "game-state.js")
       assert.ok(dependency !== "api.js" && !/^(views|controllers|map)\//.test(dependency), name);
   }
+  function memberPath(node) {
+    if (node?.type === "Identifier") return node.name;
+    if (node?.type === "ThisExpression") return "this";
+    if (node?.type !== "MemberExpression" || node.computed) return "";
+    const owner = memberPath(node.object);
+    return owner && node.property.type === "Identifier" ? `${owner}.${node.property.name}` : "";
+  }
   function visit(node) {
     if (!node || typeof node !== "object") return;
     if (
@@ -62,6 +69,12 @@ function assertBoundaries(name, text) {
       if (callee.type === "MemberExpression" && callee.property.name === "parseFromString")
         assert.ok(["ui/dom.js", "ui/illustrations.js"].includes(name), name);
     }
+    if (
+      node.type === "AssignmentExpression" &&
+      name.startsWith("controllers/") &&
+      name !== "controllers/panel-controller.js"
+    )
+      assert.ok(!memberPath(node.left).includes("panel.view"), name);
     for (const value of Object.values(node)) {
       if (Array.isArray(value)) value.forEach(visit);
       else if (value && typeof value === "object") visit(value);

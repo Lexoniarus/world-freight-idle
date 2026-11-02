@@ -22,6 +22,165 @@ export class PanelController {
     this.disposed = false;
     this.images = images;
   }
+  /** Report whether a mutation or quote currently owns the panel.
+   * @returns {boolean}
+   */
+  isBusy() {
+    return this.view.busy;
+  }
+  /** Report whether the panel surface is currently visible.
+   * @returns {boolean}
+   */
+  isOpen() {
+    return !this.panel.hidden;
+  }
+  /** Return the currently published quote for map focus and dispatch.
+   * @returns {import('../types.js').Quote | null}
+   */
+  currentQuote() {
+    return this.view.quote;
+  }
+  /** Publish quote progress without exposing writable view state.
+   * @param {boolean} active
+   * @returns {void}
+   */
+  setQuotePending(active) {
+    this.view.quoting = active;
+  }
+  /** Select a vehicle and discard economics from the prior selection.
+   * @param {string} vehicleId
+   * @returns {void}
+   */
+  selectVehicle(vehicleId) {
+    this.view.selectedVehicle = vehicleId;
+    this.view.url.searchParams.set("vehicle", vehicleId);
+    window.history.replaceState({}, "", this.view.url.pathname + this.view.url.search);
+    this.view.quote = null;
+  }
+  /** Publish a quote belonging to the current vehicle selection.
+   * @param {import('../types.js').Quote | null} quote
+   * @returns {void}
+   */
+  publishQuote(quote) {
+    this.view.quote = quote;
+  }
+  /** Publish mutation progress owned by action orchestration.
+   * @param {boolean} active
+   * @returns {void}
+   */
+  setMutationPending(active) {
+    this.view.mutating = active;
+  }
+  /** Publish one synchronized game and market-detail snapshot.
+   * @param {import('../types.js').GameSnapshot} state
+   * @param {import('../types.js').Contract | null} detailContract
+   * @param {string | null} detailId
+   * @param {boolean} marketLoaded
+   * @param {boolean} marketStale
+   * @returns {void}
+   */
+  publishGameState(state, detailContract, detailId, marketLoaded, marketStale) {
+    Object.assign(this.view, {
+      state,
+      detailContract,
+      detailId,
+      marketLoaded,
+      marketStale,
+    });
+  }
+  /** Publish route-local city labels resolved by the city controller.
+   * @param {string} cityUid
+   * @param {Array<import('../types.js').FacilityLocation>} cities
+   * @param {Array<string>} activeCities
+   * @returns {void}
+   */
+  publishCityContext(cityUid, cities, activeCities) {
+    Object.assign(this.view, {
+      cityUid,
+      cities,
+      activeCities,
+      marketCities: cities.filter((city) => activeCities.includes(city.city_uid)),
+    });
+  }
+  /** Mark a preference read as pending.
+   * @returns {void}
+   */
+  beginPreferenceLoad() {
+    this.view.preferenceStatus = "loading";
+  }
+  /** Publish the curated preference palette and confirmed color.
+   * @param {Array<string>} palette
+   * @param {string} color
+   * @returns {void}
+   */
+  publishPreferences(palette, color) {
+    this.view.preferenceStatus = "ready";
+    this.view.companyPalette = palette;
+    this.view.user.company_color = color;
+  }
+  /** Mark a preference read as unavailable.
+   * @returns {void}
+   */
+  failPreferenceLoad() {
+    this.view.preferenceStatus = "error";
+  }
+  /** Publish whether the latest preference write failed.
+   * @param {boolean} failed
+   * @returns {void}
+   */
+  setPreferenceSaveError(failed) {
+    this.view.preferenceSaveError = failed;
+  }
+  /** Publish one optimistic or confirmed company color.
+   * @param {string} color
+   * @returns {void}
+   */
+  publishCompanyColor(color) {
+    this.view.user.company_color = color;
+  }
+  /** Report whether a color belongs to the server-provided palette.
+   * @param {string} color
+   * @returns {boolean}
+   */
+  acceptsCompanyColor(color) {
+    return Boolean(this.view.companyPalette?.includes(color));
+  }
+  /** Mark analytics loading and clear an obsolete error.
+   * @returns {void}
+   */
+  beginAnalyticsLoad() {
+    this.view.analyticsLoading = true;
+    this.view.analyticsError = false;
+  }
+  /** Publish one analytics response and its company breakdowns.
+   * @param {import('../types.js').AnalyticsReport & {scope: {type: string}}} result
+   * @returns {void}
+   */
+  publishAnalytics(result) {
+    this.view.analytics = result;
+    if (result.scope.type === "company") this.view.analyticsChoices = result.breakdowns;
+  }
+  /** Mark the latest analytics read as failed.
+   * @returns {void}
+   */
+  failAnalyticsLoad() {
+    this.view.analyticsError = true;
+  }
+  /** Finish the current analytics request.
+   * @returns {void}
+   */
+  finishAnalyticsLoad() {
+    this.view.analyticsLoading = false;
+  }
+  /** Toggle between contextual and management panel presentation.
+   * @returns {void}
+   */
+  toggleMode() {
+    this.panel.dataset.mode = this.panel.dataset.mode === "management" ? "context" : "management";
+    document
+      .querySelector("#game")
+      ?.classList.toggle("management-open", this.panel.dataset.mode === "management");
+  }
   /** Reset only panel-specific selection when the route changes.
    * @param {URL} url
    *

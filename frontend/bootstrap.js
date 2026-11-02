@@ -121,7 +121,7 @@ function createGameApplication(api, user, redirect) {
   });
   map?.setCompanyColor(user.company_color);
   const preferences = new PreferencesController({ request: api.request, panel, map, notify });
-  const city = new CityContextController({ state, view, request: api.request, notify });
+  const city = new CityContextController({ state, panel, request: api.request, notify });
   const layers = new LayerStateController({ userId: user.id, map });
   const analytics = new AnalyticsController({ request: api.request, panel });
   const sync = new GameSync({ state, panel, map, notify });

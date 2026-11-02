@@ -5,6 +5,19 @@ import { CityContextController } from "./controllers/city-context-controller.js"
 import { GameState } from "./game-state.js";
 import { berlin, offer, other, vehicle } from "./test-support/freight-fixtures.mjs";
 
+function panelFor(view) {
+  return {
+    publishCityContext(cityUid, cities, activeCities) {
+      Object.assign(view, {
+        cityUid,
+        cities,
+        activeCities,
+        marketCities: cities.filter((city) => activeCities.includes(city.city_uid)),
+      });
+    },
+  };
+}
+
 function cityFixture() {
   const state = new GameState(async () => {});
   state.data = { vehicles: [vehicle], transports: [], contracts: [offer] };
@@ -13,7 +26,7 @@ function cityFixture() {
   const reads = [];
   const city = new CityContextController({
     state,
-    view,
+    panel: panelFor(view),
     notify() {},
     map: { camera: { fitCoordinates: (points) => focus.push(points) } },
     request: async (path) => {
@@ -88,7 +101,7 @@ test("navigation waits for an explicit vehicle or city context", async () => {
   const view = {};
   const city = new CityContextController({
     state,
-    view,
+    panel: panelFor(view),
     request: async () => {},
     notify: () => {},
     map: null,
@@ -113,7 +126,7 @@ test("market cities contain only origins of currently idle vehicles", async () =
   const view = { url: new URL("http://test/contracts?city=b") };
   const city = new CityContextController({
     state,
-    view,
+    panel: panelFor(view),
     request: async () => other,
     notify() {},
     map: null,

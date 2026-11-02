@@ -6,6 +6,20 @@ test("analytics publishes only the newest requested scope", async () => {
   const pending = [];
   const panel = {
     view: { url: new URL("http://test/company?days=7") },
+    beginAnalyticsLoad() {
+      this.view.analyticsLoading = true;
+      this.view.analyticsError = false;
+    },
+    publishAnalytics(result) {
+      this.view.analytics = result;
+      if (result.scope.type === "company") this.view.analyticsChoices = result.breakdowns;
+    },
+    failAnalyticsLoad() {
+      this.view.analyticsError = true;
+    },
+    finishAnalyticsLoad() {
+      this.view.analyticsLoading = false;
+    },
     render() {},
   };
   const controller = new AnalyticsController({
