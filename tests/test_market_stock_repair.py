@@ -1,9 +1,17 @@
-"""Offline detection of replaceable historical market repetition."""
+"""Offline correction of replaceable historical market repetition."""
 
+import json
+import sqlite3
+from contextlib import closing
 from dataclasses import asdict, replace
 from hashlib import sha256
+from unittest.mock import patch
 
+import pytest
+
+from app.bootstrap import build_market_stock_repair
 from app.domain.contracts import ContractOffer
+from app.domain.errors import PersistenceError
 from app.domain.market_stock import PreparedTemplate, StockPolicy
 from app.domain.market_stock_repair import (
     MarketStockRepairContext,
@@ -96,6 +104,23 @@ def _repair_service(contexts):
     )
 
 
+def _persist_context(context, preparation, database):
+    """Store one synthetic historical context for repository tests."""
+    with database.transaction():
+        for item in context.offers:
+            preparation.stock.templates.add(
+                PreparedTemplate(
+                    item.template_id,
+                    context.model_id,
+                    context.city_uid,
+                    item.offer,
+                )
+            )
+            preparation.stock.stock.issue(item.template_id, item.offer)
+        for template in context.alternatives:
+            preparation.stock.templates.add(template)
+
+
 def test_market_stock_repair_plans_only_prepared_improvements(
     diverse_stock_game,
 ):
@@ -132,19 +157,7 @@ def test_market_stock_repair_store_reads_source_without_mutation(
     """Decode persisted contexts through a query-only source connection."""
     _, preparation, _ = diverse_stock_game
     context = _repair_context(diverse_stock_game)
-    with database.transaction():
-        for item in context.offers:
-            preparation.stock.templates.add(
-                PreparedTemplate(
-                    item.template_id,
-                    context.model_id,
-                    context.city_uid,
-                    item.offer,
-                )
-            )
-            preparation.stock.stock.issue(item.template_id, item.offer)
-        for template in context.alternatives:
-            preparation.stock.templates.add(template)
+    _persist_context(context, preparation, database)
     before = sha256(database.path.read_bytes()).hexdigest()
 
     stored = SqliteMarketStockRepairStore(database.path).contexts()
@@ -156,3 +169,161 @@ def test_market_stock_repair_store_reads_source_without_mutation(
     assert len(selected.offers) == 10
     assert len(selected.alternatives) == 2
     assert all(item.removable for item in selected.offers)
+
+
+def test_market_stock_repair_creates_reconciled_idempotent_copy(
+    diverse_stock_game,
+    database,
+    tmp_path,
+):
+    """Preserve gameplay and routing state outside approved stock rows."""
+    _, preparation, _ = diverse_stock_game
+    context = _repair_context(diverse_stock_game)
+    _persist_context(context, preparation, database)
+    source_hash = sha256(database.path.read_bytes()).hexdigest()
+    target = tmp_path / "repaired.db"
+    archive = tmp_path / "removed-stock.jsonl"
+
+    report = build_market_stock_repair(database.path).repair_to(
+        target,
+        archive,
+        1234,
+    )
+
+    assert report.offers_to_remove == 2
+    assert sha256(database.path.read_bytes()).hexdigest() == source_hash
+    assert archive.read_text(encoding="utf-8").count("\n") == 3
+    assert build_market_stock_repair(target).inspect().offers_to_remove == 0
+    with closing(sqlite3.connect(target)) as output:
+        assert output.execute(
+            "SELECT count(*) FROM contract_offers"
+        ).fetchone() == (8,)
+        assert output.execute(
+            "SELECT count(*) FROM market_templates"
+        ).fetchone() == (12,)
+        assert output.execute(
+            "SELECT status,next_retry_at FROM market_preparations "
+            "WHERE user_id='test-owner'"
+        ).fetchone() == ("partial", None)
+        assert output.execute("PRAGMA integrity_check").fetchone() == ("ok",)
+        assert output.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def test_market_stock_repair_rolls_back_failed_artifacts(
+    diverse_stock_game,
+    database,
+    tmp_path,
+):
+    """Remove incomplete output and archive while retaining the source."""
+    _, preparation, _ = diverse_stock_game
+    _persist_context(
+        _repair_context(diverse_stock_game),
+        preparation,
+        database,
+    )
+    source_hash = sha256(database.path.read_bytes()).hexdigest()
+    service = build_market_stock_repair(database.path)
+    target = tmp_path / "failed.db"
+    archive = tmp_path / "failed.jsonl"
+
+    with patch.object(
+        type(service.store),
+        "_compare",
+        side_effect=PersistenceError("simulated mismatch"),
+    ):
+        with pytest.raises(PersistenceError, match="simulated mismatch"):
+            service.repair_to(target, archive, 1234)
+
+    assert sha256(database.path.read_bytes()).hexdigest() == source_hash
+    assert not target.exists()
+    assert not archive.exists()
+
+
+def test_market_stock_repair_reconciliation_rejects_unapproved_changes(
+    diverse_stock_game,
+    database,
+    tmp_path,
+):
+    """Reject any copied gameplay change outside the approved repair."""
+    _, preparation, _ = diverse_stock_game
+    _persist_context(
+        _repair_context(diverse_stock_game),
+        preparation,
+        database,
+    )
+    service = build_market_stock_repair(database.path)
+    assert isinstance(service.store, SqliteMarketStockRepairStore)
+    plan = service.planner.plan(service.store.contexts())
+    target = tmp_path / "reconciled.db"
+    archive = tmp_path / "reconciled.jsonl"
+    service.repair_to(target, archive, 1234)
+    with (
+        closing(
+            sqlite3.connect(
+                database.path.resolve().as_uri() + "?mode=ro",
+                uri=True,
+            )
+        ) as source,
+        closing(sqlite3.connect(target)) as output,
+    ):
+        source.row_factory = output.row_factory = sqlite3.Row
+        output.execute("UPDATE player_states SET cash=cash+1")
+        output.commit()
+        with pytest.raises(PersistenceError, match="Unzulässige"):
+            service.store._compare(source, output, plan, 1234)
+
+
+def test_market_stock_repair_cli_requires_independent_artifacts(
+    diverse_stock_game,
+    database,
+    tmp_path,
+    capsys,
+):
+    """Keep check read-only and require backup before copy repair."""
+    from scripts.repair_market_diversity import main
+
+    _, preparation, _ = diverse_stock_game
+    _persist_context(
+        _repair_context(diverse_stock_game),
+        preparation,
+        database,
+    )
+    source_hash = sha256(database.path.read_bytes()).hexdigest()
+    base = [
+        "repair_market_diversity.py",
+        "--source",
+        str(database.path),
+    ]
+    with patch("sys.argv", [*base, "--check"]):
+        main()
+    assert json.loads(capsys.readouterr().out)["offers_to_remove"] == 2
+    for arguments in (
+        [],
+        ["--check", "--backup", str(tmp_path / "bad.db")],
+        [
+            "--backup",
+            str(database.path),
+            "--output",
+            str(tmp_path / "output.db"),
+            "--archive",
+            str(tmp_path / "archive.jsonl"),
+        ],
+    ):
+        with patch("sys.argv", [*base, *arguments]), pytest.raises(SystemExit):
+            main()
+    backup = tmp_path / "backup.db"
+    output = tmp_path / "output.db"
+    archive = tmp_path / "archive.jsonl"
+    arguments = [
+        *base,
+        "--backup",
+        str(backup),
+        "--output",
+        str(output),
+        "--archive",
+        str(archive),
+    ]
+    with patch("sys.argv", arguments), patch("time.time", return_value=1234):
+        main()
+    assert backup.exists() and output.exists() and archive.exists()
+    assert sha256(database.path.read_bytes()).hexdigest() == source_hash

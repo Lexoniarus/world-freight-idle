@@ -1,6 +1,7 @@
 """Typed boundaries for explicit offline market-stock correction."""
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 from app.domain.contracts import ContractOffer
@@ -62,3 +63,11 @@ class MarketStockRepairStore(Protocol):
     """Read persisted repair inputs without deciding market quality."""
 
     def contexts(self) -> tuple[MarketStockRepairContext, ...]: ...
+
+    def repair_to(
+        self,
+        plan: MarketStockRepairPlan,
+        target: Path,
+        archive: Path,
+        now: float,
+    ) -> None: ...

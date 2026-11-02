@@ -24,6 +24,7 @@ PYTHON_COMMANDS = (
         "scripts/audit_routing_readiness.py",
         "scripts/repair_transport_metadata.py",
         "scripts/upgrade_market_stock.py",
+        "scripts/repair_market_diversity.py",
     ),
     (
         sys.executable,
@@ -43,6 +44,7 @@ PYTHON_COMMANDS = (
         "scripts/audit_routing_readiness.py",
         "scripts/repair_transport_metadata.py",
         "scripts/upgrade_market_stock.py",
+        "scripts/repair_market_diversity.py",
     ),
     (
         sys.executable,
@@ -58,6 +60,7 @@ PYTHON_COMMANDS = (
         "scripts/audit_routing_readiness.py",
         "scripts/repair_transport_metadata.py",
         "scripts/upgrade_market_stock.py",
+        "scripts/repair_market_diversity.py",
     ),
     (
         "node",

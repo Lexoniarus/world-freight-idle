@@ -2,6 +2,7 @@
 
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 
 from app.domain.market_stock import StockPolicy
 from app.domain.market_stock_repair import (
@@ -48,7 +49,7 @@ class MarketStockRepairPlanner:
         contexts: tuple[MarketStockRepairContext, ...],
     ) -> MarketStockRepairPlan:
         """Plan deterministic removals without mutating persistence."""
-        removals = []
+        removals: list[MarketStockRemoval] = []
         affected = 0
         for context in contexts:
             if len(context.offers) < self.policy.reserve_per_band:
@@ -120,6 +121,34 @@ class MarketStockRepairService:
                     "affected_contexts": report.affected_contexts,
                     "offers_to_remove": report.offers_to_remove,
                     "players_to_requeue": report.players_to_requeue,
+                },
+            },
+        )
+        return report
+
+    def repair_to(
+        self,
+        target: Path,
+        archive: Path,
+        now: float,
+    ) -> MarketStockRepairReport:
+        """Create a verified repaired copy from the immutable source."""
+        plan = self.planner.plan(self.store.contexts())
+        self.store.repair_to(plan, target, archive, now)
+        report = MarketStockRepairReport(
+            plan.checked_contexts,
+            plan.affected_contexts,
+            len(plan.removals),
+            len({item.user_id for item in plan.removals}),
+        )
+        LOGGER.info(
+            "Historical market diversity repaired in a separate copy",
+            extra={
+                "event": "market.stock_repaired",
+                "data": {
+                    "affected_contexts": report.affected_contexts,
+                    "removed_offers": report.offers_to_remove,
+                    "requeued_players": report.players_to_requeue,
                 },
             },
         )
