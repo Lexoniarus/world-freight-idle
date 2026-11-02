@@ -25,6 +25,11 @@ damit entstehen weder implizite Collection-Abhängigkeiten noch alternative
 Produktionsarchitekturen. Die Runtime-Fixture verdrahtet dieselben lokalen
 Preparation-, Readiness- und Stock-Grenzen wie der Composition Root.
 
+Jeder einzelne Python- und Playwright-Fall besitzt ein hartes Zeitlimit von
+zehn Sekunden. `pytest-timeout` bricht hängende Python-Fälle ab; Playwright
+wendet dieselbe Grenze pro Browserfall an. Ein Timeout wird untersucht und
+nicht durch Wiederholung oder eine großzügigere globale Grenze verdeckt.
+
 ## Synthetische Standarddaten
 
 Domain-, Service- und Gameplaytests verwenden ausdrücklich benannte
@@ -281,7 +286,7 @@ Quality-Gate einschließlich Build abschließen, danach `npm run test:e2e`.
 `map-focus.test.mjs` und `vehicle-paint.test.mjs` prüfen getrennt
 Überschneidungen, Status-/Eigentümerpartitionen, Marker-Lifecycle,
 Layerausrichtung, Fokusverbrauch und sichere Maskenmathematik.
-`tests/browser/map-regressions.spec.js` verwendet echte MapLibre-Layer
+`tests/browser/maplibre-vehicle-groups.spec.js` verwendet echte MapLibre-Layer
 mit den Produktionsmodulen in einer ausschließlich im Test abgefangenen
 Modulumgebung. Genau ein Komponententest prüft native Enter-/Fokussemantik mit
 zwei synthetischen Fahrzeugen. Masken, Richtungen, Gruppierung und alle 42
@@ -289,7 +294,7 @@ Assetrollen werden schneller auf Datei-/DOM-Ebene geprüft. Keine OSM-Downloads.
 
 Vollständiges Quality-Gate und E2E nacheinander ausführen; ein Vite-Build
 darf dem laufenden Browserregressionsserver nicht seine Assets entfernen.
-Lokale Renderer-Belege: `artifacts/map-regressions/`, Lackierungs-Proofs:
+Lokale Renderer-Belege: `artifacts/maplibre-vehicle-groups/`, Lackierungs-Proofs:
 `artifacts/masks/`, normale UI-Belege im konfigurierten Temp-Verzeichnis.
 
 

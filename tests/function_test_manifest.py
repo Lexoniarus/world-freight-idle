@@ -533,7 +533,7 @@ FUNCTION_TESTS.update(
         "app.domain.energy.EnergyProfile.__post_init__": "test_energy_profile_validates_measurements_and_consumption",
         "app.domain.energy.EnergyProfile.validate_level": "test_energy_profile_validates_measurements_and_consumption",
         "app.domain.energy.EnergyProfile.consumption_for": "test_energy_profile_validates_measurements_and_consumption",
-        "app.domain.vehicles.VehicleModel.__post_init__": "test_catalogue_energy_values_match_all_fourteen_models",
+        "app.domain.vehicles.VehicleModel.__post_init__": "test_synthetic_catalogue_energy_values_cover_supported_powertrains",
         "app.repositories.vehicle_catalogue.read_energy_profile": "test_catalogue_rejects_incomplete_energy",
     }
 )

@@ -7,8 +7,8 @@ export default defineConfig({
   outputDir: join(tmpdir(), "world-freight-playwright-results"),
   fullyParallel: false,
   workers: 1,
-  timeout: 60000,
-  expect: { timeout: 15000 },
+  timeout: 10000,
+  expect: { timeout: 8000 },
   reporter: "list",
   use: {
     baseURL: "http://127.0.0.1:8011",
