@@ -211,11 +211,13 @@ im Reader. Große Koordinatenarrays bleiben in SQLite; Python erhält nur Skalar
 Zusätzlich erzwingt PRAGMA query_only die rein lesende Aggregation.
 Neue Core-Callables stehen im Function-Test-Manifest.
 
-`frontend/layer-and-market-controllers.test.mjs` ergänzt UUID-Stadtauswahl,
-bekannte inaktive Städte, Deep Links/Legacy-Auflösung, verspätete Antworten,
-accountgebundene Layer-Presets/Overrides, Gruppierung ohne
-Koordinatenänderungen, serverseitige Eligibility, getrennte
-Listen-/Detailzustände, Assetrollen und Charttabellen.
+Eigentümermodule prüfen diese Grenzen getrennt: `city-context-controller`,
+`layer-state-controller`, `contract-market-controller`, `analytics-controller`,
+`contract-view`, `market-context`, `map-grouping`, `map-selection`, `game-state`,
+`charts` und `dom`. Damit liegen UUID-Stadtauswahl, Deep Links,
+accountgebundene Layer-Presets, Gruppierung, serverseitige Eligibility,
+Listen-/Detailzustände und zugängliche Charttabellen jeweils beim zuständigen
+Produktionsmodul.
 Vorhandene Quote-/Dispatch-/Cleanup-/Bildstabilitätsprüfungen bleiben erhalten.
 
 Playwright prüft einen Dispositions-/Settlement-Ablauf sowie mobile Sheets,
