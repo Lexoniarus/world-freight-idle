@@ -1,5 +1,25 @@
 # Changelog
 
+## Explizite Modul- und Objektgrenzen – 02.11.2026
+
+- Der Composition Root ist nach Runtime, Spieler, Wartung und Audits getrennt.
+  `PlayerGameFacade` bleibt die schmale öffentliche Spielergrenze;
+  `PlayerServiceContext` hält Infrastruktur nur an der Composition-Kante.
+- Legacy-Snapshotdecoder und Marktupgrade-Stufen besitzen getrennte Module.
+  Valhalla-Antwortdecodierung ist vom HTTP-, Cache- und Rate-Limit-Besitz des
+  Routers getrennt. Öffentliche Verträge und gespeicherte Formate bleiben
+  unverändert.
+- `PanelViewState` besitzt die Mutationen am Panelmodell. Kartenquellen sowie
+  Routen-, Standort- und Fahrzeuglayer sind getrennt; globale Styles liegen
+  nach Verantwortung unter `frontend/styles` bei stabiler Kaskade.
+- Breite Katalog- und Repositorytestmodule wurden nicht mechanisch geteilt:
+  sie besitzen jeweils einen klaren Produktionsowner, unabhängige Fälle und
+  bleiben pro Einzelfall deutlich unter zehn Sekunden.
+- Die lokale Endabnahme bestand mit 656 Python-Tests bei 100 %
+  App-Statement-Coverage, 131 Frontendtests und 14 Playwright-Grenzen. Der
+  langsamste Pythonfall benötigte 3,12 Sekunden, der langsamste Browserfall
+  7,5 Sekunden; Supabase, Live-Provider und öffentliche Tiles blieben aus.
+
 ## Abschließende Verantwortungs- und Testhärtung – 02.11.2026
 
 - Contract-, Kandidaten- und Routingtests sind nach API-Übersetzung,

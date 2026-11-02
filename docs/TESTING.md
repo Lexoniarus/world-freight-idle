@@ -44,6 +44,15 @@ zehn Sekunden. `pytest-timeout` bricht hängende Python-Fälle ab; Playwright
 wendet dieselbe Grenze pro Browserfall an. Ein Timeout wird untersucht und
 nicht durch Wiederholung oder eine großzügigere globale Grenze verdeckt.
 
+Dateigröße allein ist kein Grund für mechanisches Aufteilen. Ein größeres
+Testmodul darf bestehen bleiben, wenn sein Name genau einen Produktionsowner
+bezeichnet, seine Fälle unabhängig gesammelt werden und jeder Fall die
+Zehn-Sekunden-Grenze einhält. Aufgeteilt wird bei gemischten Verantwortungen,
+impliziten Ablaufketten oder gemeinsamem veränderlichem Zustand. Damit bleiben
+beispielsweise Welt- und Fahrzeugkatalogabnahmen als je eine klar benannte
+Artefaktgrenze lesbar, ohne wieder von Service- oder Domaintests importiert zu
+werden.
+
 ## Synthetische Standarddaten
 
 Domain-, Service- und Gameplaytests verwenden ausdrücklich benannte
@@ -61,6 +70,11 @@ temporäre SQLite-Kataloge, deren Schema und Daten als lesbares SQL in
 `tests/support/catalogue_databases.py` liegen. Diese Trennung ist fachlich:
 synthetische Szenarien prüfen Verhalten; Binärkataloge prüfen das ausgelieferte
 Referenzartefakt.
+
+Composition-Tests greifen für gewöhnliche Spielerfälle nur auf die öffentliche
+`PlayerGameFacade` zu. Wo ein Test ausdrücklich die Verdrahtung eines
+spezialisierten Use Cases prüft, liefert `FixturePlayerGameFacade` die
+benannten Testzugriffe. Produktionscode exponiert diese Infrastruktur nicht.
 
 ## Verhalten und Grenzen
 

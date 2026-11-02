@@ -4,6 +4,28 @@ Stand: 02.11.2026. Arbeitsbranch `refactor/local-market-pool`. Dieser Abschnitt
 ist der aktuelle Prüfstand; die folgenden Berichte sind historische Abnahmen
 früherer Architekturen.
 
+## Abschließende Modul- und Objektgrenzen
+
+Der Composition Root ist nach Runtime, Spieler, Wartung und Audits getrennt;
+`app/bootstrap.py` ist nur noch die stabile Importfassade. Die öffentliche
+`PlayerGameFacade` exponiert keine Repository- oder Service-Locator-Zugriffe.
+`PlayerServiceContext` hält die benötigten Kollaboratoren ausschließlich an
+der Verdrahtungskante, während `FixturePlayerGameFacade` Testzugriffe klar als
+solche benennt.
+
+Legacy-Snapshots besitzen getrennte Decoder für Standorte, Fahrzeuge,
+Verträge und Transporte. Das Marktupgrade trennt Inspektion, Transformation
+und Abgleich. Valhalla-I/O und Cachebesitz verbleiben im Router; die reine
+Antwortvalidierung liegt im `ValhallaResponseParser`. Diese Teilung ändert
+weder Dateiformate noch Datenbankschema, HTTP-Verträge oder Spielverhalten.
+
+Im Frontend besitzt `PanelViewState` alle Mutationen am Panelmodell, während
+`PanelController` DOM, Requests und Rendering orchestriert. MapLibre-Quellen,
+Routen-, Standort- und Fahrzeuglayer sind getrennte Module. Die bisherigen
+globalen Styles liegen nach Auth, Workspace, Controls, Katalog, Markt,
+Kartenfeedback, Fahrzeugmedien und Responsivität unter `frontend/styles`;
+ihre Kaskadenreihenfolge bleibt stabil.
+
 ## Aktuelle Testpyramide
 
 Service- und Domaintests verwenden kompakte typisierte In-Memory-Kataloge mit
@@ -15,10 +37,10 @@ Repositoryfehler verwenden zwei kleine SQL-Kataloge mit zwei Standorten und
 vier Fahrzeugmodellen; die großen Referenzdateien bleiben dabei unverändert.
 
 Der abschließende lokale Abnahmelauf bestand mit **656 Python-Tests** in
-73,25 Sekunden bei 100 % App-Statement-Coverage; der langsamste Pythonfall
-benötigte 2,47 Sekunden. Die **131 Frontendtests** bestanden in 8,89 Sekunden.
+82,88 Sekunden bei 100 % App-Statement-Coverage; der langsamste Pythonfall
+benötigte 3,12 Sekunden. Die **131 Frontendtests** bestanden in 8,57 Sekunden.
 Alle **14** getrennten Playwright-Grenzen bestanden in 1,1 Minuten; der
-langsamste Browserfall benötigte 7,3 Sekunden. Kein Einzelfall überschritt die
+langsamste Browserfall benötigte 7,5 Sekunden. Kein Einzelfall überschritt die
 harte Zehn-Sekunden-Grenze. Öffentliche Tiles, echte Provider und Supabase
 waren in allen Läufen ausgeschlossen.
 
@@ -47,7 +69,7 @@ Der abschließende Zuständigkeitsreview umfasst zusätzlich Modulnamen,
 Objektbesitz, Funktionsschritte, Vererbung und Frontend-Kapselung. Gameplay,
 Markt und Routing liegen in ihren Eigentümerpaketen; der Marktworker liegt bei
 den Marktservices. `GameRuntime` spiegelt Router und Anchor-Resolver nicht mehr
-neben `RoutingPreparationService`. `GameService` bleibt eine delegierende,
+neben `RoutingPreparationService`. `PlayerGameFacade` bleibt eine delegierende,
 spielergebundene Fassade ohne Welt-/Katalog-/Provider-Service-Locator.
 
 `ValhallaTruckRouter`, `ValhallaTruckAnchorLocator`,
@@ -87,7 +109,7 @@ Routenbindungen und Integrität separat. Der Weltkatalog liest Facility-Quellen,
 Koordinatenevidenz, Aliase und dokumentierte Güter über eigenständige Mapper.
 
 Die Composition-Namen zeigen ihren Besitz direkt: `GameRuntime` hält
-`market_generation`, `GameService` hält `player_market`,
+`market_generation`, `PlayerGameFacade` hält privat `player_market`,
 `PlayerMarketServices` hält `stores`. `MarketGenerationServices` bündelt nur
 `candidates`, `contract_factory` und `coverage`; `PlayerMarketStores` benennt
 `offers`, `templates` und `policy`. `RoutingConnectionValidator` trennt die
@@ -164,7 +186,7 @@ Preparation-/Readiness-Grenzen wie Produktion; gemeinsame Fixtures liegen in
 `MapInteractions` Hit-Testing, Hover und Listener-Cleanup getrennt vom
 `WorldMap`-Renderer.
 
-`GameService` ist eine delegierende Spielfassade. `PlayerInitializationService`
+`PlayerGameFacade` ist eine delegierende Spielfassade. `PlayerInitializationService`
 besitzt Anlage und Reset, `TransportDispatchService` Quote und Dispatch und
 `TransportSettlementService` Ankunft und Auszahlung. Dadurch liegen Lookup,
 Validierung, Trip-Bau, Preisberechnung und Commit nicht mehr neben fachfremden

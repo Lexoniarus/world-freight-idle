@@ -46,13 +46,17 @@ jeweiligen Schnitt im Architekturreview zu entscheiden. Diese Dokumentation
 - `app/repositories/market_stock_repair`: explizite Offline-Grenze mit
   query-only Reader, checksummiertem Archiv, Copy-Executor und gemeinsamer
   Strukturvalidierung. Keine Komponente verändert die aktive Quelldatenbank.
-- `app/providers`: validierte Valhalla-/Geocoding-Antworten, Providerfehler,
-  Rate-Limit und Cache-Port. Nominatim dient Offline-Enrichment und begrenztem Backend-Anchor-Repair;
+- `app/providers`: HTTP-/Cache-Adapter für Valhalla und Geocoding. Der
+  zustandslose `ValhallaResponseParser` besitzt ausschließlich die strikte
+  Antwortdecodierung; Provider-I/O, Rate-Limit und Cache bleiben beim Router.
+  Nominatim dient Offline-Enrichment und begrenztem Backend-Anchor-Repair;
   keine allgemeinen Spieler-Geocoding-Anfragen.
 - `app/api/v1`: HTTP-Eingaben, Statuscodes und öffentliche JSON-Projektionen.
   Bestehende `hub_id`-Felder werden hier aus Facility-UIDs projiziert.
-- `app/bootstrap.py` und `app/main.py`: konkrete Verdrahtung und Ressourcenbesitz.
-  Die Zeitquelle wird im Composition Root an GameService übergeben.
+- `app/composition`: konkrete Verdrahtung, getrennt nach Runtime, Spieler,
+  Wartung und Audits. `app/bootstrap.py` bleibt ausschließlich die stabile
+  Importfassade; `app/main.py` besitzt den Prozesslebenszyklus. Die Zeitquelle
+  wird an die zuständigen Services und die `PlayerGameFacade` übergeben.
 
 ```text
 Browser → API → Services → Domain-Ports
@@ -71,11 +75,12 @@ Domainregeln erhalten Zeitpunkte als Parameter.
 `GameRuntime` ist ausschließlich der vom Composition Root besessene Container
 für geteilte Datenbank-, Katalog-, Markt- und Routingservices. Router und
 Anchor-Provider werden einmal in `RoutingPreparationService` injiziert und
-nicht als zweiter überschreibbarer Runtime-Zustand gespiegelt. `GameService`
-ist die spielergebundene Fassade und kein Service Locator: Welt, Katalog und
-Provider bleiben bei den spezialisierten Services beziehungsweise beim
-Composition Root. Tests bauen denselben Objektgraphen mit Doubles unter
-`tests/support`; `FixtureGameContext` ist ausdrücklich nur eine Testhilfe.
+nicht als zweiter überschreibbarer Runtime-Zustand gespiegelt.
+`PlayerGameFacade` ist die schmale öffentliche Spielergrenze und kein Service
+Locator. Infrastruktur und spezialisierte Services bleiben privat;
+`PlayerServiceContext` hält sie nur an der Composition-Kante für andere
+verdrahtete Use Cases. Tests bauen denselben Objektgraphen mit Doubles unter
+`tests/support`; `FixturePlayerGameFacade` ist ausdrücklich nur eine Testhilfe.
 
 ## Zustand und Atomarität
 
@@ -151,7 +156,7 @@ Market-, Distance-, Scale- und Capability-Profile sind eigene Domainwerte.
 | PlayerInitializationService | Erstanlage und Reset eines Spielers transaktional besitzen |
 | TransportDispatchService | Quote, Revalidierung und atomaren Dispatch besitzen |
 | TransportSettlementService | Fällige Transporte genau einmal abrechnen und Spielerstatus lesen |
-| GameService | HTTP-nahe Spielfassade und reine Read-Orchestrierung bereitstellen |
+| PlayerGameFacade | HTTP-nahe Spieler-Use-Cases an spezialisierte Services delegieren |
 
 Stateful Services und Repository-Grenzen sind injizierte Klassen. Gemeinsame
 reine Funktionen prüfen Fahrzeugklasse/Scale; Haversine, Band, Gewichtung und
@@ -172,10 +177,18 @@ und die bestehenden Tabellen bleiben unverändert.
 
 Der Offline-Legacy-Import trennt ebenfalls Montage von Wertdecodierung.
 `LegacySnapshotReader` montiert Standort-, Fahrzeug-, Offer- und
-Transportsnapshots gegen den injizierten Weltkatalog. `legacy_import_values`
-prüft verschachtelte Feldmengen, Quellen, Waren, Frachtprofile und
-Routengeometrie. Dadurch kennt der Mapper keine zweite Importquelle und der
-strikte Decoder keine Datenbank oder Katalogauflösung.
+Transportsnapshots gegen den injizierten Weltkatalog. Die Module unter
+`app/repositories/legacy_snapshot` decodieren Standorte, Fahrzeuge, Verträge
+und Transporte; `legacy_import_values` prüft die gemeinsam verwendeten
+verschachtelten Werte. Dadurch kennt kein Decoder eine zweite Importquelle
+oder eine fachfremde Datenbankverantwortung.
+
+Das lokale Marktupgrade besitzt ebenfalls explizite Stufen:
+`MarketStockUpgradeInspector` liest und prüft die Quelle,
+`MarketStockUpgradeTransformer` erzeugt das Zielschema und
+`MarketStockUpgradeReconciler` vergleicht fachlich relevante Bestände. Die
+öffentliche Repository-Fassade orchestriert diese Schritte, ohne eine zweite
+Migration oder Marktlaufzeit einzuführen.
 
 Dispatch lädt ausschließlich vorbereitete Routennachweise vor der
 Schreibtransaktion. Danach werden alle veränderlichen Voraussetzungen
@@ -202,8 +215,10 @@ Ein eigener aktiver Transport ersetzt dadurch seine öffentliche Projektion,
 statt dass dasselbe Fahrzeug zweimal dargestellt wird.
 Views führen keine Requests aus. Dynamische Texte werden als DOM-Text gesetzt.
 Controller besitzen und beenden Listener, Requests und Timer. `PanelController`
-erhält seine Bildbindung im Konstruktor und besitzt sie bis `destroy()`; Views
-besitzen weder Requests noch Ressourcen. LatestRequest
+besitzt DOM, Requests und Rendering; `PanelViewState` besitzt ausschließlich
+die Mutationen am gemeinsamen Panel-Präsentationsmodell. Die Bildbindung wird
+im Konstruktor injiziert und bis `destroy()` besessen; Views besitzen weder
+Requests noch Ressourcen. LatestRequest
 verwirft überholte Detailantworten. RefreshScheduler pollt nur bei Sichtbarkeit;
 GameState verhindert überlappende Reads. Nach unsicheren Schreibantworten folgt
 nach älteren Reads zwingend ein frischer Read; Mutationen werden nicht wiederholt.
@@ -278,20 +293,26 @@ Native ES-Module bleiben: Views rendern sichere DOM-Fragmente, Requests laufen
 routenlokale Stadtauswahl; LayerStateController besitzt Presets/Overrides nach
 stabiler `user.id`; AnalyticsController besitzt bedarfsgeladene Statistikreads.
 Separate LatestRequest-Instanzen schützen Marktbestand und Auftragsdetail.
-WorldMap rendert; MapInteractions besitzt Hit-Testing, Hover und seine nativen
-MapLibre-Listener. `VehicleIconRegistry` liegt eindeutig in
+WorldMap orchestriert den Kartenlebenszyklus; MapInteractions besitzt
+Hit-Testing, Hover und seine nativen MapLibre-Listener. Quellen sowie Routen-,
+Standort- und Fahrzeuglayer liegen in getrennten `overlay-*`-, `route-*`-,
+`location-*`- und `vehicle-*`-Modulen. `VehicleIconRegistry` liegt eindeutig in
 `frontend/map/vehicle-icon-registry.js`; Assetmanifest und Atlas-Lebenszyklus
 sind keine gleichnamigen Doppelmodule mehr. VehicleGroups, Opportunities,
 Layerdefinitionen und Kamera bleiben eigene Module. Jeder zustandsbehaftete
 Baustein gibt seine Ressourcen explizit frei. Karteninstanz und Bildknoten
 überleben Navigation und Polls.
 
+Die Styles liegen nach Verantwortung unter `frontend/styles`. `main.js`
+importiert sie in einer festgelegten Kaskadenreihenfolge; kein Komponentenmodul
+besitzt einen zweiten globalen Stilbaum.
+
 Analytics API → AnalyticsService → AnalyticsReader (Port) → SqliteAnalyticsReader.
 Die Session liefert die Nutzer-ID, niemals ein Queryparameter. Vor dem Read
 führt die API ausschließlich bestehende Arrival-Reconciliation samt
 Bedarfsinvalidierung aus. Der Reader öffnet einen konsistenten
 SQLite-Lesestand. Kein Schema-
-Update und keine Analytics-Schreibverantwortung im GameService.
+Update und keine Analytics-Schreibverantwortung in der `PlayerGameFacade`.
 
 Nutzer, Status und oberer Zeitstempel werden relational gefiltert; all-time
 Totals benötigen die belegte Vergangenheit. Relationale Geldwerte und IDs
@@ -315,7 +336,7 @@ Traffic noch Leaderboard.
 `DispatchPlanningService` lädt vorbereitete globale Straßenrelationen. Er lädt
 A → B optional und B → C vor der Schreibtransaktion und komponiert die reine
 Fahrt- und Preisplanung. `TransportDispatchService` koordiniert Revalidierung
-und Persistenz; `GameService` delegiert nur den öffentlichen Anwendungsfall.
+und Persistenz; `PlayerGameFacade` delegiert nur den öffentlichen Anwendungsfall.
 Der vollständige immutable Start-Snapshot muss nach Routing und unmittelbar
 vor Commit mit dem aktuellen Fahrzeugcheckpoint übereinstimmen.
 

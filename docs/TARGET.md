@@ -89,7 +89,8 @@ aus GOAL.md und MILESTONES.md.
 
 ### Architektur
 
-- [x] Composition Root in `app/main.py` + `app/bootstrap.py`
+- [x] Composition Root in `app/composition`; stabile Importfassade in
+  `app/bootstrap.py`, Prozesslebenszyklus in `app/main.py`
 - [x] API-Layer getrennt von Services
 - [x] Provider-Adapter getrennt von Game-Core
 - [x] Persistence als Repository
