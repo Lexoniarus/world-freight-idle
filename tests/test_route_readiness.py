@@ -1,4 +1,4 @@
-"""Publication and dispatch consume readiness without provider fallbacks."""
+"""Shared routing evidence and readiness without runtime provider fallbacks."""
 
 import asyncio
 from dataclasses import replace
@@ -8,10 +8,6 @@ import pytest
 
 from app.domain.errors import RoutingError
 from app.repositories.routing_readiness import SqliteRoutingReadinessStore
-from app.services.preparation_worker import (
-    MarketPreparationWorker,
-    PreparationWorkerTiming,
-)
 from app.services.routing.preparation import RoutingPreparationService
 from tests.support.market import (
     build_prepared_game,
@@ -20,7 +16,6 @@ from tests.support.market import (
 )
 from tests.support.routing import (
     FakeRouter,
-    FakeRoutingAnchorResolver,
     RoutingTestHarness,
 )
 
@@ -210,180 +205,6 @@ async def test_players_share_one_provider_calculation(
     release.set()
     assert require_value(await first).status == "ready"
     assert readiness.router.route.await_count == 2
-
-
-@pytest.mark.asyncio
-async def test_worker_fills_ready_market_and_owns_shutdown(
-    synthetic_game, database
-):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
-    batch = make_stock_batch(synthetic_game, preparation)
-    preparation.demand.ensure()
-    worker = MarketPreparationWorker(
-        preparation.demand.jobs,
-        lambda user: batch,
-        synthetic_game.now,
-        timing=PreparationWorkerTiming(idle_wait_seconds=0.01),
-    )
-    assert (
-        preparation.demand.jobs.next_player(synthetic_game.now())
-        == "test-owner"
-    )
-    for _ in range(100):
-        await worker.process("test-owner")
-        if (
-            require_value(preparation.demand.jobs.status("test-owner")).status
-            == "ready"
-        ):
-            break
-    assert (
-        require_value(preparation.demand.jobs.status("test-owner")).status
-        == "ready"
-    )
-    assert synthetic_game.list_contracts()
-    assert all(
-        o.eligible_vehicle_ids
-        for o in synthetic_game.contract_choices(
-            synthetic_game.list_contracts()
-        )
-    )
-    await worker.start()
-    assert worker.running
-    worker.wake()
-    with pytest.raises(RuntimeError):
-        await worker.start()
-    await asyncio.sleep(0.03)
-    await worker.close()
-    await worker.close()
-    assert not worker.running
-
-
-def test_preparation_store_generation_and_reference_rollback(
-    synthetic_game, database
-):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
-    assert preparation.demand.jobs.status("missing") is None
-    with pytest.raises(ValueError, match="publication"):
-        preparation.routes.bind(synthetic_game.state_repository.list_offers())
-    preparation.demand.ensure()
-    first = require_value(preparation.demand.jobs.status("test-owner"))
-    assert synthetic_game.preparation_status() == first
-    preparation.demand.jobs.finish(
-        "test-owner", "obsolete", "ready", None, synthetic_game.now()
-    )
-    assert preparation.demand.jobs.status("test-owner") == first
-    preparation.demand.jobs.finish(
-        "test-owner", first.generation, "ready", None, synthetic_game.now()
-    )
-    assert preparation.demand.jobs.next_player(synthetic_game.now()) is None
-    preparation.demand.jobs.request(
-        "test-owner", "new-generation", synthetic_game.now()
-    )
-    assert (
-        require_value(preparation.demand.jobs.status("test-owner")).status
-        == "partial"
-    )
-
-
-def test_preparation_composition_uses_complete_local_runtime(
-    synthetic_game,
-    synthetic_runtime,
-):
-    from app.bootstrap import (
-        build_player_market_services,
-        build_preparation_worker,
-    )
-
-    bound = build_player_market_services(synthetic_runtime, "test-owner")
-    assert bound.demand.user_id == "test-owner"
-    worker = build_preparation_worker(synthetic_runtime)
-    from app.services.market.stock.preparation import StockPreparationBatch
-
-    batch = worker.batches("test-owner")
-    assert isinstance(batch, StockPreparationBatch)
-    assert batch.publication.player_demand.user_id == "test-owner"
-
-
-@pytest.mark.asyncio
-async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
-    synthetic_game,
-    database,
-):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
-    readiness = RoutingTestHarness(
-        preparation.routes.readiness,
-        preparation.route_preparation.preparation,
-    )
-    owned = synthetic_game.state_repository.list_vehicles()
-    fleet = synthetic_game.market.candidates.resolve_fleet(owned)
-    pool = synthetic_game.market.candidates.build(
-        synthetic_game.market_scope.resolve(owned), fleet
-    )
-    candidate = pool[0]
-    pair = (
-        candidate.trade.origin.facility_uid,
-        candidate.trade.destination.facility_uid,
-    )
-    readiness.anchors = AsyncMock()
-    readiness.anchors.max_snap_distance_m = 1000.0
-    readiness.anchors.resolve.side_effect = RoutingError("locate unavailable")
-    transient = require_value(await readiness.prepare(*pair))
-    assert transient.status == "transient_failure"
-    complete, retry = await preparation.route_preparation.prepare((candidate,))
-    assert not complete and retry is not None
-    readiness.provider_identity = "retry-generation"
-    readiness.anchors = FakeRoutingAnchorResolver()
-    with (
-        patch.object(
-            readiness.store, "publish_connection", return_value=False
-        ),
-        patch.object(readiness.store, "publish", return_value=False),
-    ):
-        assert await readiness.prepare(*pair) is None
-        error = RoutingError("endpoint")
-        error.category = "endpoint_unreachable"
-        readiness.router = AsyncMock()
-        readiness.router.route.side_effect = error
-        assert await readiness.prepare(*pair) is None
-        assert readiness.router.route.await_count == 1
-    with patch.object(
-        type(preparation.route_preparation.preparation),
-        "prepare",
-        new=AsyncMock(return_value=None),
-    ):
-        complete, retry = await preparation.route_preparation.prepare(
-            (candidate,)
-        )
-        assert not complete and retry is not None
-    readiness.router = FakeRouter()
-    with patch.object(readiness.store, "renew", return_value=False):
-        assert await readiness.prepare(*pair) is None
-    batch = make_stock_batch(synthetic_game, preparation)
-    preparation.demand.ensure()
-    worker = MarketPreparationWorker(
-        preparation.demand.jobs, lambda user: batch, synthetic_game.now
-    )
-    with patch.object(worker, "process", side_effect=RuntimeError("batch")):
-        await worker.start()
-        await asyncio.sleep(0.01)
-        await worker.close()
-    assert (
-        require_value(
-            preparation.demand.jobs.status("test-owner")
-        ).next_retry_at
-        is not None
-    )
-    failed_worker = MarketPreparationWorker(
-        preparation.demand.jobs, lambda user: batch, synthetic_game.now
-    )
-    with patch.object(
-        preparation.demand.jobs,
-        "next_player",
-        side_effect=RuntimeError("startup"),
-    ):
-        await failed_worker.start()
-        assert failed_worker.running
-        await failed_worker.close()
 
 
 @pytest.mark.asyncio
