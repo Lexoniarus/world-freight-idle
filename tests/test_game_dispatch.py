@@ -19,9 +19,9 @@ from app.domain.pricing import PriceQuote
 from app.domain.results import ContractQuote
 from app.domain.transports import RouteSnapshot
 from app.domain.world_scopes import WorldScope
-from tests.support.game_service import FixturePlayerGameFacade
 from tests.support.catalogues import BERLIN_UID
 from tests.support.game import first_berlin_contract
+from tests.support.game_service import FixturePlayerGameFacade
 
 
 @pytest.mark.asyncio

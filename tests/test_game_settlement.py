@@ -14,8 +14,8 @@ from app.domain.journeys import unmetered_journey
 from app.domain.pricing import PriceQuote
 from app.domain.results import ContractQuote
 from app.domain.transports import RouteSnapshot
-from tests.support.game_service import FixturePlayerGameFacade
 from tests.support.game import first_berlin_contract
+from tests.support.game_service import FixturePlayerGameFacade
 
 
 def test_reconcile_arrival_moves_vehicle_and_pays(

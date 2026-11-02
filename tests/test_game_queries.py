@@ -16,9 +16,9 @@ from app.api.v1.game_projection import (
 )
 from app.domain.game import OwnedVehicle
 from app.domain.world_scopes import WorldScope
-from tests.support.game_service import FixturePlayerGameFacade
 from tests.support.catalogues import BERLIN_UID
 from tests.support.game import first_berlin_contract
+from tests.support.game_service import FixturePlayerGameFacade
 from tests.transport_fixtures import add_transport
 
 
