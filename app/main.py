@@ -41,17 +41,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         )
         resources.push_async_callback(routing_client.aclose)
         app.state.routing_client = routing_client
-        app.state.game = build_game_runtime(
+        app.state.game_runtime = build_game_runtime(
             settings,
             routing_client,
         )
         app.state.auth = AuthService(
-            AccountRepository(app.state.game.database), PasswordHasher()
+            AccountRepository(app.state.game_runtime.database),
+            PasswordHasher(),
         )
-        app.state.preferences = build_preferences(app.state.game)
-        app.state.game.world.read()
-        app.state.game.catalogue.list_models()
-        worker = build_preparation_worker(app.state.game)
+        app.state.preferences = build_preferences(app.state.game_runtime)
+        app.state.game_runtime.world.read()
+        app.state.game_runtime.catalogue.list_models()
+        worker = build_preparation_worker(app.state.game_runtime)
         resources.push_async_callback(worker.close)
         app.state.preparation_worker = worker
         await worker.start()

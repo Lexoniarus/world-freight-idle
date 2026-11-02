@@ -214,7 +214,7 @@ async def test_analytics_offline_arrival_is_idempotent(
     make_static_files(tmp_path)
     application = create_app(make_settings(tmp_path))
     with TestClient(application) as client:
-        application.state.game = synthetic_runtime
+        application.state.game_runtime = synthetic_runtime
         application.dependency_overrides[get_game_service] = lambda: (
             synthetic_game
         )
@@ -293,7 +293,7 @@ def test_analytics_and_exact_api_require_session(
             "map/cities/unknown",
         ):
             assert client.get("/api/v1/" + path).status_code == 401
-        application.state.game = synthetic_runtime
+        application.state.game_runtime = synthetic_runtime
         application.dependency_overrides[get_game_service] = lambda: (
             synthetic_game
         )

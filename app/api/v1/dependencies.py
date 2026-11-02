@@ -59,7 +59,10 @@ def get_game_service(
 ) -> GameService:
     """Build a request-scoped game service for the authenticated owner."""
     try:
-        return build_player_service(request.app.state.game, user["id"])
+        return build_player_service(
+            request.app.state.game_runtime,
+            user["id"],
+        )
     except CatalogueError as exc:
         raise HTTPException(503, str(exc)) from exc
 
@@ -81,12 +84,12 @@ def get_map_service(
 
 def get_traffic_reader(request: Request) -> TrafficReader:
     """Resolve the shared read-only multiplayer traffic projection."""
-    return build_traffic_reader(request.app.state.game)
+    return build_traffic_reader(request.app.state.game_runtime)
 
 
 def get_runtime_reader(request: Request) -> RuntimeReader:
     """Resolve independent scalar and geometry read resources."""
-    return build_runtime_reader(request.app.state.game)
+    return build_runtime_reader(request.app.state.game_runtime)
 
 
 def get_runtime_view(
@@ -94,7 +97,7 @@ def get_runtime_view(
     user: dict = Depends(get_current_user),
 ) -> RuntimeViewService:
     """Bind summary reads to the authenticated owner only."""
-    return build_runtime_view(request.app.state.game, user["id"])
+    return build_runtime_view(request.app.state.game_runtime, user["id"])
 
 
 def get_vehicle_catalogue(request: Request) -> VehicleCatalogue:
@@ -104,4 +107,4 @@ def get_vehicle_catalogue(request: Request) -> VehicleCatalogue:
 
 def get_leaderboard_reader(request: Request) -> LeaderboardReader:
     """Resolve the public projection separately from account operations."""
-    return build_leaderboard_reader(request.app.state.game)
+    return build_leaderboard_reader(request.app.state.game_runtime)

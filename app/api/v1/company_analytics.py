@@ -29,7 +29,7 @@ def get_analytics(
         raise HTTPException(422, str(exc)) from exc
     game.reconcile_arrival()
     result = build_analytics_service(
-        request.app.state.game, user["id"]
+        request.app.state.game_runtime, user["id"]
     ).analyze(
         game.now(),
         days,

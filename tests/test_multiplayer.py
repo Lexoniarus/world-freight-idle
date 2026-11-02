@@ -306,7 +306,7 @@ def test_auth_api_and_private_game_resources(tmp_path):
     make_static_files(tmp_path)
     app = create_app(make_settings(tmp_path))
     with TestClient(app) as client:
-        install_fake_routing(app.state.game)
+        install_fake_routing(app.state.game_runtime)
         for path in (
             "dashboard",
             "fleet",
@@ -380,7 +380,7 @@ def test_auth_api_and_private_game_resources(tmp_path):
         assert (
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 26000
         )
-        prepare_client_market(client, app.state.game)
+        prepare_client_market(client, app.state.game_runtime)
         alice_contract = client.get(
             "/api/v1/contracts?vehicle_id=truck_01"
         ).json()["contracts"][0]["id"]
@@ -398,7 +398,7 @@ def test_auth_api_and_private_game_resources(tmp_path):
         assert (
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 175000
         )
-        prepare_client_market(client, app.state.game)
+        prepare_client_market(client, app.state.game_runtime)
         contract = client.get("/api/v1/contracts?vehicle_id=truck_01").json()[
             "contracts"
         ][0]

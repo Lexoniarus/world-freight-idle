@@ -307,8 +307,8 @@ def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
                 "password": "catalogue-test-password",
             },
         ).raise_for_status()
-        install_fake_routing(app.state.game)
-        prepare_client_market(client, app.state.game)
+        install_fake_routing(app.state.game_runtime)
+        prepare_client_market(client, app.state.game_runtime)
         contract = next(
             item
             for item in client.get(

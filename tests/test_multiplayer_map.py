@@ -141,7 +141,10 @@ def test_multiplayer_map_endpoint_requires_login_and_shares_other_players(
             json={"username": "Alice", "password": PASSWORD},
         )
         alice = alice_response.json()
-        alice_game = build_player_service(app.state.game, alice["id"])
+        alice_game = build_player_service(
+            app.state.game_runtime,
+            alice["id"],
+        )
         now = alice_game.now()
         add_transport(
             alice_game,

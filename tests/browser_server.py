@@ -70,7 +70,7 @@ def advance_browser_time(seconds: float) -> dict:
 @app.post("/__tests__/preparation-scope")
 def pause_previous_test_profiles() -> dict:
     """Keep independent browser cases from accumulating unrelated demand."""
-    runtime = app.state.game
+    runtime = app.state.game_runtime
     jobs = runtime.preparation_jobs
     assert jobs is not None
     now = runtime.clock()
