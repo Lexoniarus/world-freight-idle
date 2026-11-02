@@ -127,3 +127,81 @@ test("market requires an idle reference vehicle before reads or refresh", async 
   assert.equal(state.detail, null);
   controller.destroy();
 });
+
+test("market switches list requests with the selected vehicle", async () => {
+  let url = new URL("http://test/contracts?vehicle=first");
+  const state = new GameState(async () => {});
+  state.data = {
+    contracts: [],
+    vehicles: [
+      { id: "first", status: "idle" },
+      { id: "second", status: "idle" },
+    ],
+    transports: [],
+  };
+  const calls = [];
+  const controller = new ContractMarketController({
+    state,
+    currentUrl: () => url,
+    notify() {},
+    api: freightApi(
+      (path, options) =>
+        new Promise((resolve) => calls.push({ path, resolve, signal: options.signal })),
+    ),
+  });
+  controller.start();
+
+  const first = controller.refresh();
+  const same = controller.refresh();
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].path, "/contracts?vehicle_id=first");
+
+  url = new URL("http://test/contracts?vehicle=second");
+  const second = controller.refresh();
+  assert.equal(calls[0].signal.aborted, true);
+  assert.equal(calls[1].path, "/contracts?vehicle_id=second");
+  calls[1].resolve({ contracts: [{ id: "second-only" }] });
+  await second;
+  calls[0].resolve({ contracts: [{ id: "stale-first" }] });
+  await Promise.all([first, same]);
+  assert.equal(state.data.contracts[0].id, "second-only");
+
+  const refresh = controller.forceRefresh();
+  assert.equal(calls[2].path, "/contracts/refresh?vehicle_id=second");
+  calls[2].resolve({ contracts: [{ id: "second-only" }] });
+  await refresh;
+  controller.destroy();
+  state.destroy();
+});
+
+test("market coalesces identical details and aborts a changed selection", async () => {
+  const calls = [];
+  let url = new URL("http://test/contracts/a");
+  const state = new GameState(async () => {});
+  state.data = { contracts: [], vehicles: [], transports: [] };
+  const controller = new ContractMarketController({
+    state,
+    currentUrl: () => url,
+    notify() {},
+    api: freightApi(
+      (path, options) =>
+        new Promise((resolve) => calls.push({ path, signal: options.signal, resolve })),
+    ),
+  });
+  controller.start();
+
+  const first = controller.refresh();
+  const same = controller.refresh();
+  assert.equal(calls.length, 1);
+  url = new URL("http://test/contracts/b");
+  const next = controller.refresh();
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].signal.aborted, true);
+  calls[1].resolve({ id: "b" });
+  await next;
+  calls[0].resolve({ id: "a" });
+  await Promise.all([first, same]);
+  assert.equal(state.contractDetail.id, "b");
+  controller.destroy();
+  state.destroy();
+});

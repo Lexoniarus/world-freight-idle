@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { OverlayData } from "./map/overlay-data.js";
+import { focusCoordinates } from "./map/focus-targets.js";
 
 function trafficTrip(overrides = {}) {
   return {
@@ -99,4 +100,48 @@ test("unsupported public models keep their player-colored fallback", () => {
   const feature = overlays.multiplayerVehicleFeatures(5).features[0];
   assert.equal(feature.properties.hasIcon, false);
   assert.equal(feature.properties.playerColor, "#123456");
+});
+
+test("own movement requires route geometry and not public traffic", () => {
+  const trip = trafficTrip({
+    id: "t",
+    vehicle_id: "v",
+    journey: {
+      distance_km: 1,
+      segments: [
+        {
+          phase: "driving",
+          starts_at: 0,
+          ends_at: 10,
+          start_km: 0,
+          end_km: 1,
+        },
+      ],
+    },
+    distance_km: 1,
+    route_geojson: { type: "LineString", coordinates: [] },
+  });
+  const state = {
+    vehicles: [{ id: "v", status: "enroute" }],
+    transports: [trip],
+    contracts: [],
+    traffic: [],
+  };
+  const overlay = new OverlayData();
+  overlay.update(state);
+  assert.equal(overlay.vehicleFeatures(5).features.length, 0);
+  assert.equal(focusCoordinates(state, new URL("http://game/transports/t"), 5, null, "", []), null);
+  assert.equal(focusCoordinates(state, new URL("http://game/fleet/v"), 5, null, "", []), null);
+
+  trip.route_geojson.coordinates = [
+    [10, 50],
+    [11, 51],
+  ];
+  overlay.update(state);
+  assert.equal(overlay.vehicleFeatures(5).features.length, 1);
+  assert.ok(focusCoordinates(state, new URL("http://game/transports/t"), 5, null, "", []).length);
+  assert.equal(overlay.multiplayerVehicleFeatures(5).features.length, 0);
+
+  overlay.update({ ...state, transports: [], traffic: [{ ...trip, is_own: true }] });
+  assert.equal(overlay.vehicleFeatures(5).features.length, 0);
 });
