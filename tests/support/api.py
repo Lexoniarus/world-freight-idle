@@ -93,6 +93,8 @@ class FakeGame:
 
     async def quote_contract(self, contract_id, vehicle_id) -> ContractQuote:
         """Return or reject one deterministic quote."""
+        if contract_id == "bad":
+            raise ValueError("bad")
         if contract_id == "routing-error":
             raise RoutingError("down")
         if contract_id == "missing":

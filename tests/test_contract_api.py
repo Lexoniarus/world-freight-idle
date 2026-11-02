@@ -66,6 +66,13 @@ def test_contract_api_maps_market_and_routing_outcomes(
         )
         assert (
             client.post(
+                "/api/v1/contracts/bad/quote",
+                json={"vehicle_id": "truck_01"},
+            ).status_code
+            == 400
+        )
+        assert (
+            client.post(
                 "/api/v1/contracts/routing-error/quote",
                 json={"vehicle_id": "truck_01"},
             ).status_code
