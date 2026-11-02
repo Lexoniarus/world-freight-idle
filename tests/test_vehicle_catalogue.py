@@ -35,8 +35,8 @@ from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.services.gameplay.fleet import FleetService
 from tests.support.api import create_minimal_static_files
 from tests.support.application_settings import (
-    build_reference_application_settings,
     build_synthetic_application_settings,
+    build_vehicle_reference_application_settings,
 )
 from tests.support.catalogues import InMemoryVehicleCatalogue
 from tests.support.game import first_berlin_contract
@@ -379,7 +379,7 @@ def test_packaged_catalogue_works_outside_project_directory(
     import shutil
 
     create_minimal_static_files(tmp_path)
-    settings = build_reference_application_settings(tmp_path)
+    settings = build_vehicle_reference_application_settings(tmp_path)
     bundled = tmp_path / "data" / "world_freight_vehicle_catalog.sqlite3"
     bundled.parent.mkdir()
     assert settings.vehicle_catalogue_path is not None

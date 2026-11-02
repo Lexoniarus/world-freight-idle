@@ -70,7 +70,10 @@ def test_reference_application_settings_are_acceptance_only():
         path.name
         for path in tests_root.glob("test_*.py")
         if path != Path(__file__)
-        if "build_reference_application_settings"
+        if "ReferenceApplicationSettings" in path.read_text(encoding="utf-8")
+        or "build_world_reference_application_settings"
+        in path.read_text(encoding="utf-8")
+        or "build_vehicle_reference_application_settings"
         in path.read_text(encoding="utf-8")
     }
 
@@ -78,3 +81,16 @@ def test_reference_application_settings_are_acceptance_only():
         "test_vehicle_catalogue.py",
         "test_world_catalogue.py",
     }
+
+
+def test_reference_catalogue_paths_stay_out_of_behavior_tests():
+    tests_root = Path(__file__).parent
+    consumers = {
+        path.name
+        for path in tests_root.glob("test_*.py")
+        if path != Path(__file__)
+        if "REFERENCE_WORLD_PATH" in path.read_text(encoding="utf-8")
+        or "REFERENCE_VEHICLE_PATH" in path.read_text(encoding="utf-8")
+    }
+
+    assert consumers == set()

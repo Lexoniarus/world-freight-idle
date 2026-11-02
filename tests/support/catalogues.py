@@ -158,6 +158,63 @@ def build_synthetic_world_catalogue() -> InMemoryWorldCatalogue:
     return InMemoryWorldCatalogue(snapshot)
 
 
+def build_wolfsburg_routing_catalogue() -> InMemoryWorldCatalogue:
+    """Build the two exact facilities needed by the routing regression."""
+    germany = Country("DE", "Germany")
+    cities = (
+        City(
+            "6021d57e-459c-4a3f-a58c-8da6b1675a05",
+            "Wolfsburg",
+            germany,
+            "Niedersachsen",
+        ),
+        City(
+            "b85e3b62-1baa-4d5c-9f52-6110b526fa99",
+            "Stendal",
+            germany,
+        ),
+    )
+    company = ReferenceCompany(
+        "a6161fcf-5c0e-46db-bc92-d67ab225468f",
+        "Synthetic routing company",
+        "Synthetic routing company",
+        germany,
+        "https://example.test/routing-regression",
+        (_SOURCE,),
+    )
+    product = NhmProduct(100, "0100", "Machine parts", (100,))
+    facilities = (
+        _facility(
+            "53e47547-aa34-4234-a41c-4fe81bb86290",
+            "Volkswagenwerk Wolfsburg",
+            cities[0],
+            company,
+            Coordinates(52.433806, 10.779611),
+            (product,),
+            "both",
+        ),
+        _facility(
+            "18e6c54b-658c-4a10-ab92-d518bca060f7",
+            "Alstom Stendal",
+            cities[1],
+            company,
+            Coordinates(52.606, 11.858),
+            (product,),
+            "both",
+        ),
+    )
+    return InMemoryWorldCatalogue(
+        WorldSnapshot(
+            "synthetic-wolfsburg-routing-v1",
+            (company,),
+            facilities,
+            (germany,),
+            cities,
+            (_market_profile(product),),
+        )
+    )
+
+
 def build_synthetic_vehicle_catalogue() -> InMemoryVehicleCatalogue:
     """Build six representative truck models for gameplay tests."""
     specifications = (

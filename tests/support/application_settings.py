@@ -27,14 +27,25 @@ def build_synthetic_application_settings(tmp_path: Path) -> Settings:
     return _settings(tmp_path, vehicle_path, world_path)
 
 
-def build_reference_application_settings(tmp_path: Path) -> Settings:
-    """Copy packaged catalogues only for explicit repository acceptance."""
-    vehicle_path = tmp_path / "reference-vehicles.sqlite3"
+def build_world_reference_application_settings(tmp_path: Path) -> Settings:
+    """Use only the packaged world in its explicit acceptance boundary."""
+    vehicle_path = tmp_path / "small-vehicles.sqlite3"
     world_path = tmp_path / "reference-world.sqlite3"
+    if not vehicle_path.exists():
+        create_small_vehicle_catalogue(vehicle_path)
+    if not world_path.exists():
+        shutil.copyfile(REFERENCE_WORLD_PATH, world_path)
+    return _settings(tmp_path, vehicle_path, world_path)
+
+
+def build_vehicle_reference_application_settings(tmp_path: Path) -> Settings:
+    """Use only the packaged vehicles in their acceptance boundary."""
+    vehicle_path = tmp_path / "reference-vehicles.sqlite3"
+    world_path = tmp_path / "small-world.sqlite3"
     if not vehicle_path.exists():
         shutil.copyfile(REFERENCE_VEHICLE_PATH, vehicle_path)
     if not world_path.exists():
-        shutil.copyfile(REFERENCE_WORLD_PATH, world_path)
+        create_small_world_catalogue(world_path)
     return _settings(tmp_path, vehicle_path, world_path)
 
 

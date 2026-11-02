@@ -14,7 +14,7 @@ from app.domain.geography import Coordinates
 from app.domain.world import FacilityQuery
 from app.domain.world_scopes import WorldScope
 from tests.support.application_settings import (
-    build_reference_application_settings,
+    build_world_reference_application_settings,
 )
 
 
@@ -466,7 +466,7 @@ def test_world_catalogue_composition_uses_explicit_path_without_game_state(
 ):
     from app.bootstrap import build_world_catalogue
 
-    settings = build_reference_application_settings(tmp_path)
+    settings = build_world_reference_application_settings(tmp_path)
     catalogue = build_world_catalogue(settings)
     assert len(catalogue.read().cities) == 333
     assert not settings.db_path.exists()

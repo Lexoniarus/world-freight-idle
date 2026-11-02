@@ -27,17 +27,18 @@ from app.domain.world_scopes import WorldScope
 from app.providers.request_limiter import ProviderRequestLimiter
 from app.providers.routing import ValhallaTruckRouter
 from app.providers.routing_anchor import ValhallaTruckAnchorLocator
-from app.repositories.cached_world_catalogue import CachedWorldCatalogue
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
 from app.repositories.routing_readiness import SqliteRoutingReadinessStore
-from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.services.routing.anchors import RoutingAnchorResolver
 from app.services.routing.connections import RoutingConnectionValidator
 from app.services.routing.evidence import RoutingEvidenceReader
 from app.services.routing.preparation import RoutingPreparationService
-from tests.support.catalogues import BERLIN_UID, REFERENCE_WORLD_PATH
+from tests.support.catalogues import (
+    BERLIN_UID,
+    build_wolfsburg_routing_catalogue,
+)
 from tests.support.routing import (
     FakeGeocoder,
     FakeLocator,
@@ -54,9 +55,7 @@ REFERENCE_DESTINATION = "18e6c54b-658c-4a10-ab92-d518bca060f7"
 
 @pytest.fixture(scope="module")
 def reference_connection_world():
-    world = CachedWorldCatalogue(SqliteWorldCatalogue(REFERENCE_WORLD_PATH))
-    world.read()
-    return world
+    return build_wolfsburg_routing_catalogue()
 
 
 def build_case(tmp_path, world):
