@@ -35,6 +35,14 @@ export const vehicle = {
   model_id: "iveco_sway_500",
   name: "IVECO",
   capacity_tons: 24,
+  energy: {
+    kind: "diesel",
+    unit: "l",
+    capacity: 100,
+    consumption_per_100km: 20,
+    stop_minutes: 10,
+  },
+  energy_level: 100,
 };
 
 export const offer = {

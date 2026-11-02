@@ -218,6 +218,12 @@ Eigentümermodule prüfen diese Grenzen getrennt: `city-context-controller`,
 accountgebundene Layer-Presets, Gruppierung, serverseitige Eligibility,
 Listen-/Detailzustände und zugängliche Charttabellen jeweils beim zuständigen
 Produktionsmodul.
+
+API-Lifetime, Panelzustand, Spielaktionen, Polling, Animation, Overlays,
+Mobile Sheet, Benachrichtigungen, Router, Kartenwahl und Application-Disposal
+besitzen ebenfalls gleichnamige Testmodule. Flache Sammelabnahmen über alle
+Views wurden durch direkte `contract-view`-, `shop-view`-, `transport-view`-
+und `fleet-selection`-Verträge ersetzt.
 Vorhandene Quote-/Dispatch-/Cleanup-/Bildstabilitätsprüfungen bleiben erhalten.
 
 Playwright prüft einen Dispositions-/Settlement-Ablauf sowie mobile Sheets,

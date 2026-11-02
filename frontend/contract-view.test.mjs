@@ -78,3 +78,31 @@ test("vehicle market renders only offers eligible for its reference vehicle", ()
     assert.equal(rendered.querySelectorAll(".job-card").length, 2);
   }
 });
+
+test("contract cards expose derived cargo and exact light payloads", () => {
+  const view = {
+    url: new URL("http://test/contracts/offer?vehicle=v1"),
+    cityUid: berlin.city_uid,
+    activeCities: [berlin.city_uid],
+    cities: [berlin],
+    marketLoaded: true,
+    state: {
+      vehicles: [vehicle],
+      transports: [],
+      contracts: [
+        {
+          ...offer,
+          tons: 1.15,
+          cargo_code: "8708",
+          cargo_basis: "derived",
+          market_model: "nhm_v1",
+          cargo_system: "NHM2026",
+        },
+      ],
+    },
+  };
+  const rendered = renderContracts(view);
+  assert.match(rendered.textContent, /NHM-Warenprofil/);
+  assert.match(rendered.textContent, /1,15 Tonnen/);
+  assert.doesNotMatch(rendered.textContent, /Standardfracht|1,2 Tonnen/);
+});

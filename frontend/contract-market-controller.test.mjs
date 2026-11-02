@@ -47,3 +47,83 @@ test("market list and detail publish independently", async () => {
   market.destroy();
   state.destroy();
 });
+
+test("market preserves saved contracts after failure or disposal", async () => {
+  const notices = [];
+  const saved = { ...offer, id: "saved" };
+  const state = {
+    data: {
+      contracts: [saved],
+      vehicles: [{ id: "truck", status: "idle" }],
+      transports: [],
+    },
+    replaceContracts(contracts) {
+      this.data.contracts = contracts;
+    },
+  };
+  const currentUrl = () => new URL("http://test/contracts?vehicle=truck");
+  let resolve;
+  const disposed = new ContractMarketController({
+    state,
+    api: freightApi(() => new Promise((done) => (resolve = done))),
+    notify: (message) => notices.push(message),
+    currentUrl,
+  });
+  disposed.start();
+  const pending = disposed.refresh();
+  disposed.destroy();
+  resolve({ contracts: [offer] });
+  await pending;
+  assert.deepEqual(state.data.contracts, [saved]);
+  const live = new ContractMarketController({
+    state,
+    api: freightApi(async () => {
+      throw new Error("503");
+    }),
+    notify: (message) => notices.push(message),
+    currentUrl,
+  });
+  live.start();
+  await live.refresh();
+  assert.deepEqual(state.data.contracts, [saved]);
+  assert.equal(notices.at(-1), "503");
+  live.destroy();
+});
+
+test("market requires an idle reference vehicle before reads or refresh", async () => {
+  const paths = [];
+  let url = new URL("http://test/contracts");
+  const state = {
+    data: { contracts: [offer], vehicles: [], transports: [] },
+    detail: offer,
+    replaceContractDetail(value) {
+      this.detail = value;
+    },
+    replaceContracts(contracts) {
+      this.data.contracts = contracts;
+    },
+  };
+  const controller = new ContractMarketController({
+    state,
+    currentUrl: () => url,
+    notify: () => {},
+    api: freightApi(async (path) => {
+      paths.push(path);
+      if (path === "/contracts/removed") throw Object.assign(new Error("removed"), { status: 404 });
+      return { contracts: [offer] };
+    }),
+  });
+  controller.start();
+  await controller.refresh();
+  assert.equal(await controller.forceRefresh(), false);
+  assert.deepEqual(paths, []);
+  state.data.vehicles = [{ id: "truck", status: "idle" }];
+  url = new URL("http://test/contracts?vehicle=truck");
+  await controller.refresh();
+  assert.equal(await controller.forceRefresh(), true);
+  url = new URL("http://test/contracts/removed");
+  await controller.refresh();
+  assert.deepEqual(state.data.contracts, [offer]);
+  assert.equal(state.detail, null);
+  controller.destroy();
+});
