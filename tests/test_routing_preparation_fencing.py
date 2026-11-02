@@ -121,6 +121,26 @@ async def test_reverse_requests_cancellation_and_expired_leases(case):
 
 
 @pytest.mark.asyncio
+async def test_lost_connection_lease_stops_before_provider_validation(case):
+    with patch.object(case.store, "renew", return_value=False):
+        assert await case.service.prepare(ORIGIN, DESTINATION) is None
+
+    assert case.store.get(relation_identity(ORIGIN, DESTINATION)) is None
+
+
+@pytest.mark.asyncio
+async def test_negative_evidence_requires_publication_lease(case):
+    error = RoutingError("no road")
+    error.category = "no_path"
+    case.service.router = SimpleNamespace(route=AsyncMock(side_effect=error))
+
+    with patch.object(case.store, "publish", return_value=False):
+        assert await case.service.prepare(ORIGIN, DESTINATION) is None
+
+    assert case.store.get(relation_identity(ORIGIN, DESTINATION)) is None
+
+
+@pytest.mark.asyncio
 async def test_connection_publication_rolls_back_both_directions_and_anchors(
     case,
 ):

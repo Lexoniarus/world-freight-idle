@@ -59,3 +59,24 @@ async def test_route_preparation_reuses_ready_evidence(
     assert complete
     assert retry_at is None
     preparation.prepare.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_route_preparation_respects_evidence_backoff(
+    synthetic_game_context,
+    synthetic_game,
+):
+    candidate = first_candidate(synthetic_game_context, synthetic_game)
+    evidence = Mock()
+    evidence.current.return_value = SimpleNamespace(
+        status="transient_failure",
+        retry_at=20,
+    )
+    preparation = AsyncMock()
+    service = MarketRoutePreparationService(evidence, preparation, lambda: 10)
+
+    complete, retry_at = await service.prepare((candidate,))
+
+    assert not complete
+    assert retry_at == 20
+    preparation.prepare.assert_not_awaited()

@@ -71,3 +71,17 @@ async def test_worker_owns_one_task_and_closes_idempotently():
     await worker.close()
     await worker.close()
     assert not worker.running
+
+
+@pytest.mark.asyncio
+async def test_worker_idle_wait_timeout_returns_to_scheduler():
+    worker = MarketPreparationWorker(
+        Mock(),
+        Mock(),
+        lambda: 0,
+        timing=PreparationWorkerTiming(idle_wait_seconds=0.001),
+    )
+
+    await worker._wait_for_work()
+
+    assert not worker.running
