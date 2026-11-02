@@ -1,5 +1,30 @@
 # Changelog
 
+## Persistenz- und Gegentestgrenzen – 02.11.2026
+
+- Die Routingpersistenz besitzt getrennte Adapter für Schema, Payloads,
+  Leases, Versuche, Offer-Referenzen, Relationen und Verbindungen. Die
+  bestehende `SqliteRoutingReadinessStore`-Fassade komponiert diese Owner und
+  erhält den öffentlichen Vertrag; Schema und gespeicherte Daten ändern sich
+  nicht.
+- Der Legacy-Snapshot-Reader montiert nur noch vollständige historische
+  Objekte. Strikte Decoder für verschachtelte Werte, Feldmengen, Quellen,
+  Frachtprofile und GeoJSON liegen in `legacy_import_values`.
+- Die früheren Python-Sammeltests für Multiplayer, Markt, Stock Preparation
+  und Runtime Views sind entfernt. Auth, Accountisolation, Nebenläufigkeit,
+  Marktberechnung, Kandidaten, Diversität, Publikation, Recovery,
+  Runtime-Snapshots und Routengeometrie besitzen benannte Eigentümertests.
+- Das Function-Test-Manifest verlangt nun eindeutige Testnamen und eine
+  direkte Assertion oder erwartete Ablehnung im referenzierten Gegentest.
+  Aufgelöste Sammelmodule dürfen nicht unbemerkt zurückkehren.
+- Die letzten breiten Testabläufe wurden in einzelne Verträge für
+  Auth-Sicherheit, Sessionrotation, Kontentrennung, Runtime-Privatsphäre,
+  Template-Sharing und accountgebundenen Einmalverbrauch getrennt.
+- Die vollständige lokale Abnahme bestand mit 625 Python-Tests, 100 %
+  App-Statement-Coverage, 131 Frontendtests und 14 Playwright-Grenzen. Der
+  langsamste Pythonfall benötigte 2,73 Sekunden, der langsamste Browserfall
+  7,6 Sekunden; Supabase, Live-Provider und öffentliche Tiles blieben aus.
+
 ## Klare Reparatur-, Overlay- und Testverantwortungen – 02.11.2026
 
 - Die Offline-Marktreparatur ist in query-only Reader, checksummierten

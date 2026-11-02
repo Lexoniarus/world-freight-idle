@@ -160,6 +160,20 @@ ehrlich benannte Composition-Grenze. Auswahl liegt in `StockPlanningService`,
 Materialisierung in `MarketTemplateService`, Diagnostik in
 `VehicleCoverageService`; SQL und Transaktionen bleiben außerhalb davon.
 
+Die kompatible `SqliteRoutingReadinessStore`-Fassade ist eine reine
+Kompositionsgrenze. Unter `app/repositories/routing` besitzen `schema`,
+`payloads`, `leases`, `attempts`, `offer_routes`, `relations` und
+`connections` jeweils ihre SQL- und Mappingverantwortung. Kein Teiladapter
+eröffnet eine zweite Datenbank oder einen Providerpfad; äußere Transaktionen
+und die bestehenden Tabellen bleiben unverändert.
+
+Der Offline-Legacy-Import trennt ebenfalls Montage von Wertdecodierung.
+`LegacySnapshotReader` montiert Standort-, Fahrzeug-, Offer- und
+Transportsnapshots gegen den injizierten Weltkatalog. `legacy_import_values`
+prüft verschachtelte Feldmengen, Quellen, Waren, Frachtprofile und
+Routengeometrie. Dadurch kennt der Mapper keine zweite Importquelle und der
+strikte Decoder keine Datenbank oder Katalogauflösung.
+
 Dispatch lädt ausschließlich vorbereitete Routennachweise vor der
 Schreibtransaktion. Danach werden alle veränderlichen Voraussetzungen
 einschließlich Abfahrtscheckpoint erneut gelesen. Reservierung, Abbuchung,

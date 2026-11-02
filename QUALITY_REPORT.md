@@ -14,11 +14,11 @@ Repositoryabnahmen gelesen. Generische `game`-, `runtime`-, `catalogue`- und
 Repositoryfehler verwenden zwei kleine SQL-Kataloge mit zwei Standorten und
 vier Fahrzeugmodellen; die großen Referenzdateien bleiben dabei unverändert.
 
-Der abschließende lokale Abnahmelauf bestand mit **616 Python-Tests** in
-67,28 Sekunden bei 100 % App-Statement-Coverage; der langsamste Pythonfall
-benötigte 2,90 Sekunden. Die **131 Frontendtests** bestanden in 9,69 Sekunden.
+Der abschließende lokale Abnahmelauf bestand mit **625 Python-Tests** in
+75,50 Sekunden bei 100 % App-Statement-Coverage; der langsamste Pythonfall
+benötigte 2,73 Sekunden. Die **131 Frontendtests** bestanden in 9,90 Sekunden.
 Alle **14** getrennten Playwright-Grenzen bestanden in 1,1 Minuten; der
-langsamste Browserfall benötigte 7,4 Sekunden. Kein Einzelfall überschritt die
+langsamste Browserfall benötigte 7,6 Sekunden. Kein Einzelfall überschritt die
 harte Zehn-Sekunden-Grenze. Öffentliche Tiles, echte Provider und Supabase
 waren in allen Läufen ausgeschlossen.
 
@@ -70,6 +70,22 @@ Facility-Projektion und Routencache-Synchronisierung an drei benannte reine
 Helfer in `overlay-state.js`. Eigene aktive Transporte ersetzen die
 entsprechende öffentliche Trafficzeile; sie erzeugen keine zweite
 Fahrzeugdarstellung.
+
+Das Persistenzreview trennte anschließend auch die beiden letzten breiten
+Adaptergrenzen. `SqliteRoutingReadinessStore` komponiert fokussierte
+Schema-, Payload-, Lease-, Attempt-, Offer-Route-, Relations- und
+Connection-Adapter. Der Legacy-Import trennt vollständige Snapshot-Montage von
+strikter verschachtelter Wertdecodierung. Beide Änderungen erhalten Schema,
+Dateiformat und öffentliche Repositoryverträge.
+
+Die Python-Suite besitzt keine Sammelmodule mehr für Multiplayer, Markt, Stock
+Preparation oder Runtime Views. Die jeweiligen Szenarien liegen bei Auth,
+Accountisolation, Nebenläufigkeit, Markt-Scope, Berechnung, Kandidaten,
+Diversität, Publikation, Recovery, Runtime-Snapshot und Routengeometrie. Auch
+die letzten breiten Einzelfälle sind nach Sicherheits-, Sichtbarkeits-,
+Projektion-, Sharing- und Verbrauchsvertrag getrennt. Das Function-Test-
+Manifest prüft neben vollständiger Callable-Abdeckung nun eindeutige
+Testnamen und eine direkte Assertion oder erwartete Ablehnung.
 
 Die Arbeitscommits wurden ausschließlich mit ihren Eigentümertests, Ruff,
 mypy beziehungsweise ESLint, Prettier und checkJs geprüft. Danach bestanden
@@ -158,18 +174,18 @@ wird in begrenzten Einzelrunden bis zu drei sichtbaren und zehn gespeicherten
 Angeboten je Distanzband versorgt; ein `ready`-Job wird nicht erneut ausgewählt.
 
 Der abschließende kombinierte Lauf von `.venv/Scripts/python.exe -X utf8
- scripts/quality.py` prüft **611 Python-Tests** mit **100,00 %
-app-Statement-Coverage**, **128 Frontend-Verhaltenstests** sowie Ruff,
+ scripts/quality.py` prüft **625 Python-Tests** mit **100,00 %
+app-Statement-Coverage**, **131 Frontend-Verhaltenstests** sowie Ruff,
 Formatierung, mypy, Pyright, ESLint, Stylelint, Prettier, checkJs,
 Produktionsbuild und compileall. Architektur- und
 Funktionsmanifestprüfungen sind Teil dieses Laufs. Der langsamste einzelne
-Python-Test benötigt 6,08 Sekunden; kein Python-Test überschreitet zehn
+Python-Test benötigt 2,73 Sekunden; kein Python-Test überschreitet zehn
 Sekunden.
 
 `npm run test:e2e` umfasst **14** klar abgegrenzte Browserfälle gegen einen
 isolierten lokalen Einprozess-Server mit lokaler Datenbank und lokalem
-Routing-Fixture. Die Suite benötigt 1,2 Minuten; der langsamste Browserfall
-8,4 Sekunden. Backendberechnungen liegen in Python-, Controllerdarstellung in
+Routing-Fixture. Die Suite benötigt 1,1 Minuten; der langsamste Browserfall
+7,6 Sekunden. Backendberechnungen liegen in Python-, Controllerdarstellung in
 DOM-Tests. Browserfälle prüfen nur Authentifizierung und Navigation,
 Dispositionsgrenzen, Markt-, Firmen- und Kartenoberflächen. Absichtlich
 abgebrochene Browserrequests können unter Windows den bekannten

@@ -19,6 +19,13 @@ werden strukturell ausgenommen. Das Gate weist zusätzlich die 20 langsamsten
 Python-Testphasen aus, damit Laufzeitregressionen nicht hinter der grünen
 Gesamtsumme verschwinden.
 
+Manifestreferenzen sind keine bloßen Namensmarker. Jeder referenzierte
+Top-Level-Testname muss in der Suite genau einmal vorkommen und der Test muss
+selbst mindestens eine direkte Assertion oder erwartete Ablehnung enthalten.
+Die Strukturprüfung verbietet die aufgelösten Sammelmodule `test_market`,
+`test_multiplayer`, `test_review_regressions`, `test_runtime_views` und
+`test_stock_preparation`.
+
 Gemeinsame Fixtures und lokale Provider-Doubles liegen ausschließlich unter
 `tests/support`. Testmodule importieren keine anderen ausführbaren Testmodule;
 damit entstehen weder implizite Collection-Abhängigkeiten noch alternative
@@ -67,6 +74,15 @@ Referenzartefakt.
 - Frontend: DOM-Text statt HTML, Cleanup, verspätete Antworten, unsichere
   Schreibantworten, Fokus, Karten-Wrapping, Fahrzeugbilder und Panel-Lebenszyklen.
 
+Python-Integrationsfälle tragen ebenfalls ihren fachlichen Owner im Modulnamen.
+Authentifizierung, Accountisolation, Nebenläufigkeit und Leaderboard sind
+getrennt. Markt-Scope, Berechnung, Kandidaten, Diversität und Materialisierung
+sowie Stock-Publikation, Template-Sharing, Zielbedarf, Recovery,
+Katalogänderung und Dispatch-Atomizität werden unabhängig gesammelt.
+Runtime-Snapshots und Route-Geometry-HTTP besitzen keine gemeinsame
+Sammeldatei. Ein Test darf mehrere Schritte eines atomaren Vertrags zeigen,
+aber keine fachfremde zweite Abnahme verstecken.
+
 Architekturtests prüfen direkte und indirekte Imports einschließlich relativer
 Imports, Re-Exports und statisch erkennbarer dynamischer Imports. Domain und
 Services kennen kein SQL, konkrete Speicheradapter oder Serialisierung.
@@ -111,10 +127,11 @@ Automatisierte Mobilansicht ist keine reale iPad-Abnahme. Provider-Mocks beweise
 keine öffentliche Dienstverfügbarkeit. Tatsächlich ausgeführte Ergebnisse stehen
 in QUALITY_REPORT.md; historische Läufe sind keine aktuelle Freigabe.
 
-Aktuelle lokale Abnahme vom 02.11.2026: 596 Python-Tests mit 100 %
-App-Statement-Coverage, 128 Frontend-Verhaltenstests und 14 Playwright-Fälle.
-Der langsamste Pythonfall lief 5,35 Sekunden, der langsamste Browserfall
-7,6 Sekunden. Alle Tests blieben unter der harten Zehn-Sekunden-Grenze.
+Aktuelle lokale Abnahme vom 02.11.2026: 625 Python-Tests mit 100 %
+App-Statement-Coverage, 131 Frontend-Verhaltenstests und 14 Playwright-Fälle.
+Der langsamste Pythonfall lief 2,73 Sekunden, der langsamste Browserfall
+7,6 Sekunden. Alle Tests blieben unter der harten Zehn-Sekunden-Grenze;
+Supabase, Live-Provider und öffentliche Tiles blieben aus.
 
 ## Regressionen des Persistenzreviews
 
