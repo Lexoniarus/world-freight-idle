@@ -64,22 +64,24 @@ def test_synthetic_application_settings_use_compact_sql_catalogues(tmp_path):
     assert settings.vehicle_catalogue_path.stat().st_size < 100_000
 
 
-def test_reference_application_settings_are_acceptance_only():
+def test_reference_catalogue_fixtures_are_acceptance_only():
     tests_root = Path(__file__).parent
     consumers = {
-        path.name
-        for path in tests_root.glob("test_*.py")
-        if path != Path(__file__)
-        if "ReferenceApplicationSettings" in path.read_text(encoding="utf-8")
-        or "build_world_reference_application_settings"
-        in path.read_text(encoding="utf-8")
-        or "build_vehicle_reference_application_settings"
-        in path.read_text(encoding="utf-8")
+        fixture: {
+            path.name
+            for path in tests_root.glob("test_*.py")
+            if path != Path(__file__)
+            if fixture in path.read_text(encoding="utf-8")
+        }
+        for fixture in (
+            "reference_vehicle_catalogue",
+            "reference_world_catalogue",
+        )
     }
 
     assert consumers == {
-        "test_vehicle_catalogue.py",
-        "test_world_catalogue.py",
+        "reference_vehicle_catalogue": {"test_vehicle_catalogue.py"},
+        "reference_world_catalogue": {"test_world_catalogue.py"},
     }
 
 

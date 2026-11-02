@@ -5,6 +5,7 @@ from dataclasses import FrozenInstanceError, replace
 import pytest
 
 from app.domain.errors import AmbiguousWorldReference
+from app.domain.evidence import SourceReference
 from app.domain.geography import Address, City, Coordinates, Country
 from app.domain.world import FacilityQuery
 from app.domain.world_scopes import WorldScope
@@ -118,3 +119,74 @@ def test_world_scopes_report_ambiguity_and_keep_uid_queries_exact(
     for query in (world.facility, world.country, world.city, world.company):
         with pytest.raises(KeyError):
             query("unknown")
+
+
+def test_facility_rules_preserve_immutable_location_snapshots(
+    synthetic_world_catalogue,
+):
+    world = synthetic_world_catalogue.read()
+    berlin = WorldScope(world).facility("berlin_westhafen")
+    verified = replace(
+        berlin,
+        geocoding_status="verified_coordinates",
+        coordinate_evidence=(
+            SourceReference(
+                "https://example.test/coordinates",
+                "verified test coordinates",
+                None,
+            ),
+        ),
+    )
+    assert verified.is_routable()
+    assert verified.has_verified_location()
+    assert berlin.outbound_profiles()
+    bidirectional = world.facilities[2]
+    assert bidirectional.outbound_profiles()
+    assert bidirectional.inbound_profiles()
+
+    location = verified.location_snapshot()
+    assert location.facility_uid == berlin.facility_uid
+    assert location.coordinate_evidence
+    assert location.company is not None
+    assert berlin.company is not None
+    assert location.company.company_uid == berlin.company.company_uid
+    with pytest.raises(FrozenInstanceError):
+        setattr(location, "label", "changed")
+
+    for field, value in (
+        ("coordinates", None),
+        ("coordinate_evidence", ()),
+        ("geocoding_status", "candidate"),
+    ):
+        assert not replace(verified, **{field: value}).is_routable()
+
+    outbound = bidirectional.outbound_profiles()[0]
+    assert not replace(
+        bidirectional,
+        nhm_profiles=(replace(outbound, role="input"),),
+    ).outbound_profiles()
+    inbound = bidirectional.inbound_profiles()[0]
+    assert not replace(
+        bidirectional,
+        nhm_profiles=(replace(inbound, role="output"),),
+    ).inbound_profiles()
+
+
+def test_facility_query_parses_bounds_and_wraps_the_dateline(
+    synthetic_world_catalogue,
+):
+    berlin = WorldScope(synthetic_world_catalogue.read()).facility(
+        "berlin_westhafen"
+    )
+    assert not FacilityQuery().includes(replace(berlin, coordinates=None))
+    dateline = FacilityQuery.parse("170,-10,-170,10")
+    assert dateline.includes(replace(berlin, coordinates=Coordinates(0, 179)))
+    assert dateline.includes(replace(berlin, coordinates=Coordinates(0, -179)))
+    assert not dateline.includes(
+        replace(berlin, coordinates=Coordinates(0, 0))
+    )
+    assert FacilityQuery.parse("13,52,14,53").includes(berlin)
+    assert not FacilityQuery.parse("0,0,1,1").includes(berlin)
+    for bounds in ("", "0,1,2", "nan,0,1,2", "181,0,1,2", "0,4,1,2"):
+        with pytest.raises(ValueError):
+            FacilityQuery.parse(bounds)

@@ -311,20 +311,20 @@ FUNCTION_TESTS.update(
         "app.api.v1.map.list_map_facilities": "test_map_endpoint_requires_session_and_uses_map_service",
         "app.composition.runtime.build_world_catalogue": "test_world_catalogue_composition_uses_explicit_path_without_game_state",
         "app.domain.cargo.NhmProduct.is_compatible_with": "test_nhm_cargo_profiles_follow_parent_hierarchy",
-        "app.domain.world.Facility.has_verified_location": "test_world_snapshot_identity_provenance_and_query",
-        "app.domain.world.Facility.location_snapshot": "test_world_snapshot_identity_provenance_and_query",
-        "app.domain.world.Facility.inbound_profiles": "test_world_snapshot_identity_provenance_and_query",
-        "app.domain.world.Facility.is_routable": "test_world_snapshot_identity_provenance_and_query",
-        "app.domain.world.Facility.outbound_profiles": "test_world_snapshot_identity_provenance_and_query",
-        "app.domain.world.FacilityQuery.includes": "test_world_snapshot_identity_provenance_and_query",
-        "app.domain.world.FacilityQuery.parse": "test_world_snapshot_identity_provenance_and_query",
+        "app.domain.world.Facility.has_verified_location": "test_facility_rules_preserve_immutable_location_snapshots",
+        "app.domain.world.Facility.location_snapshot": "test_facility_rules_preserve_immutable_location_snapshots",
+        "app.domain.world.Facility.inbound_profiles": "test_facility_rules_preserve_immutable_location_snapshots",
+        "app.domain.world.Facility.is_routable": "test_facility_rules_preserve_immutable_location_snapshots",
+        "app.domain.world.Facility.outbound_profiles": "test_facility_rules_preserve_immutable_location_snapshots",
+        "app.domain.world.FacilityQuery.includes": "test_facility_query_parses_bounds_and_wraps_the_dateline",
+        "app.domain.world.FacilityQuery.parse": "test_facility_query_parses_bounds_and_wraps_the_dateline",
         "app.main.world_catalogue_error": "test_map_endpoint_requires_session_and_uses_map_service",
         "app.repositories.cached_world_catalogue.CachedWorldCatalogue.__init__": "test_cached_world_catalogue_reads_source_once",
         "app.repositories.cached_world_catalogue.CachedWorldCatalogue.read": "test_cached_world_catalogue_reads_source_once",
         "app.repositories.world_catalogue.SqliteWorldCatalogue.__init__": "test_world_repository_readonly_and_cleanup",
         "app.repositories.world_catalogue.SqliteWorldCatalogue.read": "test_world_repository_readonly_and_cleanup",
         "app.repositories.world_catalogue.read_cargo": "test_world_repository_rejects_incompatible_data",
-        "app.repositories.world_catalogue.read_nhm_ancestors": "test_world_snapshot_identity_provenance_and_query",
+        "app.repositories.world_catalogue.read_nhm_ancestors": "test_nhm_ancestor_reader_rejects_invalid_hierarchy",
         "app.repositories.world_catalogue.read_companies": "test_world_repository_rejects_incompatible_data",
         "app.repositories.world_catalogue.read_facility": "test_world_facility_mapping_preserves_sources_and_aliases",
         "app.repositories.world_catalogue.read_facility_sources": "test_world_facility_mapping_preserves_sources_and_aliases",
@@ -440,7 +440,7 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.api.v1.location_projection.project_location": "test_world_snapshot_identity_provenance_and_query",
+        "app.api.v1.location_projection.project_location": "test_location_projection_hides_repository_evidence",
         "app.api.v1.game_projection.project_player": "test_player_state_domain_rules",
     }
 )
