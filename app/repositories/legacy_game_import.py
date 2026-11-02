@@ -176,7 +176,7 @@ class LegacyGameImporter:
             raise ValueError("Unknown world-state revision.")
         player = PlayerState(**states.pop(prefix + "player"))
         vehicles = tuple(
-            self.reader.vehicle(value)
+            self.reader.read_vehicle(value)
             for value in states.pop(prefix + "vehicles")
         )
         offers = []
@@ -188,7 +188,7 @@ class LegacyGameImporter:
                     ExcludedOffer(user_id, value["id"], "obsolete_goods_model")
                 )
                 continue
-            offer = self.reader.offer(value)
+            offer = self.reader.read_offer(value)
             if offer.is_available(now, self.market_model):
                 offers.append(offer)
             else:
@@ -198,7 +198,9 @@ class LegacyGameImporter:
                     )
                 )
         raw_trips = states.pop(prefix + "active_trips")
-        transports = tuple(self.reader.transport(value) for value in raw_trips)
+        transports = tuple(
+            self.reader.read_transport(value) for value in raw_trips
+        )
         profile = ImportedProfile(
             account,
             player,
@@ -219,7 +221,7 @@ class LegacyGameImporter:
             raise ValueError("Unknown global world-state revision.")
         PlayerState(**states["player"])
         for vehicle in states["vehicles"]:
-            self.reader.vehicle(vehicle)
+            self.reader.read_vehicle(vehicle)
         for offer in states["contracts"]:
             self.reader.validate_obsolete_offer(offer)
         for key in required | {"world_state_version"}:

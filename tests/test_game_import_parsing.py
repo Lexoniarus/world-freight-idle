@@ -203,17 +203,22 @@ def test_import_rejects_unknown_tables_and_failed_integrity(legacy_source):
     assert path.read_bytes() == original
 
 
-def test_legacy_snapshot_decoding_rejects_conflicting_facts(legacy_source):
+def test_legacy_snapshot_readers_reject_unknown_fields(legacy_source):
     _, importer, state, _, _ = legacy_source
     reader = importer.reader
     for loader, value in (
-        (reader.location, state["contracts"][0]["origin"]),
-        (reader.offer, state["contracts"][0]),
-        (reader.vehicle, state["vehicles"][0]),
-        (reader.transport, state["active_trips"][0]),
+        (reader.read_location, state["contracts"][0]["origin"]),
+        (reader.read_offer, state["contracts"][0]),
+        (reader.read_vehicle, state["vehicles"][0]),
+        (reader.read_transport, state["active_trips"][0]),
     ):
         with pytest.raises(ValueError):
             loader({**value, "unknown_field": 1})
+
+
+def test_legacy_offer_rejects_conflicting_cargo_and_endpoints(legacy_source):
+    _, importer, state, _, _ = legacy_source
+    reader = importer.reader
     original = state["contracts"][0]
     for key, value in (
         ("cargo_code", "unknown"),
@@ -223,7 +228,15 @@ def test_legacy_snapshot_decoding_rejects_conflicting_facts(legacy_source):
         ("cargo_evidence", {}),
     ):
         with pytest.raises((ValueError, KeyError)):
-            reader.offer({**original, key: value})
+            reader.read_offer({**original, key: value})
+
+
+def test_legacy_location_rejects_conflicting_identity_and_coordinates(
+    legacy_source,
+):
+    _, importer, state, _, _ = legacy_source
+    reader = importer.reader
+    original = state["contracts"][0]
     for key, value in (
         ("id", "other"),
         ("company_uid", "other"),
@@ -231,26 +244,46 @@ def test_legacy_snapshot_decoding_rejects_conflicting_facts(legacy_source):
         ("lon", 200),
     ):
         with pytest.raises(ValueError):
-            reader.location({**original["origin"], key: value})
+            reader.read_location({**original["origin"], key: value})
+
+
+def test_legacy_vehicle_rejects_conflicting_location(legacy_source):
+    _, importer, state, _, _ = legacy_source
+    reader = importer.reader
     with pytest.raises(ValueError):
-        reader.vehicle({**state["vehicles"][0], "facility_uid": "other"})
+        reader.read_vehicle({**state["vehicles"][0], "facility_uid": "other"})
+
+
+def test_legacy_transport_rejects_conflicting_saved_facts(legacy_source):
+    _, importer, state, _, _ = legacy_source
+    reader = importer.reader
     for key, value in (
         ("profit_eur", 0),
         ("origin_snapshot", {}),
         ("route_geojson", {"type": "Point"}),
     ):
         with pytest.raises(ValueError):
-            reader.transport({**state["active_trips"][0], key: value})
+            reader.read_transport({**state["active_trips"][0], key: value})
+
+
+def test_legacy_profile_rejects_invalid_confidence(legacy_source):
+    _, _, state, _, _ = legacy_source
+    original = state["contracts"][0]
     with pytest.raises(ValueError):
         read_legacy_profile(
             {**original["origin_cargo_evidence"], "confidence": 2}
         )
+
+
+def test_legacy_transport_accepts_geojson_feature_wrapper(legacy_source):
+    _, importer, state, _, _ = legacy_source
+    reader = importer.reader
     feature = copy.deepcopy(state["active_trips"][0])
     feature["route_geojson"] = {
         "type": "Feature",
         "geometry": feature["route_geojson"],
     }
-    assert reader.transport(feature) == reader.transport(
+    assert reader.read_transport(feature) == reader.read_transport(
         state["active_trips"][0]
     )
 
@@ -346,25 +379,25 @@ def test_old_reference_documents_and_retired_offers_are_explicitly_handled(
         state["contracts"][0]["origin_cargo_evidence"],
     ]
     offer["origin"].pop("location_verified")
-    old = reader.historical_contract(offer)
+    old = reader.read_historical_contract(offer)
     assert old.market_model is None and old.cargo.name == "Metals"
     assert load_location(asdict(old.origin)) == old.origin
     assert len(old.origin.handling_evidence) == 2
     compact = copy.deepcopy(offer["origin"])
     compact.pop("company")
-    partial = reader.location(compact)
+    partial = reader.read_location(compact)
     assert partial.company.company_uid == compact["company_uid"]
     assert partial.company.legal_name is None
     assert load_location(asdict(partial)) == partial
     no_company = {**compact, "company_uid": None, "lat": None, "lon": None}
-    assert reader.location(no_company).company is None
+    assert reader.read_location(no_company).company is None
     vehicle = {**state["vehicles"][0]}
     vehicle.pop("location_snapshot")
-    assert reader.vehicle(vehicle).location is not None
+    assert reader.read_vehicle(vehicle).location is not None
     with pytest.raises(ValueError):
-        reader.location({**compact, "snapshot_version": 99})
+        reader.read_location({**compact, "snapshot_version": 99})
     with pytest.raises(ValueError):
-        reader.historical_contract({**offer, "cargo_code": "wrong"})
+        reader.read_historical_contract({**offer, "cargo_code": "wrong"})
     with pytest.raises(ValueError):
         read_documented_cargo({**goods, "role": "bad"})
     for changed in (
