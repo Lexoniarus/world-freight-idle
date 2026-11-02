@@ -16,9 +16,7 @@ from tests.support.market import (
 
 
 @pytest.mark.asyncio
-async def test_worker_fills_ready_market(
-    synthetic_game_context, database
-):
+async def test_worker_fills_ready_market(synthetic_game_context, database):
     prepared_context, preparation = build_prepared_game(
         synthetic_game_context, database
     )

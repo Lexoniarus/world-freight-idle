@@ -120,11 +120,14 @@ async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(
     vehicle = synthetic_game.get_vehicle("truck_01")
     quote = await synthetic_game.quote_contract(offer.id, vehicle.id)
     vehicle._operating_cost_eur_per_km = None
-    assert synthetic_game.transport_dispatch.calculate_quote(
-        offer,
-        quote.dispatch_route,
-        vehicle,
-    ).economics == quote.economics
+    assert (
+        synthetic_game.transport_dispatch.calculate_quote(
+            offer,
+            quote.dispatch_route,
+            vehicle,
+        ).economics
+        == quote.economics
+    )
     model = next(
         item
         for item in synthetic_game_context.catalogue.list_models()
