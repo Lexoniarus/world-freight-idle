@@ -2,6 +2,7 @@ import "./test-dom.mjs";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { VehicleGroups } from "./map/vehicle-groups.js";
+import { groupVehicles } from "./map/grouping.js";
 
 const vehicle = (id, isOwn = true) => ({
   geometry: { coordinates: [13.4, 52.5] },
@@ -141,4 +142,30 @@ test("throttled groups update the existing representative pose", () => {
   assert.equal(button.dataset.representative, "own:a");
   assert.equal(button.dataset.movement, "enroute");
   assert.equal(button.textContent, "2");
+});
+
+test("group visual keeps a stable representative and separates owners", () => {
+  const model = "iveco_sway_500";
+  const members = ["one", "two"].map((username, index) => ({
+    properties: {
+      key: username,
+      username,
+      modelId: index ? model : "unknown",
+      playerColor: "#e45756",
+      idle: true,
+    },
+    geometry: { coordinates: [13, 52] },
+  }));
+  assert.equal(groupVehicles(members, () => ({ x: 0, y: 0 })).length, 2);
+
+  const button = document.createElement("button");
+  VehicleGroups.prototype.renderVisual(button, members);
+  assert.equal(button.dataset.representative, "one");
+  assert.equal(button.dataset.movement, "idle");
+  assert.equal(button.querySelector("img"), null);
+  assert.equal(button.querySelector(".vehicle-group-count").textContent, "2");
+
+  const badge = button.querySelector(".vehicle-group-count");
+  VehicleGroups.prototype.renderVisual(button, members);
+  assert.equal(button.querySelector(".vehicle-group-count"), badge);
 });

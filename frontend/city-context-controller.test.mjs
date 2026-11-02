@@ -102,3 +102,39 @@ test("navigation waits for an explicit vehicle or city context", async () => {
   assert.equal(view.cityUid, berlin.city_uid);
   city.destroy();
 });
+
+test("market cities contain only origins of currently idle vehicles", async () => {
+  const state = new GameState(async () => {});
+  state.data = {
+    vehicles: [vehicle],
+    contracts: [offer],
+    transports: [],
+  };
+  const view = { url: new URL("http://test/contracts?city=b") };
+  const city = new CityContextController({
+    state,
+    view,
+    request: async () => other,
+    notify() {},
+    map: null,
+  });
+  city.update();
+
+  await city.selectRoute(view.url);
+  assert.deepEqual(
+    view.marketCities.map((item) => item.city_uid),
+    [berlin.city_uid],
+  );
+  assert.equal(view.cityUid, "");
+
+  city.selected = berlin.city_uid;
+  city.explicit = true;
+  state.data.vehicles[0].status = "enroute";
+  city.update();
+  assert.deepEqual(view.marketCities, []);
+  assert.equal(view.cityUid, "");
+  assert.equal(view.url.searchParams.has("city"), false);
+  assert.equal(view.cities.length, 2);
+  city.destroy();
+  state.destroy();
+});

@@ -49,3 +49,29 @@ test("palette renders explicit loading, error retry and all accessible selected 
   assert.equal(container.querySelectorAll('[aria-pressed="true"]').length, 1);
   assert.equal(container.querySelector("details"), null);
 });
+
+test("late preference reads cannot overwrite a confirmed color change", async () => {
+  const responses = [];
+  const panel = {
+    view: { user: {}, companyPalette: ["#4c78a8"] },
+    render() {},
+  };
+  const published = [];
+  const controller = new PreferencesController({
+    request: () => new Promise((resolve) => responses.push(resolve)),
+    panel,
+    map: { setCompanyColor: (color) => published.push(color) },
+    notify() {},
+  });
+
+  const read = controller.refresh();
+  const write = controller.save("#4c78a8");
+  responses[1]({ company_color: "#4c78a8" });
+  await write;
+  responses[0]({ company_color: "#e45756", palette: [] });
+  await read;
+
+  assert.deepEqual(published, ["#4c78a8", "#4c78a8"]);
+  assert.equal(panel.view.user.company_color, "#4c78a8");
+  controller.destroy();
+});
