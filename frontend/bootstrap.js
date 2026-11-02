@@ -32,8 +32,12 @@ export async function bootstrap() {
   const redirect = (path) => window.location.replace(path);
   const api = new GameApiClient(globalThis.fetch.bind(globalThis), redirect);
   let application;
+  const releaseOwner = () => {
+    if (application) application.destroy();
+    else api.destroy();
+  };
   const pagehide = () => {
-    reportCleanup([() => application?.destroy(), () => api.destroy()]);
+    reportCleanup([releaseOwner]);
   };
   window.addEventListener("pagehide", pagehide, { once: true });
   // A disposed application restored from the back-forward cache needs a fresh lifecycle.
@@ -51,7 +55,7 @@ export async function bootstrap() {
     }
     await application.start();
   } catch (error) {
-    reportCleanup([() => application?.destroy(), () => api.destroy()]);
+    reportCleanup([releaseOwner]);
     if (error instanceof ApiError && error.status === 401) {
       redirect("/login");
       return;
