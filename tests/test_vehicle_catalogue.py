@@ -6,11 +6,13 @@ import sqlite3
 from contextlib import closing
 from dataclasses import replace
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
+from app.api.v1.fleet import get_catalogue, purchase_vehicle
 from app.api.v1.game_projection import (
     project_catalogue,
     project_player,
@@ -19,6 +21,7 @@ from app.api.v1.game_projection import (
     project_transport,
     project_vehicle,
 )
+from app.api.v1.schemas import PurchaseRequest
 from app.bootstrap import (
     build_fleet_service,
     build_player_service,
@@ -345,6 +348,22 @@ def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
         assert (
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 175000
         )
+
+
+def test_fleet_api_translates_catalogue_failures():
+    fleet = MagicMock()
+    failure = CatalogueError("Catalogue unavailable")
+    fleet.list_catalogue.side_effect = failure
+    with pytest.raises(HTTPException) as catalogue_error:
+        get_catalogue(fleet)
+    assert catalogue_error.value.status_code == 503
+
+    fleet.purchase.side_effect = failure
+    game = MagicMock()
+    with pytest.raises(HTTPException) as purchase_error:
+        purchase_vehicle(PurchaseRequest(model_id="model"), fleet, game)
+    assert purchase_error.value.status_code == 503
+    game.reconcile_arrival.assert_called_once_with()
 
 
 def test_fleet_builder_reuses_validated_runtime_catalogue(
