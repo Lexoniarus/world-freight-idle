@@ -23,7 +23,7 @@ from tests.support.catalogues import (
 from tests.support.game import create_active_trip
 from tests.support.game_service import build_fixture_game
 from tests.support.legacy_fixtures import legacy_source as legacy_source
-from tests.support.market import seed_test_offers
+from tests.support.market import make_stock_batch, seed_test_offers
 from tests.support.market_fixtures import (
     city_market as city_market,
 )
@@ -89,6 +89,14 @@ def synthetic_game(
     service.ensure_initial_state()
     seed_test_offers(service)
     return service
+
+
+@pytest.fixture
+def stock_game(vehicle_game):
+    """Compose one player market with local stock preparation services."""
+    game, preparation = vehicle_game
+    preparation.demand.ensure()
+    return game, preparation, make_stock_batch(game, preparation)
 
 
 @pytest.fixture
