@@ -339,11 +339,13 @@ Tatsächliche gezielte und vollständige Befehle sowie Ergebnisse stehen im aktu
 historischen Abschnitten gelten nicht als Abnahme dieser Implementierung.
 
 
-## Gezielte Review- und Vehicle-Ready-Regressionen
+## Eigentümerbezogene Recovery- und Vehicle-Ready-Regressionen
 
-`test_review_regressions.py` prüft negative/stale Generationen, eigenständigen
-und äußeren Bind-Rollback, Scheduler-/Status-/Finish-Fehler, verschwundene Jobs,
-Cancellation, Generationwechsel und die typisierte deterministische Auditmatrix.
+`test_market_demand_recovery.py`, `test_offer_route_atomicity.py`,
+`test_market_worker_recovery.py` und `test_economy_audit.py` prüfen getrennt
+negative/stale Generationen, Bind-Rollback, Scheduler-/Status-/Finish-Fehler,
+verschwundene Jobs, Cancellation, Generationwechsel und die typisierte
+deterministische Auditmatrix.
 `test_vehicle_market.py` prüft kleinere/größere Fahrzeuge, geteilte Offers,
 Delivery plus individuelle Approaches, stale Eligibility, erschöpfte Pools,
 Abfahrt während Await, API-Besitz/idle-Prüfung und priorisierte Approaches ohne
@@ -373,7 +375,8 @@ aufgerufen. Der gezielte Lauf umfasst `test_connected_routing`,
 `test_routing_anchor_provider`, `test_routing_readiness_store`,
 `test_dispatch_routing_anchors`, `test_dispatch_approach`,
 `test_route_readiness`, `test_market_preparation_worker`,
-`test_review_regressions`, `test_vehicle_market`,
+`test_market_demand_recovery`, `test_offer_route_atomicity`,
+`test_market_worker_recovery`, `test_economy_audit`, `test_vehicle_market`,
 `test_routing_audit`, `test_function_contract` und `test_architecture`.
 Coverage wird für die acht betroffenen Routing-/Dispatchmodule ausgewiesen,
 nicht als Gesamt-Core-Abnahme. Ruff/Format, mypy und Pyright prüfen die
@@ -428,10 +431,18 @@ Handelsbeziehungen prüft über `StockPreparationBatch.process()` den sichtbaren
 Übergang `0 -> 1 -> 2 -> 3` und drei strukturell verschiedene Angebote. Ein
 getrennter Selektionsgegenfall erlaubt Wiederholung nur bei genau einer
 verfügbaren Handelsbeziehung. `test_market_stock_repair.py` verwendet ebenfalls
-nur kleine temporäre SQLite-Dateien. Es prüft read-only Inventur, minimale
-Planung, geschützte Daten, bytegleiche Quelle, Backup-/Archivpflicht,
-SHA-256-Archiv, vollständige Reconciliation, Rollback und Idempotenz. Die reale
-Spielerdatenbank wird von der Testsuite nicht geöffnet.
+nur kleine temporäre SQLite-Dateien. Der Reader lädt ausschließlich query-only
+Kontexte, der Archivschreiber besitzt kanonische SHA-256-Datensätze, und der
+Executor besitzt Ausgabereservierung, Mutation und Reconciliation. Die Tests
+prüfen minimale Planung, geschützte Daten, bytegleiche Quelle,
+Backup-/Archivpflicht, vollständige Reconciliation, Rollback und Idempotenz.
+Die reale Spielerdatenbank wird von der Testsuite nicht geöffnet.
+
+HTTP-Gegentests liegen nicht in einem Sammelmodul. Contracts, Fleet,
+Transports, System, Preferences, öffentliche Fehlerabbildung und Web-Routen
+besitzen eigene Module. `tests/support/http_application.py` stellt lediglich
+die gemeinsame lokale App-/FakeGame-Verdrahtung bereit und enthält keine
+Produktregeln.
 
 Frontend-Verhaltenstests prüfen die serverseitige Fahrzeugabfrage, Zusammenfassung
 gleicher Reads und Ausschluss verspäteter Antworten nach Auswahlwechseln.

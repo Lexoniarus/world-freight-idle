@@ -1,8 +1,8 @@
 # Qualitätsbericht: lokaler bedarfsgesteuerter Frachtpool
 
-Stand: 02.11.2026. Branch `refactor/local-market-pool`, Basis aktuelles lokales
-`main`. Dieser Abschnitt ist der aktuelle Prüfstand; die folgenden Berichte sind
-historische Abnahmen früherer Architekturen.
+Stand: 02.11.2026. Arbeitsbranch `refactor/local-market-pool`. Dieser Abschnitt
+ist der aktuelle Prüfstand; die folgenden Berichte sind historische Abnahmen
+früherer Architekturen.
 
 ## Aktuelle Testpyramide
 
@@ -14,11 +14,13 @@ Repositoryabnahmen gelesen. Generische `game`-, `runtime`-, `catalogue`- und
 Repositoryfehler verwenden zwei kleine SQL-Kataloge mit zwei Standorten und
 vier Fahrzeugmodellen; die großen Referenzdateien bleiben dabei unverändert.
 
-Der lokale Python-Abnahmelauf bestand alle **611 Tests in 80,99 Sekunden**; der
-langsamste Fall benötigte 6,08 Sekunden. Die **128 Frontendtests** bestanden in
-9,37 Sekunden. Playwright besteht aus **14** getrennten UI-Grenzen und lief in
-1,2 Minuten; der langsamste Browserfall benötigte 8,4 Sekunden. Öffentliche
-Tiles, echte Provider und Supabase waren in allen Läufen ausgeschlossen.
+Der abschließende lokale Abnahmelauf bestand mit **616 Python-Tests** in
+67,28 Sekunden bei 100 % App-Statement-Coverage; der langsamste Pythonfall
+benötigte 2,90 Sekunden. Die **131 Frontendtests** bestanden in 9,69 Sekunden.
+Alle **14** getrennten Playwright-Grenzen bestanden in 1,1 Minuten; der
+langsamste Browserfall benötigte 7,4 Sekunden. Kein Einzelfall überschritt die
+harte Zehn-Sekunden-Grenze. Öffentliche Tiles, echte Provider und Supabase
+waren in allen Läufen ausgeschlossen.
 
 Fahrzeuge werden im Flotten-Read-Modell nach ID genau einmal verbunden und
 gerendert. Aktive Fahrzeuge erscheinen unter `Unterwegs`; Abfahrts- und
@@ -27,7 +29,10 @@ Frontend-Sammelmodule für Core, Lifecycle, Runtime, Map und Assets wurden durch
 Eigentümertests für State, Controller, Geometrie, Layer, Traffic, Routencache
 und Bildbindungen ersetzt. Python trennt Marktplanung, Vertragsbildung,
 Publikation, Vorbereitung, Gameplay-Use-Cases und Legacy-Import sichtbar nach
-Produktionsverantwortung.
+Produktionsverantwortung. API-Gegentests liegen zusätzlich bei Contract, Fleet,
+Transport, System, Preferences, Fehlerabbildung und Web-Routen. Das frühere
+generische Review-Modul ist durch Demand-Recovery, Offer-Route-Atomicity,
+Worker-Recovery und Economy-Audit ersetzt.
 
 `VehicleGroups` besitzt nun die lesbaren Schritte `activateGroup`,
 `zoomToGroup` und `showVehicleList`. MapLibre bleibt in genau einem nativen
@@ -60,6 +65,12 @@ den API-Client frei; Bootstrap greift nur vor erfolgreicher Owner-Erzeugung
 direkt ein. Die distinct Flottenprojektion bleibt unverändert: ein Fahrzeug
 erscheint auch bei Abfahrts- und Zielstadtfilter nur einmal.
 
+`OverlayData.update` delegiert Zustandsnormalisierung, deduplizierte
+Facility-Projektion und Routencache-Synchronisierung an drei benannte reine
+Helfer in `overlay-state.js`. Eigene aktive Transporte ersetzen die
+entsprechende öffentliche Trafficzeile; sie erzeugen keine zweite
+Fahrzeugdarstellung.
+
 Die Arbeitscommits wurden ausschließlich mit ihren Eigentümertests, Ruff,
 mypy beziehungsweise ESLint, Prettier und checkJs geprüft. Danach bestanden
 das vollständige Quality-Gate und alle 14 Browsergrenzen. Supabase, reale
@@ -88,9 +99,11 @@ zulässigen Wiederholungsfallback. Kein Test patcht dafür die private
 Worker-Auswahl. Volle historische Bestände bleiben im normalen Betrieb
 unverändert, können aber über einen ausdrücklich gestarteten Offline-Service
 read-only inventarisiert und in eine neue reconciled Kopie korrigiert werden.
-Planner, Service und SQLite-Store trennen fachliche Diversitätsentscheidung,
-Orchestrierung und SQL. Die Korrektur löscht keine Vorlagen oder Routingevidenz
-und verändert keine aktive Quelldatenbank.
+Planner und Service trennen fachliche Diversitätsentscheidung und
+Orchestrierung. Query-only Reader, checksummierter Archivschreiber,
+Copy-Executor und Strukturvalidator besitzen getrennte SQL-Verantwortungen.
+Die Korrektur löscht keine Vorlagen oder Routingevidenz und verändert keine
+aktive Quelldatenbank.
 
 Entfernt wurden Prozesssupervisor, getrennte Prewarm-Rolle, globale Worker-Lease,
 Startup-Markt-Rebuild, paralleler Legacy-Batch und globale Katalogversorgung.

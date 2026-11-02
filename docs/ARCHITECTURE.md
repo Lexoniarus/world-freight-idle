@@ -43,6 +43,9 @@ jeweiligen Schnitt im Architekturreview zu entscheiden. Diese Dokumentation
 - `app/repositories`: SQLite, Verbindungen, Transaktionen, Schema-Validierung
   und kanonisches Snapshot-Mapping. Read-only Referenzdaten bleiben getrennt
   vom beschreibbaren Spielerzustand.
+- `app/repositories/market_stock_repair`: explizite Offline-Grenze mit
+  query-only Reader, checksummiertem Archiv, Copy-Executor und gemeinsamer
+  Strukturvalidierung. Keine Komponente verändert die aktive Quelldatenbank.
 - `app/providers`: validierte Valhalla-/Geocoding-Antworten, Providerfehler,
   Rate-Limit und Cache-Port. Nominatim dient Offline-Enrichment und begrenztem Backend-Anchor-Repair;
   keine allgemeinen Spieler-Geocoding-Anfragen.
@@ -175,6 +178,11 @@ Satelliten, Spielerunternehmen und Depots bleiben außerhalb dieser Phase.
 API-Client, `GameState`, Controller, Views, Kartenlayer und Animation sind
 getrennt. `LatestRequest` besitzt nur den Lebenszyklus der jeweils neuesten
 Controlleranfrage; es ist kein zweiter Spielzustand.
+`OverlayData` orchestriert nur das Karten-Read-Modell. `overlay-state.js`
+besitzt die reinen Schritte zum Zusammenführen eigener Trafficdaten, zum
+Deduzieren aufgelöster Facilities und zum Synchronisieren der Routencaches.
+Ein eigener aktiver Transport ersetzt dadurch seine öffentliche Projektion,
+statt dass dasselbe Fahrzeug zweimal dargestellt wird.
 Views führen keine Requests aus. Dynamische Texte werden als DOM-Text gesetzt.
 Controller besitzen und beenden Listener, Requests und Timer. `PanelController`
 erhält seine Bildbindung im Konstruktor und besitzt sie bis `destroy()`; Views

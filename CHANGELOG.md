@@ -1,5 +1,27 @@
 # Changelog
 
+## Klare Reparatur-, Overlay- und Testverantwortungen – 02.11.2026
+
+- Die Offline-Marktreparatur ist in query-only Reader, checksummierten
+  Archivschreiber, Copy-Executor und Strukturvalidierung getrennt. Der Service
+  hängt nur von Reader-/Executor-Ports ab; die aktive Quelle bleibt
+  unverändert.
+- `OverlayData` delegiert Traffic-Zusammenführung, Facility-Deduplizierung und
+  Routencache-Synchronisierung an benannte reine Funktionen. Ein eigenes
+  aktives Fahrzeug ersetzt seine öffentliche Trafficprojektion und erscheint
+  nicht doppelt.
+- API-Tests liegen bei Contract, Fleet, Transport, System, Preferences,
+  Fehlerabbildung und Web-Routen. Das frühere generische Review-Modul ist durch
+  Demand-Recovery, Offer-Route-Atomicity, Worker-Recovery und Economy-Audit
+  ersetzt.
+- Normale HTTP-/Runtime-Tests verwenden kompakte SQL-Kataloge. Nur ausdrücklich
+  benannte Welt-/Fahrzeugkatalogabnahmen kopieren die ausgelieferten
+  Referenzdateien.
+- Die vollständige lokale Abnahme bestand mit 616 Python-Tests, 100 %
+  App-Statement-Coverage, 131 Frontendtests und 14 Playwright-Grenzen. Der
+  langsamste Pythonfall benötigte 2,90 Sekunden, der langsamste Browserfall
+  7,4 Sekunden; Supabase und Live-Provider blieben aus.
+
 ## Reproduzierbare Marktdiversitätskorrektur – 02.11.2026
 
 - Ein öffentlicher Worker-Test belegt nun mit synthetischen Waren und fertigen
