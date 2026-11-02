@@ -9,14 +9,18 @@ from app.domain.errors import RoutingError
 from app.domain.ports import TruckRouter, WorldCatalogue
 from app.domain.readiness_ports import RoutingReadinessStore
 from app.domain.routing_anchor_ports import RoutingAnchorResolverPort
-from app.domain.routing_anchors import NEGATIVE_TTL
-from app.domain.routing_connections import connection_leases
+from app.domain.routing_anchors import NEGATIVE_TTL, RoutingAnchor
+from app.domain.routing_connections import (
+    ValidatedConnection,
+    connection_leases,
+)
 from app.domain.routing_readiness import (
     RouteReference,
     RoutingAttempt,
     RoutingRelation,
     relation_identity,
 )
+from app.domain.world import WorldSnapshot
 from app.domain.world_scopes import WorldScope
 from app.services.routing.connections import RoutingConnectionValidator
 from app.services.routing.evidence import RoutingEvidenceReader
@@ -96,16 +100,10 @@ class RoutingPreparationService:
             self.evidence.anchor_store.get(destination, "truck"),
         )
         expected = self.evidence.fingerprint(origin, destination)
-        if self.world.read() != snapshot:
+        if not self._inputs_unchanged(snapshot, origin, destination, expected):
             return None
-        for subject in connection_leases(origin, destination):
-            if not self.store.renew(
-                subject,
-                owner,
-                self.clock(),
-                self.clock() + self.timeout_seconds + 10,
-            ):
-                return None
+        if not self._renew_connection_leases(origin, destination, owner):
+            return None
         try:
             result = await self.connections.validate(
                 scope.facility(origin),
@@ -116,18 +114,74 @@ class RoutingPreparationService:
                 self.store.append_attempt,
             )
         except RoutingError as error:
-            if (
-                self.world.read() != snapshot
-                or self.evidence.fingerprint(origin, destination) != expected
+            if not self._inputs_unchanged(
+                snapshot,
+                origin,
+                destination,
+                expected,
             ):
                 return None
             return self._failure(origin, destination, owner, error)
-        if (
-            self.world.read() != snapshot
-            or self.evidence.fingerprint(origin, destination) != expected
+        if not self._inputs_unchanged(
+            snapshot,
+            origin,
+            destination,
+            expected,
         ):
             return None
-        now = self.clock()
+        return self._publish_connection(
+            result,
+            expected_anchors,
+            origin,
+            destination,
+            owner,
+            self.clock(),
+        )
+
+    def _inputs_unchanged(
+        self,
+        snapshot: WorldSnapshot,
+        origin: str,
+        destination: str,
+        fingerprint: str,
+    ) -> bool:
+        """Fence publication against changed world or routing evidence."""
+        return (
+            self.world.read() == snapshot
+            and self.evidence.fingerprint(
+                origin,
+                destination,
+            )
+            == fingerprint
+        )
+
+    def _renew_connection_leases(
+        self,
+        origin: str,
+        destination: str,
+        owner: str,
+    ) -> bool:
+        """Renew every connection subject before awaiting provider work."""
+        for subject in connection_leases(origin, destination):
+            if not self.store.renew(
+                subject,
+                owner,
+                self.clock(),
+                self.clock() + self.timeout_seconds + 10,
+            ):
+                return False
+        return True
+
+    def _publish_connection(
+        self,
+        result: ValidatedConnection,
+        expected_anchors: tuple[RoutingAnchor | None, RoutingAnchor | None],
+        origin: str,
+        destination: str,
+        owner: str,
+        now: float,
+    ) -> RoutingRelation | None:
+        """Build and atomically publish both validated route directions."""
         forward = self._ready_relation(
             origin,
             destination,
