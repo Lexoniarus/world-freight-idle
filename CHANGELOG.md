@@ -1,5 +1,28 @@
 # Changelog
 
+## Eigentümerklare Testmodule und eindeutige Flotte – 02.11.2026
+
+- Aktive Fahrzeuge erscheinen im Flottenkatalog genau einmal unter
+  `Unterwegs`; Abfahrts- und Zielstadt bleiben Filterkriterien, erzeugen aber
+  keine doppelten Fahrzeugkarten mehr.
+- Die früheren Frontend-Sammelmodule für Core, Lifecycle, Map, Runtime und
+  Fahrzeugassets sind entfernt. Geometrie, API, State, Controller, Map-Layer,
+  Traffic, Routencache und Bildbindungen besitzen eigene benannte Testmodule.
+- Marktbestand ist nach Planung, Vertragsbildung, Publikation und Vorbereitung
+  getrennt. Marktworker, Routennachweise und Preparation-Store werden ebenfalls
+  unabhängig geprüft.
+- Gameplaytests sind nach Initialisierung, Dispatch, Settlement und Queries
+  gegliedert; Legacy-Importtests nach Parsing, Reconciliation und CLI-Sicherheit.
+- Verhaltenstests verwenden synthetische In-Memory- oder kleine SQL-Kataloge.
+  Nur die expliziten Referenzabnahmen öffnen die ausgelieferten Binärkataloge.
+- Playwright enthält 14 Browsergrenzen. Backend-Bestandsregeln, Kaufregeln und
+  Katalogmengen werden nicht mehr zusätzlich im Browser nachgerechnet.
+- Python- und Playwright-Fälle besitzen nun ein hartes Zeitlimit von zehn
+  Sekunden. Betroffene gezielte Läufe blieben deutlich darunter; die einmalige
+  vollständige Abnahme folgt ausschließlich am Ende des Refactors.
+- Sämtliche Läufe verwendeten lokale SQLite-Testdaten und Fake-Provider; es gab
+  keine Supabase- oder Live-Providerzugriffe.
+
 ## Kleine synthetische Testpyramide – 31.10.2026
 
 - Domain-, Service- und Gameplaytests verwenden kleine typisierte In-Memory-
@@ -13,7 +36,7 @@
 - `VehicleGroups` trennt Aktivierung, Zoom und Fahrzeugliste; vier kleine DOM-
   Tests prüfen die Klick-/Fokus-/Payloadverträge. Generische Frontendtestmodule
   tragen jetzt Zuständigkeitsnamen.
-- Playwright wurde von überlappenden Sammelabläufen auf 15 Browsergrenzen in
+- Playwright wurde von überlappenden Sammelabläufen auf Browsergrenzen in
   Auth/Navigation, Dispatch, Market, Company, Map und Assets reduziert. Jeder
   lokale Fall blieb im Abnahmelauf unter sieben Sekunden.
 - Python-, Frontend- und Browserqualität laufen in CI parallel mit hartem

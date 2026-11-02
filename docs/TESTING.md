@@ -361,7 +361,8 @@ aufgerufen. Der gezielte Lauf umfasst `test_connected_routing`,
 `test_routing_anchors`, `test_anchor_repair_history`,
 `test_routing_anchor_provider`, `test_routing_readiness_store`,
 `test_dispatch_routing_anchors`, `test_dispatch_approach`,
-`test_market_preparation`, `test_review_regressions`, `test_vehicle_market`,
+`test_route_readiness`, `test_market_preparation_worker`,
+`test_review_regressions`, `test_vehicle_market`,
 `test_routing_audit`, `test_function_contract` und `test_architecture`.
 Coverage wird für die acht betroffenen Routing-/Dispatchmodule ausgewiesen,
 nicht als Gesamt-Core-Abnahme. Ruff/Format, mypy und Pyright prüfen die
@@ -378,7 +379,7 @@ Restabnahme: [Verbindungsprüfung](CONNECTED_ROUTING_REVIEW.md).
 
 Die vorherigen Hinweise auf ausschliesslich gezielte Tests sind historische
 Abnahmen. Fuer den Runtime-Umbau sind `python scripts/quality.py`, 100 % app-
-Statement-Coverage und `npm run test:e2e` vor Commit/Push vorgeschrieben.
+Statement-Coverage und `npm run test:e2e` vor Integration/Push vorgeschrieben.
 Keine abgesenkten Coverage-Schwellen, keine uebersprungenen Pflichtpruefungen.
 Neue Gegentests, Browserisolation und reproduzierbare Leistungsmessung stehen
 im [Runtime-Review](RUNTIME_ISOLATION_REVIEW.md). Der Browserserver startet den
@@ -390,15 +391,18 @@ keine echte iPad-Abnahme. Live-Reparaturen sind kein Teil der Testsuite.
 
 ## Gemeinsame Vorlagen und stabile Dreier-Auswahl
 
-`test_market_stock.py` prüft drei sichtbare Angebote, konkrete Reserven,
-gespeicherte abweichende Kapazität, zwei
-unabhängige Spieler, einmalige Verwendung, parallele Dispatches, finanziellen
-Rollback und sofortiges Nachrücken. Abfahrt, Zeitablauf, Providerfehler,
-Relations-/Flottenänderungen und Katalogänderungen dürfen keinen Bestand löschen
-oder ungeprüfte Angebote veröffentlichen. Teilweise Verbindungsvorbereitung
-wird nach neuem Repository-Kontext aus dem gespeicherten Checkpoint fortgesetzt.
-Aktive Transporte aktivieren ihr Ziel direkt ab Dispatch ohne vorzeitiges
-Settlement. Unbenutzte Katalogmodelle erzeugen keinen Vorbereitungslauf.
+`test_stock_planning.py`, `test_stock_publication.py`,
+`test_stock_preparation.py` und `test_market_contract_factory.py` trennen
+Zielplanung, atomare Veröffentlichung, schrittweise Vorbereitung und
+deterministische Vertragsbildung. Gemeinsam sichern sie drei sichtbare
+Angebote, konkrete Reserven, zwei unabhängige Spieler, einmalige Verwendung,
+parallele Dispatches, finanziellen Rollback und sofortiges Nachrücken ab.
+Abfahrt, Zeitablauf, Providerfehler, Relations-/Flottenänderungen und
+Katalogänderungen dürfen keinen Bestand löschen oder ungeprüfte Angebote
+veröffentlichen. Teilweise Verbindungsvorbereitung wird nach neuem
+Repository-Kontext aus dem gespeicherten Checkpoint fortgesetzt. Aktive
+Transporte aktivieren ihr Ziel direkt ab Dispatch ohne vorzeitiges Settlement.
+Unbenutzte Katalogmodelle erzeugen keinen Vorbereitungslauf.
 
 `test_market_stock_upgrade.py` prüft vollständigen Quellen-/Zielabgleich,
 unveränderte Quelle/Historie, gültige Altangebote ohne Ablauf und Ausschluss
