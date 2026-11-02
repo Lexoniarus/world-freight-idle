@@ -37,7 +37,7 @@ from app.services.routing.evidence import RoutingEvidenceReader
 from app.services.routing.preparation import RoutingPreparationService
 from app.services.routing_anchors import RoutingAnchorResolver
 from app.services.routing_connections import RoutingConnectionValidator
-from tests.support.catalogues import REFERENCE_WORLD_PATH
+from tests.support.catalogues import BERLIN_UID, REFERENCE_WORLD_PATH
 from tests.support.routing import (
     FakeGeocoder,
     FakeLocator,
@@ -46,19 +46,20 @@ from tests.support.routing import (
     RoutingTestHarness,
 )
 
-WOLF = "53e47547-aa34-4234-a41c-4fe81bb86290"
-STENDAL = "18e6c54b-658c-4a10-ab92-d518bca060f7"
+ORIGIN = BERLIN_UID
+DESTINATION = "10000000-0000-4000-8000-000000000003"
+REFERENCE_ORIGIN = "53e47547-aa34-4234-a41c-4fe81bb86290"
+REFERENCE_DESTINATION = "18e6c54b-658c-4a10-ab92-d518bca060f7"
 
 
 @pytest.fixture(scope="module")
-def connection_world():
+def reference_connection_world():
     world = CachedWorldCatalogue(SqliteWorldCatalogue(REFERENCE_WORLD_PATH))
     world.read()
     return world
 
 
-@pytest.fixture
-def case(tmp_path, connection_world):
+def build_case(tmp_path, world):
     database = SqliteGameDatabase(tmp_path / "game.db")
     database.initialize()
     cache = SqliteProviderCache(database)
@@ -70,7 +71,7 @@ def case(tmp_path, connection_world):
     evidence = RoutingEvidenceReader(
         store,
         anchors,
-        connection_world,
+        world,
         "fake",
         lambda: clock[0],
         anchor_resolver.max_snap_distance_m,
@@ -80,7 +81,7 @@ def case(tmp_path, connection_world):
         store,
         anchor_resolver,
         router,
-        connection_world,
+        world,
         lambda: clock[0],
     )
     service = RoutingTestHarness(evidence, preparation)
@@ -94,10 +95,21 @@ def case(tmp_path, connection_world):
     )
 
 
+@pytest.fixture
+def case(tmp_path, synthetic_world_catalogue):
+    return build_case(tmp_path, synthetic_world_catalogue)
+
+
+@pytest.fixture
+def reference_case(tmp_path, reference_connection_world):
+    return build_case(tmp_path, reference_connection_world)
+
+
 @pytest.mark.asyncio
 async def test_wolfsburg_real_candidates_recover_without_changing_facility(
-    case,
+    reference_case,
 ):
+    case = reference_case
     fixture = json.loads(
         (
             Path(__file__).parent / "fixtures" / "wolfsburg-routing.json"
@@ -164,19 +176,33 @@ async def test_wolfsburg_real_candidates_recover_without_changing_facility(
             lambda: case.clock[0],
             case.store,
         )
-        ready = await case.service.prepare(WOLF, STENDAL)
+        ready = await case.service.prepare(
+            REFERENCE_ORIGIN, REFERENCE_DESTINATION
+        )
         assert ready.status == "ready"
-        anchor = case.anchors.get(WOLF, "truck")
+        anchor = case.anchors.get(REFERENCE_ORIGIN, "truck")
         assert 503 < anchor.snap_distance_m < 505
         assert anchor.anchor == Coordinates(52.429326, 10.780732)
-        assert case.service.ready(STENDAL, WOLF)
-        assert case.service.load(WOLF, STENDAL).road_distance_km == 143.915
-        assert case.service.load(STENDAL, WOLF).road_distance_km == 143.496
+        assert case.service.ready(REFERENCE_DESTINATION, REFERENCE_ORIGIN)
+        assert (
+            case.service.load(
+                REFERENCE_ORIGIN, REFERENCE_DESTINATION
+            ).road_distance_km
+            == 143.915
+        )
+        assert (
+            case.service.load(
+                REFERENCE_DESTINATION, REFERENCE_ORIGIN
+            ).road_distance_km
+            == 143.496
+        )
         count = len(calls)
-        assert (await case.service.prepare(STENDAL, WOLF)).status == "ready"
+        assert (
+            await case.service.prepare(REFERENCE_DESTINATION, REFERENCE_ORIGIN)
+        ).status == "ready"
         assert len(calls) == count
         assert WorldScope(case.service.world.read()).facility(
-            WOLF
+            REFERENCE_ORIGIN
         ).coordinates == Coordinates(52.433806, 10.779611)
 
 
@@ -223,15 +249,15 @@ async def test_no_direction_is_published_without_matching_return_geometry(
         return result
 
     case.service.router = SimpleNamespace(route=route)
-    result = await case.service.prepare(WOLF, STENDAL)
+    result = await case.service.prepare(ORIGIN, DESTINATION)
     assert result.status == (
         "transient_failure"
         if failure == "rate_limit"
         else "deterministic_failure"
     )
-    assert not case.service.ready(WOLF, STENDAL)
-    assert not case.service.ready(STENDAL, WOLF)
-    assert case.anchors.get(WOLF, "truck") is None
+    assert not case.service.ready(ORIGIN, DESTINATION)
+    assert not case.service.ready(DESTINATION, ORIGIN)
+    assert case.anchors.get(ORIGIN, "truck") is None
     with case.db.connect() as conn:
         assert (
             conn.execute(
@@ -244,7 +270,7 @@ async def test_no_direction_is_published_without_matching_return_geometry(
 @pytest.mark.asyncio
 async def test_shifted_success_endpoint_tries_next_real_candidate(case):
     scope = WorldScope(case.service.world.read())
-    origin = scope.facility(WOLF)
+    origin = scope.facility(ORIGIN)
     original = origin.coordinates
     assert original is not None
     shifted = Coordinates(original.latitude - 0.0045, original.longitude)
@@ -257,7 +283,7 @@ async def test_shifted_success_endpoint_tries_next_real_candidate(case):
         assert result
         return (
             result + (replace(result[0], coordinates=shifted, distance_m=500),)
-            if facility.facility_uid == WOLF
+            if facility.facility_uid == ORIGIN
             else result
         )
 
@@ -276,8 +302,10 @@ async def test_shifted_success_endpoint_tries_next_real_candidate(case):
     with patch.object(anchors, "resolve", side_effect=candidates):
         case.service.anchors = anchors
         case.service.router = SimpleNamespace(route=wrong_success)
-        assert (await case.service.prepare(WOLF, STENDAL)).status == "ready"
-    assert case.anchors.get(WOLF, "truck").anchor == shifted
+        assert (
+            await case.service.prepare(ORIGIN, DESTINATION)
+        ).status == "ready"
+    assert case.anchors.get(ORIGIN, "truck").anchor == shifted
 
 
 @pytest.mark.asyncio
@@ -287,8 +315,8 @@ async def test_connection_deadline_is_transient_for_direct_planning(case):
     with patch.object(validator, "_search", side_effect=TimeoutError):
         with pytest.raises(RoutingError) as failure:
             await validator.validate(
-                scope.facility(WOLF),
-                scope.facility(STENDAL),
+                scope.facility(ORIGIN),
+                scope.facility(DESTINATION),
                 case.service.router,
                 case.service.anchors,
                 lambda: 1,
@@ -300,7 +328,7 @@ async def test_connection_deadline_is_transient_for_direct_planning(case):
 async def test_route_certificates_outlive_payloads_but_versions_invalidate(
     case,
 ):
-    first = await case.service.prepare(WOLF, STENDAL)
+    first = await case.service.prepare(ORIGIN, DESTINATION)
     assert first.status == "ready"
     for sql in (
         "UPDATE routing_connection_proofs SET validation_version='old'",
@@ -308,38 +336,40 @@ async def test_route_certificates_outlive_payloads_but_versions_invalidate(
     ):
         with case.db.connect() as conn:
             conn.execute(sql)
-        assert case.service.current(WOLF, STENDAL).status == "stale"
-        assert (await case.service.prepare(WOLF, STENDAL)).status == "ready"
+        assert case.service.current(ORIGIN, DESTINATION).status == "stale"
+        assert (
+            await case.service.prepare(ORIGIN, DESTINATION)
+        ).status == "ready"
     with case.db.connect() as conn:
         conn.execute(
             "DELETE FROM route_cache WHERE cache_key IN "
             "(SELECT cache_key FROM routing_relations "
             "WHERE origin_uid=?)",
-            (WOLF,),
+            (ORIGIN,),
         )
-    assert case.service.current(WOLF, STENDAL).status == "ready"
+    assert case.service.current(ORIGIN, DESTINATION).status == "ready"
     with pytest.raises(ValueError, match="vorbereitet"):
-        case.service.load(WOLF, STENDAL)
+        case.service.load(ORIGIN, DESTINATION)
     case.clock[0] += POSITIVE_TTL * 2
-    assert case.service.current(WOLF, STENDAL).status == "ready"
+    assert case.service.current(ORIGIN, DESTINATION).status == "ready"
     with case.db.connect() as conn:
         conn.execute("DELETE FROM routing_connection_proofs")
         conn.execute("DELETE FROM routing_relations")
     error = RoutingError("no road")
     error.category = "no_path"
     case.service.router = SimpleNamespace(route=AsyncMock(side_effect=error))
-    failure = await case.service.prepare(WOLF, STENDAL)
+    failure = await case.service.prepare(ORIGIN, DESTINATION)
     assert failure.retry_at == case.clock[0] + 3600
-    assert await case.service.prepare(WOLF, STENDAL) == failure
+    assert await case.service.prepare(ORIGIN, DESTINATION) == failure
     case.clock[0] += 3600
-    assert case.service.current(WOLF, STENDAL).status == "stale"
+    assert case.service.current(ORIGIN, DESTINATION).status == "stale"
     error.category = "provider_unavailable"
-    transient = await case.service.prepare(WOLF, STENDAL)
+    transient = await case.service.prepare(ORIGIN, DESTINATION)
     assert transient.retry_at == case.clock[0] + 60
-    assert await case.service.prepare(WOLF, STENDAL) == transient
+    assert await case.service.prepare(ORIGIN, DESTINATION) == transient
     case.clock[0] += 60
     case.service.router = FakeRouter()
-    assert (await case.service.prepare(WOLF, STENDAL)).status == "ready"
+    assert (await case.service.prepare(ORIGIN, DESTINATION)).status == "ready"
 
 
 @pytest.mark.asyncio
@@ -353,9 +383,9 @@ async def test_reverse_requests_cancellation_and_expired_leases(case):
         return await router.route(*args)
 
     case.service.router = SimpleNamespace(route=route)
-    task = asyncio.create_task(case.service.prepare(WOLF, STENDAL))
+    task = asyncio.create_task(case.service.prepare(ORIGIN, DESTINATION))
     await entered.wait()
-    assert await case.service.prepare(STENDAL, WOLF) is None
+    assert await case.service.prepare(DESTINATION, ORIGIN) is None
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
@@ -371,12 +401,12 @@ async def test_reverse_requests_cancellation_and_expired_leases(case):
             == 0
         )
     entered.clear()
-    task = asyncio.create_task(case.service.prepare(WOLF, STENDAL))
+    task = asyncio.create_task(case.service.prepare(ORIGIN, DESTINATION))
     await entered.wait()
     case.clock[0] += 200
     release.set()
     assert await task is None
-    assert case.anchors.get(WOLF, "truck") is None
+    assert case.anchors.get(ORIGIN, "truck") is None
 
 
 @pytest.mark.asyncio
@@ -394,10 +424,10 @@ async def test_connection_publication_rolls_back_both_directions_and_anchors(
 
     with patch.object(case.store, "publish", side_effect=failing_publish):
         with pytest.raises(RuntimeError, match="lost its lease"):
-            await case.service.prepare(WOLF, STENDAL)
-    assert case.anchors.get(WOLF, "truck") is None
-    assert case.store.get(relation_identity(WOLF, STENDAL)) is None
-    assert case.store.get(relation_identity(STENDAL, WOLF)) is None
+            await case.service.prepare(ORIGIN, DESTINATION)
+    assert case.anchors.get(ORIGIN, "truck") is None
+    assert case.store.get(relation_identity(ORIGIN, DESTINATION)) is None
+    assert case.store.get(relation_identity(DESTINATION, ORIGIN)) is None
     with case.db.connect() as conn:
         assert (
             conn.execute("SELECT count(*) FROM route_cache").fetchone()[0] == 0
@@ -413,8 +443,8 @@ async def test_inputs_changed_during_await_cannot_publish(case):
         return await router.route(*args)
 
     case.service.router = SimpleNamespace(route=changed)
-    assert await case.service.prepare(WOLF, STENDAL) is None
-    assert case.anchors.get(WOLF, "truck") is None
+    assert await case.service.prepare(ORIGIN, DESTINATION) is None
+    assert case.anchors.get(ORIGIN, "truck") is None
     case.service.timeout = 0.001
 
     async def slow(*args):
@@ -422,7 +452,7 @@ async def test_inputs_changed_during_await_cannot_publish(case):
 
     case.service.router = SimpleNamespace(route=slow)
     assert (
-        await case.service.prepare(WOLF, STENDAL)
+        await case.service.prepare(ORIGIN, DESTINATION)
     ).status == "transient_failure"
 
 
@@ -434,8 +464,8 @@ async def test_timeout_after_input_change_does_not_publish_negative(case):
 
     case.service.timeout = 0.01
     case.service.router = SimpleNamespace(route=changed_then_slow)
-    assert await case.service.prepare(WOLF, STENDAL) is None
-    assert case.store.get(relation_identity(WOLF, STENDAL)) is None
+    assert await case.service.prepare(ORIGIN, DESTINATION) is None
+    assert case.store.get(relation_identity(ORIGIN, DESTINATION)) is None
 
 
 @pytest.mark.asyncio
@@ -455,15 +485,15 @@ async def test_commit_rechecks_anchor_and_graph_inside_transaction(
     with patch.object(
         case.store, "publish_connection", side_effect=change_before_commit
     ):
-        assert await case.service.prepare(WOLF, STENDAL) is None
-    assert case.store.get(relation_identity(WOLF, STENDAL)) is None
-    assert case.store.get(relation_identity(STENDAL, WOLF)) is None
+        assert await case.service.prepare(ORIGIN, DESTINATION) is None
+    assert case.store.get(relation_identity(ORIGIN, DESTINATION)) is None
+    assert case.store.get(relation_identity(DESTINATION, ORIGIN)) is None
 
 
 @pytest.mark.asyncio
 async def test_certified_anchors_stay_fixed_for_unreachable_destination(case):
-    await case.service.prepare(WOLF, STENDAL)
-    before = case.anchors.get(WOLF, "truck")
+    await case.service.prepare(ORIGIN, DESTINATION)
+    before = case.anchors.get(ORIGIN, "truck")
     locator = FakeLocator([])
     resolver = RoutingAnchorResolver(
         case.anchors,
@@ -478,22 +508,22 @@ async def test_certified_anchors_stay_fixed_for_unreachable_destination(case):
     case.service.router = SimpleNamespace(route=AsyncMock(side_effect=error))
     # A different provider identity expires the relation, not the access.
     case.service.provider_identity = "retry"
-    result = await case.service.prepare(WOLF, STENDAL)
+    result = await case.service.prepare(ORIGIN, DESTINATION)
     assert result.status == "deterministic_failure"
-    assert case.anchors.get(WOLF, "truck") == before
+    assert case.anchors.get(ORIGIN, "truck") == before
     assert case.service.router.route.await_count == 1
     assert locator.calls == []
     with case.db.connect() as conn:
         conn.execute(
             "UPDATE routing_relations SET fingerprint='legacy-negative'"
         )
-    assert case.service.current(WOLF, STENDAL).status == "stale"
+    assert case.service.current(ORIGIN, DESTINATION).status == "stale"
 
 
 @pytest.mark.asyncio
 async def test_anchor_fingerprints_survive_sqlite_numeric_normalization(case):
-    await case.service.prepare(WOLF, STENDAL)
-    anchor = case.anchors.get(WOLF, "truck")
+    await case.service.prepare(ORIGIN, DESTINATION)
+    anchor = case.anchors.get(ORIGIN, "truck")
     integer = replace(
         anchor,
         anchor=Coordinates(50, 13),
@@ -501,7 +531,7 @@ async def test_anchor_fingerprints_survive_sqlite_numeric_normalization(case):
     )
     case.anchors.put(integer)
     assert anchor_identity(integer) == anchor_identity(
-        case.anchors.get(WOLF, "truck")
+        case.anchors.get(ORIGIN, "truck")
     )
     assert anchor_identity(integer) != anchor_identity(anchor)
 
@@ -529,7 +559,7 @@ async def test_search_budget_is_transient_and_successful_direct_path_is_certifie
                     None,
                 )
                 for index in range(
-                    5 if force or facility.facility_uid == WOLF else 2
+                    5 if force or facility.facility_uid == ORIGIN else 2
                 )
             )
 
@@ -539,18 +569,20 @@ async def test_search_budget_is_transient_and_successful_direct_path_is_certifie
     failed_router.route.side_effect = error
     with pytest.raises(RoutingError, match="budget") as failure:
         await RoutingConnectionValidator().validate(
-            scope.facility(WOLF),
-            scope.facility(STENDAL),
+            scope.facility(ORIGIN),
+            scope.facility(DESTINATION),
             failed_router,
             Candidates(),
             lambda: 1,
         )
     assert failure.value.category == "provider_unavailable"
     assert failed_router.route.await_count == 25
-    assert connection_identity(WOLF, STENDAL) == connection_identity(
-        STENDAL, WOLF
+    assert connection_identity(ORIGIN, DESTINATION) == connection_identity(
+        DESTINATION, ORIGIN
     )
-    assert connection_leases(WOLF, STENDAL) == connection_leases(STENDAL, WOLF)
+    assert connection_leases(ORIGIN, DESTINATION) == connection_leases(
+        DESTINATION, ORIGIN
+    )
     assert distance_m(Coordinates(0, 0), Coordinates(0, 180)) > 20_000_000
     with pytest.raises(ValueError, match="different"):
-        await case.service.prepare(WOLF, WOLF)
+        await case.service.prepare(ORIGIN, ORIGIN)
