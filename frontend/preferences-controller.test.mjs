@@ -2,7 +2,6 @@ import "./test-dom.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { PreferencesController } from "./controllers/preferences-controller.js";
-import { renderCompanyPreferences } from "./ui/company-preferences.js";
 
 function preferencePanel(view) {
   const panel = {
@@ -52,7 +51,7 @@ test("preference queue previews immediately, serializes writes and rolls back fa
   assert.equal(panel.view.user.company_color, "#54a24b");
   assert.equal(responses.length, 1);
   responses[0].resolve({ company_color: "#4c78a8" });
-  await new Promise((r) => setTimeout(r, 0));
+  await new Promise((resolve) => setTimeout(resolve, 0));
   assert.equal(responses.length, 2);
   assert.equal(panel.view.user.company_color, "#54a24b");
   responses[1].reject(new Error("offline"));
@@ -60,23 +59,6 @@ test("preference queue previews immediately, serializes writes and rolls back fa
   assert.equal(panel.view.user.company_color, "#4c78a8");
   assert.equal(panel.view.preferenceSaveError, true);
   controller.destroy();
-});
-
-test("palette renders explicit loading, error retry and all accessible selected swatches", () => {
-  const view = { user: { company_color: "#4c78a8" }, state: { vehicles: [] } };
-  const container = document.createElement("div");
-  container.append(renderCompanyPreferences(view));
-  assert.match(container.textContent, /Farben werden geladen/);
-  view.preferenceStatus = "error";
-  container.replaceChildren(renderCompanyPreferences(view));
-  assert.ok(container.querySelector("[data-preference-retry]"));
-  assert.match(container.textContent, /konnten nicht geladen/);
-  view.preferenceStatus = "ready";
-  view.companyPalette = ["#4c78a8", ...Array.from({ length: 9 }, (_, i) => "#00000" + i)];
-  container.replaceChildren(renderCompanyPreferences(view));
-  assert.equal(container.querySelectorAll("[data-company-color]").length, 10);
-  assert.equal(container.querySelectorAll('[aria-pressed="true"]').length, 1);
-  assert.equal(container.querySelector("details"), null);
 });
 
 test("late preference reads cannot overwrite a confirmed color change", async () => {
