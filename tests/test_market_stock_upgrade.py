@@ -203,6 +203,30 @@ def test_market_upgrade_rejects_stock_collision_and_failed_integrity(
     assert not (tmp_path / "rejected.db").exists()
 
 
+def test_market_upgrade_supports_schema_without_offer_route_references(
+    old_market_source,
+    tmp_path,
+):
+    source, now = old_market_source
+    with closing(sqlite3.connect(source)) as database:
+        database.execute("DROP TABLE offer_route_references")
+        database.commit()
+    upgrade = MarketStockUpgradeRepository(source, now)
+    target = tmp_path / "without-route-references.db"
+    with (
+        closing(sqlite3.connect(source)) as original,
+        closing(sqlite3.connect(target)) as output,
+    ):
+        original.row_factory = output.row_factory = sqlite3.Row
+        original.backup(output)
+        upgrade._apply(output)
+        upgrade._validate_repaired_copy(original, output)
+        assert upgrade._expected_route_references(original) is None
+        assert not output.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='offer_route_references'"
+        ).fetchone()
+
+
 def test_market_upgrade_cli_requires_backup_and_preserves_source(
     old_market_source, tmp_path, capsys
 ):
