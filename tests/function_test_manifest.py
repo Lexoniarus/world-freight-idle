@@ -1,5 +1,5 @@
 FUNCTION_TESTS = {
-    "app.bootstrap.build_routing_audit": "test_audit_report_is_local_and_prewarm_counts_every_request",
+    "app.composition.audits.build_routing_audit": "test_audit_report_is_local_and_prewarm_counts_every_request",
     "app.domain.market_preparation.required_relations": "test_preparation_failures_backoff_fencing_and_worker_cleanup",
     "app.providers.valhalla_metadata.graph_revision": "test_graph_revision_prefers_graph_metadata_without_inventing_versions",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.provider_revision": "test_observed_global_graph_revision_invalidates_shared_routes",
@@ -7,9 +7,9 @@ FUNCTION_TESTS = {
     "app.domain.routing_anchors.anchor_source_fingerprint": "test_anchor_policy_changes_invalidate_coordinate_and_address_evidence",
     "app.providers.routing_anchor.ValhallaTruckAnchorLocator._response_failure": "test_locate_failure_preserves_bounded_provider_diagnostics",
     "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.put_leased": "test_anchor_publication_rejects_expired_owner",
-    "app.bootstrap.build_player_market_services": "test_preparation_composition_uses_complete_local_runtime",
-    "app.bootstrap.build_preparation_worker": "test_preparation_composition_uses_complete_local_runtime",
-    "app.bootstrap.build_preparation_worker.batch": "test_preparation_composition_uses_complete_local_runtime",
+    "app.composition.player.build_player_market_services": "test_preparation_composition_uses_complete_local_runtime",
+    "app.composition.player.build_preparation_worker": "test_preparation_composition_uses_complete_local_runtime",
+    "app.composition.player.build_preparation_worker.batch": "test_preparation_composition_uses_complete_local_runtime",
     "app.domain.routing_readiness.RoutePayload.__post_init__": "test_readiness_domain_rejects_incoherent_records",
     "app.domain.routing_readiness.RoutePayload.to_snapshot": "test_readiness_domain_rejects_incoherent_records",
     "app.domain.routing_readiness.RouteReference.__post_init__": "test_readiness_domain_rejects_incoherent_records",
@@ -86,7 +86,7 @@ FUNCTION_TESTS = {
     "app.services.analytics.AnalyticsService.__init__": "test_analytics_empty_and_utc_boundary",
     "app.services.analytics.AnalyticsService.analyze": "test_analytics_empty_and_utc_boundary",
     "app.api.v1.company_analytics.get_analytics": "test_analytics_and_exact_api_require_session",
-    "app.bootstrap.build_analytics_service": "test_analytics_and_exact_api_require_session",
+    "app.composition.player.build_analytics_service": "test_analytics_and_exact_api_require_session",
     "app.api.v1.map.exact_city": "test_analytics_and_exact_api_require_session",
     "app.api.v1.map.exact_facility": "test_analytics_and_exact_api_require_session",
     "app.services.map_locations.MapLocationService.exact_city": "test_analytics_and_exact_api_require_session",
@@ -135,7 +135,7 @@ FUNCTION_TESTS = {
     "app.api.v1.system.get_health": "test_dashboard_and_system_api_expose_supported_resources",
     "app.api.v1.transports.get_transport": "test_transport_api_lists_and_gets_active_transports",
     "app.api.v1.transports.list_transports": "test_transport_api_lists_and_gets_active_transports",
-    "app.bootstrap.build_game_runtime": "test_build_game_runtime_wires_real_provider_adapters",
+    "app.composition.runtime.build_game_runtime": "test_build_game_runtime_wires_real_provider_adapters",
     "app.config.Settings.from_env": "test_settings_from_env",
     "app.logging_config.JsonFormatter.format": "test_json_formatter_includes_structured_fields",
     "app.logging_config.configure_logging": "test_configure_logging_replaces_root_handler",
@@ -216,7 +216,7 @@ FUNCTION_TESTS.update(
         "app.api.v1.fleet.get_catalogue": "test_fleet_api_translates_catalogue_failures",
         "app.api.v1.fleet.purchase_vehicle": "test_fleet_api_translates_catalogue_failures",
         "app.api.v1.leaderboard.get_leaderboard": "test_authenticated_account_exposes_only_valid_initial_resources",
-        "app.bootstrap.build_player_service": "test_player_service_isolation_and_atomic_purchases",
+        "app.composition.player.build_player_service": "test_player_service_isolation_and_atomic_purchases",
         "app.repositories.accounts.AccountRepository.allow_attempt": "test_auth_sessions_expire_revoke_and_throttle",
         "app.repositories.accounts.AccountRepository.create_user": "test_auth_sessions_expire_revoke_and_throttle",
         "app.repositories.accounts.AccountRepository.find_user": "test_auth_sessions_expire_revoke_and_throttle",
@@ -238,8 +238,8 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.bootstrap.build_fleet_service": "test_authenticated_account_exposes_only_valid_initial_resources",
-        "app.bootstrap.build_map_service": "test_map_endpoint_requires_session_and_uses_game_provider",
+        "app.composition.player.build_fleet_service": "test_authenticated_account_exposes_only_valid_initial_resources",
+        "app.composition.player.build_map_service": "test_map_endpoint_requires_session_and_uses_game_provider",
         "app.api.v1.dependencies.get_fleet_service": "test_authenticated_account_exposes_only_valid_initial_resources",
         "app.api.v1.dependencies.get_map_service": "test_map_endpoint_requires_session_and_uses_game_provider",
         "app.providers.geocoding.NominatimGeocoder._resolve_address": "test_geocode_calls_nominatim_and_caches",
@@ -272,7 +272,7 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.bootstrap.build_vehicle_catalogue": "test_catalogue_builder_default_path",
+        "app.composition.runtime.build_vehicle_catalogue": "test_catalogue_builder_default_path",
         "app.api.v1.dependencies.get_vehicle_catalogue": "test_authenticated_account_exposes_only_valid_initial_resources",
         "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue._read_image": "test_images_preserve_provenance_and_never_change_gameplay",
         "app.api.v1.vehicle_presentation.present_vehicles": "test_images_preserve_provenance_and_never_change_gameplay",
@@ -289,8 +289,8 @@ FUNCTION_TESTS.update(
 FUNCTION_TESTS.update(
     {
         "app.services.gameplay.initialization.PlayerInitializationService.ensure_in_transaction": "test_initialization_direct_failure_is_atomic",
-        "app.bootstrap.build_profile_maintenance_service": "test_profile_update_preserves_other_players_and_trip_snapshots",
-        "app.bootstrap.build_profile_maintenance_service.player_unit_of_work_factory": "test_profile_update_preserves_other_players_and_trip_snapshots",
+        "app.composition.maintenance.build_profile_maintenance_service": "test_profile_update_preserves_other_players_and_trip_snapshots",
+        "app.composition.maintenance.build_profile_maintenance_service.player_unit_of_work_factory": "test_profile_update_preserves_other_players_and_trip_snapshots",
         "app.repositories.database_backup.backup_database": "test_backup_reads_committed_wal_and_refuses_overwrite",
         "app.services.profile_maintenance.ProfileMaintenanceService.__init__": "test_profile_update_preserves_other_players_and_trip_snapshots",
         "app.services.profile_maintenance.ProfileMaintenanceService.update_profile": "test_maintenance_write_failure_rolls_back_and_retains_unselected",
@@ -307,7 +307,7 @@ FUNCTION_TESTS[
 FUNCTION_TESTS.update(
     {
         "app.api.v1.map.list_map_facilities": "test_map_endpoint_requires_session_and_uses_game_provider",
-        "app.bootstrap.build_world_catalogue": "test_world_catalogue_composition_uses_explicit_path_without_game_state",
+        "app.composition.runtime.build_world_catalogue": "test_world_catalogue_composition_uses_explicit_path_without_game_state",
         "app.domain.cargo.NhmProduct.is_compatible_with": "test_nhm_cargo_profiles_follow_parent_hierarchy",
         "app.domain.world.Facility.has_verified_location": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.Facility.location_snapshot": "test_world_snapshot_identity_provenance_and_query",
@@ -342,7 +342,7 @@ FUNCTION_TESTS.update(
     {
         "app.api.v1.dependencies.get_traffic_reader": "test_multiplayer_map_endpoint_requires_login_and_shares_other_players",
         "app.api.v1.map.list_map_traffic": "test_multiplayer_map_endpoint_requires_login_and_shares_other_players",
-        "app.bootstrap.build_traffic_reader": "test_multiplayer_map_projects_shared_active_traffic_without_private_economy",
+        "app.composition.player.build_traffic_reader": "test_multiplayer_map_projects_shared_active_traffic_without_private_economy",
         "app.api.v1.traffic_projection.project_traffic": "test_multiplayer_map_projects_shared_active_traffic_without_private_economy",
         "app.domain.company_colors.player_color": "test_player_color_is_stable_and_changes_between_users",
     }
@@ -411,7 +411,7 @@ FUNCTION_TESTS.update(
         "app.repositories.provider_cache.SqliteProviderCache.put_route": "test_provider_cache_roundtrip_replaces_invalid_documents",
         "app.repositories.provider_cache.SqliteProviderCache.get_geocode": "test_provider_cache_roundtrip_replaces_invalid_documents",
         "app.repositories.provider_cache.SqliteProviderCache.put_geocode": "test_provider_cache_roundtrip_replaces_invalid_documents",
-        "app.bootstrap.build_leaderboard_reader": "test_leaderboard_counts_offline_arrivals_without_double_counting",
+        "app.composition.player.build_leaderboard_reader": "test_leaderboard_counts_offline_arrivals_without_double_counting",
         "app.api.v1.dependencies.get_leaderboard_reader": "test_authenticated_account_exposes_only_valid_initial_resources",
     }
 )
@@ -460,7 +460,7 @@ FUNCTION_TESTS.update(
         "app.domain.geography.City.__post_init__": "test_geography_values_reject_invalid_coordinates_and_identities",
         "app.domain.geography.Address.display_text": "test_geography_values_reject_invalid_coordinates_and_identities",
         "app.services.world_geography.validate_geography_mapping": "test_geography_mapping_rejects_duplicate_or_changed_assignments",
-        "app.bootstrap.build_geography_migration": "test_geography_migration_reconciles_identity_and_is_idempotent",
+        "app.composition.maintenance.build_geography_migration": "test_geography_migration_reconciles_identity_and_is_idempotent",
         "app.repositories.world_geography.WorldGeographyRepository.__init__": "test_geography_migration_reconciles_identity_and_is_idempotent",
         "app.repositories.world_geography.WorldGeographyRepository.normalize": "test_geography_migration_rolls_back_and_requires_backup",
         "app.repositories.world_geography.catalogue_identities": "test_geography_migration_reconciles_identity_and_is_idempotent",
@@ -505,7 +505,7 @@ FUNCTION_TESTS["app.domain.pricing.calculate_price"] = (
 
 FUNCTION_TESTS.update(
     {
-        "app.bootstrap.build_game_importer": "test_import_cli_requires_backup_and_separate_paths",
+        "app.composition.maintenance.build_game_importer": "test_import_cli_requires_backup_and_separate_paths",
         "app.repositories.legacy_game_import.read_legacy_json": "test_offline_import_rejects_corruption_and_unknown_state",
         "app.repositories.legacy_game_import.validate_profile_links": "test_offline_import_rejects_corruption_and_unknown_state",
         "app.repositories.legacy_game_import.summarize_import": "test_offline_import_preserves_profiles_history_and_settles_once",
@@ -586,7 +586,7 @@ FUNCTION_TESTS.update(
         "app.domain.game.OwnedVehicle.top_speed_kmh": "test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction",
         "app.domain.transports.ActiveTransport.progress_at": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
         "app.repositories.transport_mapping.load_journey": "test_transport_lifecycle_rejects_invalid_and_duplicate_settlement",
-        "app.bootstrap.build_energy_upgrade": "test_energy_upgrade_builder_requires_catalogue",
+        "app.composition.maintenance.build_energy_upgrade": "test_energy_upgrade_builder_requires_catalogue",
         "app.repositories.energy_upgrade.VehicleEnergyUpgradeRepository.__init__": "test_energy_upgrade_rejects_invalid_source_without_output",
         "app.repositories.energy_upgrade.VehicleEnergyUpgradeRepository.inspect": "test_energy_upgrade_rejects_invalid_source_without_output",
         "app.repositories.energy_upgrade.VehicleEnergyUpgradeRepository.upgrade_to": "test_energy_upgrade_reconciliation_failure_removes_target",
@@ -621,7 +621,7 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.bootstrap.build_market_generation_services": "test_market_diversity_counts_only_persisted_offer_dimensions",
+        "app.composition.runtime.build_market_generation_services": "test_market_diversity_counts_only_persisted_offer_dimensions",
         "app.domain.game.OwnedVehicle.reposition_within_city": "test_reposition_rejects_busy_other_city_and_missing_location",
         "app.domain.market_calculations.distance_band": "test_distance_and_tonnage_are_deterministic_and_bounded",
         "app.domain.market_calculations.great_circle_km": "test_distance_and_tonnage_are_deterministic_and_bounded",
@@ -697,7 +697,7 @@ FUNCTION_TESTS.update(
         "app.domain.tariffs.freight_tariff": "test_tariff_uses_concrete_nhm_and_explicit_maintenance",
         "app.services.gameplay.vehicle_costs.VehicleCostResolver.resolve": "test_tariff_uses_concrete_nhm_and_explicit_maintenance",
         "app.repositories.transport_mapping.load_cost_breakdown": "test_cost_values_reject_invalid_or_inconsistent_components",
-        "app.bootstrap.build_preferences": "test_preferences_are_account_scoped_persistent_and_palette_validated",
+        "app.composition.player.build_preferences": "test_preferences_are_account_scoped_persistent_and_palette_validated",
         "app.repositories.preferences.SqlitePreferenceStore.__init__": "test_preferences_are_account_scoped_persistent_and_palette_validated",
         "app.repositories.preferences.SqlitePreferenceStore.transaction": "test_preferences_are_account_scoped_persistent_and_palette_validated",
         "app.repositories.preferences.SqlitePreferenceStore.color": "test_preferences_are_account_scoped_persistent_and_palette_validated",
@@ -757,7 +757,7 @@ FUNCTION_TESTS.update(
     }
 )
 
-FUNCTION_TESTS["app.bootstrap.build_routing_anchor_resolver"] = (
+FUNCTION_TESTS["app.composition.runtime.build_routing_anchor_resolver"] = (
     "test_candidates_never_publish_before_connection_proof"
 )
 
@@ -800,7 +800,7 @@ FUNCTION_TESTS.update(
         "app.services.routing.anchors.RoutingAnchorResolver.resolve": (
             "test_address_and_missing_coordinate_fallbacks_are_bounded"
         ),
-        "app.bootstrap.build_routing_anchor_resolver": (
+        "app.composition.runtime.build_routing_anchor_resolver": (
             "test_build_game_runtime_wires_real_provider_adapters"
         ),
         "app.services.gameplay.dispatch_planning.DispatchPlanningService.route": (
@@ -814,7 +814,7 @@ FUNCTION_TESTS.update(
     {
         "app.api.v1.analytics_projection.project_analytics": "test_analytics_scalars_do_not_hydrate_routes",
         "app.api.v1.contracts.project_market": "test_vehicle_projection_api_enforces_owned_idle_selection",
-        "app.bootstrap.build_economy_audit": "test_economy_audit_is_typed_and_reproducible",
+        "app.composition.audits.build_economy_audit": "test_economy_audit_is_typed_and_reproducible",
         "app.services.analytics.dimension_value": "test_analytics_scalars_do_not_hydrate_routes",
         "app.services.economy_audit.EconomyAuditService.__init__": "test_economy_audit_is_typed_and_reproducible",
         "app.services.economy_audit.EconomyAuditService._rows": "test_economy_audit_is_typed_and_reproducible",
@@ -904,9 +904,9 @@ FUNCTION_TESTS.update(
         "app.api.v1.runtime.project_runtime_transport": "test_runtime_projection_keeps_private_energy",
         "app.api.v1.runtime.project_traffic_summary": "test_runtime_api_separates_summary_geometry_and_public_traffic",
         "app.api.v1.runtime.route_reference": "test_runtime_api_separates_summary_geometry_and_public_traffic",
-        "app.bootstrap.build_runtime_reader": "test_runtime_reader_excludes_geometry_and_enforces_visibility",
-        "app.bootstrap.build_runtime_view": "test_runtime_reader_excludes_geometry_and_enforces_visibility",
-        "app.bootstrap.build_transport_repair": "test_repair_rejects_unknown_damage_and_removes_failed_outputs",
+        "app.composition.player.build_runtime_reader": "test_runtime_reader_excludes_geometry_and_enforces_visibility",
+        "app.composition.player.build_runtime_view": "test_runtime_reader_excludes_geometry_and_enforces_visibility",
+        "app.composition.maintenance.build_transport_repair": "test_repair_rejects_unknown_damage_and_removes_failed_outputs",
         "app.domain.runtime_views.RuntimeTransport.__post_init__": "test_runtime_projection_rejects_corrupt_scalars_without_reading_history",
         "app.repositories.game_database.SqliteGameDatabase.read_transaction": "test_wal_read_snapshot_rejects_writes_and_resets_after_failure",
         "app.repositories.game_state.SqliteGameUnitOfWork.read_transaction": "test_runtime_never_builds_candidates_and_worker_plans_outside_writer",
@@ -956,8 +956,8 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.bootstrap.build_market_stock_repair": "test_market_stock_repair_store_reads_source_without_mutation",
-        "app.bootstrap.build_market_stock_upgrade": "test_market_upgrade_preserves_source_history_and_only_converts_live_offers",
+        "app.composition.maintenance.build_market_stock_repair": "test_market_stock_repair_store_reads_source_without_mutation",
+        "app.composition.maintenance.build_market_stock_upgrade": "test_market_upgrade_preserves_source_history_and_only_converts_live_offers",
         "app.domain.market_compatibility.planning_vehicle": "test_demand_models_and_owned_capacity_remain_separate",
         "app.domain.market_stock.PreparedTemplate.__post_init__": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
         "app.domain.market_stock.StockPolicy.__post_init__": "test_stock_policy_selection_and_corrupt_storage_are_rejected",

@@ -41,9 +41,12 @@ async def browser_lifespan(application):
         router = FakeRouter()
         anchors = FakeRoutingAnchorResolver()
         with (
-            patch("app.bootstrap.ValhallaTruckRouter", return_value=router),
             patch(
-                "app.bootstrap.build_routing_anchor_resolver",
+                "app.composition.runtime.ValhallaTruckRouter",
+                return_value=router,
+            ),
+            patch(
+                "app.composition.runtime.build_routing_anchor_resolver",
                 return_value=anchors,
             ),
         ):
