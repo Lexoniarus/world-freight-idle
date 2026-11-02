@@ -39,10 +39,11 @@ Routinghilfen liegen deshalb unter `tests/support/routing_runtime.py` und
 überschreiben keinen parallel gehaltenen Router-/Anchor-Zustand auf
 `GameRuntime`.
 
-Jeder einzelne Python- und Playwright-Fall besitzt ein hartes Zeitlimit von
-zehn Sekunden. `pytest-timeout` bricht hängende Python-Fälle ab; Playwright
-wendet dieselbe Grenze pro Browserfall an. Ein Timeout wird untersucht und
-nicht durch Wiederholung oder eine großzügigere globale Grenze verdeckt.
+Jeder einzelne Python-Fall und jeder lokale Playwright-Fall besitzt ein hartes
+Zeitlimit von zehn Sekunden. `pytest-timeout` bricht hängende Python-Fälle ab;
+Playwright wendet lokal dieselbe Grenze pro Browserfall an. Der unten
+dokumentierte CI-Spielraum verändert dieses lokale Abnahmekriterium nicht. Ein
+Timeout wird untersucht und nicht durch Wiederholung verdeckt.
 
 Dateigröße allein ist kein Grund für mechanisches Aufteilen. Ein größeres
 Testmodul darf bestehen bleiben, wenn sein Name genau einen Produktionsowner
@@ -71,10 +72,13 @@ temporäre SQLite-Kataloge, deren Schema und Daten als lesbares SQL in
 synthetische Szenarien prüfen Verhalten; Binärkataloge prüfen das ausgelieferte
 Referenzartefakt.
 
-Composition-Tests greifen für gewöhnliche Spielerfälle nur auf die öffentliche
-`PlayerGameFacade` zu. Wo ein Test ausdrücklich die Verdrahtung eines
-spezialisierten Use Cases prüft, liefert `FixturePlayerGameFacade` die
-benannten Testzugriffe. Produktionscode exponiert diese Infrastruktur nicht.
+`PlayerContextFactory` ist der einzige Owner für die gemeinsame Verdrahtung
+von Initialisierung, Markt, Dispatch und Settlement. Produktion und Tests
+injizieren dort ihre jeweiligen Adapter; nur der produktive Builder führt
+anschließend die Erstanlage aus. Gewöhnliche Spielerfälle greifen nur auf die
+öffentliche `PlayerGameFacade` zu. Wo ein Test ausdrücklich einen
+spezialisierten Use Case prüft, liefert `FixturePlayerGameFacade` benannte
+Testzugriffe. Produktionscode exponiert diese Infrastruktur nicht.
 
 ## Verhalten und Grenzen
 

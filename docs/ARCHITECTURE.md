@@ -79,7 +79,9 @@ nicht als zweiter überschreibbarer Runtime-Zustand gespiegelt.
 `PlayerGameFacade` ist die schmale öffentliche Spielergrenze und kein Service
 Locator. Infrastruktur und spezialisierte Services bleiben privat;
 `PlayerServiceContext` hält sie nur an der Composition-Kante für andere
-verdrahtete Use Cases. Tests bauen denselben Objektgraphen mit Doubles unter
+verdrahtete Use Cases. `PlayerContextFactory` baut den Workflow-Graphen genau
+einmal aus injizierten Ports; der produktive Builder besitzt anschließend die
+Erstanlage. Tests verwenden dieselbe Factory mit Doubles unter
 `tests/support`; `FixturePlayerGameFacade` ist ausdrücklich nur eine Testhilfe.
 
 ## Zustand und Atomarität

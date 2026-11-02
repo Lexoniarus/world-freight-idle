@@ -1,5 +1,23 @@
 # Changelog
 
+## Verbleibende P2-/P3-Härtung – 02.11.2026
+
+- `PlayerContextFactory` ist nun der gemeinsame Composition-Owner für
+  Produktion und Testdoubles. Er erzeugt den Workflow-Graphen ohne Mutation;
+  nur der produktive Builder führt die explizite Erstanlage aus.
+- Die pauschale E501-Ausnahme für Tests ist entfernt. Normale Tests halten
+  jetzt 79 Zeichen ein; nur der zentrale Function-Test-Manifest-Datenindex
+  bleibt gezielt ausgenommen.
+- Preference-Controller und Preference-View besitzen getrennte, nach ihren
+  Ownern benannte Frontend-Testmodule. Das frühere generische
+  `preference-regressions`-Modul ist entfernt.
+- Die Testdokumentation unterscheidet das lokale Zehn-Sekunden-Limit jetzt
+  eindeutig vom dokumentierten 20-Sekunden-Scheduling-Spielraum in CI.
+- Die lokale Endabnahme bestand mit 657 Python-Tests bei 100 %
+  App-Statement-Coverage, 131 Frontendtests und 14 Playwright-Grenzen. Der
+  langsamste Pythonfall benötigte 2,86 Sekunden, der langsamste Browserfall
+  8,8 Sekunden; Supabase, Live-Provider und öffentliche Tiles blieben aus.
+
 ## Explizite Modul- und Objektgrenzen – 02.11.2026
 
 - Der Composition Root ist nach Runtime, Spieler, Wartung und Audits getrennt.

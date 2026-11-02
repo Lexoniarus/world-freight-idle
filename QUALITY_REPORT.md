@@ -4,6 +4,21 @@ Stand: 02.11.2026. Arbeitsbranch `refactor/local-market-pool`. Dieser Abschnitt
 ist der aktuelle Prüfstand; die folgenden Berichte sind historische Abnahmen
 früherer Architekturen.
 
+## P2-/P3-Nachprüfung
+
+Die letzte parallele Test-Composition ist entfernt. `PlayerContextFactory`
+verdrahtet Initialisierung, Markt, Dispatch und Settlement für Produktion und
+Testdoubles; die Erstanlage bleibt eine explizite Verantwortung des
+produktiven Builders. Der direkte Gegentest belegt sowohl die injizierten
+Grenzen als auch die Mutationsfreiheit der Factory.
+
+Ruff erzwingt die 79-Zeichen-Grenze nun auch in normalen Tests. Die einzige
+gezielte E501-Ausnahme ist der deklarative Function-Test-Manifest-Datenindex.
+Preference-Controller und Preference-View besitzen getrennte Testmodule; kein
+generischer `preference-regressions`-Owner bleibt bestehen. Das lokale
+Playwright-Limit ist mit zehn Sekunden dokumentiert, während die bekannte
+20-Sekunden-CI-Toleranz ausdrücklich Scheduling-Spielraum bleibt.
+
 ## Abschließende Modul- und Objektgrenzen
 
 Der Composition Root ist nach Runtime, Spieler, Wartung und Audits getrennt;
@@ -36,11 +51,11 @@ Repositoryabnahmen gelesen. Generische `game`-, `runtime`-, `catalogue`- und
 Repositoryfehler verwenden zwei kleine SQL-Kataloge mit zwei Standorten und
 vier Fahrzeugmodellen; die großen Referenzdateien bleiben dabei unverändert.
 
-Der abschließende lokale Abnahmelauf bestand mit **656 Python-Tests** in
-82,88 Sekunden bei 100 % App-Statement-Coverage; der langsamste Pythonfall
-benötigte 3,12 Sekunden. Die **131 Frontendtests** bestanden in 8,57 Sekunden.
-Alle **14** getrennten Playwright-Grenzen bestanden in 1,1 Minuten; der
-langsamste Browserfall benötigte 7,5 Sekunden. Kein Einzelfall überschritt die
+Der abschließende lokale Abnahmelauf bestand mit **657 Python-Tests** in
+81,41 Sekunden bei 100 % App-Statement-Coverage; der langsamste Pythonfall
+benötigte 2,86 Sekunden. Die **131 Frontendtests** bestanden in 9,45 Sekunden.
+Alle **14** getrennten Playwright-Grenzen bestanden in 1,2 Minuten; der
+langsamste Browserfall benötigte 8,8 Sekunden. Kein Einzelfall überschritt die
 harte Zehn-Sekunden-Grenze. Öffentliche Tiles, echte Provider und Supabase
 waren in allen Läufen ausgeschlossen.
 

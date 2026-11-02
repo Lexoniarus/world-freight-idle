@@ -17,8 +17,9 @@
   Das Manifest belegt strukturelle Zuordnung, eindeutige Testnamen und eine
   direkte Assertion; die fachliche Relevanz des Tests bleibt Gegenstand des
   manuellen Funktions- und Verantwortungsreviews.
-- Ruff und Formatter laufen im Quality Gate. Lange Testbeschreibungen sind
-  von E501 ausgenommen; Core-Code hat keine solche Ausnahme.
+- Ruff und Formatter laufen im Quality Gate. Normale Tests und Core-Code
+  halten die 79-Zeichen-Grenze ein. Nur der zentrale Datenindex in
+  `tests/function_test_manifest.py` ist gezielt von E501 ausgenommen.
 - mypy prüft Core und Einstiegspunkt, verlangt annotierte Funktionen und
   prüft auch Funktionskörper. Spielzustände und Use-Case-Ergebnisse sind
   typisierte Domainobjekte. JSON entsteht ausschließlich an technischen
