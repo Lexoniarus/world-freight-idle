@@ -116,7 +116,9 @@ def test_market_upgrade_rejects_unknown_schema_and_rolls_back_bad_output(
     upgrade = MarketStockUpgradeRepository(source, now)
     target = tmp_path / "failed.db"
     with patch.object(
-        upgrade, "_compare", side_effect=PersistenceError("mismatch")
+        upgrade,
+        "_validate_repaired_copy",
+        side_effect=PersistenceError("mismatch"),
     ):
         with pytest.raises(PersistenceError, match="mismatch"):
             upgrade.upgrade_to(target)
@@ -134,8 +136,24 @@ def test_market_upgrade_rejects_unknown_schema_and_rolls_back_bad_output(
     assert not target.exists()
 
 
-def test_market_upgrade_reconciliation_detects_unapproved_changes(
-    old_market_source, tmp_path
+@pytest.mark.parametrize(
+    ("sql", "expected"),
+    (
+        ("DELETE FROM annotations", "Übernahmeabgleich"),
+        ("DELETE FROM contract_offers", "Auftragsabgleich"),
+        (
+            "DELETE FROM offer_route_references",
+            "Routenbindungsabgleich",
+        ),
+        ("UPDATE game_schema SET version='other'", "Übernahmeschema"),
+        ("CREATE TABLE unexpected (id INTEGER)", "Übernahmeschema"),
+    ),
+)
+def test_market_upgrade_reconciliation_rejects_unapproved_change(
+    old_market_source,
+    tmp_path,
+    sql,
+    expected,
 ):
     source, now = old_market_source
     upgrade = MarketStockUpgradeRepository(source, now)
@@ -147,19 +165,12 @@ def test_market_upgrade_reconciliation_detects_unapproved_changes(
         original.row_factory = output.row_factory = sqlite3.Row
         original.backup(output)
         upgrade._apply(output)
-        upgrade._compare(original, output)
-        for sql, expected in (
-            ("DELETE FROM annotations", "Übernahmeabgleich"),
-            ("DELETE FROM contract_offers", "Auftragsabgleich"),
-            ("DELETE FROM offer_route_references", "Routenbindungsabgleich"),
-            ("UPDATE game_schema SET version='other'", "Übernahmeschema"),
-            ("CREATE TABLE unexpected (id INTEGER)", "Übernahmeschema"),
-        ):
-            output.execute("BEGIN")
-            output.execute(sql)
-            with pytest.raises(PersistenceError, match=expected):
-                upgrade._compare(original, output)
-            output.rollback()
+        upgrade._validate_repaired_copy(original, output)
+        output.execute("BEGIN")
+        output.execute(sql)
+        with pytest.raises(PersistenceError, match=expected):
+            upgrade._validate_repaired_copy(original, output)
+        output.rollback()
 
 
 def test_market_upgrade_rejects_stock_collision_and_failed_integrity(
@@ -184,7 +195,7 @@ def test_market_upgrade_rejects_stock_collision_and_failed_integrity(
         original.backup(output)
         upgrade._apply(output)
         with pytest.raises(PersistenceError, match="inkonsistent"):
-            upgrade._compare(original, output)
+            upgrade._validate_repaired_copy(original, output)
         original.execute("CREATE TABLE market_templates (unexpected TEXT)")
         original.commit()
     with pytest.raises(PersistenceError, match="Vorratstabellen"):

@@ -69,7 +69,7 @@ class MarketStockUpgradeRepository:
                     output.row_factory = sqlite3.Row
                     source.backup(output)
                     self._apply(output)
-                    self._compare(source, output)
+                    self._validate_repaired_copy(source, output)
             database = SqliteGameDatabase(target)
             database.initialize()
             SqliteMarketTemplateStore.initialize(database)
@@ -140,60 +140,97 @@ class MarketStockUpgradeRepository:
 
     def _apply(self, db: sqlite3.Connection) -> None:
         """Rebuild only the offer table, preserving live IDs and row order."""
+        db.execute("PRAGMA foreign_keys=OFF")
+        with db:
+            self._create_replacement_offer_table(db)
+            self._copy_live_offers(db)
+            self._replace_offer_table(db)
+            self._remove_orphan_route_references(db)
+            db.execute("UPDATE game_schema SET version=?", (VERSION,))
+        db.execute("PRAGMA foreign_keys=ON")
+
+    @staticmethod
+    def _create_replacement_offer_table(db: sqlite3.Connection) -> None:
+        """Create the current offer table under a temporary name."""
         with closing(sqlite3.connect(":memory:")) as reference:
             reference.executescript(SCHEMA)
             create = reference.execute(
                 "SELECT sql FROM sqlite_master WHERE name='contract_offers'"
             ).fetchone()[0]
+        db.execute(
+            create.replace("contract_offers", "stock_upgrade_offers", 1)
+        )
+
+    def _copy_live_offers(self, db: sqlite3.Connection) -> None:
+        """Copy live offers while removing their obsolete expiry."""
         rows = list(
             db.execute("SELECT rowid,* FROM contract_offers ORDER BY rowid")
         )
-        db.execute("PRAGMA foreign_keys=OFF")
-        with db:
+        for row in rows:
+            if row["expires_at"] <= self.now:
+                continue
+            raw = json.loads(row["offer_snapshot"])
+            raw["data"]["expires_at"] = None
+            values = dict(row)
+            values["expires_at"] = None
+            values["offer_snapshot"] = json.dumps(raw, allow_nan=False)
             db.execute(
-                create.replace("contract_offers", "stock_upgrade_offers", 1)
+                "INSERT INTO stock_upgrade_offers("
+                "rowid,user_id,contract_id,"
+                "origin_facility_uid,destination_facility_uid,created_at,"
+                "expires_at,market_model,offer_snapshot) VALUES "
+                "(?,?,?,?,?,?,?,?,?)",
+                tuple(values.values()),
             )
-            for row in rows:
-                if row["expires_at"] <= self.now:
-                    continue
-                raw = json.loads(row["offer_snapshot"])
-                raw["data"]["expires_at"] = None
-                values = dict(row)
-                values["expires_at"] = None
-                values["offer_snapshot"] = json.dumps(raw, allow_nan=False)
-                db.execute(
-                    "INSERT INTO stock_upgrade_offers("
-                    "rowid,user_id,contract_id,"
-                    "origin_facility_uid,destination_facility_uid,created_at,"
-                    "expires_at,market_model,offer_snapshot) VALUES "
-                    "(?,?,?,?,?,?,?,?,?)",
-                    tuple(values.values()),
-                )
-            db.execute("DROP TABLE contract_offers")
-            db.execute(
-                "ALTER TABLE stock_upgrade_offers RENAME TO contract_offers"
-            )
-            db.execute(
-                "CREATE INDEX offers_scope ON contract_offers "
-                "(user_id, origin_facility_uid, expires_at)"
-            )
-            if db.execute(
-                "SELECT 1 FROM sqlite_master "
-                "WHERE name='offer_route_references'"
-            ).fetchone():
-                db.execute(
-                    "DELETE FROM offer_route_references WHERE NOT EXISTS "
-                    "(SELECT 1 FROM contract_offers o WHERE "
-                    "o.user_id=offer_route_references.user_id AND "
-                    "o.contract_id=offer_route_references.contract_id)"
-                )
-            db.execute("UPDATE game_schema SET version=?", (VERSION,))
-        db.execute("PRAGMA foreign_keys=ON")
 
-    def _compare(
+    @staticmethod
+    def _replace_offer_table(db: sqlite3.Connection) -> None:
+        """Activate the replacement table and its scope index."""
+        db.execute("DROP TABLE contract_offers")
+        db.execute(
+            "ALTER TABLE stock_upgrade_offers RENAME TO contract_offers"
+        )
+        db.execute(
+            "CREATE INDEX offers_scope ON contract_offers "
+            "(user_id, origin_facility_uid, expires_at)"
+        )
+
+    @staticmethod
+    def _remove_orphan_route_references(db: sqlite3.Connection) -> None:
+        """Remove route bindings whose expired offer was not retained."""
+        if not db.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='offer_route_references'"
+        ).fetchone():
+            return
+        db.execute(
+            "DELETE FROM offer_route_references WHERE NOT EXISTS "
+            "(SELECT 1 FROM contract_offers o WHERE "
+            "o.user_id=offer_route_references.user_id AND "
+            "o.contract_id=offer_route_references.contract_id)"
+        )
+
+    def _validate_repaired_copy(
         self, source: sqlite3.Connection, target: sqlite3.Connection
     ) -> None:
         """Reconcile all tables and historical JSON before activation."""
+        self._validate_schema_version(source, target)
+        self._validate_preserved_tables(source, target)
+        self._validate_offer_rows(
+            target,
+            self._expected_offer_rows(source),
+        )
+        self._validate_route_references(
+            target,
+            self._expected_route_references(source),
+        )
+        self._validate_database_integrity(target)
+
+    @staticmethod
+    def _validate_schema_version(
+        source: sqlite3.Connection,
+        target: sqlite3.Connection,
+    ) -> None:
+        """Require an unchanged schema except for the upgraded offer table."""
         schema_query = (
             "SELECT type,name,tbl_name,sql FROM sqlite_master "
             "WHERE name NOT IN ('contract_offers','offers_scope') "
@@ -205,6 +242,13 @@ class MarketStockUpgradeRepository:
             map(tuple, target.execute("SELECT version FROM game_schema"))
         ) != [(VERSION,)]:
             raise PersistenceError("Übernahmeschema abweichend.")
+
+    @staticmethod
+    def _validate_preserved_tables(
+        source: sqlite3.Connection,
+        target: sqlite3.Connection,
+    ) -> None:
+        """Require all unrelated table bytes to remain identical."""
         for (table,) in source.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
         ):
@@ -220,7 +264,13 @@ class MarketStockUpgradeRepository:
                 raise PersistenceError(
                     "Übernahmeabgleich fehlgeschlagen: " + table
                 )
-        expected = []
+
+    def _expected_offer_rows(
+        self,
+        source: sqlite3.Connection,
+    ) -> tuple[tuple[object, ...], ...]:
+        """Project the exact live offer rows expected after conversion."""
+        expected: list[tuple[object, ...]] = []
         for row in source.execute(
             "SELECT rowid,* FROM contract_offers ORDER BY rowid"
         ):
@@ -231,7 +281,15 @@ class MarketStockUpgradeRepository:
                 values["expires_at"] = None
                 values["offer_snapshot"] = json.dumps(raw, allow_nan=False)
                 expected.append(tuple(values.values()))
-        if expected != list(
+        return tuple(expected)
+
+    @staticmethod
+    def _validate_offer_rows(
+        target: sqlite3.Connection,
+        expected: tuple[tuple[object, ...], ...],
+    ) -> None:
+        """Require the target offer table to match the live projection."""
+        if expected != tuple(
             map(
                 tuple,
                 target.execute(
@@ -240,34 +298,52 @@ class MarketStockUpgradeRepository:
             )
         ):
             raise PersistenceError("Auftragsabgleich fehlgeschlagen.")
-        if source.execute(
+
+    def _expected_route_references(
+        self,
+        source: sqlite3.Connection,
+    ) -> tuple[tuple[object, ...], ...] | None:
+        """Project bindings retained for live offers, when supported."""
+        if not source.execute(
             "SELECT 1 FROM sqlite_master WHERE name='offer_route_references'"
         ).fetchone():
-            expected_refs = list(
-                map(
-                    tuple,
-                    source.execute(
-                        "SELECT r.rowid,r.* FROM offer_route_references r "
-                        "JOIN "
-                        "contract_offers o ON o.user_id=r.user_id AND "
-                        "o.contract_id=r.contract_id WHERE o.expires_at>? "
-                        "ORDER BY r.rowid",
-                        (self.now,),
-                    ),
-                )
+            return None
+        return tuple(
+            map(
+                tuple,
+                source.execute(
+                    "SELECT r.rowid,r.* FROM offer_route_references r "
+                    "JOIN "
+                    "contract_offers o ON o.user_id=r.user_id AND "
+                    "o.contract_id=r.contract_id WHERE o.expires_at>? "
+                    "ORDER BY r.rowid",
+                    (self.now,),
+                ),
             )
-            if expected_refs != list(
-                map(
-                    tuple,
-                    target.execute(
-                        "SELECT rowid,* FROM offer_route_references "
-                        "ORDER BY rowid"
-                    ),
-                )
-            ):
-                raise PersistenceError(
-                    "Routenbindungsabgleich fehlgeschlagen."
-                )
+        )
+
+    @staticmethod
+    def _validate_route_references(
+        target: sqlite3.Connection,
+        expected: tuple[tuple[object, ...], ...] | None,
+    ) -> None:
+        """Require retained route bindings to match their source rows."""
+        if expected is None:
+            return
+        actual = tuple(
+            map(
+                tuple,
+                target.execute(
+                    "SELECT rowid,* FROM offer_route_references ORDER BY rowid"
+                ),
+            )
+        )
+        if expected != actual:
+            raise PersistenceError("Routenbindungsabgleich fehlgeschlagen.")
+
+    @staticmethod
+    def _validate_database_integrity(target: sqlite3.Connection) -> None:
+        """Require the final foreign keys and SQLite integrity checks."""
         if target.execute("PRAGMA foreign_key_check").fetchone() or list(
             map(tuple, target.execute("PRAGMA integrity_check"))
         ) != [("ok",)]:
