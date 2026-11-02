@@ -1,6 +1,7 @@
 import "./test-dom.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
+import { renderPanel } from "./panels.js";
 import { renderTransports } from "./views/transports.js";
 import { trip, vehicle } from "./test-support/controller-fixtures.mjs";
 
@@ -23,4 +24,12 @@ test("transport view distinguishes empty, arrived and selected states", () => {
     }).querySelector('[data-action="focus-trip"]').dataset.id,
     "trip",
   );
+});
+
+test("finished transport details are not presented as active", () => {
+  const finished = renderPanel({
+    url: new URL("http://test/transports/old"),
+    state: { transports: [] },
+  });
+  assert.ok(finished.textContent.includes("nicht mehr aktiv"));
 });
