@@ -31,7 +31,7 @@ class MarketSelectionService:
                     )
         selected: dict[str, list[str]] = {}
         for (uid, _), pool in pools.items():
-            for item in self._select_diverse(tuple(pool)):
+            for item in self.select_diverse_pool(tuple(pool)):
                 selected.setdefault(item.offer.id, []).append(uid)
         return tuple(
             AvailableContract(
@@ -43,7 +43,7 @@ class MarketSelectionService:
             if item.offer.id in selected
         )
 
-    def _select_diverse(
+    def select_diverse_pool(
         self,
         offers: tuple[AvailableContract, ...],
     ) -> tuple[AvailableContract, ...]:

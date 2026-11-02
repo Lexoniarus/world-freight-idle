@@ -14,6 +14,7 @@ import httpx
 from app.config import Settings
 from app.domain.game_import import GameStateImporter
 from app.domain.geography_migration import GeographyMigrationStore
+from app.domain.market_stock import StockPolicy
 from app.domain.ports import VehicleCatalogue, WorldCatalogue
 from app.domain.read_ports import LeaderboardReader, TrafficReader
 from app.domain.world_scopes import WorldScope
@@ -32,6 +33,7 @@ from app.repositories.leaderboard import SqliteLeaderboardReader
 from app.repositories.legacy_game_import import LegacyGameImporter
 from app.repositories.market_preparation import SqlitePreparationStore
 from app.repositories.market_stock import SqlitePlayerMarketStockStore
+from app.repositories.market_stock_repair import SqliteMarketStockRepairStore
 from app.repositories.market_stock_upgrade import MarketStockUpgradeRepository
 from app.repositories.market_templates import SqliteMarketTemplateStore
 from app.repositories.preferences import SqlitePreferenceStore
@@ -76,6 +78,10 @@ from app.services.market.route_preparation import (
 )
 from app.services.market.scope import MarketScopeResolver
 from app.services.market.selection import MarketSelectionService
+from app.services.market.stock.maintenance import (
+    MarketStockRepairPlanner,
+    MarketStockRepairService,
+)
 from app.services.market.stock.planning import StockPlanningService
 from app.services.market.stock.preparation import StockPreparationBatch
 from app.services.market.stock.publication import StockPublicationService
@@ -322,6 +328,18 @@ def build_market_stock_upgrade(
 ) -> MarketStockUpgradeRepository:
     """Wire explicit offline schema adoption without opening active storage."""
     return MarketStockUpgradeRepository(source, now)
+
+
+def build_market_stock_repair(source: Path) -> MarketStockRepairService:
+    """Wire read-only historical stock inspection outside the runtime."""
+    policy = StockPolicy()
+    return MarketStockRepairService(
+        SqliteMarketStockRepairStore(source),
+        MarketStockRepairPlanner(
+            policy,
+            MarketSelectionService(policy),
+        ),
+    )
 
 
 def build_runtime_view(
