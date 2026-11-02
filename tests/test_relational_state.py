@@ -445,7 +445,8 @@ def test_transport_validation_cache_rechecks_changed_rows_and_bounds_memory(
         repository.list_active_transports()
     with database.connect() as db:
         db.execute(
-            "UPDATE transports SET transport_snapshot=?, payout_eur=payout_eur+1",
+            "UPDATE transports SET transport_snapshot=?, "
+            "payout_eur=payout_eur+1",
             (raw,),
         )
     with pytest.raises(PersistenceError):

@@ -102,7 +102,12 @@ def legacy_source(tmp_path, synthetic_game, synthetic_game_context):
     with closing(sqlite3.connect(path)) as connection:
         connection.executescript(
             """
-CREATE TABLE users(id TEXT PRIMARY KEY,username TEXT,password_hash TEXT,created_at REAL);
+CREATE TABLE users(
+    id TEXT PRIMARY KEY,
+    username TEXT,
+    password_hash TEXT,
+    created_at REAL
+);
 CREATE TABLE kv(key TEXT PRIMARY KEY,value TEXT);
 CREATE TABLE sessions(token_hash TEXT,user_id TEXT,expires_at REAL);
 CREATE TABLE route_cache(cache_key TEXT,payload TEXT,updated_at REAL);

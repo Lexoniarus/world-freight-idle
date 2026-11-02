@@ -247,14 +247,25 @@ def test_world_repository_readonly_and_cleanup(small_world_catalogue):
         "DROP TABLE facility_nhm_profiles",
         "UPDATE facilities SET company_id=-1 WHERE facility_id=1",
         "UPDATE external_identifiers SET entity_id=-1",
-        "DROP TRIGGER preserve_facility_uid; UPDATE facilities SET facility_uid='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaZ' WHERE facility_id=1",
+        "DROP TRIGGER preserve_facility_uid; "
+        "UPDATE facilities SET "
+        "facility_uid='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaZ' "
+        "WHERE facility_id=1",
         "UPDATE facility_sources SET source_url='' WHERE facility_id=1",
         "DELETE FROM facility_sources WHERE facility_id=1",
-        "UPDATE sources SET base_url='' WHERE source_id IN (SELECT source_id FROM company_sources LIMIT 1)",
-        "DELETE FROM nhm_market_profiles WHERE nhm_row_id=(SELECT nhm_row_id FROM facility_nhm_profiles LIMIT 1)",
-        "UPDATE nhm_codes SET is_numeric=0 WHERE nhm_row_id=(SELECT nhm_row_id FROM facility_nhm_profiles LIMIT 1)",
-        "UPDATE sources SET base_url='' WHERE source_id=(SELECT p.source_id FROM facility_nhm_profiles p WHERE p.evidence_type='official' AND p.source_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM company_sources cs WHERE cs.source_id=p.source_id) LIMIT 1)",
-        "UPDATE cargo_types SET nst_code='NHM:87' WHERE cargo_type_id=(SELECT cargo_type_id FROM cargo_types LIMIT 1)",
+        "UPDATE sources SET base_url='' WHERE source_id IN "
+        "(SELECT source_id FROM company_sources LIMIT 1)",
+        "DELETE FROM nhm_market_profiles WHERE nhm_row_id="
+        "(SELECT nhm_row_id FROM facility_nhm_profiles LIMIT 1)",
+        "UPDATE nhm_codes SET is_numeric=0 WHERE nhm_row_id="
+        "(SELECT nhm_row_id FROM facility_nhm_profiles LIMIT 1)",
+        "UPDATE sources SET base_url='' WHERE source_id=(SELECT p.source_id "
+        "FROM facility_nhm_profiles p WHERE p.evidence_type='official' "
+        "AND p.source_id IS NOT NULL AND NOT EXISTS "
+        "(SELECT 1 FROM company_sources cs WHERE cs.source_id=p.source_id) "
+        "LIMIT 1)",
+        "UPDATE cargo_types SET nst_code='NHM:87' WHERE cargo_type_id="
+        "(SELECT cargo_type_id FROM cargo_types LIMIT 1)",
     ],
 )
 def test_world_repository_rejects_incompatible_data(
@@ -283,7 +294,9 @@ def test_world_uid_validation_and_duplicate_detection(
         connection.executescript("""
             DROP TRIGGER preserve_company_uid;
             DROP INDEX uq_company_uid;
-            UPDATE companies SET company_uid=(SELECT company_uid FROM companies LIMIT 1);
+            UPDATE companies SET company_uid=(
+                SELECT company_uid FROM companies LIMIT 1
+            );
         """)
     with pytest.raises(WorldCatalogueError, match="Weltkatalog"):
         small_world_catalogue.read()
@@ -305,7 +318,9 @@ def test_world_coordinates_require_matching_evidence(
         connection,
     ):
         connection.execute(
-            "UPDATE facility_geocoding_evidence SET source_url='invalid' WHERE facility_id=(SELECT facility_id FROM facilities WHERE facility_uid=?)",
+            "UPDATE facility_geocoding_evidence SET source_url='invalid' "
+            "WHERE facility_id=(SELECT facility_id FROM facilities "
+            "WHERE facility_uid=?)",
             (berlin.facility_uid,),
         )
     after = WorldScope(small_world_catalogue.read()).facility(

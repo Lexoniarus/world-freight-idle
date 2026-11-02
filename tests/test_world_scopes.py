@@ -1,4 +1,4 @@
-"""Immutable world filters separate company identity from facility geography."""
+"""World filters separate company identity from facility geography."""
 
 from dataclasses import FrozenInstanceError, replace
 

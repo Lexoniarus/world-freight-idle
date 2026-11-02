@@ -1,4 +1,4 @@
-"""Isolated application settings for synthetic and reference acceptance tests."""
+"""Isolated settings for synthetic and reference acceptance tests."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ def _settings(
     vehicle_path: Path,
     world_path: Path,
 ) -> Settings:
-    """Return common isolated settings without choosing catalogue provenance."""
+    """Return isolated settings without choosing catalogue provenance."""
     return Settings(
         world_catalogue_path=world_path,
         vehicle_catalogue_path=vehicle_path,

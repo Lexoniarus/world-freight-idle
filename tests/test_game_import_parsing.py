@@ -70,7 +70,8 @@ def test_offline_import_preserves_profiles_history_and_settles_once(
     database.initialize()
     with database.connect() as connection:
         rows = connection.execute(
-            "SELECT id,username,password_hash,created_at FROM users ORDER BY id"
+            "SELECT id,username,password_hash,created_at "
+            "FROM users ORDER BY id"
         ).fetchall()
         assert [tuple(r) for r in rows] == [
             (uid, "User_" + uid, password_hash, 100) for uid in ("a", "b", "c")

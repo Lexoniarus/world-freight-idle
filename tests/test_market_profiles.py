@@ -88,7 +88,8 @@ def test_market_profile_small_values_reject_invalid_weights():
         "DROP TABLE nhm_market_profiles",
         "DROP TABLE nhm_distance_load_profiles",
         "DROP TABLE nhm_vehicle_scale_profiles",
-        "DELETE FROM nhm_market_profiles WHERE nhm_row_id=(SELECT nhm_row_id FROM facility_nhm_profiles LIMIT 1)",
+        "DELETE FROM nhm_market_profiles WHERE nhm_row_id="
+        "(SELECT nhm_row_id FROM facility_nhm_profiles LIMIT 1)",
         "DELETE FROM nhm_distance_load_profiles WHERE distance_band='short'",
         "DELETE FROM nhm_vehicle_scale_profiles WHERE vehicle_scale='van'",
         "UPDATE nhm_market_profiles SET transport_class='invalid'",
@@ -97,7 +98,8 @@ def test_market_profile_small_values_reject_invalid_weights():
         "UPDATE nhm_market_profiles SET value_confidence=2",
         "UPDATE nhm_distance_load_profiles SET selection_weight=-1",
         "UPDATE nhm_distance_load_profiles SET load_factor_min=0",
-        "UPDATE nhm_distance_load_profiles SET load_factor_min=1,load_factor_max=0.2",
+        "UPDATE nhm_distance_load_profiles "
+        "SET load_factor_min=1,load_factor_max=0.2",
         "UPDATE nhm_vehicle_scale_profiles SET suitability_game=2",
         "UPDATE nhm_market_profiles SET value_source_id=-1",
     ],
@@ -117,7 +119,8 @@ def test_world_market_profile_corruption_is_rejected(
     [
         "UPDATE catalog_metadata SET value='2.1.0' WHERE key='schema_version'",
         "DROP TABLE vehicle_transport_capabilities",
-        "UPDATE vehicle_transport_capabilities SET transport_class='invalid' WHERE transport_class='general'",
+        "UPDATE vehicle_transport_capabilities "
+        "SET transport_class='invalid' WHERE transport_class='general'",
         "UPDATE vehicle_transport_capabilities SET suitability_game=-1",
         "UPDATE vehicle_transport_capabilities SET suitability_game=2",
         "DELETE FROM vehicle_transport_capabilities",

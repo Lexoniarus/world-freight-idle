@@ -36,7 +36,7 @@ async def test_stale_evidence_reuses_offers_and_backoff_never_releases_stock(
 
 
 @pytest.mark.asyncio
-async def test_partial_connection_resumes_after_restart_and_never_releases_early(
+async def test_partial_connection_resumes_without_early_release(
     stock_game,
 ):
     from app.services.market.vehicle_coverage import trade_key

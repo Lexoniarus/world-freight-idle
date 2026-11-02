@@ -17,12 +17,18 @@ from app.repositories.game_schema import SCHEMA
 @pytest.mark.parametrize(
     "definition",
     [
-        "CREATE INDEX one_active_transport_per_vehicle ON transports(user_id, vehicle_id) WHERE status='active'",
-        "CREATE UNIQUE INDEX one_active_transport_per_vehicle ON transports(vehicle_id, user_id) WHERE status='active'",
-        "CREATE UNIQUE INDEX one_active_transport_per_vehicle ON transports(user_id, vehicle_id) WHERE status='settled'",
-        "CREATE UNIQUE INDEX one_active_transport_per_vehicle ON transports(user_id, vehicle_id)",
-        "CREATE UNIQUE INDEX one_active_transport_per_vehicle ON owned_vehicles(user_id, vehicle_id)",
-        "CREATE TRIGGER one_active_transport_per_vehicle BEFORE UPDATE ON transports BEGIN SELECT 1; END",
+        "CREATE INDEX one_active_transport_per_vehicle "
+        "ON transports(user_id, vehicle_id) WHERE status='active'",
+        "CREATE UNIQUE INDEX one_active_transport_per_vehicle "
+        "ON transports(vehicle_id, user_id) WHERE status='active'",
+        "CREATE UNIQUE INDEX one_active_transport_per_vehicle "
+        "ON transports(user_id, vehicle_id) WHERE status='settled'",
+        "CREATE UNIQUE INDEX one_active_transport_per_vehicle "
+        "ON transports(user_id, vehicle_id)",
+        "CREATE UNIQUE INDEX one_active_transport_per_vehicle "
+        "ON owned_vehicles(user_id, vehicle_id)",
+        "CREATE TRIGGER one_active_transport_per_vehicle "
+        "BEFORE UPDATE ON transports BEGIN SELECT 1; END",
     ],
 )
 def test_schema_rejects_ineffective_unique_index(tmp_path, definition, caplog):
@@ -45,11 +51,19 @@ def test_schema_rejects_ineffective_unique_index(tmp_path, definition, caplog):
 @pytest.mark.parametrize(
     "definition",
     [
-        "CREATE TRIGGER retain_settlement BEFORE UPDATE ON transports WHEN OLD.status='settled' BEGIN SELECT 1; END",
-        "CREATE TRIGGER retain_settlement BEFORE UPDATE ON transports WHEN OLD.status='active' BEGIN SELECT RAISE(ABORT, 'Settled transport is immutable'); END",
-        "CREATE TRIGGER retain_settlement AFTER UPDATE ON transports WHEN OLD.status='settled' BEGIN SELECT RAISE(ABORT, 'Settled transport is immutable'); END",
-        "CREATE TRIGGER retain_settlement BEFORE UPDATE ON transports WHEN OLD.status='settled' BEGIN SELECT RAISE(IGNORE); END",
-        "CREATE TRIGGER retain_settlement BEFORE UPDATE ON owned_vehicles WHEN OLD.status='settled' BEGIN SELECT RAISE(ABORT, 'Settled transport is immutable'); END",
+        "CREATE TRIGGER retain_settlement BEFORE UPDATE ON transports "
+        "WHEN OLD.status='settled' BEGIN SELECT 1; END",
+        "CREATE TRIGGER retain_settlement BEFORE UPDATE ON transports "
+        "WHEN OLD.status='active' BEGIN SELECT RAISE(ABORT, "
+        "'Settled transport is immutable'); END",
+        "CREATE TRIGGER retain_settlement AFTER UPDATE ON transports "
+        "WHEN OLD.status='settled' BEGIN SELECT RAISE(ABORT, "
+        "'Settled transport is immutable'); END",
+        "CREATE TRIGGER retain_settlement BEFORE UPDATE ON transports "
+        "WHEN OLD.status='settled' BEGIN SELECT RAISE(IGNORE); END",
+        "CREATE TRIGGER retain_settlement BEFORE UPDATE ON owned_vehicles "
+        "WHEN OLD.status='settled' BEGIN SELECT RAISE(ABORT, "
+        "'Settled transport is immutable'); END",
     ],
 )
 def test_schema_rejects_ineffective_settlement_trigger(tmp_path, definition):
@@ -103,7 +117,8 @@ def test_schema_accepts_formatting_but_preserves_literals(tmp_path):
         connection.executescript(
             SCHEMA.replace(
                 "ON transports(user_id, vehicle_id) WHERE status = 'active'",
-                "on transports ( user_id , vehicle_id )\nwhere status='active'",
+                "on transports ( user_id , vehicle_id )\n"
+                "where status='active'",
             ).replace("BEGIN SELECT RAISE", "begin /* guard */ select raise")
         )
     database.initialize()

@@ -48,14 +48,18 @@ def old_market_source(synthetic_game, database, tmp_path):
                     raw["data"]["expires_at"] = values["expires_at"]
                     values["offer_snapshot"] = json.dumps(raw)
                 target.execute(
-                    f"INSERT INTO {table} VALUES ({','.join('?' for _ in values)})",
+                    f"INSERT INTO {table} VALUES "
+                    f"({','.join('?' for _ in values)})",
                     tuple(values.values()),
                 )
         target.execute(
-            "CREATE TABLE offer_route_references (user_id TEXT, contract_id TEXT, relation_id TEXT, revision TEXT)"
+            "CREATE TABLE offer_route_references ("
+            "user_id TEXT, contract_id TEXT, relation_id TEXT, revision TEXT)"
         )
         target.execute(
-            "INSERT INTO offer_route_references SELECT user_id,contract_id,'route','revision' FROM contract_offers"
+            "INSERT INTO offer_route_references "
+            "SELECT user_id,contract_id,'route','revision' "
+            "FROM contract_offers"
         )
         target.execute("CREATE TABLE annotations (value TEXT)")
         target.execute("INSERT INTO annotations VALUES ('preserve verbatim')")

@@ -116,8 +116,10 @@ def test_boundary_checker_detects_reexports_relative_and_dynamic_imports():
     variants = (
         "from ..repositories import game_state",
         "from app.repositories.game_state import SqliteGameUnitOfWork as Uow",
-        "import importlib as loader\nloader.import_module('app.repositories.game_state')",
-        "from importlib import import_module as load\nload('.game_state', 'app.repositories')",
+        "import importlib as loader\n"
+        "loader.import_module('app.repositories.game_state')",
+        "from importlib import import_module as load\n"
+        "load('.game_state', 'app.repositories')",
         "__import__('app.repositories.game_state')",
         "from app.shared import Repository",
     )
@@ -130,7 +132,9 @@ def test_boundary_checker_detects_reexports_relative_and_dynamic_imports():
             "app.services.example", sources, ["app.repositories"]
         )
     sources = {
-        "app.services.example": "from app.domain.state_ports import GameUnitOfWork",
+        "app.services.example": (
+            "from app.domain.state_ports import GameUnitOfWork"
+        ),
         "app.domain.state_ports": "from typing import Protocol",
     }
     assert not forbidden_dependencies(

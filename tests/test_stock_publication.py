@@ -8,7 +8,7 @@ from app.domain.errors import PersistenceError
 
 
 @pytest.mark.asyncio
-async def test_stock_fences_lease_loss_and_stale_routes_without_partial_issuance(
+async def test_stock_fences_lease_and_vehicle_changes_atomically(
     stock_game,
 ):
     game, prep, batch = stock_game
@@ -113,7 +113,7 @@ async def test_refill_rechecks_target_after_preparing_a_route(stock_game):
 
 
 @pytest.mark.asyncio
-async def test_failed_approaches_and_changed_publication_do_not_create_ready_offers(
+async def test_failed_routes_and_changed_snapshots_publish_nothing(
     stock_game,
 ):
     from unittest.mock import AsyncMock
@@ -147,7 +147,7 @@ async def test_failed_approaches_and_changed_publication_do_not_create_ready_off
 
 
 @pytest.mark.asyncio
-async def test_arrival_projection_rejects_inconsistent_locations_and_idle_vehicle(
+async def test_arrivals_require_enroute_vehicle_and_matching_destination(
     stock_game, database
 ):
     from tests.transport_fixtures import add_transport

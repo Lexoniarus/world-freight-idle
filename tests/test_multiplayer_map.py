@@ -30,7 +30,7 @@ ROUTE = {
 }
 
 
-def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
+def test_multiplayer_map_projects_active_traffic_without_private_economy(
     database,
     synthetic_runtime,
     synthetic_game,

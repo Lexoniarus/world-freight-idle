@@ -248,14 +248,18 @@ def test_analytics_is_read_only_and_account_scoped(
         ][1:]
         names = ",".join(columns)
         db.execute(
-            f"INSERT INTO owned_vehicles SELECT 'second', {names} FROM owned_vehicles WHERE user_id='test-owner'"
+            "INSERT INTO owned_vehicles "
+            f"SELECT 'second', {names} FROM owned_vehicles "
+            "WHERE user_id='test-owner'"
         )
         columns = [
             row[1] for row in db.execute("PRAGMA table_info(transports)")
         ][1:]
         names = ",".join(columns)
         db.execute(
-            f"INSERT INTO transports SELECT 'second', {names} FROM transports WHERE user_id='test-owner'"
+            "INSERT INTO transports "
+            f"SELECT 'second', {names} FROM transports "
+            "WHERE user_id='test-owner'"
         )
     connect = database.connect
 

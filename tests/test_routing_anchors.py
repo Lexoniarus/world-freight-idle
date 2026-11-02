@@ -74,7 +74,7 @@ async def test_candidates_never_publish_before_connection_proof():
 
 
 @pytest.mark.asyncio
-async def test_candidate_bound_uses_original_location_even_after_address_snap():
+async def test_candidate_bound_survives_address_snap():
     item = facility()
     distant = Coordinates(52.54, 13.405)
     locator = FakeLocator(
@@ -141,7 +141,7 @@ async def test_candidate_provider_failures_and_geocoding_absence():
 
 
 @pytest.mark.asyncio
-async def test_certified_access_is_stable_and_legacy_access_is_only_candidate():
+async def test_certified_access_outranks_legacy_candidate_access():
     from dataclasses import replace
 
     item = facility()

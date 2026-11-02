@@ -59,7 +59,8 @@ def old_energy_state(
                         del doc["data"]["journey"]
                         values["transport_snapshot"] = json.dumps(doc)
                     target.execute(
-                        f"INSERT INTO {table} VALUES ({','.join('?' for _ in columns)})",
+                        f"INSERT INTO {table} VALUES "
+                        f"({','.join('?' for _ in columns)})",
                         [values[key] for key in columns],
                     )
         target.commit()

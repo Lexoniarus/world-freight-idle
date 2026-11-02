@@ -121,13 +121,26 @@ def test_catalogue_failures_are_explicit(small_vehicle_catalogue, failure):
             connection.execute("PRAGMA ignore_check_constraints=ON")
             sql = {
                 "schema": "DROP TABLE vehicle_balance",
-                "version": "UPDATE catalog_metadata SET value='0' WHERE key='schema_version'",
-                "references": "UPDATE vehicle_models SET manufacturer_id='missing'",
+                "version": (
+                    "UPDATE catalog_metadata SET value='0' "
+                    "WHERE key='schema_version'"
+                ),
+                "references": (
+                    "UPDATE vehicle_models SET manufacturer_id='missing'"
+                ),
                 "empty": "DELETE FROM vehicle_sources",
                 "incomplete": "DELETE FROM vehicle_balance",
-                "text": "UPDATE manufacturers SET name='' WHERE manufacturer_id='daf'",
-                "integer": "UPDATE vehicle_balance SET purchase_price_eur_game=1.5",
-                "number": "UPDATE vehicle_balance SET operating_cost_eur_per_km_game='oops'",
+                "text": (
+                    "UPDATE manufacturers SET name='' "
+                    "WHERE manufacturer_id='daf'"
+                ),
+                "integer": (
+                    "UPDATE vehicle_balance SET purchase_price_eur_game=1.5"
+                ),
+                "number": (
+                    "UPDATE vehicle_balance "
+                    "SET operating_cost_eur_per_km_game='oops'"
+                ),
                 "range": "UPDATE vehicle_balance SET payload_t_game=-1",
             }[failure]
             connection.execute(sql)

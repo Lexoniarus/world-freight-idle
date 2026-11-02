@@ -61,13 +61,19 @@ def test_unverified_images_are_not_presented(small_vehicle_catalogue):
 def test_image_selection_prefers_verified_primary(small_vehicle_catalogue):
     with closing(sqlite3.connect(small_vehicle_catalogue.path)) as db, db:
         db.execute(
-            "UPDATE vehicle_images SET is_primary=0 WHERE vehicle_id='iveco_sway_500'"
+            "UPDATE vehicle_images SET is_primary=0 "
+            "WHERE vehicle_id='iveco_sway_500'"
         )
-        db.execute("""INSERT INTO vehicle_images(vehicle_id,source_id,license_id,direct_image_url,
-            author,attribution_text,image_scope,verification_status,is_primary)
-            SELECT vehicle_id,source_id,license_id,direct_image_url,'Selected photographer',
-                attribution_text,image_scope,verification_status,1 FROM vehicle_images
-            WHERE vehicle_id='iveco_sway_500'""")
+        db.execute(
+            """INSERT INTO vehicle_images(
+                vehicle_id,source_id,license_id,direct_image_url,author,
+                attribution_text,image_scope,verification_status,is_primary
+            )
+            SELECT vehicle_id,source_id,license_id,direct_image_url,
+                'Selected photographer',attribution_text,image_scope,
+                verification_status,1
+            FROM vehicle_images WHERE vehicle_id='iveco_sway_500'"""
+        )
     selected = next(
         item
         for item in small_vehicle_catalogue.list_models()
