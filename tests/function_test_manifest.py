@@ -344,8 +344,8 @@ FUNCTION_TESTS.update(
     {
         "app.api.v1.dependencies.get_traffic_reader": "test_multiplayer_map_endpoint_requires_login_and_shares_other_players",
         "app.api.v1.map.list_map_traffic": "test_multiplayer_map_endpoint_requires_login_and_shares_other_players",
-        "app.composition.player.build_traffic_reader": "test_multiplayer_map_projects_active_traffic_without_private_economy",
-        "app.api.v1.traffic_projection.project_traffic": "test_multiplayer_map_projects_active_traffic_without_private_economy",
+        "app.composition.player.build_traffic_reader": "test_traffic_reader_builder_reuses_the_runtime_snapshot",
+        "app.api.v1.traffic_projection.project_traffic": "test_traffic_projection_marks_ownership_without_private_economy",
         "app.domain.company_colors.player_color": "test_player_color_is_stable_and_changes_between_users",
     }
 )

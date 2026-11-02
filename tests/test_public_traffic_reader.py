@@ -61,6 +61,7 @@ def test_public_traffic_limits_latest_rows_and_preserves_privacy(
     synthetic_game,
 ):
     seed_public_transports(relational, synthetic_game)
+    SqlitePreferenceStore(relational).save_color("bob", "#e45756")
     reader = SqliteTrafficReader(relational, maximum_transports=1)
 
     rows = reader.list_active_transports(12)
@@ -69,6 +70,9 @@ def test_public_traffic_limits_latest_rows_and_preserves_privacy(
     assert [row.id for row in rows] == ["bob-live"]
     assert [row.id for row in summaries] == ["bob-live"]
     assert rows[0].coordinates == ((1, 1), (2, 2))
+    assert rows[0].company_color == "#e45756"
+    assert rows[0].model_id == "iveco_sway_500"
+    assert rows[0].model_name
     assert summaries[0].coordinates == ()
     assert {"contract", "password_hash", "cash", "payout_eur"}.isdisjoint(
         asdict(rows[0])
