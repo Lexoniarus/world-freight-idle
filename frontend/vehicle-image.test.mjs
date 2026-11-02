@@ -75,7 +75,12 @@ test("panel refresh preserves loaded and failed photo nodes but replaces changed
       active_transports: 0,
     },
   };
-  const controller = new PanelController({ view, now: () => 0 });
+  const controller = new PanelController({
+    view,
+    request: async () => ({}),
+    notify: () => {},
+    now: () => 0,
+  });
   controller.replaceContent();
   const original = document.querySelector("img");
   original.closest("figure").dataset.imageState = "loaded";

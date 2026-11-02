@@ -100,8 +100,14 @@ function createGameApplication(api, user, redirect) {
   );
   const notify = notifications.show;
   const assets = new VehicleColorAssets(api.requestAsset);
-  const panel = new PanelController({ view, request: api.request, notify, now: () => state.now() });
-  panel.images = new VehicleImageController(assets);
+  const images = new VehicleImageController(assets);
+  const panel = new PanelController({
+    view,
+    request: api.request,
+    notify,
+    now: () => state.now(),
+    images,
+  });
   let application;
   const router = new BrowserRouter(window, (url) => application.navigateTo(url));
   const navigate = (path) => router.navigate(path);

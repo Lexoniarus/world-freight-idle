@@ -1,14 +1,14 @@
 import { matchVehicleImages } from "../ui/preserve-vehicle-images.js";
 import { LatestRequest } from "../latest-request.js";
 import { eligibleVehicles } from "../geometry.js";
-import { renderPanel } from "../panels.js";
+import { renderPanel } from "../views/panel.js";
 import { panelTitle } from "../navigation.js";
 import { requiredElement } from "../ui/dom.js";
 
 /** Own panel selection, auxiliary reads and focus-preserving presentation. */
 export class PanelController {
-  /** @param {{view: import('../types.js').PanelView, request: import('../types.js').RequestJson, notify: import('../types.js').Notify, now: import('../types.js').Clock}} options */
-  constructor({ view, request, notify, now }) {
+  /** @param {{view: import('../types.js').PanelView, request: import('../types.js').RequestJson, notify: import('../types.js').Notify, now: import('../types.js').Clock, images?: import('../vehicle-image-bindings.js').VehicleImageController | null}} options */
+  constructor({ view, request, notify, now, images = null }) {
     this.view = view;
     this.request = request;
     this.notify = notify;
@@ -20,8 +20,7 @@ export class PanelController {
     this.contentFocus = null;
     this.returnFocus = null;
     this.disposed = false;
-    /** @type {import("../vehicle-image-bindings.js").VehicleImageController | null} */
-    this.images = null;
+    this.images = images;
   }
   /** Reset only panel-specific selection when the route changes.
    * @param {URL} url

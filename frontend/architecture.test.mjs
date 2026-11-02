@@ -31,7 +31,7 @@ function assertBoundaries(name, text) {
       );
     if (name.startsWith("map/"))
       assert.ok(
-        !["api.js", "panels.js"].includes(dependency) &&
+        dependency !== "views/panel.js" &&
           !dependency.startsWith("controllers/") &&
           !dependency.startsWith("views/"),
         name,

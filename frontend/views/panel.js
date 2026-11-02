@@ -1,14 +1,14 @@
-import { html } from "./ui/dom.js";
-import { emptyState } from "./ui/components.js";
-import { renderContracts } from "./views/contracts.js";
-import { renderFleet } from "./views/fleet.js";
-import { renderShop } from "./views/shop.js";
-import { renderTransports } from "./views/transports.js";
-import { renderCompanyDashboard } from "./views/company-dashboard.js";
-import { renderRanking } from "./views/ranking.js";
+import { html } from "../ui/dom.js";
+import { emptyState } from "../ui/components.js";
+import { renderContracts } from "./contracts.js";
+import { renderFleet } from "./fleet.js";
+import { renderShop } from "./shop.js";
+import { renderTransports } from "./transports.js";
+import { renderCompanyDashboard } from "./company-dashboard.js";
+import { renderRanking } from "./ranking.js";
 
 /** Select a presentation module for a product URL.
- * @param {import('./types.js').PanelView} view
+ * @param {import('../types.js').PanelView} view
  * @returns {DocumentFragment}
  */
 export function renderPanel(view) {

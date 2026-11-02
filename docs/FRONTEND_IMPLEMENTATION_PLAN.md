@@ -75,7 +75,7 @@ F04 soweit die erste responsive Navigation betroffen ist.
 
 **Grundlage:** `frontend/views/fleet.js`, `shop.js`, `contracts.js`,
 `transports.js`, `company-dashboard.js`, `ranking.js`; `frontend/ui/data-table.js`,
-`components.js`, `vehicle-image.js`; `frontend/panels.js` und
+`components.js`, `vehicle-image.js`; `frontend/views/panel.js` und
 `frontend/controllers/panel-controller.js`.
 
 **Arbeit:** Gemeinsam verwendete Listen, Filter, Aktionen, Rahmen und Reiter

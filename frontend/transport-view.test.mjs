@@ -1,7 +1,7 @@
 import "./test-dom.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { renderPanel } from "./panels.js";
+import { renderPanel } from "./views/panel.js";
 import { renderTransports } from "./views/transports.js";
 import { trip, vehicle } from "./test-support/controller-fixtures.mjs";
 

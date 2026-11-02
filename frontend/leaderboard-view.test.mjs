@@ -1,7 +1,7 @@
 import "./test-dom.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { renderPanel } from "./panels.js";
+import { renderPanel } from "./views/panel.js";
 
 test("leaderboard renders untrusted ranking names as text", () => {
   const ranking = renderPanel({
