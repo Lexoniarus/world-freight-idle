@@ -1,4 +1,5 @@
 FUNCTION_TESTS = {
+    "app.composition.player.PlayerContextFactory.create": "test_player_context_factory_reuses_injected_test_boundaries",
     "app.composition.player.build_player_context": "test_player_service_isolation_and_atomic_purchases",
     "app.composition.audits.build_routing_audit": "test_audit_report_is_local_and_prewarm_counts_every_request",
     "app.domain.market_preparation.required_relations": "test_preparation_failures_backoff_fencing_and_worker_cleanup",

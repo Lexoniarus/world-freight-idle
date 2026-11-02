@@ -1,8 +1,10 @@
 """Authenticated player and background-market dependency assembly."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from app.composition.runtime import GameRuntime
+from app.domain.ports import VehicleCatalogue, WorldCatalogue
 from app.domain.read_ports import LeaderboardReader, TrafficReader
 from app.domain.state_ports import GameStateRepository
 from app.repositories.analytics import SqliteAnalyticsReader
@@ -28,12 +30,14 @@ from app.services.gameplay.vehicle_costs import VehicleCostResolver
 from app.services.gameplay.vehicle_location import VehicleLocationResolver
 from app.services.map_locations import MapLocationService
 from app.services.market.demand import MarketDemandResolver
+from app.services.market.generation_services import MarketGenerationServices
 from app.services.market.lifecycle import MarketLifecycleService
 from app.services.market.player_demand import PlayerMarketDemandService
 from app.services.market.player_routes import PlayerMarketRouteService
 from app.services.market.player_services import PlayerMarketServices
 from app.services.market.player_stores import PlayerMarketStores
 from app.services.market.route_preparation import MarketRoutePreparationService
+from app.services.market.scope import MarketScopeResolver
 from app.services.market.selection import MarketSelectionService
 from app.services.market.stock.planning import StockPlanningService
 from app.services.market.stock.preparation import StockPreparationBatch
@@ -59,6 +63,84 @@ class PlayerServiceContext:
     dispatch: TransportDispatchService
 
 
+@dataclass(frozen=True, slots=True)
+class PlayerContextFactory:
+    """Compose one player from injected runtime and adapter boundaries."""
+
+    unit_of_work: SqliteGameUnitOfWork
+    world: WorldCatalogue
+    catalogue: VehicleCatalogue
+    market_generation: MarketGenerationServices
+    market_scope: MarketScopeResolver
+    market: PlayerMarketServices
+    clock: Callable[[], float]
+    time_scale: float
+
+    def create(
+        self,
+        facade_type: type[PlayerGameFacade] = PlayerGameFacade,
+    ) -> PlayerServiceContext:
+        """Build the shared workflow graph with the requested facade type."""
+        lifecycle = MarketLifecycleService(
+            self.unit_of_work,
+            self.market_generation,
+            self.market_scope,
+            self.clock,
+            self.market.demand,
+            self.market.routes,
+            self.market.stores,
+            selection=MarketSelectionService(self.market.stores.policy),
+        )
+        planning = DispatchPlanningService(
+            VehicleCostResolver(self.catalogue),
+            self.market.routes,
+        )
+        settlement = TransportSettlementService(
+            self.unit_of_work,
+            self.clock,
+            self.market.demand,
+        )
+        dispatch = TransportDispatchService(
+            self.unit_of_work,
+            self.market_generation,
+            planning,
+            DispatchEligibilityService(self.market_generation.candidates),
+            VehicleLocationResolver(self.world),
+            settlement,
+            self.clock,
+            self.time_scale,
+            self.market.demand,
+            self.market.stores,
+        )
+        initialization = PlayerInitializationService(
+            self.unit_of_work,
+            self.world,
+            self.catalogue,
+            self.market.demand,
+        )
+        game = facade_type(
+            self.unit_of_work,
+            self.clock,
+            self.time_scale,
+            lifecycle,
+            initialization,
+            settlement,
+            dispatch,
+            self.market,
+        )
+        game.ensure_initial_state()
+        return PlayerServiceContext(
+            game,
+            self.unit_of_work,
+            self.unit_of_work.repository,
+            self.market,
+            lifecycle,
+            initialization,
+            settlement,
+            dispatch,
+        )
+
+
 def build_analytics_service(
     runtime: GameRuntime, user_id: str
 ) -> AnalyticsService:
@@ -72,64 +154,16 @@ def build_player_context(
     """Compose one player and retain collaborators at the composition edge."""
     player_market = build_player_market_services(runtime, user_id)
     unit = SqliteGameUnitOfWork(runtime.database, user_id)
-    lifecycle = MarketLifecycleService(
-        unit,
-        runtime.market_generation,
-        runtime.market_scope,
-        runtime.clock,
-        player_market.demand,
-        player_market.routes,
-        player_market.stores,
-        selection=MarketSelectionService(player_market.stores.policy),
-    )
-    planning = DispatchPlanningService(
-        VehicleCostResolver(runtime.catalogue),
-        player_market.routes,
-    )
-    settlement = TransportSettlementService(
-        unit,
-        runtime.clock,
-        player_market.demand,
-    )
-    dispatch = TransportDispatchService(
-        unit,
-        runtime.market_generation,
-        planning,
-        DispatchEligibilityService(runtime.market_generation.candidates),
-        VehicleLocationResolver(runtime.world),
-        settlement,
-        runtime.clock,
-        runtime.time_scale,
-        player_market.demand,
-        player_market.stores,
-    )
-    initialization = PlayerInitializationService(
+    return PlayerContextFactory(
         unit,
         runtime.world,
         runtime.catalogue,
-        player_market.demand,
-    )
-    game = PlayerGameFacade(
-        unit,
+        runtime.market_generation,
+        runtime.market_scope,
+        player_market,
         runtime.clock,
         runtime.time_scale,
-        lifecycle,
-        initialization,
-        settlement,
-        dispatch,
-        player_market,
-    )
-    game.ensure_initial_state()
-    return PlayerServiceContext(
-        game,
-        unit,
-        unit.repository,
-        player_market,
-        lifecycle,
-        initialization,
-        settlement,
-        dispatch,
-    )
+    ).create()
 
 
 def build_player_service(
