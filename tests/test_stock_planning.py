@@ -248,6 +248,39 @@ def test_complete_stock_target_does_not_materialize_another_offer(stock_game):
     ) == ((), ())
 
 
+def test_complete_stock_context_is_visible_but_not_scheduled(stock_game):
+    """Expose full stock for maintenance without reopening worker demand."""
+    game, _, batch = stock_game
+    snapshot = batch.snapshots.read()
+    candidate = snapshot.candidates[0]
+    offers = tuple(
+        ContractOffer.from_snapshot(
+            game.market_lifecycle.market.factory.build(
+                candidate,
+                1,
+                f"complete:{index}",
+            )
+        )
+        for index in range(batch.planning.policy.reserve_per_band)
+    )
+    arguments = (
+        snapshot.demands,
+        snapshot.candidates,
+        snapshot.candidates,
+        offers,
+    )
+
+    contexts = batch.planning.contexts(*arguments)
+
+    complete = next(
+        context
+        for context in contexts
+        if context.band == candidate.distance_profile.distance_band
+    )
+    assert complete.count == batch.planning.policy.reserve_per_band
+    assert complete not in batch.planning.targets(*arguments)
+
+
 def test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work(
     stock_game,
 ):

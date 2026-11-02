@@ -63,7 +63,21 @@ class StockPlanningService:
         ready: tuple[MarketCandidate, ...],
         offers: tuple[ContractOffer, ...],
     ) -> tuple[StockTarget, ...]:
-        """Count actual compatible offers for concrete vehicle demand."""
+        """Return only contexts whose reusable reserve needs a refill."""
+        return tuple(
+            context
+            for context in self.contexts(demands, candidates, ready, offers)
+            if context.count < self.policy.reserve_per_band
+        )
+
+    def contexts(
+        self,
+        demands: tuple[MarketDemand, ...],
+        candidates: tuple[MarketCandidate, ...],
+        ready: tuple[MarketCandidate, ...],
+        offers: tuple[ContractOffer, ...],
+    ) -> tuple[StockTarget, ...]:
+        """Describe every candidate-bearing vehicle and distance context."""
         by_vehicle: dict[str, list[MarketCandidate]] = defaultdict(list)
         ready_by_vehicle: dict[str, list[MarketCandidate]] = defaultdict(list)
         offers_by_city: dict[str, list[ContractOffer]] = defaultdict(list)
@@ -99,7 +113,7 @@ class StockPlanningService:
                     c for c in pool if c.distance_profile.distance_band == band
                 )
                 count = len(band_offers)
-                if not choices or count >= self.policy.reserve_per_band:
+                if not choices:
                     continue
                 priority = (
                     (1 if demand.transport_id else 0)

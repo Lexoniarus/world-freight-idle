@@ -962,6 +962,7 @@ FUNCTION_TESTS.update(
         "app.services.market.stock.planning.StockPlanningService.choose": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
         "app.services.market.stock.planning.StockPlanningService.order": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
         "app.services.market.stock.planning.StockPlanningService.targets": "test_demand_models_and_owned_capacity_remain_separate",
+        "app.services.market.stock.planning.StockPlanningService.contexts": "test_complete_stock_context_is_visible_but_not_scheduled",
         "app.services.market.stock.planning.StockTarget.key": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
         "app.services.market.stock.preparation.StockPreparationBatch._ready": "test_partial_connection_resumes_after_restart_and_never_releases_early",
         "app.services.market.stock.preparation.StockPreparationBatch._result": "test_stale_evidence_reuses_offers_and_backoff_never_releases_stock",
