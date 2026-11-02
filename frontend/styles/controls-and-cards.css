@@ -1,0 +1,352 @@
+#game {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+#world-map {
+  position: absolute;
+  inset: 0;
+  background: #b4c4c6;
+}
+
+.hud-divider {
+  width: 1px;
+  height: 34px;
+  background: var(--line);
+}
+
+.hud-stat {
+  flex-shrink: 0;
+}
+
+.hud-stat > span {
+  display: block;
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 1.1px;
+  margin-bottom: 5px;
+}
+
+.hud-stat > strong {
+  font:
+    600 23px Barlow,
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.cash-stat > strong {
+  color: var(--gold);
+}
+
+.player-chip {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.avatar {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background: #2b4459;
+  display: grid;
+  place-items: center;
+  font:
+    600 12px Inter,
+    sans-serif;
+  color: #d2e1ec;
+  flex-shrink: 0;
+}
+
+.player-chip strong {
+  display: block;
+  font-size: 12px;
+  max-width: 130px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-chip small {
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+  color: var(--green);
+}
+
+.nav-item {
+  flex-shrink: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  height: 66px;
+  border-radius: 10px;
+  background: transparent;
+  color: #a0b5c6;
+  transition: background 0.15s;
+}
+
+.nav-item span {
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.nav-item:hover {
+  color: white;
+  background: #1f3548;
+}
+
+.nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  height: 22px;
+  width: 3px;
+  background: var(--gold);
+  border-radius: 0 3px 3px 0;
+}
+
+.logout {
+  margin-top: auto;
+}
+
+.mission-card {
+  position: absolute;
+  left: 138px;
+  bottom: 60px;
+  padding: 24px;
+  width: 300px;
+  background: var(--navy);
+  border: 1px solid #3d5363;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.mission-card h2 {
+  margin-top: 10px;
+}
+
+.mission-card p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 10px 0 18px;
+}
+
+.mission-card .button {
+  width: 100%;
+}
+
+.panel-heading h1 {
+  margin-top: 5px;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  background: #253a4c;
+  border: 1px solid #3b5062;
+  border-radius: 8px;
+  width: 38px;
+  height: 38px;
+}
+
+.icon-button:hover {
+  background: #3b5062;
+}
+
+.panel-intro {
+  color: #b6c7d4;
+  font-size: 13px;
+  line-height: 1.8;
+  margin-bottom: 22px;
+}
+
+.section-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.section-toolbar .button {
+  padding: 6px 10px;
+  min-height: 34px;
+  font-size: 10px;
+}
+
+.filter-chip {
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  margin-bottom: 15px;
+  font-size: 11px;
+}
+
+.filter-chip a {
+  color: var(--gold);
+  margin-left: 14px;
+}
+
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.job-card,
+.vehicle-card {
+  display: block;
+  background: #1b3043;
+  border: 1px solid #334b5e;
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.job-card {
+  transition:
+    background 0.18s,
+    border-color 0.18s;
+}
+
+.job-card:hover {
+  border-color: #78909f;
+  background: #223b50;
+}
+
+.card-kicker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 10px;
+  color: #c0cfda;
+}
+
+.badge {
+  display: inline-block;
+  background: #33495b;
+  border-radius: 5px;
+  padding: 5px 7px;
+  font-size: 9px;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: #c7d7e2;
+}
+
+.badge.green {
+  color: #87e5c1;
+  background: #245042;
+}
+
+.badge.gold {
+  color: #f6ca70;
+  background: #51462d;
+}
+
+.job-card h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 21px;
+  margin: 14px 0;
+}
+
+.job-card h3 svg {
+  color: #728ea4;
+}
+
+.card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #a6bdcd;
+}
+
+.card-bottom > strong {
+  color: var(--gold);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.tabs {
+  display: flex;
+  padding: 4px;
+  background: #0f2030;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  margin-bottom: 20px;
+}
+
+.tabs > * {
+  flex: 1;
+  padding: 11px 8px;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tabs > .active {
+  background: #2c4357;
+  color: white;
+  box-shadow: 0 2px 5px #0002;
+}
+
+.truck-art {
+  display: block;
+  width: 100%;
+}
+
+.vehicle-card .truck-art {
+  margin: 14px auto 6px;
+}
+
+.vehicle-card h3 {
+  font-size: 25px;
+}
+
+.vehicle-card p {
+  color: #a8bdcc;
+  line-height: 1.7;
+  font-size: 11px;
+  margin: 8px 0 18px;
+}
+
+.vehicle-card .button {
+  width: 100%;
+}
+
+.purchase-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.purchase-row strong {
+  color: var(--gold);
+  font:
+    600 30px Barlow,
+    sans-serif;
+}
+
+.purchase-row span {
+  font-size: 10px;
+  color: var(--muted);
+}

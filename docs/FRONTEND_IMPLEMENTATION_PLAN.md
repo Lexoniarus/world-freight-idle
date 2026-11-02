@@ -47,7 +47,7 @@ keine Frontend-, Backend-, Asset- oder Datenänderungen vorgenommen.
 
 ## 1. Echter Spielrahmen und Designsystem
 
-**Grundlage:** `frontend/views/shell.js`, `frontend/style.css`,
+**Grundlage:** `frontend/views/shell.js`, `frontend/styles/`,
 `frontend/ui/illustrations.js`, `frontend/controllers/game-sync.js`,
 `frontend/navigation.js` und bestehende Firmenpräferenzen.
 

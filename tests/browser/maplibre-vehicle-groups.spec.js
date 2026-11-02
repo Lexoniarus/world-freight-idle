@@ -30,7 +30,19 @@ async function harness(page) {
     }),
   );
   await page.goto("/__harness__");
-  await page.addStyleTag({ path: "frontend/style.css" });
+  for (const path of [
+    "base.css",
+    "controls-and-cards.css",
+    "contract-and-progress.css",
+    "map-feedback.css",
+    "auth.css",
+    "vehicle-media.css",
+    "workspace.css",
+    "responsive.css",
+    "catalogue-components.css",
+    "presentation-refinements.css",
+  ])
+    await page.addStyleTag({ path: `frontend/styles/${path}` });
   await page.addStyleTag({ path: "node_modules/maplibre-gl/dist/maplibre-gl.css" });
   await page.evaluate(async () => {
     window.maplibregl = await import("/__modules__/node_modules/maplibre-gl/dist/maplibre-gl.mjs");
@@ -43,7 +55,7 @@ async function harness(page) {
 async function setupMap(page) {
   await harness(page);
   await page.evaluate(async () => {
-    const { addOverlayLayers } = await import("/__modules__/frontend/map/layers.js");
+    const { addOverlayLayers } = await import("/__modules__/frontend/map/overlay-layers.js");
     const { VehicleGroups } = await import("/__modules__/frontend/map/vehicle-groups.js");
     const { VehicleColorAssets } = await import("/__modules__/frontend/vehicle-color-assets.js");
     const { VehicleIconRegistry } =

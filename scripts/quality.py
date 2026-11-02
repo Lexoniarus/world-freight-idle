@@ -85,7 +85,7 @@ FRONTEND_COMMANDS = (
     (
         "node",
         "node_modules/stylelint/bin/stylelint.mjs",
-        "frontend/style.css",
+        "frontend/**/*.css",
     ),
     (
         "node",
