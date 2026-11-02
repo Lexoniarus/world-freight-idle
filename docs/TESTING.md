@@ -271,9 +271,10 @@ Quality-Gate einschließlich Build abschließen, danach `npm run test:e2e`.
 
 ## Karten-, Paint- und Fokusregressionen
 
-`map-rendering.test.mjs` prüft Überschneidung statt Mittelpunkt-Radius,
-Status-/Eigentümerpartitionen, Pose-Aktualisierung, Maskenmathematik,
-Fokusverbrauch und schnelle/fehlgeschlagene Farbwechsel.
+`map-grouping.test.mjs`, `vehicle-groups.test.mjs`, `map-layers.test.mjs`,
+`map-focus.test.mjs` und `vehicle-paint.test.mjs` prüfen getrennt
+Überschneidungen, Status-/Eigentümerpartitionen, Marker-Lifecycle,
+Layerausrichtung, Fokusverbrauch und sichere Maskenmathematik.
 `tests/browser/map-regressions.spec.js` verwendet echte MapLibre-Layer
 mit den Produktionsmodulen in einer ausschließlich im Test abgefangenen
 Modulumgebung. Genau ein Komponententest prüft native Enter-/Fokussemantik mit

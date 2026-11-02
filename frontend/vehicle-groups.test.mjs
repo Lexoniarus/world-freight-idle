@@ -112,3 +112,33 @@ test("vehicle selection emits the own-vehicle payload", () => {
   ]);
   assert.equal(groups.popup.removed, true);
 });
+
+test("throttled groups update the existing representative pose", () => {
+  const positions = [];
+  const button = document.createElement("button");
+  const first = vehicle("a");
+  first.properties.idle = false;
+  first.properties.movementState = "enroute";
+  first.properties.bearing = 137;
+  const entry = {
+    button,
+    members: [first, vehicle("b")],
+    marker: { setLngLat: (position) => positions.push(position) },
+  };
+  const groups = {
+    map: { getCenter: () => ({ lng: 0 }) },
+    markers: new Map([["own:a", entry]]),
+  };
+  const moved = structuredClone(first);
+  moved.geometry.coordinates = [12, 0];
+  moved.properties.bearing = 271;
+
+  VehicleGroups.prototype.updatePoses.call(groups, [moved, vehicle("b")]);
+  VehicleGroups.prototype.renderVisual(button, entry.members);
+
+  assert.deepEqual(positions, [[12, 0]]);
+  assert.equal(entry.members[0], moved);
+  assert.equal(button.dataset.representative, "own:a");
+  assert.equal(button.dataset.movement, "enroute");
+  assert.equal(button.textContent, "2");
+});
