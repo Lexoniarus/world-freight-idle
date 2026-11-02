@@ -1,6 +1,6 @@
 # Qualitätsbericht: lokaler bedarfsgesteuerter Frachtpool
 
-Stand: 31.10.2026. Branch `refactor/local-market-pool`, Basis aktuelles lokales
+Stand: 02.11.2026. Branch `refactor/local-market-pool`, Basis aktuelles lokales
 `main`. Dieser Abschnitt ist der aktuelle Prüfstand; die folgenden Berichte sind
 historische Abnahmen früherer Architekturen.
 
@@ -14,11 +14,20 @@ Repositoryabnahmen gelesen. Generische `game`-, `runtime`-, `catalogue`- und
 Repositoryfehler verwenden zwei kleine SQL-Kataloge mit zwei Standorten und
 vier Fahrzeugmodellen; die großen Referenzdateien bleiben dabei unverändert.
 
-Der lokale Python-Diagnoselauf bestand alle **591 Tests in 61 Sekunden**; der
-langsamste Fall benötigte 5,19 Sekunden. Die **122 Frontendtests** bestanden in
-3,2 Sekunden. Playwright besteht aus **15** getrennten UI-Grenzen und lief in
-1,0 Minute; der langsamste Browserfall benötigte 6,9 Sekunden. Öffentliche
+Der lokale Python-Diagnoselauf bestand alle **591 Tests in 65,60 Sekunden**; der
+langsamste Fall benötigte 5,71 Sekunden. Die **127 Frontendtests** bestanden in
+8,74 Sekunden. Playwright besteht aus **14** getrennten UI-Grenzen und lief in
+1,0 Minute; der langsamste Browserfall benötigte 7,1 Sekunden. Öffentliche
 Tiles, echte Provider und Supabase waren in allen Läufen ausgeschlossen.
+
+Fahrzeuge werden im Flotten-Read-Modell nach ID genau einmal verbunden und
+gerendert. Aktive Fahrzeuge erscheinen unter `Unterwegs`; Abfahrts- und
+Zielstadt bleiben Filter, erzeugen aber keine zweite Fahrzeugkarte. Die alten
+Frontend-Sammelmodule für Core, Lifecycle, Runtime, Map und Assets wurden durch
+Eigentümertests für State, Controller, Geometrie, Layer, Traffic, Routencache
+und Bildbindungen ersetzt. Python trennt Marktplanung, Vertragsbildung,
+Publikation, Vorbereitung, Gameplay-Use-Cases und Legacy-Import sichtbar nach
+Produktionsverantwortung.
 
 `VehicleGroups` besitzt nun die lesbaren Schritte `activateGroup`,
 `zoomToGroup` und `showVehicleList`. MapLibre bleibt in genau einem nativen
@@ -90,17 +99,17 @@ Angeboten je Distanzband versorgt; ein `ready`-Job wird nicht erneut ausgewählt
 
 Der abschließende kombinierte Lauf von `.venv/Scripts/python.exe -X utf8
 scripts/quality.py` prüft **591 Python-Tests** mit **100,00 %
-app-Statement-Coverage**, **122 Frontend-Verhaltenstests** sowie Ruff,
+app-Statement-Coverage**, **127 Frontend-Verhaltenstests** sowie Ruff,
 Formatierung, mypy, Pyright, ESLint, Stylelint, Prettier, checkJs,
 Produktionsbuild und compileall. Architektur- und
 Funktionsmanifestprüfungen sind Teil dieses Laufs. Der langsamste einzelne
-Python-Test benötigt 5,19 Sekunden; kein Python-Test überschreitet zehn
+Python-Test benötigt 5,71 Sekunden; kein Python-Test überschreitet zehn
 Sekunden.
 
-`npm run test:e2e` umfasst **15** klar abgegrenzte Browserfälle gegen einen
+`npm run test:e2e` umfasst **14** klar abgegrenzte Browserfälle gegen einen
 isolierten lokalen Einprozess-Server mit lokaler Datenbank und lokalem
 Routing-Fixture. Die Suite benötigt eine Minute; der langsamste Browserfall
-6,9 Sekunden. Backendberechnungen liegen in Python-, Controllerdarstellung in
+7,1 Sekunden. Backendberechnungen liegen in Python-, Controllerdarstellung in
 DOM-Tests. Browserfälle prüfen nur Authentifizierung und Navigation,
 Dispositionsgrenzen, Markt-, Firmen- und Kartenoberflächen. Absichtlich
 abgebrochene Browserrequests können unter Windows den bekannten

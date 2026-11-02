@@ -18,8 +18,9 @@
 - Playwright enthält 14 Browsergrenzen. Backend-Bestandsregeln, Kaufregeln und
   Katalogmengen werden nicht mehr zusätzlich im Browser nachgerechnet.
 - Python- und Playwright-Fälle besitzen nun ein hartes Zeitlimit von zehn
-  Sekunden. Betroffene gezielte Läufe blieben deutlich darunter; die einmalige
-  vollständige Abnahme folgt ausschließlich am Ende des Refactors.
+  Sekunden. Die vollständige Abnahme bestand mit 591 Python-Tests bei 100 %
+  Coverage, 127 Frontendtests und 14 Playwright-Fällen; langsamster Einzelfall
+  war der 7,1 Sekunden lange Dispatch-/Settlement-Browserfall.
 - Sämtliche Läufe verwendeten lokale SQLite-Testdaten und Fake-Provider; es gab
   keine Supabase- oder Live-Providerzugriffe.
 

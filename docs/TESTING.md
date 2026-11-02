@@ -88,7 +88,7 @@ nur für den ausdrücklich freigegebenen kontolosen Demostand vorgesehen.
 
 `npm run test:e2e` startet den FastAPI-Kern mit separater temporärer Datenbank,
 Mock-Routing und lokalen Tiles auf Port 8011. Öffentliche OSM-Tiles werden nicht
-automatisiert vorgeladen. Die 15 Fälle liegen in Auth/Navigation, Dispatch,
+automatisiert vorgeladen. Die 14 Fälle liegen in Auth/Navigation, Dispatch,
 Market, Company, Map und Asset-Abnahme. Backendberechnungen bleiben in Python,
 Controllerzustände in Node-/DOM-Tests; Playwright prüft nur Browsergrenzen.
 
@@ -107,6 +107,11 @@ CI installiert Chromium. Lokale Screenshots werden zusätzlich visuell geprüft.
 Automatisierte Mobilansicht ist keine reale iPad-Abnahme. Provider-Mocks beweisen
 keine öffentliche Dienstverfügbarkeit. Tatsächlich ausgeführte Ergebnisse stehen
 in QUALITY_REPORT.md; historische Läufe sind keine aktuelle Freigabe.
+
+Aktuelle lokale Abnahme vom 02.11.2026: 591 Python-Tests mit 100 %
+App-Statement-Coverage, 127 Frontend-Verhaltenstests und 14 Playwright-Fälle.
+Der langsamste Pythonfall lief 5,71 Sekunden, der langsamste Browserfall
+7,1 Sekunden. Alle Tests blieben unter der harten Zehn-Sekunden-Grenze.
 
 ## Regressionen des Persistenzreviews
 
