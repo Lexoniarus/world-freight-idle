@@ -6,7 +6,7 @@ import time
 from unittest.mock import Mock
 
 from app.api.v1.game_projection import (
-    project_state,
+    project_dashboard,
     project_vehicle,
 )
 from app.domain.game import PlayerState
@@ -43,7 +43,7 @@ def test_reset_restores_playable_state(
     synthetic_game.state_repository.save_player(
         PlayerState(cash=1, completed=99, reputation=99)
     )
-    state = project_state(synthetic_game.reset())
+    state = project_dashboard(synthetic_game.reset())
     assert state["player"]["cash"] == 175000
     assert state["player"]["completed"] == 0
     assert len(state["vehicles"]) == 1

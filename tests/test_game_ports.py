@@ -5,7 +5,6 @@ import pytest
 from app.api.v1.game_projection import (
     project_contract,
     project_dashboard,
-    project_state,
     project_transport,
     project_vehicle,
 )
@@ -68,7 +67,7 @@ async def test_relational_game_use_cases_preserve_atomic_settlement(
     assert [project_transport(value) for value in game.list_transports()] == []
     saved = game.state_repository.list_transports()
     assert len(saved) == 1 and saved[0].status == "settled"
-    project_state(game.reset())
+    project_dashboard(game.reset())
     assert game.state_repository.list_transports() == ()
     assert len([project_vehicle(value) for value in game.list_vehicles()]) == 1
 
@@ -108,7 +107,6 @@ async def test_game_workflows_return_typed_values_and_reject_changed_offer(
     from app.domain.transports import RouteSnapshot
 
     assert isinstance(synthetic_game.dashboard(), GameSnapshot)
-    assert isinstance(synthetic_game.state(), GameSnapshot)
     offer = synthetic_game.list_contracts()[0]
     assert isinstance(offer, ContractOffer)
     assert isinstance(synthetic_game.get_vehicle("truck_01"), OwnedVehicle)

@@ -9,7 +9,7 @@ import pytest
 
 from app.api.v1.game_projection import (
     project_contract,
-    project_state,
+    project_dashboard,
     project_transport,
     project_vehicle,
 )
@@ -50,7 +50,7 @@ def test_concurrent_purchases_cannot_overdraw(
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(purchase, [first, second]))
     assert sum(item is not None for item in results) == 1
-    assert project_state(first.game.state())["player"]["cash"] == 26000
+    assert first.game.player_state().cash == 26000
     assert (
         len([project_vehicle(value) for value in first.game.list_vehicles()])
         == 2
@@ -91,15 +91,15 @@ async def test_parallel_transports_and_offline_settlement(
         )
         == 2
     )
-    before = project_state(synthetic_game.state())["player"]["cash"]
+    before = synthetic_game.player_state().cash
     set_game_clock(
         synthetic_game,
         lambda: max(first["arrives_at"], second["arrives_at"]) + 1,
     )
     assert synthetic_game.reconcile_arrival()
     assert not synthetic_game.reconcile_arrival()
-    state = project_state(synthetic_game.state())
-    assert state["active_trips"] == []
+    state = project_dashboard(synthetic_game.dashboard())
+    assert state["transports"] == []
     assert state["player"]["completed"] == 2
     assert (
         state["player"]["cash"]
@@ -141,7 +141,7 @@ async def test_simultaneous_dispatch_revalidates_after_routing(synthetic_game):
         project_transport(value) for value in synthetic_game.list_transports()
     ][0]
     assert (
-        project_state(synthetic_game.state())["player"]["cash"]
+        synthetic_game.player_state().cash
         == 175000 - trip["operating_cost_eur"]
     )
 
@@ -170,7 +170,7 @@ async def test_expired_contract_and_failed_routing_do_not_charge(
             project_transport(
                 await synthetic_game.dispatch(contract.id, "truck_01")
             )
-    assert project_state(synthetic_game.state())["player"]["cash"] == 175000
+    assert synthetic_game.player_state().cash == 175000
     assert [
         project_transport(value) for value in synthetic_game.list_transports()
     ] == []
@@ -193,4 +193,4 @@ def test_concurrent_arrivals_pay_once(synthetic_runtime, synthetic_game):
             for service in (alice, other)
         ]
         assert sorted(future.result() for future in futures) == [False, True]
-    assert alice.state().player.cash == 176000
+    assert alice.player_state().cash == 176000

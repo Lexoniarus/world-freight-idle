@@ -76,21 +76,6 @@ class PlayerGameFacade:
         """Return initialized player economy state."""
         return self._settlement.player_state()
 
-    def state(self) -> GameSnapshot:
-        """Synchronize and read the complete player-owned state."""
-        arrived = self.reconcile_arrival()
-        if not arrived:
-            self._market_lifecycle.published()
-        with self._unit_of_work.read_transaction():
-            return GameSnapshot(
-                self.now(),
-                self.time_scale,
-                self.player_state(),
-                self._state_repository.list_vehicles(),
-                self._state_repository.list_active_transports(),
-                self._state_repository.list_offers(),
-            )
-
     def dashboard(self) -> GameSnapshot:
         """Read startup state without generating a contract market."""
         self.reconcile_arrival()
@@ -157,8 +142,17 @@ class PlayerGameFacade:
 
     def get_contract(self, contract_id: str) -> ContractOffer:
         """Return one available offer with historical endpoint values."""
-        self.list_contracts()
-        return self._transport_dispatch.find_contract(contract_id)
+        contract = next(
+            (
+                offer
+                for offer in self.list_contracts()
+                if offer.id == contract_id
+            ),
+            None,
+        )
+        if contract is None:
+            raise KeyError("Auftrag nicht gefunden")
+        return contract
 
     def list_vehicles(self) -> tuple[OwnedVehicle, ...]:
         """Return owned vehicles after settling any due deliveries."""
@@ -202,4 +196,4 @@ class PlayerGameFacade:
     def reset(self) -> GameSnapshot:
         """Reset player progress while retaining provider caches."""
         self._initialization.reset()
-        return self.state()
+        return self.dashboard()

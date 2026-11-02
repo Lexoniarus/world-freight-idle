@@ -7,9 +7,6 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from fastapi import FastAPI
 
-from app.api.v1.game_projection import (
-    project_state,
-)
 from app.domain.errors import CatalogueError
 from app.domain.game import PlayerState
 from app.main import lifespan
@@ -70,7 +67,7 @@ def test_reset_failure_restores_deleted_state(
         side_effect=CatalogueError("catalogue failed"),
     ):
         with pytest.raises(CatalogueError):
-            project_state(synthetic_game.reset())
+            synthetic_game.reset()
     assert repository.get_player() == player
     assert repository.list_vehicles() == vehicles
     assert repository.list_offers() == offers

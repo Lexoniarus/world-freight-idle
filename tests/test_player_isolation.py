@@ -2,10 +2,7 @@
 
 import pytest
 
-from app.api.v1.game_projection import (
-    project_state,
-    project_vehicle,
-)
+from app.api.v1.game_projection import project_vehicle
 from app.bootstrap import (
     build_player_context,
     build_player_service,
@@ -48,8 +45,8 @@ def test_player_service_isolation_and_atomic_purchases(
         ).purchase("iveco_sway_500")
     )
     assert alice.get_vehicle(vehicle["id"]).capacity_tons == 24.2
-    assert alice.state().player.cash == 26000
-    assert bob.state().player.cash == 175000
+    assert alice.player_state().cash == 26000
+    assert bob.player_state().cash == 175000
     assert len(bob.list_vehicles()) == 1
     with pytest.raises(ValueError, match="Nicht genug"):
         project_vehicle(
@@ -70,7 +67,7 @@ def test_player_service_isolation_and_atomic_purchases(
     with pytest.raises(KeyError):
         bob.get_vehicle(vehicle["id"])
     restored = build_player_service(synthetic_runtime, "alice")
-    assert project_state(restored.state())["player"]["cash"] == 26000
+    assert restored.player_state().cash == 26000
     assert (
         project_vehicle(restored.get_vehicle(vehicle["id"]))["hub_id"]
         == BERLIN_UID

@@ -17,7 +17,6 @@ from app.api.v1.game_projection import (
     project_catalogue,
     project_player,
     project_quote,
-    project_state,
     project_transport,
     project_vehicle,
 )
@@ -377,7 +376,7 @@ def test_fleet_builder_reuses_validated_runtime_catalogue(
         synthetic_runtime.catalogue.list_models()
     )
     isolated = build_player_service(synthetic_runtime, "new-account")
-    assert project_state(isolated.state())["player"]["cash"] == 175000
+    assert isolated.player_state().cash == 175000
 
 
 def test_catalogue_builder_default_path(tmp_path):

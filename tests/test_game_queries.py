@@ -10,7 +10,6 @@ import pytest
 from app.api.v1.game_projection import (
     project_contract,
     project_dashboard,
-    project_state,
     project_transport,
     project_vehicle,
 )
@@ -37,20 +36,6 @@ def test_contract_reads_never_generate_inside_request(
     assert second == first
     assert forced == first
     assert any(contract["origin_hub_id"] == BERLIN_UID for contract in forced)
-
-
-def test_state_expands_contract_addresses(
-    synthetic_game_context, synthetic_game: FixturePlayerGameFacade
-):
-    state = project_state(synthetic_game.state())
-    assert (
-        state["hubs"][0]["address"]
-        == WorldScope(synthetic_game_context.world.read())
-        .facility(BERLIN_UID)
-        .address.display_text()
-    )
-    assert "origin" in state["contracts"][0]
-    assert "address" in state["contracts"][0]["origin"]
 
 
 def test_find_contract_returns_match_and_raises(
@@ -204,9 +189,14 @@ def test_list_and_get_contracts_return_real_addresses(
         project_contract(value) for value in synthetic_game.refresh_contracts()
     ]
     assert refreshed == contracts
-    contract = project_contract(
-        synthetic_game.get_contract(refreshed[0]["id"])
-    )
+    with patch.object(
+        type(synthetic_game.transport_dispatch),
+        "find_contract",
+        side_effect=AssertionError("duplicate offer read"),
+    ):
+        contract = project_contract(
+            synthetic_game.get_contract(refreshed[0]["id"])
+        )
     assert contract["origin"]["address"]
     assert contract["destination"]["address"]
     with pytest.raises(KeyError):
