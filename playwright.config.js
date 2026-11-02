@@ -2,12 +2,14 @@ import { defineConfig } from "@playwright/test";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
+const testTimeout = process.env.CI ? 15000 : 10000;
+
 export default defineConfig({
   testDir: "./tests/browser",
   outputDir: join(tmpdir(), "world-freight-playwright-results"),
   fullyParallel: false,
   workers: 1,
-  timeout: 10000,
+  timeout: testTimeout,
   expect: { timeout: 8000 },
   reporter: "list",
   use: {

@@ -446,6 +446,10 @@ und Fixture-Provider. Reproduzierbar: `python -m tests.runtime_benchmark
 UPGRADED_COPY.db NEW_RESULTS_DIR`; keine parallelen Builds oder Gesamtsuiten.
 Logs und Screenshots bleiben privat. Ein Browser-Plugin ist in dieser Sitzung
 nicht verfügbar; deshalb wird das vorhandene Playwright-Testsystem verwendet.
+Lokale Browserfälle behalten ein hartes Limit von zehn Sekunden. Der langsamere
+gehostete CI-Runner erhält 15 Sekunden Scheduling-Spielraum je Fall; der gesamte
+Browserjob bleibt unabhängig davon auf 20 Minuten begrenzt und wird nicht
+automatisch wiederholt.
 
 Akzeptierte Leistungsabweichung vom 28.09.2026: Der Nutzer hat den einmaligen
 prozesskalten Start mit fälligem Settlement bei 3,39 Sekunden akzeptiert.
