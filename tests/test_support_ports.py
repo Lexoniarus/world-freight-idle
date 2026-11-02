@@ -16,6 +16,7 @@ from app.repositories.leaderboard import SqliteLeaderboardReader
 from app.repositories.preferences import SqlitePreferenceStore
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.relational_traffic import SqliteTrafficReader
+from app.repositories.runtime_views import SqliteRuntimeReader
 
 
 def test_relational_public_reads_preserve_privacy_and_offline_progress(
@@ -60,6 +61,20 @@ def test_relational_public_reads_preserve_privacy_and_offline_progress(
     rows = traffic.list_active_transports(12)
     assert len(rows) == 2
     assert {row.user_id for row in rows} == {"alice", "bob"}
+    assert [
+        row.id
+        for row in SqliteTrafficReader(
+            relational,
+            maximum_transports=1,
+        ).list_active_transports(12)
+    ] == ["shared"]
+    assert [
+        row.id
+        for row in SqliteRuntimeReader(
+            relational,
+            maximum_transports=1,
+        ).traffic(12)
+    ] == ["shared"]
     for row in rows:
         assert {"contract", "password_hash", "cash", "payout_eur"}.isdisjoint(
             asdict(row)
@@ -83,6 +98,13 @@ def test_relational_public_reads_preserve_privacy_and_offline_progress(
     with pytest.raises(PersistenceError):
         traffic.list_active_transports(12)
     assert traffic.list_active_transports(31) == ()
+
+
+def test_public_traffic_limits_must_be_positive(relational):
+    with pytest.raises(ValueError, match="positive"):
+        SqliteTrafficReader(relational, maximum_transports=0)
+    with pytest.raises(ValueError, match="positive"):
+        SqliteRuntimeReader(relational, maximum_transports=0)
 
 
 def test_relational_account_adapter_exposes_domain_uniqueness(relational):

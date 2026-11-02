@@ -5,6 +5,8 @@ from typing import Literal, Protocol, TypedDict
 
 from app.domain.routes import RouteLeg
 
+MAX_PUBLIC_TRAFFIC_TRANSPORTS = 100
+
 
 class RankingEntry(TypedDict):
     """Public progress without private economic or authentication data."""

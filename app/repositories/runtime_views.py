@@ -4,7 +4,11 @@ import json
 from typing import Any
 
 from app.domain.errors import PersistenceError
-from app.domain.read_ports import MovementSegment, SharedTransport
+from app.domain.read_ports import (
+    MAX_PUBLIC_TRAFFIC_TRANSPORTS,
+    MovementSegment,
+    SharedTransport,
+)
 from app.domain.runtime_views import (
     GeometrySpan,
     RuntimeSnapshot,
@@ -52,9 +56,16 @@ PRIVATE_COLUMNS = ", ".join(
 class SqliteRuntimeReader:
     """Project bounded current data through the canonical relational store."""
 
-    def __init__(self, database: SqliteGameDatabase) -> None:
+    def __init__(
+        self,
+        database: SqliteGameDatabase,
+        maximum_transports: int = MAX_PUBLIC_TRAFFIC_TRANSPORTS,
+    ) -> None:
         """Share transaction ownership, never a second persistence format."""
         self.database = database
+        if maximum_transports <= 0:
+            raise ValueError("Traffic limit must be positive.")
+        self.maximum_transports = maximum_transports
 
     def read(self, user_id: str) -> RuntimeSnapshot:
         """Load private active summaries without selecting coordinate JSON."""
@@ -94,8 +105,8 @@ class SqliteRuntimeReader:
                 "JOIN owned_vehicles v ON v.user_id=t.user_id "
                 "AND v.vehicle_id=t.vehicle_id LEFT JOIN account_preferences "
                 "p ON p.user_id=t.user_id WHERE t.status='active' "
-                "AND t.arrives_at>? ORDER BY t.departed_at, t.transport_id",
-                (now,),
+                "AND t.arrives_at>? ORDER BY t.user_id, t.vehicle_id LIMIT ?",
+                (now, self.maximum_transports),
             ).fetchall()
         return tuple(load_runtime_traffic(dict(row)) for row in rows)
 

@@ -1,6 +1,10 @@
 """Public traffic read model over relational dispatch records."""
 
-from app.domain.read_ports import MovementSegment, SharedTransport
+from app.domain.read_ports import (
+    MAX_PUBLIC_TRAFFIC_TRANSPORTS,
+    MovementSegment,
+    SharedTransport,
+)
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import load_transport_record
 
@@ -8,8 +12,15 @@ from app.repositories.game_state import load_transport_record
 class SqliteTrafficReader:
     """Read live public traffic without exposing private trip economics."""
 
-    def __init__(self, database: SqliteGameDatabase) -> None:
+    def __init__(
+        self,
+        database: SqliteGameDatabase,
+        maximum_transports: int = MAX_PUBLIC_TRAFFIC_TRANSPORTS,
+    ) -> None:
         self._database = database
+        if maximum_transports <= 0:
+            raise ValueError("Traffic limit must be positive.")
+        self._maximum_transports = maximum_transports
 
     def list_active_transports(
         self, active_at: float
@@ -25,8 +36,9 @@ class SqliteTrafficReader:
                     AND v.vehicle_id=t.vehicle_id
                 LEFT JOIN account_preferences p ON p.user_id=t.user_id
                 WHERE t.status='active' AND t.arrives_at > ?
-                ORDER BY t.departed_at ASC, t.transport_id ASC""",
-                (active_at,),
+                ORDER BY t.user_id ASC, t.vehicle_id ASC
+                LIMIT ?""",
+                (active_at, self._maximum_transports),
             ).fetchall()
         return tuple(project_traffic_row(dict(row)) for row in rows)
 
