@@ -145,8 +145,8 @@ der hier bestätigten Heightmap-Anforderung.
 
 ## 5. Räumliche Darstellung eines Fahrzeugs, danach weitere Modelle
 
-**Grundlage:** `frontend/vehicle-assets.js`, `vehicle-color-assets.js`,
-`vehicle-paint.js`, `frontend/map/vehicle-assets.js`, `vehicle-animator.js`,
+**Grundlage:** `frontend/vehicle-asset-manifest.js`, `vehicle-color-assets.js`,
+`vehicle-paint.js`, `frontend/map/vehicle-icon-registry.js`, `vehicle-animator.js`,
 `vehicle-footprint.js`, `vehicle-groups.js` und die vorhandenen Modellassets.
 
 **Arbeit:** Zuerst ein Modell mit vereinfachter räumlicher Form und vorhandenen

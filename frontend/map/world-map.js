@@ -6,7 +6,7 @@ import { OverlayData, previewFeatures, routeGeometry } from "./overlay-data.js";
 import { addOverlayLayers } from "./layers.js";
 import { MapCamera } from "./camera.js";
 import { VehicleAnimator } from "./vehicle-animator.js";
-import { VehicleIconRegistry } from "./vehicle-assets.js";
+import { VehicleIconRegistry } from "./vehicle-icon-registry.js";
 import { selectedLocations } from "./selection.js";
 import { Opportunities } from "./opportunities.js";
 import { VehicleGroups } from "./vehicle-groups.js";

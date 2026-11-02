@@ -856,7 +856,8 @@ erscheint die zugehörige Draufsicht mit Spielerfarbe und Fahrtrichtung.
 Für Modelle ohne lokale Grafik folgen verifizierte Katalogfotos mit Urheber,
 Quelle, Lizenz und Modellfamilienhinweis; ohne Foto beziehungsweise bei dessen
 Ladefehler bleibt die bestehende Ersatzillustration. Die Pfade liegen gemeinsam
-in `frontend/vehicle-assets.js`; Darstellung und Ladeverhalten bleiben getrennt.
+in `frontend/vehicle-asset-manifest.js`; Darstellung und Ladeverhalten bleiben
+getrennt.
 Siehe [Asset-Manifest](../assets/MANIFEST.md).
 Ein Fahrzeugwechsel verwirft die alte Quote. Transportstart erfordert eine
 aktuelle Kalkulation für genau das gewählte Fahrzeug. Kamera, Panelposition,

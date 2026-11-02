@@ -46,7 +46,8 @@ async function setupMap(page) {
     const { addOverlayLayers } = await import("/__modules__/frontend/map/layers.js");
     const { VehicleGroups } = await import("/__modules__/frontend/map/vehicle-groups.js");
     const { VehicleColorAssets } = await import("/__modules__/frontend/vehicle-color-assets.js");
-    const { VehicleIconRegistry } = await import("/__modules__/frontend/map/vehicle-assets.js");
+    const { VehicleIconRegistry } =
+      await import("/__modules__/frontend/map/vehicle-icon-registry.js");
     const map = new window.maplibregl.Map({
       container: "map",
       style: {

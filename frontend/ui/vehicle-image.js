@@ -1,4 +1,4 @@
-import { getVehicleAssets } from "../vehicle-assets.js";
+import { getVehicleAssets } from "../vehicle-asset-manifest.js";
 import { html } from "./dom.js";
 import { truckIllustration } from "./illustrations.js";
 

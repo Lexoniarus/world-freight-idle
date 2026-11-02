@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
-import { getVehicleAssets } from "./vehicle-assets.js";
+import { getVehicleAssets } from "./vehicle-asset-manifest.js";
 
 const root = new URL("../", import.meta.url);
 const inventory = JSON.parse(readFileSync(new URL("assets/inventory.json", root), "utf8")).files;

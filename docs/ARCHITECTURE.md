@@ -175,7 +175,7 @@ World Wrapping, Clustering, Tastatur, mobile Panels und Reduced Motion bleiben.
 
 ### Fahrzeugassets
 
-`frontend/vehicle-assets.js` besitzt die einzige unveränderliche Zuordnung
+`frontend/vehicle-asset-manifest.js` besitzt die einzige unveränderliche Zuordnung
 von Katalogmodell zu Karten-, Front- und Seitenbild. `getVehicleAssets()`
 liefert Pfade oder null. Views wählen weiterhin zuerst lokale Grafiken,
 sonst ein vorhandenes Katalogfoto beziehungsweise die generische Illustration.
@@ -232,9 +232,12 @@ routenlokale Stadtauswahl; LayerStateController besitzt Presets/Overrides nach
 stabiler `user.id`; AnalyticsController besitzt bedarfsgeladene Statistikreads.
 Separate LatestRequest-Instanzen schützen Marktbestand und Auftragsdetail.
 WorldMap rendert; MapInteractions besitzt Hit-Testing, Hover und seine nativen
-MapLibre-Listener. VehicleGroups, Opportunities, Layerdefinitionen und Kamera
-bleiben eigene Module. Jeder zustandsbehaftete Baustein gibt seine Ressourcen
-explizit frei. Karteninstanz und Bildknoten überleben Navigation und Polls.
+MapLibre-Listener. `VehicleIconRegistry` liegt eindeutig in
+`frontend/map/vehicle-icon-registry.js`; Assetmanifest und Atlas-Lebenszyklus
+sind keine gleichnamigen Doppelmodule mehr. VehicleGroups, Opportunities,
+Layerdefinitionen und Kamera bleiben eigene Module. Jeder zustandsbehaftete
+Baustein gibt seine Ressourcen explizit frei. Karteninstanz und Bildknoten
+überleben Navigation und Polls.
 
 Analytics API → AnalyticsService → AnalyticsReader (Port) → SqliteAnalyticsReader.
 Die Session liefert die Nutzer-ID, niemals ein Queryparameter. Vor dem Read

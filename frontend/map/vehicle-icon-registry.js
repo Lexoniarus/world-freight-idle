@@ -1,5 +1,5 @@
 import { spriteBounds } from "./vehicle-footprint.js";
-import { getVehicleAssets } from "../vehicle-assets.js";
+import { getVehicleAssets } from "../vehicle-asset-manifest.js";
 
 import { DEFAULT_VEHICLE_COLOR, normalizeVehicleColor } from "../vehicle-color.js";
 import { VehicleColorAssets } from "../vehicle-color-assets.js";

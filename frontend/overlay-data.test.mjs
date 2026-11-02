@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { OverlayData, previewFeatures } from "./map/overlay-data.js";
-import { vehicleIconId } from "./map/vehicle-assets.js";
+import { vehicleIconId } from "./map/vehicle-icon-registry.js";
 import { contract, hub, quote, trip, vehicle } from "./test-support/controller-fixtures.mjs";
 
 test("overlay projections discard invalid hubs and release settled routes", () => {

@@ -1,6 +1,6 @@
 import { collection, pointFeature, unwrapRoute } from "../geometry.js";
 import { prepareTransportRoute, transportRoutePose } from "./route-plan.js";
-import { vehicleIconId } from "./vehicle-assets.js";
+import { vehicleIconId } from "./vehicle-icon-registry.js";
 
 export const routeGeometry = (route) => (route.type === "Feature" ? route.geometry : route);
 
