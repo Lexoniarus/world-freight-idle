@@ -413,7 +413,7 @@ async def test_reverse_requests_cancellation_and_expired_leases(case):
 async def test_connection_publication_rolls_back_both_directions_and_anchors(
     case,
 ):
-    original = case.store.publish
+    original = case.store.relations.publish
     calls = []
 
     def failing_publish(*args):
@@ -422,7 +422,11 @@ async def test_connection_publication_rolls_back_both_directions_and_anchors(
             return False
         return original(*args)
 
-    with patch.object(case.store, "publish", side_effect=failing_publish):
+    with patch.object(
+        case.store.relations,
+        "publish",
+        side_effect=failing_publish,
+    ):
         with pytest.raises(RuntimeError, match="lost its lease"):
             await case.service.prepare(ORIGIN, DESTINATION)
     assert case.anchors.get(ORIGIN, "truck") is None

@@ -28,10 +28,6 @@ FUNCTION_TESTS = {
     "app.repositories.market_preparation.SqlitePreparationStore.status": "test_preparation_store_generation_and_reference_rollback",
     "app.repositories.routing_audit.SqliteRoutingAudit.__init__": "test_audit_inventory_is_structural_and_report_preserves_history",
     "app.repositories.routing_audit.SqliteRoutingAudit.report": "test_audit_inventory_is_structural_and_report_preserves_history",
-    "app.repositories.routing_readiness.SqliteOfferRouteStore.__init__": "test_attempt_history_and_offer_reference_atomicity",
-    "app.repositories.routing_readiness.SqliteOfferRouteStore.get": "test_attempt_history_and_offer_reference_atomicity",
-    "app.repositories.routing_readiness.SqliteOfferRouteStore.get_many": "test_attempt_history_and_offer_reference_atomicity",
-    "app.repositories.routing_readiness.SqliteOfferRouteStore.replace": "test_attempt_history_and_offer_reference_atomicity",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.__init__": "test_global_lease_fences_expired_and_competing_writers",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.acquire": "test_global_lease_fences_expired_and_competing_writers",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.append_attempt": "test_attempt_history_and_offer_reference_atomicity",
@@ -898,7 +894,6 @@ FUNCTION_TESTS.update(
         "app.repositories.routing_readiness.SqliteRoutingReadinessStore.connected_many": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
         "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.get_many": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
         "app.repositories.routing_anchors.SqliteRoutingAnchorRepository._anchor": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
-        "app.repositories.routing_readiness.decode_route_payload": "test_payload_validation_cache_detects_changes",
         "app.repositories.runtime_views.SqliteRuntimeReader.__init__": "test_runtime_reads_exclude_geometry_and_keep_private_energy",
         "app.repositories.runtime_views.SqliteRuntimeReader.geometry": "test_runtime_reads_exclude_geometry_and_keep_private_energy",
         "app.repositories.runtime_views.SqliteRuntimeReader.read": "test_runtime_reads_exclude_geometry_and_keep_private_energy",
@@ -1088,6 +1083,96 @@ FUNCTION_TESTS.update(
         ),
         "app.services.market.candidates.MarketCandidateService.build": (
             "test_candidate_cache_discards_oldest_context_after_bound"
+        ),
+        "app.repositories.routing.attempts.SqliteRoutingAttemptRepository.__init__": (
+            "test_attempt_history_and_offer_reference_atomicity"
+        ),
+        "app.repositories.routing.attempts.SqliteRoutingAttemptRepository.append": (
+            "test_attempt_history_and_offer_reference_atomicity"
+        ),
+        "app.repositories.routing.connections.SqliteRoutingConnectionRepository.__init__": (
+            "test_route_certificates_outlive_payloads_but_versions_invalidate"
+        ),
+        "app.repositories.routing.connections.SqliteRoutingConnectionRepository._leases_are_owned": (
+            "test_connection_publication_rolls_back_both_directions_and_anchors"
+        ),
+        "app.repositories.routing.connections.SqliteRoutingConnectionRepository._store_proof": (
+            "test_connection_publication_rolls_back_both_directions_and_anchors"
+        ),
+        "app.repositories.routing.connections.SqliteRoutingConnectionRepository.connected": (
+            "test_route_certificates_outlive_payloads_but_versions_invalidate"
+        ),
+        "app.repositories.routing.connections.SqliteRoutingConnectionRepository.connected_many": (
+            "test_readiness_read_view_reuses_facts_but_never_crosses_publication"
+        ),
+        "app.repositories.routing.connections.SqliteRoutingConnectionRepository.publish_connection": (
+            "test_connection_publication_rolls_back_both_directions_and_anchors"
+        ),
+        "app.repositories.routing.leases.SqliteRoutingLeaseRepository.__init__": (
+            "test_global_lease_fences_expired_and_competing_writers"
+        ),
+        "app.repositories.routing.leases.SqliteRoutingLeaseRepository.acquire": (
+            "test_global_lease_fences_expired_and_competing_writers"
+        ),
+        "app.repositories.routing.leases.SqliteRoutingLeaseRepository.holds": (
+            "test_payload_validation_cache_detects_changes"
+        ),
+        "app.repositories.routing.leases.SqliteRoutingLeaseRepository.release": (
+            "test_global_lease_fences_expired_and_competing_writers"
+        ),
+        "app.repositories.routing.leases.SqliteRoutingLeaseRepository.renew": (
+            "test_global_lease_fences_expired_and_competing_writers"
+        ),
+        "app.repositories.routing.offer_routes.SqliteOfferRouteStore.__init__": (
+            "test_attempt_history_and_offer_reference_atomicity"
+        ),
+        "app.repositories.routing.offer_routes.SqliteOfferRouteStore.get": (
+            "test_attempt_history_and_offer_reference_atomicity"
+        ),
+        "app.repositories.routing.offer_routes.SqliteOfferRouteStore.get_many": (
+            "test_attempt_history_and_offer_reference_atomicity"
+        ),
+        "app.repositories.routing.offer_routes.SqliteOfferRouteStore.replace": (
+            "test_attempt_history_and_offer_reference_atomicity"
+        ),
+        "app.repositories.routing.payloads.decode_route_payload": (
+            "test_payload_validation_cache_detects_changes"
+        ),
+        "app.repositories.routing.relations.SqliteRoutingRelationRepository.__init__": (
+            "test_global_lease_fences_expired_and_competing_writers"
+        ),
+        "app.repositories.routing.relations.SqliteRoutingRelationRepository._decode_relation": (
+            "test_readiness_read_view_reuses_facts_but_never_crosses_publication"
+        ),
+        "app.repositories.routing.relations.SqliteRoutingRelationRepository._payload_document": (
+            "test_payload_validation_cache_detects_changes"
+        ),
+        "app.repositories.routing.relations.SqliteRoutingRelationRepository._store_payload": (
+            "test_global_lease_fences_expired_and_competing_writers"
+        ),
+        "app.repositories.routing.relations.SqliteRoutingRelationRepository.get": (
+            "test_global_lease_fences_expired_and_competing_writers"
+        ),
+        "app.repositories.routing.relations.SqliteRoutingRelationRepository.get_many": (
+            "test_readiness_read_view_reuses_facts_but_never_crosses_publication"
+        ),
+        "app.repositories.routing.relations.SqliteRoutingRelationRepository.observe_provider_revision": (
+            "test_observed_global_graph_revision_invalidates_shared_routes"
+        ),
+        "app.repositories.routing.relations.SqliteRoutingRelationRepository.payload": (
+            "test_global_lease_fences_expired_and_competing_writers"
+        ),
+        "app.repositories.routing.relations.SqliteRoutingRelationRepository.payload_available": (
+            "test_payload_validation_cache_detects_changes"
+        ),
+        "app.repositories.routing.relations.SqliteRoutingRelationRepository.provider_revision": (
+            "test_observed_global_graph_revision_invalidates_shared_routes"
+        ),
+        "app.repositories.routing.relations.SqliteRoutingRelationRepository.publish": (
+            "test_global_lease_fences_expired_and_competing_writers"
+        ),
+        "app.repositories.routing.relations.SqliteRoutingRelationRepository.read_transaction": (
+            "test_readiness_read_view_reuses_facts_but_never_crosses_publication"
         ),
     }
 )

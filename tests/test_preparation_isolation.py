@@ -163,7 +163,7 @@ def test_payload_validation_cache_detects_changes(
     assert store.acquire(relation.reference.relation_id, "pair", 10, 30)
     assert store.publish(relation, payload, "pair", 11)
     with patch(
-        "app.repositories.routing_readiness.decode_route_payload",
+        "app.repositories.routing.relations.decode_route_payload",
         wraps=decode_route_payload,
     ) as decode:
         assert store.payload_available(relation.reference)
