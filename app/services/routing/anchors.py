@@ -15,6 +15,7 @@ from app.domain.routing_anchor_ports import (
 from app.domain.routing_anchors import (
     MAX_CANDIDATES,
     POSITIVE_TTL,
+    RoutingAnchor,
     RoutingCandidate,
     anchor_source_fingerprint,
     distance_m,
@@ -60,32 +61,11 @@ class RoutingAnchorResolver:
         original = facility.coordinates
         cached = self._store.get(facility.facility_uid, "truck")
         candidates: list[RoutingCandidate] = []
-        if cached and cached.anchor and original:
-            separation = distance_m(original, cached.anchor)
-            if separation <= self.max_snap_distance_m:
-                revision = (
-                    self._provider_revision()
-                    if self._provider_revision
-                    else cached.provider_revision
-                )
-                candidates.append(
-                    RoutingCandidate(
-                        cached.anchor,
-                        separation,
-                        cached.provider,
-                        revision,
-                        cached.method,
-                    )
-                )
-                if (
-                    cached.source_fingerprint
-                    == anchor_source_fingerprint(
-                        facility, self.max_snap_distance_m
-                    )
-                    and cached.provider_revision == revision
-                    and self._clock() - cached.validated_at < POSITIVE_TTL
-                ):
-                    return tuple(candidates)
+        cached_candidate = self._cached_candidate(facility, cached)
+        if cached_candidate:
+            candidates.append(cached_candidate)
+            if self._cache_is_current(facility, cached):
+                return tuple(candidates)
         if original:
             candidates.extend(
                 await self._locate(
@@ -93,25 +73,81 @@ class RoutingAnchorResolver:
                 )
             )
         if force or not candidates:
-            try:
-                lat, lon, _ = await self._geocoder.geocode(
-                    facility.address.display_text()
-                )
-                address = Coordinates(lat, lon)
-                candidates.extend(
-                    await self._locate(
-                        facility,
-                        address,
-                        original or address,
-                        "address_fallback",
-                    )
-                )
-            except GeocodingError as error:
-                self._record(facility, "address_fallback", str(error))
-                if error.retryable:
-                    raise RoutingError(
-                        "Address provider unavailable."
-                    ) from error
+            candidates.extend(await self._address_candidates(facility))
+        return self._rank_candidates(candidates, cached)
+
+    def _cached_candidate(
+        self,
+        facility: Facility,
+        cached: RoutingAnchor | None,
+    ) -> RoutingCandidate | None:
+        """Project one usable certified anchor into a search candidate."""
+        if not cached or not cached.anchor or not facility.coordinates:
+            return None
+        separation = distance_m(facility.coordinates, cached.anchor)
+        if separation > self.max_snap_distance_m:
+            return None
+        revision = (
+            self._provider_revision()
+            if self._provider_revision
+            else cached.provider_revision
+        )
+        return RoutingCandidate(
+            cached.anchor,
+            separation,
+            cached.provider,
+            revision,
+            cached.method,
+        )
+
+    def _cache_is_current(
+        self,
+        facility: Facility,
+        cached: RoutingAnchor | None,
+    ) -> bool:
+        """Return whether a certified anchor still matches current policy."""
+        if cached is None:
+            return False
+        revision = (
+            self._provider_revision()
+            if self._provider_revision
+            else cached.provider_revision
+        )
+        return (
+            cached.source_fingerprint
+            == anchor_source_fingerprint(facility, self.max_snap_distance_m)
+            and cached.provider_revision == revision
+            and self._clock() - cached.validated_at < POSITIVE_TTL
+        )
+
+    async def _address_candidates(
+        self,
+        facility: Facility,
+    ) -> tuple[RoutingCandidate, ...]:
+        """Resolve and validate the bounded postal-address fallback."""
+        try:
+            lat, lon, _ = await self._geocoder.geocode(
+                facility.address.display_text()
+            )
+            address = Coordinates(lat, lon)
+            return await self._locate(
+                facility,
+                address,
+                facility.coordinates or address,
+                "address_fallback",
+            )
+        except GeocodingError as error:
+            self._record(facility, "address_fallback", str(error))
+            if error.retryable:
+                raise RoutingError("Address provider unavailable.") from error
+            return ()
+
+    @staticmethod
+    def _rank_candidates(
+        candidates: list[RoutingCandidate],
+        cached: RoutingAnchor | None,
+    ) -> tuple[RoutingCandidate, ...]:
+        """Deduplicate candidates and keep a certified anchor preferred."""
         unique: dict[Coordinates, RoutingCandidate] = {}
         for candidate in candidates:
             unique.setdefault(candidate.coordinates, candidate)

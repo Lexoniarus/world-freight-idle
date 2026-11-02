@@ -23,6 +23,8 @@ from app.domain.routing_readiness import RoutingAttempt, relation_identity
 from app.domain.world import Facility
 from app.tracing import get_trace_id
 
+CandidateMap = dict[str, dict[Coordinates, RoutingCandidate]]
+
 
 class RoutingConnectionValidator:
     """Own bounded candidate trials; callers own leases and persistence."""
@@ -72,48 +74,29 @@ class RoutingConnectionValidator:
         error.category = "endpoint_unreachable"
         for fallback in (False, True):
             for facility in (origin, destination):
-                selected = candidates[facility.facility_uid]
-                if len(selected) >= MAX_CANDIDATES:
-                    continue
-                available = (
-                    (fixed[facility.facility_uid],)
-                    if facility.facility_uid in fixed
-                    else await anchors.resolve(facility, force=fallback)
+                await self._extend_candidates(
+                    facility,
+                    candidates,
+                    fixed,
+                    anchors,
+                    fallback,
                 )
-                for candidate in available:
-                    if len(selected) >= MAX_CANDIDATES:
-                        break
-                    selected.setdefault(candidate.coordinates, candidate)
-            starts = tuple(candidates[origin.facility_uid].values())
-            ends = tuple(candidates[destination.facility_uid].values())
-            pairs = sorted(
-                product(enumerate(starts), enumerate(ends)),
-                key=lambda pair: (
-                    (pair[0][0] != 0) + (pair[1][0] != 0),
-                    pair[0][1].distance_m + pair[1][1].distance_m,
-                ),
-            )
-            for (_, start), (_, end) in pairs:
+            for start, end in self._ordered_pairs(
+                tuple(candidates[origin.facility_uid].values()),
+                tuple(candidates[destination.facility_uid].values()),
+            ):
                 key = start.coordinates, end.coordinates
                 if key in attempted:
                     continue
                 attempted.add(key)
                 try:
-                    forward = await self._route(
-                        origin.facility_uid,
-                        destination.facility_uid,
+                    return await self._validate_pair(
+                        origin,
+                        destination,
                         start,
                         end,
                         router,
-                        clock,
-                        record,
-                    )
-                    reverse = await self._route(
-                        destination.facility_uid,
-                        origin.facility_uid,
-                        end,
-                        start,
-                        router,
+                        anchors,
                         clock,
                         record,
                     )
@@ -126,15 +109,83 @@ class RoutingConnectionValidator:
                     }:
                         raise
                     continue
-                return ValidatedConnection(
-                    self._anchor(origin, start, clock(), anchors),
-                    self._anchor(destination, end, clock(), anchors),
-                    forward,
-                    reverse,
-                )
             if len(attempted) >= 25:
                 raise RoutingError("Connection repair budget exhausted.")
         raise error
+
+    @staticmethod
+    async def _extend_candidates(
+        facility: Facility,
+        candidates: CandidateMap,
+        fixed: dict[str, RoutingCandidate],
+        anchors: RoutingAnchorResolverPort,
+        fallback: bool,
+    ) -> None:
+        """Add distinct candidates for one facility and search phase."""
+        selected = candidates[facility.facility_uid]
+        if len(selected) >= MAX_CANDIDATES:
+            return
+        available = (
+            (fixed[facility.facility_uid],)
+            if facility.facility_uid in fixed
+            else await anchors.resolve(facility, force=fallback)
+        )
+        for candidate in available:
+            if len(selected) >= MAX_CANDIDATES:
+                break
+            selected.setdefault(candidate.coordinates, candidate)
+
+    @staticmethod
+    def _ordered_pairs(
+        starts: tuple[RoutingCandidate, ...],
+        ends: tuple[RoutingCandidate, ...],
+    ) -> tuple[tuple[RoutingCandidate, RoutingCandidate], ...]:
+        """Prefer each facility's first candidate, then shortest snap cost."""
+        indexed = sorted(
+            product(enumerate(starts), enumerate(ends)),
+            key=lambda pair: (
+                (pair[0][0] != 0) + (pair[1][0] != 0),
+                pair[0][1].distance_m + pair[1][1].distance_m,
+            ),
+        )
+        return tuple((start, end) for (_, start), (_, end) in indexed)
+
+    async def _validate_pair(
+        self,
+        origin: Facility,
+        destination: Facility,
+        start: RoutingCandidate,
+        end: RoutingCandidate,
+        router: TruckRouter,
+        anchors: RoutingAnchorResolverPort,
+        clock: Callable[[], float],
+        record: Callable[[RoutingAttempt], None] | None,
+    ) -> ValidatedConnection:
+        """Certify one candidate pair only after both directions succeed."""
+        forward = await self._route(
+            origin.facility_uid,
+            destination.facility_uid,
+            start,
+            end,
+            router,
+            clock,
+            record,
+        )
+        reverse = await self._route(
+            destination.facility_uid,
+            origin.facility_uid,
+            end,
+            start,
+            router,
+            clock,
+            record,
+        )
+        return ValidatedConnection(
+            self._anchor(origin, start, clock(), anchors),
+            self._anchor(destination, end, clock(), anchors),
+            forward,
+            reverse,
+        )
 
     async def _route(
         self,
