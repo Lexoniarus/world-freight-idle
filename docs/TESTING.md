@@ -24,6 +24,9 @@ Gemeinsame Fixtures und lokale Provider-Doubles liegen ausschließlich unter
 damit entstehen weder implizite Collection-Abhängigkeiten noch alternative
 Produktionsarchitekturen. Die Runtime-Fixture verdrahtet dieselben lokalen
 Preparation-, Readiness- und Stock-Grenzen wie der Composition Root.
+Routinghilfen liegen deshalb unter `tests/support/routing_runtime.py` und
+überschreiben keinen parallel gehaltenen Router-/Anchor-Zustand auf
+`GameRuntime`.
 
 Jeder einzelne Python- und Playwright-Fall besitzt ein hartes Zeitlimit von
 zehn Sekunden. `pytest-timeout` bricht hängende Python-Fälle ab; Playwright

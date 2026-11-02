@@ -1,6 +1,6 @@
 # Architektur
 
-Stand: 25.09.2026. Die Anwendung besitzt genau eine relationale Laufzeit.
+Stand: 02.11.2026. Die Anwendung besitzt genau eine relationale Laufzeit.
 UI First, native ES-Module, FastAPI und `python main.py` bleiben Grundlage.
 
 ## Geplanter Frontend-Ausbau vom 28.10.2026
@@ -31,9 +31,15 @@ jeweiligen Schnitt im Architekturreview zu entscheiden. Diese Dokumentation
 
 - `app/domain`: Entities, unveränderliche Werte, historische Snapshots und
   Ports. Keine SQL-, HTTP-, KV- oder Serialisierungslogik.
-- `app/services`: Initialisierung, Markt, Kauf, Disposition, Settlement,
-  Authentifizierung und Profilpflege. Orchestratoren verbinden benannte
+- `app/services/gameplay`: Spielerinitialisierung, Flotte, Disposition,
+  Settlement und die schmale HTTP-nahe Spielfassade.
+- `app/services/market`: Kandidaten, persönlicher Bedarf, wiederverwendbare
+  Vorlagen, Stock-Planung/-Publikation und der Lifespan-Worker.
+- `app/services/routing`: Anchor-Kandidaten, bidirektionale Zertifizierung,
+  Evidenzlesen und Provider-Vorbereitung. Orchestratoren verbinden benannte
   fachliche Schritte und injizierte Ports.
+- Die übrigen `app/services` besitzen querschnittliche Use Cases wie
+  Authentifizierung, Analytics, Präferenzen und Profilpflege.
 - `app/repositories`: SQLite, Verbindungen, Transaktionen, Schema-Validierung
   und kanonisches Snapshot-Mapping. Read-only Referenzdaten bleiben getrennt
   vom beschreibbaren Spielerzustand.
@@ -58,6 +64,15 @@ Die Lifespan registriert den Routing-HTTP-Client sofort im AsyncExitStack.
 Start- und Shutdownfehler verhindern dessen Freigabe nicht. SQLite-Verbindungen
 gehören dem jeweiligen Adapter und werden auch bei Fehlern geschlossen.
 Domainregeln erhalten Zeitpunkte als Parameter.
+
+`GameRuntime` ist ausschließlich der vom Composition Root besessene Container
+für geteilte Datenbank-, Katalog-, Markt- und Routingservices. Router und
+Anchor-Provider werden einmal in `RoutingPreparationService` injiziert und
+nicht als zweiter überschreibbarer Runtime-Zustand gespiegelt. `GameService`
+ist die spielergebundene Fassade und kein Service Locator: Welt, Katalog und
+Provider bleiben bei den spezialisierten Services beziehungsweise beim
+Composition Root. Tests bauen denselben Objektgraphen mit Doubles unter
+`tests/support`; `FixtureGameContext` ist ausdrücklich nur eine Testhilfe.
 
 ## Zustand und Atomarität
 
@@ -157,9 +172,13 @@ Die permanente MapLibre-Karte bleibt beim Wechsel der Kontextpanels erhalten.
 Vite bündelt native Module und lokale Schriften. OSM-Raster ist die Basiskarte;
 Satelliten, Spielerunternehmen und Depots bleiben außerhalb dieser Phase.
 
-API-Client, Zustand, Controller, Views, Kartenlayer und Animation sind getrennt.
+API-Client, `GameState`, Controller, Views, Kartenlayer und Animation sind
+getrennt. `LatestRequest` besitzt nur den Lebenszyklus der jeweils neuesten
+Controlleranfrage; es ist kein zweiter Spielzustand.
 Views führen keine Requests aus. Dynamische Texte werden als DOM-Text gesetzt.
-Controller besitzen und beenden Listener, Requests und Timer. LatestRequest
+Controller besitzen und beenden Listener, Requests und Timer. `PanelController`
+erhält seine Bildbindung im Konstruktor und besitzt sie bis `destroy()`; Views
+besitzen weder Requests noch Ressourcen. LatestRequest
 verwirft überholte Detailantworten. RefreshScheduler pollt nur bei Sichtbarkeit;
 GameState verhindert überlappende Reads. Nach unsicheren Schreibantworten folgt
 nach älteren Reads zwingend ein frischer Read; Mutationen werden nicht wiederholt.
@@ -172,6 +191,9 @@ Fahrzeugmarkt. Standortmarker entstehen aus eigener Flotte,
 Transport-Snapshots und der aktuellen Auftragsscheibe. Spielerfarben
 und öffentliche Transporte bleiben von privaten Wirtschaftsangaben getrennt.
 World Wrapping, Clustering, Tastatur, mobile Panels und Reduced Motion bleiben.
+Bootstrap gibt den API-Client genau über den erzeugten Anwendungsowner frei;
+vor erfolgreicher Anwendungserzeugung bleibt der Client sein eigener Fallback-
+Owner. Doppelte Lifecycle-Freigabe ist keine vorausgesetzte Architekturregel.
 
 ### Fahrzeugassets
 

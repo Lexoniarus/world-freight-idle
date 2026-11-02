@@ -38,6 +38,34 @@ wird nicht automatisch wiederholt.
 
 ## Aktuelles Verhalten und Review
 
+Der abschließende Zuständigkeitsreview umfasst zusätzlich Modulnamen,
+Objektbesitz, Funktionsschritte, Vererbung und Frontend-Kapselung. Gameplay,
+Markt und Routing liegen in ihren Eigentümerpaketen; der Marktworker liegt bei
+den Marktservices. `GameRuntime` spiegelt Router und Anchor-Resolver nicht mehr
+neben `RoutingPreparationService`. `GameService` bleibt eine delegierende,
+spielergebundene Fassade ohne Welt-/Katalog-/Provider-Service-Locator.
+
+`ValhallaTruckRouter`, `ValhallaTruckAnchorLocator`,
+`RoutingAnchorResolver`, `RoutingConnectionValidator`,
+`RoutingPreparationService` und `AnalyticsService` setzen nun benannte
+Cache-, Request-, Decode-, Candidate-, Fence-, Lease-, Publikations- und
+Zeitprojektionsschritte zusammen. Jeder neue konkrete Core-Callable ist einem
+inhaltlich passenden Gegentest im Function-Test-Manifest zugeordnet. Es wurde
+keine zweite Routing-, Markt- oder Persistenzarchitektur eingeführt.
+
+Im Browser sind `GameState` und `LatestRequest`, Panel-Controller und View,
+Assetmanifest und MapLibre-Icon-Registry sowie Bootstrap- und Anwendungsowner
+eindeutig getrennt. `GameApplication` beziehungsweise `AuthController` geben
+den API-Client frei; Bootstrap greift nur vor erfolgreicher Owner-Erzeugung
+direkt ein. Die distinct Flottenprojektion bleibt unverändert: ein Fahrzeug
+erscheint auch bei Abfahrts- und Zielstadtfilter nur einmal.
+
+Die Arbeitscommits wurden ausschließlich mit ihren Eigentümertests, Ruff,
+mypy beziehungsweise ESLint, Prettier und checkJs geprüft. Supabase, reale
+Provider und öffentliche Tiles wurden nicht angesprochen. Die nachfolgend
+dokumentierte frühere Gesamtabnahme ist erst nach dem nun folgenden einmaligen
+vollständigen Quality- und Browserlauf für diesen Refactor erneut aktuell.
+
 Die lokale Runtime besitzt einen Lifespan-Worker. Reads bleiben rein lesend;
 Zustandsänderungen und ausdrücklicher Refresh schreiben Bedarf und wecken ihn.
 Vorbereitet werden nur konkrete idle Fahrzeuge und Zielorte aktiver Transporte.

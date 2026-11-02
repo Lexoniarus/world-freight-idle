@@ -1,5 +1,27 @@
 # Changelog
 
+## Zuständigkeits- und Namenshärtung – 02.11.2026
+
+- Frontend-Zustand und Request-Lebenszyklus liegen getrennt in `GameState` und
+  `LatestRequest`; Panel-Views und Bildbindungen werden explizit injiziert und
+  besessen.
+- Gameplay, Markt, Marktworker, Routing und Fahrzeugkosten besitzen eindeutig
+  benannte Servicepakete. `GameRuntime` hält keine zweiten Router-/Anchor-
+  Referenzen neben dem fertig verdrahteten Routingservice.
+- Routingprovider, Anchor-Suche, Verbindungssuche, Publikations-Fences und
+  Analytics-Zeitprojektion bestehen aus benannten, einzeln gegengeprüften
+  Schritten statt langen gemischten Methoden.
+- Assetmanifest und MapLibre-Icon-Registry heißen jetzt eindeutig
+  `vehicle-asset-manifest` und `vehicle-icon-registry`; ihr früherer Sammeltest
+  ist nach Eigentümervertrag getrennt.
+- Bootstrap besitzt genau einen Cleanup-Owner. Testhilfen liegen unter
+  `tests/support`; der Produktionsservice bleibt frei von Test-only-
+  Doppelzustand.
+- Das manuelle Review fand keine fachliche Produktionsvererbung: Ports nutzen
+  Protocols, zustandsbehaftete Grenzen Komposition und Dependency Injection.
+  Verbleibende große Facades, Entities und Repository-Mapper wurden auf eine
+  zusammenhängende Verantwortung geprüft.
+
 ## Eigentümerklare Testmodule und eindeutige Flotte – 02.11.2026
 
 - Aktive Fahrzeuge erscheinen im Flottenkatalog genau einmal unter
