@@ -4,7 +4,17 @@
 
 - Die beiden öffentlichen Traffic-Reader liefern höchstens 100 aktive
   Transporte. Sie priorisieren die zuletzt gestarteten Fahrten und verwenden
-  stabile Tie-Breaker; ungültige Limits werden beim Aufbau abgelehnt.
+  stabile Tie-Breaker; ungültige Limits werden beim Aufbau abgelehnt. Ein
+  partieller Index deckt Filterung und Reihenfolge ohne temporären Sortierbaum
+  ab. Vollständige und kompakte Reads verwenden denselben injizierten Reader
+  und teilen ihre viewer-unabhängigen Snapshots für höchstens zehn Sekunden.
+- Preference-Tabelle und Traffic-Index werden am Composition Root explizit
+  initialisiert. Repository-Konstruktoren besitzen keine versteckte
+  Schema-Seitenwirkung oder zufällige Abhängigkeit von der Adapterreihenfolge.
+- Der frühere Multiplayer-Sammeltest ist in reine Traffic-Projektion,
+  Repositoryvertrag und eine HTTP-Verdrahtungsabnahme getrennt. Query-Plan,
+  Cache-Koaleszierung, Privacy und Preference-Join besitzen kleine direkte
+  Gegentests.
 - `PlayerGameFacade` besitzt keine zweite vollständige State-Projektion mehr.
   Dashboard, Flotte, Markt und Runtime bleiben die benannten Lesemodelle;
   Vertragsdetails werden aus dem bereits gelesenen Marktbestand aufgelöst.
@@ -15,10 +25,10 @@
 - Backoff, Worker-Idle-Timeout, Lease-Verlust und abgelehnte
   Evidenzpublikation besitzen kleine direkte Gegentests. Das frühere
   Worker-Sammelszenario ist entfernt.
-- Die lokale Endabnahme bestand mit 666 Python-Tests bei 100 %
+- Die lokale Endabnahme bestand mit 672 Python-Tests bei 100 %
   App-Statement-Coverage, 131 Frontendtests und 14 Playwright-Grenzen. Der
   langsamste Pythonfall benötigte 2,68 Sekunden, der langsamste Browserfall
-  8,4 Sekunden; Supabase, Live-Provider und öffentliche Tiles blieben aus.
+  7,4 Sekunden; Supabase, Live-Provider und öffentliche Tiles blieben aus.
 
 ## Verbleibende P2-/P3-Härtung – 02.11.2026
 

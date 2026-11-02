@@ -204,6 +204,12 @@ Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
 - [x] TrafficReader gibt nur öffentliche Trackingwerte weiter; der SQLite-Leser validiert zuvor gespeicherte Transport-Snapshots.
 - [x] Öffentliche Traffic-Reads sind auf 100 aktive, zuletzt gestartete
       Transporte begrenzt und werden vor der Snapshot-Projektion limitiert.
+- [x] Ein partieller Index deckt aktive Auswahl und Abfahrtsreihenfolge ab;
+      der Query-Plan benötigt keinen temporären Sortierbaum.
+- [x] Vollständige und kompakte Verkehrssichten teilen je Repräsentation einen
+      Runtime-Snapshot, statt pro verbundenem Client erneut SQL auszuführen.
+- [x] Preference-Schema und Traffic-Index werden explizit initialisiert;
+      Adapterkonstruktion besitzt keine versteckte Schema-Seitenwirkung.
 - [x] Private Vertrags-, Erlös-, Kosten- und Guthabendaten werden nicht projiziert.
 - [x] Multiplayer-Traffic-Fehler werden in der UI sichtbar und nicht still verschluckt.
 - [x] Letzter gültiger Traffic-Stand bleibt bei temporärem Fehler erhalten.

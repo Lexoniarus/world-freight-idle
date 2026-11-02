@@ -111,7 +111,20 @@ in der API-Projektion; ein zusätzlicher durchreichender Mehrspieler-Service ent
 Vollständige und kompakte Traffic-Reads sind auf 100 aktive Transporte
 begrenzt. Die Repository-Abfrage priorisiert die neueste Abfahrt und begrenzt
 vor der Snapshot-Projektion, damit Pollingkosten nicht mit der gesamten
-Transporthistorie wachsen.
+Transporthistorie wachsen. Ein partieller Index auf aktive Transporte deckt
+Filterung und Sortierung ab; ein Query-Plan-Gegentest verbietet einen
+temporären Sortierbaum. Der Composition Root injiziert genau einen
+`SqliteTrafficReader` in vollständige Karten- und kompakte Runtime-Reads.
+Je Repräsentation wird dessen viewer-unabhängiger Snapshot für höchstens zehn
+Sekunden geteilt und spätestens bei der nächsten enthaltenen Ankunft
+verworfen. Dadurch erzeugen parallele Browserpolls innerhalb dieses Fensters
+keine eigenen SQL-Lesevorgänge.
+
+`SqlitePreferenceStore.initialize` und `SqliteTrafficReader.initialize`
+erzeugen ihre Hilfsstruktur explizit und idempotent vor dem Aufbau der
+Runtime. Repository-Konstruktoren verändern kein Schema; ihre korrekte
+Funktion hängt nicht von einer zufälligen Erzeugungsreihenfolge anderer
+Adapter ab.
 
 ### Begrenzte Transportabfragen
 

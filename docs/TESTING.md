@@ -105,6 +105,15 @@ Runtime-Snapshots und Route-Geometry-HTTP besitzen keine gemeinsame
 Sammeldatei. Ein Test darf mehrere Schritte eines atomaren Vertrags zeigen,
 aber keine fachfremde zweite Abnahme verstecken.
 
+Öffentlicher Verkehr besitzt drei getrennte Testowner:
+`test_public_traffic_reader.py` prüft Schema, partiellen Query-Index,
+Begrenzung, Privacy und den geteilten Snapshot; `test_traffic_projection.py`
+prüft reine JSON-Projektion, Eigentumsmarkierung, Farb-Fallback und Logging;
+`test_multiplayer_map.py` behält genau die authentifizierte HTTP-Verdrahtung.
+Der Query-Plan-Test verlangt den Index `public_active_traffic` und verbietet
+einen temporären Sortierbaum. Ein instrumentierter Reader belegt, dass mehrere
+Clientreads innerhalb des Cachefensters nur eine Repository-Abfrage auslösen.
+
 Architekturtests prüfen direkte und indirekte Imports einschließlich relativer
 Imports, Re-Exports und statisch erkennbarer dynamischer Imports. Domain und
 Services kennen kein SQL, konkrete Speicheradapter oder Serialisierung.
