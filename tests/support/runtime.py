@@ -54,8 +54,6 @@ def build_test_runtime(
     return GameRuntime(
         database=database,
         world=world,
-        router=router,
-        anchors=anchors,
         market=market,
         catalogue=context.catalogue,
         market_scope=MarketScopeResolver(world),

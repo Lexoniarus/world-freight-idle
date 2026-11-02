@@ -8,7 +8,7 @@ from app.providers.routing import ValhallaTruckRouter
 from app.services.routing.anchors import RoutingAnchorResolver
 
 
-def test_build_game_service_wires_real_provider_adapters(tmp_path: Path):
+def test_build_game_runtime_wires_real_provider_adapters(tmp_path: Path):
     settings = Settings(
         base_dir=tmp_path,
         data_dir=tmp_path / "data",
@@ -22,15 +22,17 @@ def test_build_game_service_wires_real_provider_adapters(tmp_path: Path):
         log_level="INFO",
     )
     routing_client = httpx.AsyncClient()
-    game = build_game_runtime(
+    runtime = build_game_runtime(
         settings,
         routing_client,
         rng_seed=1,
     )
-    assert isinstance(game.router, ValhallaTruckRouter)
-    assert isinstance(game.anchors, RoutingAnchorResolver)
-    assert game.router.base_url == "https://v.test"
-    assert game.database.path == settings.db_path
+    assert isinstance(runtime.routing_preparation.router, ValhallaTruckRouter)
+    assert isinstance(
+        runtime.routing_preparation.anchors, RoutingAnchorResolver
+    )
+    assert runtime.routing_preparation.router.base_url == "https://v.test"
+    assert runtime.database.path == settings.db_path
     import asyncio
 
     asyncio.run(routing_client.aclose())

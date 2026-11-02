@@ -38,15 +38,20 @@ browser_clock = ManualClock()
 @asynccontextmanager
 async def browser_lifespan(application):
     def test_runtime(active_settings, client):
-        runtime = build_game_runtime(active_settings, client)
-        runtime.clock = browser_clock
-        runtime.router = FakeRouter()
-        runtime.anchors = FakeRoutingAnchorResolver()
-        runtime.routing_evidence.clock = browser_clock
-        runtime.routing_preparation.clock = browser_clock
-        runtime.routing_preparation.router = runtime.router
-        runtime.routing_preparation.anchors = runtime.anchors
-        return runtime
+        router = FakeRouter()
+        anchors = FakeRoutingAnchorResolver()
+        with (
+            patch("app.bootstrap.ValhallaTruckRouter", return_value=router),
+            patch(
+                "app.bootstrap.build_routing_anchor_resolver",
+                return_value=anchors,
+            ),
+        ):
+            return build_game_runtime(
+                active_settings,
+                client,
+                clock=browser_clock,
+            )
 
     with patch("app.main.build_game_runtime", side_effect=test_runtime):
         async with lifespan(application):

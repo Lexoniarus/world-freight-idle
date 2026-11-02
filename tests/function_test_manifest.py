@@ -128,7 +128,7 @@ FUNCTION_TESTS = {
     "app.api.v1.system.get_health": "test_v1_resource_endpoints_and_error_mapping",
     "app.api.v1.transports.get_transport": "test_v1_resource_endpoints_and_error_mapping",
     "app.api.v1.transports.list_transports": "test_v1_resource_endpoints_and_error_mapping",
-    "app.bootstrap.build_game_runtime": "test_build_game_service_wires_real_provider_adapters",
+    "app.bootstrap.build_game_runtime": "test_build_game_runtime_wires_real_provider_adapters",
     "app.config.Settings.from_env": "test_settings_from_env",
     "app.logging_config.JsonFormatter.format": "test_json_formatter_includes_structured_fields",
     "app.logging_config.configure_logging": "test_configure_logging_replaces_root_handler",
@@ -771,7 +771,7 @@ FUNCTION_TESTS.update(
             "test_address_and_missing_coordinate_fallbacks_are_bounded"
         ),
         "app.bootstrap.build_routing_anchor_resolver": (
-            "test_build_game_service_wires_real_provider_adapters"
+            "test_build_game_runtime_wires_real_provider_adapters"
         ),
         "app.services.gameplay.dispatch_planning.DispatchPlanningService.route": (
             "test_dispatch_approach_uses_facility_identity_not_display_coordinate"

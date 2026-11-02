@@ -30,14 +30,14 @@ from app.domain.game import OwnedVehicle, PlayerState
 from app.main import create_app
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.services.gameplay.fleet import FleetService
-from tests.routing_fixtures import (
-    install_fake_routing,
-    prepare_client_market,
-)
 from tests.support.api import make_settings, make_static_files
 from tests.support.catalogues import BERLIN_UID, InMemoryVehicleCatalogue
 from tests.support.game import first_berlin_contract
 from tests.support.game_clock import set_game_clock
+from tests.support.routing_runtime import (
+    install_fake_routing_providers,
+    prepare_client_market,
+)
 
 
 def test_catalogue_projects_all_offers_without_writing(
@@ -314,7 +314,7 @@ def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
                 "password": "catalogue-test-password",
             },
         ).raise_for_status()
-        install_fake_routing(app.state.game_runtime)
+        install_fake_routing_providers(app.state.game_runtime)
         prepare_client_market(client, app.state.game_runtime)
         contract = next(
             item

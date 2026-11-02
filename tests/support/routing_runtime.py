@@ -10,12 +10,10 @@ from app.bootstrap import (
 from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 
 
-def install_fake_routing(synthetic_runtime: GameRuntime) -> None:
-    """Keep every background and request path away from live providers."""
-    synthetic_runtime.router = FakeRouter()
-    synthetic_runtime.anchors = FakeRoutingAnchorResolver()
-    synthetic_runtime.routing_preparation.router = synthetic_runtime.router
-    synthetic_runtime.routing_preparation.anchors = synthetic_runtime.anchors
+def install_fake_routing_providers(synthetic_runtime: GameRuntime) -> None:
+    """Keep every preparation path away from live providers."""
+    synthetic_runtime.routing_preparation.router = FakeRouter()
+    synthetic_runtime.routing_preparation.anchors = FakeRoutingAnchorResolver()
 
 
 def prepare_client_market(

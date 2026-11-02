@@ -14,9 +14,8 @@ import httpx
 from app.config import Settings
 from app.domain.game_import import GameStateImporter
 from app.domain.geography_migration import GeographyMigrationStore
-from app.domain.ports import TruckRouter, VehicleCatalogue, WorldCatalogue
+from app.domain.ports import VehicleCatalogue, WorldCatalogue
 from app.domain.read_ports import LeaderboardReader, TrafficReader
-from app.domain.routing_anchor_ports import RoutingAnchorResolverPort
 from app.domain.world_scopes import WorldScope
 from app.providers.geocoding import NominatimGeocoder
 from app.providers.request_limiter import ProviderRequestLimiter
@@ -98,8 +97,6 @@ class GameRuntime:
 
     database: SqliteGameDatabase
     world: WorldCatalogue
-    router: TruckRouter
-    anchors: RoutingAnchorResolverPort
     market: MarketComponents
     catalogue: VehicleCatalogue
     market_scope: MarketScopeResolver
@@ -159,6 +156,7 @@ def build_game_runtime(
     settings: Settings,
     routing_client: httpx.AsyncClient,
     rng_seed: int | None = None,
+    clock: Callable[[], float] = time.time,
 ) -> GameRuntime:
     """Initialize only relational storage and shared application resources."""
     database = SqliteGameDatabase(settings.db_path)
@@ -184,7 +182,6 @@ def build_game_runtime(
     )
     world = build_world_catalogue(settings)
     catalogue = CachedVehicleCatalogue(build_vehicle_catalogue(settings))
-    clock = time.time
     anchors = build_routing_anchor_resolver(
         database, settings, routing_client, clock, limiter, evidence
     )
@@ -213,8 +210,6 @@ def build_game_runtime(
         preparation_jobs=jobs,
         database=database,
         world=world,
-        router=router,
-        anchors=anchors,
         market=build_market_components(
             world, random.Random(rng_seed), catalogue
         ),

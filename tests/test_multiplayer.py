@@ -27,14 +27,14 @@ from app.main import create_app
 from app.repositories.accounts import AccountRepository
 from app.services.auth import SESSION_COOKIE, AuthService, PasswordHasher
 from app.services.gameplay.fleet import FleetService
-from tests.routing_fixtures import (
-    install_fake_routing,
-    prepare_client_market,
-)
 from tests.support.api import make_settings, make_static_files
 from tests.support.catalogues import BERLIN_UID
 from tests.support.game import first_berlin_contract
 from tests.support.game_clock import set_game_clock
+from tests.support.routing_runtime import (
+    install_fake_routing_providers,
+    prepare_client_market,
+)
 from tests.transport_fixtures import add_transport
 
 PASSWORD = "test-only-password-42"
@@ -313,7 +313,7 @@ def test_auth_api_and_private_game_resources(tmp_path):
     make_static_files(tmp_path)
     app = create_app(make_settings(tmp_path))
     with TestClient(app) as client:
-        install_fake_routing(app.state.game_runtime)
+        install_fake_routing_providers(app.state.game_runtime)
         for path in (
             "dashboard",
             "fleet",
