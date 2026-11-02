@@ -1,5 +1,24 @@
 # Changelog
 
+## Reproduzierbare Marktdiversitätskorrektur – 02.11.2026
+
+- Ein öffentlicher Worker-Test belegt nun mit synthetischen Waren und fertigen
+  Routen den sichtbaren Übergang von null auf drei strukturell verschiedene
+  Angebote. Der frühere Test gegen private `_select`-Schritte ist entfernt.
+- `StockPlanningService.contexts` beschreibt auch volle Bestände; der normale
+  Worker filtert daraus weiterhin ausschließlich echte Nachfüllziele.
+- Das neue Offline-Kommando `repair_market_diversity.py` erkennt volle alte
+  Dublettenbestände nur bei vorbereiteten besseren Alternativen. Check-Modus,
+  Backup, neue Ausgabe, privates SHA-256-Archiv und vollständiger Tabellenabgleich
+  verhindern eine verdeckte Änderung der aktiven Datenbank.
+- Die Korrektur erhält Spielerfortschritt, Fahrzeuge, Transporte, verwendete
+  und globale Vorlagen sowie Routingnachweise. Nur verdrängbare unangenommene
+  Angebote und der zugehörige Refill-Fortschritt werden in der neuen Kopie
+  zurückgesetzt.
+- Die vollständige lokale Abnahme bestand mit 611 Python-Tests, 100 %
+  App-Statement-Coverage, 128 Frontendtests und 14 Playwright-Fällen. Kein
+  Einzelfall überschritt zehn Sekunden; Supabase und Live-Provider blieben aus.
+
 ## Deterministisch vielfältige Stadtmärkte – 02.11.2026
 
 - Die sichtbare Dreierauswahl bevorzugt pro Fahrzeug und Distanzband neue

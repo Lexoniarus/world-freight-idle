@@ -422,6 +422,17 @@ Abgleichabweichungen und Integritätsfehler verhindern eine Ausgabe. CLI-Tests
 verlangen neue getrennte Backup-/Ausgabepfade und bestätigen rein lesenden Check.
 Alle neuen konkreten Core-Callables sind dem Function-Manifest zugeordnet.
 
+Die sichtbare Marktvielfalt wird nicht über private Worker-Helfer behauptet.
+Ein kleiner synthetischer Workerfall mit drei Waren und mehreren fertigen
+Handelsbeziehungen prüft über `StockPreparationBatch.process()` den sichtbaren
+Übergang `0 -> 1 -> 2 -> 3` und drei strukturell verschiedene Angebote. Ein
+getrennter Selektionsgegenfall erlaubt Wiederholung nur bei genau einer
+verfügbaren Handelsbeziehung. `test_market_stock_repair.py` verwendet ebenfalls
+nur kleine temporäre SQLite-Dateien. Es prüft read-only Inventur, minimale
+Planung, geschützte Daten, bytegleiche Quelle, Backup-/Archivpflicht,
+SHA-256-Archiv, vollständige Reconciliation, Rollback und Idempotenz. Die reale
+Spielerdatenbank wird von der Testsuite nicht geöffnet.
+
 Frontend-Verhaltenstests prüfen die serverseitige Fahrzeugabfrage, Zusammenfassung
 gleicher Reads und Ausschluss verspäteter Antworten nach Auswahlwechseln.
 `deferred-map.test.mjs` prüft nachgeladene Renderer, überholte Darstellungszustände,
