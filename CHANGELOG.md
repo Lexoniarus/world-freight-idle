@@ -1,5 +1,25 @@
 # Changelog
 
+## Begrenzte Traffic-Reads und fokussierte Eigentümertests – 02.11.2026
+
+- Die beiden öffentlichen Traffic-Reader liefern höchstens 100 aktive
+  Transporte. Sie priorisieren die zuletzt gestarteten Fahrten und verwenden
+  stabile Tie-Breaker; ungültige Limits werden beim Aufbau abgelehnt.
+- `PlayerGameFacade` besitzt keine zweite vollständige State-Projektion mehr.
+  Dashboard, Flotte, Markt und Runtime bleiben die benannten Lesemodelle;
+  Vertragsdetails werden aus dem bereits gelesenen Marktbestand aufgelöst.
+- Marktlebenszyklus, Routenaufbereitung, Fahrzeugkatalog und Weltkatalog sind
+  nach ihren Produktionsowner-Grenzen getrennt. Domain- und Servicetests
+  verwenden synthetische Daten; die beiden ausgelieferten Binärkataloge
+  werden weiterhin nur in ihren expliziten Repositoryabnahmen geöffnet.
+- Backoff, Worker-Idle-Timeout, Lease-Verlust und abgelehnte
+  Evidenzpublikation besitzen kleine direkte Gegentests. Das frühere
+  Worker-Sammelszenario ist entfernt.
+- Die lokale Endabnahme bestand mit 666 Python-Tests bei 100 %
+  App-Statement-Coverage, 131 Frontendtests und 14 Playwright-Grenzen. Der
+  langsamste Pythonfall benötigte 2,68 Sekunden, der langsamste Browserfall
+  8,4 Sekunden; Supabase, Live-Provider und öffentliche Tiles blieben aus.
+
 ## Verbleibende P2-/P3-Härtung – 02.11.2026
 
 - `PlayerContextFactory` ist nun der gemeinsame Composition-Owner für

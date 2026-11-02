@@ -202,6 +202,8 @@ Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
 - [x] Ausgeführte/abgelaufene Transporte werden nicht mehr als Live-Verkehr projiziert.
 
 - [x] TrafficReader gibt nur öffentliche Trackingwerte weiter; der SQLite-Leser validiert zuvor gespeicherte Transport-Snapshots.
+- [x] Öffentliche Traffic-Reads sind auf 100 aktive, zuletzt gestartete
+      Transporte begrenzt und werden vor der Snapshot-Projektion limitiert.
 - [x] Private Vertrags-, Erlös-, Kosten- und Guthabendaten werden nicht projiziert.
 - [x] Multiplayer-Traffic-Fehler werden in der UI sichtbar und nicht still verschluckt.
 - [x] Letzter gültiger Traffic-Stand bleibt bei temporärem Fehler erhalten.

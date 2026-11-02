@@ -108,6 +108,10 @@ TrafficReader liefert unveränderliche SharedTransport-Werte mit Koordinaten.
 Gespeicherte Firmenfarben werden im öffentlichen Read-Modell gelesen.
 Eigentumsmarkierung, deterministischer Farb-Fallback und GeoJSON entstehen
 in der API-Projektion; ein zusätzlicher durchreichender Mehrspieler-Service entfällt.
+Vollständige und kompakte Traffic-Reads sind auf 100 aktive Transporte
+begrenzt. Die Repository-Abfrage priorisiert die neueste Abfahrt und begrenzt
+vor der Snapshot-Projektion, damit Pollingkosten nicht mit der gesamten
+Transporthistorie wachsen.
 
 ### Begrenzte Transportabfragen
 

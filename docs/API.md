@@ -123,6 +123,8 @@ Authentifizierte, accountübergreifende Kartenprojektion aktiver Transporte:
 öffentlicher Spielername, Fahrzeugdarstellung, Route, Zeiten und Spielerfarbe.
 Private Guthaben, Verträge, Kosten und Auszahlungen werden nicht veröffentlicht.
 Ein fremder Transport kann nicht über private Detailendpoints geöffnet werden.
+Die Antwort ist auf 100 aktive Transporte begrenzt und priorisiert die zuletzt
+gestarteten Fahrten. Gleichstände werden stabil aufgelöst.
 
 ## System
 

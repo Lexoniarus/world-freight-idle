@@ -146,6 +146,7 @@ aufrufbar; ein Klick identifiziert lediglich den öffentlichen Spielernamen.
 Die gemeinsame Verkehrssicht bleibt read-only und accountübergreifend.
 Der relationale Leser validiert gespeicherte Transport-Snapshots und liefert
 über den TrafficReader-Port ausschließlich öffentliche Trackingwerte.
+Pro Abruf werden höchstens 100 aktive, zuletzt gestartete Transporte projiziert.
 Fehler des Multiplayer-Verkehrsendpoints bleiben sichtbar;
 der letzte gültige Kartenstand kann weiter dargestellt werden, während die UI
 den Ausfall meldet. Spielerfarben werden zusätzlich als Kartenring sichtbar,

@@ -4,6 +4,36 @@ Stand: 02.11.2026. Arbeitsbranch `refactor/local-market-pool`. Dieser Abschnitt
 ist der aktuelle Prüfstand; die folgenden Berichte sind historische Abnahmen
 früherer Architekturen.
 
+## Begrenzte Reads und abschließende Eigentümertrennung
+
+Öffentliche Traffic-Reads sind auf 100 aktive Transporte begrenzt. Beide
+SQLite-Projektionen wählen die zuletzt gestarteten Fahrten zuerst und lösen
+Gleichstände stabil auf. Damit wächst weder die vollständige noch die kompakte
+öffentliche Antwort unbegrenzt mit der Gesamthistorie. Private Economics,
+Verträge und Kontostände bleiben außerhalb des Read-Modells.
+
+Die doppelte vollständige State-Projektion der `PlayerGameFacade` ist entfernt.
+Der Reset liefert das benannte Dashboard-Modell; Vertragsdetails werden aus
+dem bereits gelesenen Marktbestand gewählt. Marktlebenszyklus,
+Routenaufbereitung, Fahrzeugkatalog und Weltkatalog besitzen getrennte
+Testmodule für Domain, Service, HTTP, Repository und Composition. Die echten
+Katalogdateien bleiben auf je eine explizite Repositoryabnahme beschränkt.
+
+Das erste vollständige Gate nach dem Rückbau machte sieben nur indirekt
+abgedeckte Fehlerzweige sichtbar. Kleine Gegentests für Evidenz-Backoff,
+Worker-Idle-Timeout, verlorene Verbindungsleases und abgelehnte
+Negativ-Evidenzpublikation decken diese Verträge nun direkt ab. Ein weiterer
+Lauf zeigte, dass die erste Traffic-Begrenzung zufällige Benutzer-UUIDs als
+Auswahlreihenfolge verwendete; die produktive Abfrage priorisiert deshalb nun
+fachlich die neueste Abfahrt.
+
+Die abschließende lokale Abnahme bestand mit **666 Python-Tests** in
+82,41 Sekunden bei **100 % App-Statement-Coverage**; der langsamste Fall
+benötigte 2,68 Sekunden. **131 Frontendtests** bestanden in 9,15 Sekunden.
+Alle **14 Playwright-Grenzen** bestanden in 1,3 Minuten; der langsamste
+Browserfall benötigte 8,4 Sekunden. Kein Einzelfall überschritt zehn Sekunden.
+Supabase, Live-Provider und öffentliche Tiles wurden nicht aufgerufen.
+
 ## P2-/P3-Nachprüfung
 
 Die letzte parallele Test-Composition ist entfernt. `PlayerContextFactory`
