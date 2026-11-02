@@ -54,8 +54,9 @@ def test_relational_public_reads_preserve_privacy_and_offline_progress(
         replace(
             trip,
             id="bob-live",
+            departed_at=11,
             arrives_at=30,
-            journey=unmetered_journey(3, 20),
+            journey=unmetered_journey(3, 19),
         )
     )
     rows = traffic.list_active_transports(12)
@@ -67,14 +68,14 @@ def test_relational_public_reads_preserve_privacy_and_offline_progress(
             relational,
             maximum_transports=1,
         ).list_active_transports(12)
-    ] == ["shared"]
+    ] == ["bob-live"]
     assert [
         row.id
         for row in SqliteRuntimeReader(
             relational,
             maximum_transports=1,
         ).traffic(12)
-    ] == ["shared"]
+    ] == ["bob-live"]
     for row in rows:
         assert {"contract", "password_hash", "cash", "payout_eur"}.isdisjoint(
             asdict(row)

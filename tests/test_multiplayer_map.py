@@ -68,7 +68,7 @@ def test_multiplayer_map_projects_active_traffic_without_private_economy(
     repository = SqliteTrafficReader(database)
     assert repository.list_active_transports(now + 200) == ()
     rows = repository.list_active_transports(now)
-    assert [row.id for row in rows] == ["alice-trip", "bob-trip"]
+    assert {row.id for row in rows} == {"alice-trip", "bob-trip"}
     assert set(asdict(rows[0])) == {
         "user_id",
         "username",
@@ -100,7 +100,7 @@ def test_multiplayer_map_projects_active_traffic_without_private_economy(
         )
         assert project_traffic((), alice["id"]) == []
 
-    assert [item["id"] for item in traffic] == ["alice-trip", "bob-trip"]
+    assert {item["id"] for item in traffic} == {"alice-trip", "bob-trip"}
     own = next(item for item in traffic if item["id"] == "alice-trip")
     other = next(item for item in traffic if item["id"] == "bob-trip")
     assert own["is_own"] is True

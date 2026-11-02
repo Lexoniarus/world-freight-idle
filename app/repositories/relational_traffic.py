@@ -36,7 +36,8 @@ class SqliteTrafficReader:
                     AND v.vehicle_id=t.vehicle_id
                 LEFT JOIN account_preferences p ON p.user_id=t.user_id
                 WHERE t.status='active' AND t.arrives_at > ?
-                ORDER BY t.user_id ASC, t.vehicle_id ASC
+                ORDER BY t.departed_at DESC, t.user_id ASC,
+                    t.vehicle_id ASC
                 LIMIT ?""",
                 (active_at, self._maximum_transports),
             ).fetchall()

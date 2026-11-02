@@ -105,7 +105,8 @@ class SqliteRuntimeReader:
                 "JOIN owned_vehicles v ON v.user_id=t.user_id "
                 "AND v.vehicle_id=t.vehicle_id LEFT JOIN account_preferences "
                 "p ON p.user_id=t.user_id WHERE t.status='active' "
-                "AND t.arrives_at>? ORDER BY t.user_id, t.vehicle_id LIMIT ?",
+                "AND t.arrives_at>? ORDER BY t.departed_at DESC, "
+                "t.user_id, t.vehicle_id LIMIT ?",
                 (now, self.maximum_transports),
             ).fetchall()
         return tuple(load_runtime_traffic(dict(row)) for row in rows)
