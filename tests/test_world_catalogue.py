@@ -13,6 +13,7 @@ from app.domain.errors import AmbiguousWorldReference, WorldCatalogueError
 from app.domain.geography import Coordinates
 from app.domain.world import FacilityQuery
 from app.domain.world_scopes import WorldScope
+from tests.support.api import make_settings
 
 
 def test_world_snapshot_identity_provenance_and_query(
@@ -462,7 +463,6 @@ def test_world_catalogue_composition_uses_explicit_path_without_game_state(
     tmp_path,
 ):
     from app.bootstrap import build_world_catalogue
-    from tests.test_api import make_settings
 
     settings = make_settings(tmp_path)
     catalogue = build_world_catalogue(settings)
