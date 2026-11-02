@@ -676,7 +676,7 @@ FUNCTION_TESTS.update(
 FUNCTION_TESTS.update(
     {
         "app.domain.game.OwnedVehicle.restore_location": (
-            "test_dispatch_resolves_only_missing_exact_facility_snapshot"
+            "test_dispatch_restores_only_the_exact_saved_vehicle_location"
         ),
     }
 )
