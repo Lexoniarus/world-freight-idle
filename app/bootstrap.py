@@ -68,14 +68,14 @@ from app.services.gameplay.vehicle_costs import VehicleCostResolver
 from app.services.gameplay.vehicle_location import VehicleLocationResolver
 from app.services.map_locations import MapLocationService
 from app.services.market.candidates import MarketCandidateService
-from app.services.market.components import MarketComponents
 from app.services.market.contract_factory import ContractFactory
 from app.services.market.demand import MarketDemandResolver
+from app.services.market.generation_services import MarketGenerationServices
 from app.services.market.lifecycle import MarketLifecycleService
 from app.services.market.player_demand import PlayerMarketDemandService
 from app.services.market.player_routes import PlayerMarketRouteService
 from app.services.market.player_services import PlayerMarketServices
-from app.services.market.player_stock import PlayerMarketStockContext
+from app.services.market.player_stores import PlayerMarketStores
 from app.services.market.route_preparation import (
     MarketRoutePreparationService,
 )
@@ -106,7 +106,7 @@ class GameRuntime:
 
     database: SqliteGameDatabase
     world: WorldCatalogue
-    market: MarketComponents
+    market_generation: MarketGenerationServices
     catalogue: VehicleCatalogue
     market_scope: MarketScopeResolver
     routing_evidence: RoutingEvidenceReader
@@ -219,7 +219,7 @@ def build_game_runtime(
         preparation_jobs=jobs,
         database=database,
         world=world,
-        market=build_market_components(
+        market_generation=build_market_generation_services(
             world, random.Random(rng_seed), catalogue
         ),
         catalogue=catalogue,
@@ -231,38 +231,38 @@ def build_game_runtime(
 
 def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
     """Bind one authenticated owner to the shared relational transaction."""
-    market_services = build_player_market_services(runtime, user_id)
+    player_market = build_player_market_services(runtime, user_id)
     unit = SqliteGameUnitOfWork(runtime.database, user_id)
     lifecycle = MarketLifecycleService(
         unit,
-        runtime.market,
+        runtime.market_generation,
         runtime.market_scope,
         runtime.clock,
-        market_services.demand,
-        market_services.routes,
-        market_services.stock,
-        selection=MarketSelectionService(market_services.stock.policy),
+        player_market.demand,
+        player_market.routes,
+        player_market.stores,
+        selection=MarketSelectionService(player_market.stores.policy),
     )
     planning = DispatchPlanningService(
         VehicleCostResolver(runtime.catalogue),
-        market_services.routes,
+        player_market.routes,
     )
     settlement = TransportSettlementService(
         unit,
         runtime.clock,
-        market_services.demand,
+        player_market.demand,
     )
     dispatch = TransportDispatchService(
         unit,
-        runtime.market,
+        runtime.market_generation,
         planning,
-        DispatchEligibilityService(runtime.market.candidates),
+        DispatchEligibilityService(runtime.market_generation.candidates),
         VehicleLocationResolver(runtime.world),
         settlement,
         runtime.clock,
         runtime.time_scale,
-        market_services.demand,
-        market_services.stock,
+        player_market.demand,
+        player_market.stores,
     )
     game = GameService(
         unit,
@@ -273,11 +273,11 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
             unit,
             runtime.world,
             runtime.catalogue,
-            market_services.demand,
+            player_market.demand,
         ),
         settlement,
         dispatch,
-        market_services,
+        player_market,
     )
     game.ensure_initial_state()
     return game
@@ -300,7 +300,7 @@ def build_fleet_service(
         game.unit_of_work,
         runtime.catalogue,
         runtime.world,
-        game.market_services.demand.invalidate,
+        game.player_market.demand.invalidate,
     )
 
 
@@ -406,7 +406,7 @@ def build_game_importer(
     return LegacyGameImporter(
         source,
         WorldScope(build_world_catalogue(settings).read()),
-        MarketComponents.model_id,
+        ContractFactory.model_id,
         build_vehicle_catalogue(settings).list_models(),
         exclude_global_demo=exclude_global_demo,
     )
@@ -421,13 +421,13 @@ def build_energy_upgrade(
     )
 
 
-def build_market_components(
+def build_market_generation_services(
     world: WorldCatalogue,
     rng: random.Random,
     catalogue: VehicleCatalogue,
-) -> MarketComponents:
+) -> MarketGenerationServices:
     """Bundle independent candidate, materialization and coverage services."""
-    return MarketComponents(
+    return MarketGenerationServices(
         MarketCandidateService(world, catalogue),
         ContractFactory(rng),
         VehicleCoverageService(),
@@ -460,7 +460,7 @@ def build_player_market_services(
             runtime.routing_preparation,
             runtime.clock,
         ),
-        PlayerMarketStockContext(
+        PlayerMarketStores(
             SqlitePlayerMarketStockStore(runtime.database, user_id),
             SqliteMarketTemplateStore(runtime.database),
         ),
@@ -472,33 +472,33 @@ def build_preparation_worker(runtime: GameRuntime) -> MarketPreparationWorker:
 
     def batch(user_id: str) -> StockPreparationBatch:
         """Compose one player's preparation without changing state."""
-        market_services = build_player_market_services(runtime, user_id)
+        player_market = build_player_market_services(runtime, user_id)
         unit = SqliteGameUnitOfWork(runtime.database, user_id)
-        demand = MarketDemandResolver(runtime.market.candidates)
+        demand = MarketDemandResolver(runtime.market_generation.candidates)
         return StockPreparationBatch(
             StockPublicationService(
                 unit,
-                runtime.market,
-                market_services.demand,
-                market_services.routes,
-                market_services.stock,
+                runtime.market_generation,
+                player_market.demand,
+                player_market.routes,
+                player_market.stores,
                 lambda: True,
             ),
             StockSnapshotReader(
                 unit,
-                runtime.market,
-                market_services.demand,
-                market_services.routes,
-                market_services.stock,
+                runtime.market_generation,
+                player_market.demand,
+                player_market.routes,
+                player_market.stores,
                 demand,
             ),
-            StockPlanningService(market_services.stock.policy),
+            StockPlanningService(player_market.stores.policy),
             MarketTemplateService(
-                runtime.market.factory,
-                market_services.stock.policy,
+                runtime.market_generation.contract_factory,
+                player_market.stores.policy,
                 runtime.clock,
             ),
-            market_services.route_preparation,
+            player_market.route_preparation,
         )
 
     worker = MarketPreparationWorker(

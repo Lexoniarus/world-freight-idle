@@ -10,9 +10,9 @@ from app.domain.market_stock import (
 
 
 @dataclass(slots=True)
-class PlayerMarketStockContext:
-    """Hold private issuance and shared template stores for one player."""
+class PlayerMarketStores:
+    """Expose private offers and shared templates for one player."""
 
-    stock: PlayerMarketStockStore
+    offers: PlayerMarketStockStore
     templates: MarketTemplateStore
     policy: StockPolicy = StockPolicy()

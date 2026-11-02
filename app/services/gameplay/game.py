@@ -35,7 +35,7 @@ class GameService:
     initialization: PlayerInitializationService
     settlement: TransportSettlementService
     transport_dispatch: TransportDispatchService
-    market_services: PlayerMarketServices
+    player_market: PlayerMarketServices
     state_repository: GameStateRepository = field(init=False)
 
     def __post_init__(self) -> None:
@@ -49,7 +49,7 @@ class GameService:
 
     def preparation_status(self) -> PreparationStatus | None:
         """Expose typed progress for the authenticated player's market."""
-        return self.market_services.demand.status()
+        return self.player_market.demand.status()
 
     async def quote_contract(
         self, contract_id: str, vehicle_id: str

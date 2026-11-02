@@ -20,7 +20,7 @@ async def test_catalogue_changes_block_old_supply_without_deleting_terms(
             break
     saved = game.state_repository.list_offers()
     with patch.object(
-        game.market_lifecycle.market.candidates,
+        game.market_lifecycle.generation.candidates,
         "structurally_current",
         return_value=False,
     ):
@@ -32,7 +32,7 @@ async def test_catalogue_changes_block_old_supply_without_deleting_terms(
     assert game.state_repository.list_offers() == saved
     # A changed freight class must not count incompatible old snapshots as
     # sufficient stock and thereby prevent the worker from replacing them.
-    reference = game.market_lifecycle.market.candidates.reference()
+    reference = game.market_lifecycle.generation.candidates.reference()
     changed = replace(
         reference,
         market_profiles=tuple(
@@ -40,10 +40,10 @@ async def test_catalogue_changes_block_old_supply_without_deleting_terms(
             for p in reference.market_profiles
         ),
     )
-    game.market_lifecycle.market.candidates.world = Mock(
+    game.market_lifecycle.generation.candidates.world = Mock(
         read=Mock(return_value=changed)
     )
-    catalogue = game.market_lifecycle.market.candidates.catalogue
+    catalogue = game.market_lifecycle.generation.candidates.catalogue
     models = tuple(
         replace(m, transport_capabilities=(TransportCapability("special", 1),))
         for m in catalogue.list_models()

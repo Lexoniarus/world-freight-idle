@@ -52,7 +52,7 @@ def test_initialization_direct_failure_is_atomic(
 
 def test_initialization_creates_no_market_stock(synthetic_game):
     synthetic_game.state_repository.reset()
-    assert not hasattr(synthetic_game.market_lifecycle.market, "generate")
+    assert not hasattr(synthetic_game.market_lifecycle.generation, "generate")
     synthetic_game.ensure_initial_state()
     assert synthetic_game.state_repository.list_offers() == ()
 

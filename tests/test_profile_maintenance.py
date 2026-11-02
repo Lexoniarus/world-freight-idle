@@ -412,7 +412,7 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
     )
     routes = game.market_lifecycle.routes
     assert routes is not None
-    await game.market_services.route_preparation.preparation.prepare(
+    await game.player_market.route_preparation.preparation.prepare(
         offer.origin.facility_uid,
         offer.destination.facility_uid,
     )

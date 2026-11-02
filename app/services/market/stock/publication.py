@@ -10,10 +10,10 @@ from app.domain.market import VehicleCoverageDiagnostic
 from app.domain.market_stock import PreparedTemplate
 from app.domain.routing_readiness import RouteReference
 from app.domain.state_ports import GameUnitOfWork
-from app.services.market.components import MarketComponents
+from app.services.market.generation_services import MarketGenerationServices
 from app.services.market.player_demand import PlayerMarketDemandService
 from app.services.market.player_routes import PlayerMarketRouteService
-from app.services.market.player_stock import PlayerMarketStockContext
+from app.services.market.player_stores import PlayerMarketStores
 from app.services.market.stock.snapshot import StockSnapshot
 
 LOGGER = logging.getLogger(__name__)
@@ -33,16 +33,16 @@ class StockPublicationService:
     """Own fenced publication, leaving selection and routing elsewhere."""
 
     unit: GameUnitOfWork
-    market: MarketComponents
+    generation: MarketGenerationServices
     player_demand: PlayerMarketDemandService
     routes: PlayerMarketRouteService
-    stock_context: PlayerMarketStockContext
+    stores: PlayerMarketStores
     guard: Callable[[], bool]
 
     def unchanged(self, snapshot: StockSnapshot) -> bool:
         """Recheck inputs in the active publication transaction."""
-        stock = self.stock_context.stock
-        templates = self.stock_context.templates
+        stock = self.stores.offers
+        templates = self.stores.templates
         return (
             self.guard()
             and self.unit.repository.list_vehicles() == snapshot.owned
@@ -53,7 +53,7 @@ class StockPublicationService:
             and stock.bindings() == snapshot.bindings
             and templates.scoped_templates(snapshot.template_scopes)
             == snapshot.templates
-            and self.market.candidates.reference() == snapshot.reference
+            and self.generation.candidates.reference() == snapshot.reference
             and tuple(
                 self.routes.demand_state(s.origin_uid, s.destination_uid)
                 for s in snapshot.evidence
@@ -104,7 +104,7 @@ class StockPublicationService:
         """Calculate personal offers, coverage and reusable route bindings."""
         offers = snapshot.offers + tuple(offer for _, offer in issued)
         coverage = tuple(
-            self.market.vehicle_coverage.diagnose(
+            self.generation.coverage.diagnose(
                 d.vehicle,
                 snapshot.candidates,
                 snapshot.ready,
@@ -124,7 +124,7 @@ class StockPublicationService:
             bindings = tuple(
                 (offer.id, reference)
                 for offer in offers
-                if self.market.candidates.structurally_current(offer)
+                if self.generation.candidates.structurally_current(offer)
                 and (
                     reference := self.routes.readiness.ready(
                         offer.origin.facility_uid,
@@ -144,8 +144,8 @@ class StockPublicationService:
         completed_context: str | None = None,
     ) -> bool:
         """Fence and commit one previously calculated publication plan."""
-        stock = self.stock_context.stock
-        template_store = self.stock_context.templates
+        stock = self.stores.offers
+        template_store = self.stores.templates
         by_id = {offer.id: offer for offer in plan.offers}
         pairs = tuple(
             (

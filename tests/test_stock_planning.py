@@ -46,7 +46,7 @@ def test_structural_candidates_are_reused_until_fleet_context_changes(
 ):
     """Reuse expensive trade projections without freezing changed demand."""
     game, _, batch = stock_game
-    candidates = game.market_lifecycle.market.candidates
+    candidates = game.market_lifecycle.generation.candidates
     snapshot = batch.snapshots.read()
     cities = tuple(sorted({d.vehicle.city_uid for d in snapshot.demands}))
     fleet = tuple(d.vehicle for d in snapshot.demands)
@@ -69,7 +69,9 @@ def test_stock_policy_selection_and_corrupt_storage_are_rejected(
             replace(StockPolicy(), reserve_per_band=invalid)
     snapshot = batch.snapshots.read()
     offer = ContractOffer.from_snapshot(
-        game.market_lifecycle.market.factory.build(snapshot.candidates[0], 1)
+        game.market_lifecycle.generation.contract_factory.build(
+            snapshot.candidates[0], 1
+        )
     )
     template = PreparedTemplate(
         "template", "model", offer.origin.city.city_uid, offer
@@ -84,28 +86,28 @@ def test_stock_policy_selection_and_corrupt_storage_are_rejected(
             )
     with pytest.raises(ValueError):
         PreparedTemplate("bad", "model", "wrong", offer)
-    prep.stock.templates.add(template)
+    prep.stores.templates.add(template)
     with pytest.raises(PersistenceError):
-        prep.stock.templates.add(template)
+        prep.stores.templates.add(template)
     SqlitePlayerMarketStockStore.initialize(database)
-    assert prep.stock.templates.templates((template.city_uid,)) == (template,)
-    assert prep.stock.templates.scoped_templates(
+    assert prep.stores.templates.templates((template.city_uid,)) == (template,)
+    assert prep.stores.templates.scoped_templates(
         ((template.city_uid, template.model_id),)
     ) == (template,)
-    assert prep.stock.templates.scoped_templates(()) == ()
+    assert prep.stores.templates.scoped_templates(()) == ()
     assert (
-        prep.stock.templates.scoped_templates(((template.city_uid, "other"),))
+        prep.stores.templates.scoped_templates(((template.city_uid, "other"),))
         == ()
     )
-    assert prep.stock.templates.templates(()) == ()
-    assert prep.stock.stock.cursor() == ""
-    assert prep.stock.stock.pending("context") is None
-    prep.stock.stock.checkpoint("context", ("a", "b", 1))
-    assert prep.stock.stock.cursor() == "context"
-    assert prep.stock.stock.pending("context") == ("a", "b", 1)
-    prep.stock.stock.checkpoint("context", None)
-    assert prep.stock.stock.pending("context") is None
-    prep.stock.stock.consume("unbound-legacy", 1)
+    assert prep.stores.templates.templates(()) == ()
+    assert prep.stores.offers.cursor() == ""
+    assert prep.stores.offers.pending("context") is None
+    prep.stores.offers.checkpoint("context", ("a", "b", 1))
+    assert prep.stores.offers.cursor() == "context"
+    assert prep.stores.offers.pending("context") == ("a", "b", 1)
+    prep.stores.offers.checkpoint("context", None)
+    assert prep.stores.offers.pending("context") is None
+    prep.stores.offers.consume("unbound-legacy", 1)
     assert (
         MarketSelectionService(StockPolicy()).select(
             (
@@ -121,9 +123,9 @@ def test_stock_policy_selection_and_corrupt_storage_are_rejected(
     with database.connect() as db:
         db.execute("UPDATE market_templates SET model_id=''")
     with pytest.raises(PersistenceError):
-        prep.stock.templates.templates((template.city_uid,))
+        prep.stores.templates.templates((template.city_uid,))
     with pytest.raises(PersistenceError):
-        prep.stock.templates.scoped_templates(((template.city_uid, ""),))
+        prep.stores.templates.scoped_templates(((template.city_uid, ""),))
 
 
 def test_visible_market_repeats_only_available_trade(stock_game):
@@ -131,7 +133,9 @@ def test_visible_market_repeats_only_available_trade(stock_game):
     game, _, batch = stock_game
     candidate = batch.snapshots.read().candidates[0]
     offer = ContractOffer.from_snapshot(
-        game.market_lifecycle.market.factory.build(candidate, 1, "fallback")
+        game.market_lifecycle.generation.contract_factory.build(
+            candidate, 1, "fallback"
+        )
     )
     selected = MarketSelectionService(StockPolicy()).select(
         tuple(
@@ -165,7 +169,7 @@ def test_visible_market_repeats_only_available_trade(stock_game):
 def test_visible_market_selection_prefers_a_distinct_ready_trade(stock_game):
     """Choose a different trade before repeating an earlier publication."""
     game, _, _, _, first, alternate = _target_with_alternate(stock_game)
-    factory = game.market_lifecycle.market.factory
+    factory = game.market_lifecycle.generation.contract_factory
     repeated = ContractOffer.from_snapshot(
         factory.build(first, 1, "visible-repeated")
     )
@@ -202,7 +206,7 @@ def test_personal_diversity_precedes_shared_template_balance(stock_game):
     game, batch, _, target, first, alternate = _target_with_alternate(
         stock_game
     )
-    factory = game.market_lifecycle.market.factory
+    factory = game.market_lifecycle.generation.contract_factory
     personal_offer = ContractOffer.from_snapshot(
         factory.build(first, 1, "personal-existing")
     )
@@ -255,7 +259,7 @@ def test_complete_stock_context_is_visible_but_not_scheduled(stock_game):
     candidate = snapshot.candidates[0]
     offers = tuple(
         ContractOffer.from_snapshot(
-            game.market_lifecycle.market.factory.build(
+            game.market_lifecycle.generation.contract_factory.build(
                 candidate,
                 1,
                 f"complete:{index}",
@@ -312,7 +316,7 @@ def test_demand_models_and_owned_capacity_remain_separate(stock_game):
 
     game, prep, batch = stock_game
     vehicle = game.get_vehicle("truck")
-    catalogue = game.market_lifecycle.market.candidates.catalogue
+    catalogue = game.market_lifecycle.generation.candidates.catalogue
     model = catalogue.list_models()[0]
     with pytest.raises(ValueError, match="Fahrzeugmodell"):
         planning_vehicle(

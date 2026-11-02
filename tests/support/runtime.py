@@ -9,7 +9,7 @@ from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
 from app.repositories.routing_readiness import SqliteRoutingReadinessStore
 from app.services.market.candidates import MarketCandidateService
-from app.services.market.components import MarketComponents
+from app.services.market.generation_services import MarketGenerationServices
 from app.services.market.scope import MarketScopeResolver
 from app.services.routing.evidence import RoutingEvidenceReader
 from app.services.routing.preparation import RoutingPreparationService
@@ -28,10 +28,13 @@ def build_test_runtime(
     readiness_store = SqliteRoutingReadinessStore(database)
     preparation_jobs = SqlitePreparationStore(database)
     world = CachedWorldCatalogue(context.world)
-    market = MarketComponents(
-        MarketCandidateService(world, context.market.candidates.catalogue),
-        context.market.factory,
-        context.market.vehicle_coverage,
+    market_generation = MarketGenerationServices(
+        MarketCandidateService(
+            world,
+            context.market_generation.candidates.catalogue,
+        ),
+        context.market_generation.contract_factory,
+        context.market_generation.coverage,
     )
     anchors = FakeRoutingAnchorResolver()
     router = FakeRouter()
@@ -54,7 +57,7 @@ def build_test_runtime(
     return GameRuntime(
         database=database,
         world=world,
-        market=market,
+        market_generation=market_generation,
         catalogue=context.catalogue,
         market_scope=MarketScopeResolver(world),
         routing_evidence=routing_evidence,

@@ -180,7 +180,7 @@ def test_repair_reconciliation_and_archive_reject_any_unapproved_change(
         "test-owner",
         synthetic_game_context.world,
         synthetic_game_context.catalogue,
-        synthetic_game_context.market,
+        synthetic_game_context.market_generation,
         synthetic_game.now,
         synthetic_game.time_scale,
     )

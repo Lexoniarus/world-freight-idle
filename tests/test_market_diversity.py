@@ -25,7 +25,7 @@ def test_market_diversity_counts_only_persisted_offer_dimensions(city_market):
     )
     assert diversity.rank(candidate) == (1, 1, 1)
     offer = ContractOffer.from_snapshot(
-        market.factory.build(candidate, 1, "visible-diversity")
+        market.contract_factory.build(candidate, 1, "visible-diversity")
     )
     visible = MarketDiversity()
     assert visible.rank_offer(offer) == (0, 0, 0, 0)
@@ -40,7 +40,9 @@ def test_retention_requires_structure_and_actual_vehicle_compatibility(
     candidate = market.candidates.build(
         (owned.location.city.city_uid,), fleet
     )[0]
-    offer = ContractOffer.from_snapshot(market.factory.build(candidate, 1000))
+    offer = ContractOffer.from_snapshot(
+        market.contract_factory.build(candidate, 1000)
+    )
     context = offer.market_context
     assert context is not None
     assert market.candidates.structurally_current(offer)

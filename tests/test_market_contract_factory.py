@@ -16,10 +16,10 @@ def test_deterministic_market_random_is_stable_and_rejects_bad_choices(
     """Keep market terms reproducible without reusing offer identities."""
     game, _, batch = stock_game
     candidate = batch.snapshots.read().candidates[0]
-    first = game.market_lifecycle.market.factory.build(
+    first = game.market_lifecycle.generation.contract_factory.build(
         candidate, 10, "stable-context"
     )
-    second = game.market_lifecycle.market.factory.build(
+    second = game.market_lifecycle.generation.contract_factory.build(
         candidate, 10, "stable-context"
     )
     assert first.id != second.id
@@ -47,7 +47,7 @@ def test_contract_factory_draw_is_context_stable_with_fresh_identity(
     """Keep vehicle and load draws stable while identities remain unique."""
     game, _, batch = stock_game
     candidate = batch.snapshots.read().candidates[0]
-    factory = game.market_lifecycle.market.factory
+    factory = game.market_lifecycle.generation.contract_factory
     first = factory._draw_offer(candidate, "stable-draw")
     second = factory._draw_offer(
         replace(candidate, vehicles=tuple(reversed(candidate.vehicles))),
@@ -62,10 +62,12 @@ def test_contract_factory_derives_terms_from_selected_vehicle(stock_game):
     """Bind quantity and economics to the selected vehicle facts."""
     game, _, batch = stock_game
     candidate = batch.snapshots.read().candidates[0]
-    draw = game.market_lifecycle.market.factory._draw_offer(
+    draw = game.market_lifecycle.generation.contract_factory._draw_offer(
         candidate, "stable-terms"
     )
-    terms = game.market_lifecycle.market.factory._derive_terms(candidate, draw)
+    terms = game.market_lifecycle.generation.contract_factory._derive_terms(
+        candidate, draw
+    )
     assert 0 < terms.tons <= draw.vehicle.capacity_tons
     assert terms.context.generated_capacity_tons == draw.vehicle.capacity_tons
     assert (
@@ -80,7 +82,7 @@ def test_contract_factory_snapshots_catalogue_evidence(stock_game):
     """Persist the chosen identity, terms and source evidence together."""
     game, _, batch = stock_game
     candidate = batch.snapshots.read().candidates[0]
-    factory = game.market_lifecycle.market.factory
+    factory = game.market_lifecycle.generation.contract_factory
     draw = factory._draw_offer(candidate, "stable-snapshot")
     terms = factory._derive_terms(candidate, draw)
     snapshot = factory._build_snapshot(candidate, 123.0, draw, terms)
@@ -110,12 +112,12 @@ def test_contract_factory_weights_eligible_vehicles(city_market):
     )
     assert candidate is not None
     with patch.object(
-        market.factory.rng,
+        market.contract_factory.rng,
         "choices",
         return_value=[candidate.vehicles[1]],
     ) as choose:
         offer = ContractOffer.from_snapshot(
-            market.factory.build(candidate, 1000)
+            market.contract_factory.build(candidate, 1000)
         )
     assert choose.call_args.kwargs["weights"] == [1, 0.2]
     assert offer.market_context is not None

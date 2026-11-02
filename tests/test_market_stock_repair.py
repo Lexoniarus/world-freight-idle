@@ -69,7 +69,7 @@ def _repair_context(diverse_stock_game):
         if len(candidates) == 3:
             break
     assert len(candidates) == 3
-    factory = game.market_lifecycle.market.factory
+    factory = game.market_lifecycle.generation.contract_factory
     base = ContractOffer.from_snapshot(factory.build(candidates[0], 1, "base"))
     offers = tuple(
         RepairableMarketOffer(
@@ -122,7 +122,7 @@ def _persist_context(context, preparation, database):
     """Store one synthetic historical context for repository tests."""
     with database.transaction():
         for item in context.offers:
-            preparation.stock.templates.add(
+            preparation.stores.templates.add(
                 PreparedTemplate(
                     item.template_id,
                     context.model_id,
@@ -130,9 +130,9 @@ def _persist_context(context, preparation, database):
                     item.offer,
                 )
             )
-            preparation.stock.stock.issue(item.template_id, item.offer)
+            preparation.stores.offers.issue(item.template_id, item.offer)
         for template in context.alternatives:
-            preparation.stock.templates.add(template)
+            preparation.stores.templates.add(template)
 
 
 def test_market_stock_repair_plans_only_prepared_improvements(

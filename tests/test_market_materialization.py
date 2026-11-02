@@ -15,7 +15,9 @@ def test_materialization_snapshots_profile_terms_and_validates_context(
         (owned.location.city.city_uid,), fleet
     )
     offers = tuple(
-        ContractOffer.from_snapshot(market.factory.build(candidate, 1000))
+        ContractOffer.from_snapshot(
+            market.contract_factory.build(candidate, 1000)
+        )
         for candidate in candidates[:9]
     )
     for offer in offers:

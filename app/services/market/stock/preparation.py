@@ -38,7 +38,7 @@ class StockPreparationBatch:
     async def process(self) -> PreparationBatchResult:
         """Advance one demand context, preserving fairness between players."""
         routes = self.publication.routes
-        stock = self.publication.stock_context.stock
+        stock = self.publication.stores.offers
         snapshot = self.snapshots.read()
         pairs = required_relations(snapshot.candidates)
         with routes.readiness.reading(pairs):
@@ -107,7 +107,7 @@ class StockPreparationBatch:
         targets: tuple[StockTarget, ...],
     ) -> tuple[StockTarget, MarketCandidate] | None:
         """Skip failed/backing-off work without starving other contexts."""
-        stock = self.publication.stock_context.stock
+        stock = self.publication.stores.offers
         for target in self.planning.order(targets, stock.cursor()):
             choices = tuple(c for c in target.choices if self._runnable(c))
             if not choices:

@@ -78,7 +78,7 @@ def test_runtime_never_builds_candidates_and_worker_plans_outside_writer(
     prepared_context, _ = build_prepared_game(synthetic_game_context, database)
     synthetic_game = prepared_context.service
     with patch.object(
-        type(synthetic_game_context.market.candidates),
+        type(synthetic_game_context.market_generation.candidates),
         "build",
         side_effect=AssertionError("Runtime planned"),
     ):

@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from app.bootstrap import build_market_components
+from app.bootstrap import build_market_generation_services
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
@@ -79,7 +79,7 @@ def synthetic_game_context(
     synthetic_vehicle_catalogue,
     synthetic_world_catalogue,
 ) -> FixtureGameContext:
-    market = build_market_components(
+    market = build_market_generation_services(
         synthetic_world_catalogue,
         random.Random(7),
         synthetic_vehicle_catalogue,

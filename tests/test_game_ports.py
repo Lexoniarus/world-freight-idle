@@ -29,7 +29,7 @@ def relational_game(synthetic_game_context, synthetic_game, tmp_path):
         "owner",
         synthetic_game_context.world,
         synthetic_game_context.catalogue,
-        synthetic_game_context.market,
+        synthetic_game_context.market_generation,
         synthetic_game.now,
     )
 
@@ -116,7 +116,7 @@ async def test_game_workflows_return_typed_values_and_reject_changed_offer(
     assert isinstance(quote, ContractQuote)
     assert isinstance(quote.route, RouteSnapshot)
     player = synthetic_game.state_repository.get_player()
-    readiness = synthetic_game.market_services.routes.readiness
+    readiness = synthetic_game.player_market.routes.readiness
     original_load = readiness.load
     changed = False
 
@@ -157,7 +157,7 @@ async def test_quote_loads_prepared_route_by_facility_identity(
     synthetic_game.state_repository.replace_offers(
         (replace(offer, origin=replace(offer.origin, coordinates=None)),)
     )
-    readiness = synthetic_game.market_services.routes.readiness
+    readiness = synthetic_game.player_market.routes.readiness
     with patch.object(
         readiness,
         "load",

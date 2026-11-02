@@ -7,13 +7,14 @@ from app.domain.contracts import ContractOffer
 from app.domain.market import MarketVehicle, VehicleCoverageDiagnostic
 from app.domain.results import AvailableContract, MarketPresentation
 from app.domain.state_ports import GameUnitOfWork
-from app.services.market.components import MarketComponents
+from app.services.market.contract_factory import ContractFactory
+from app.services.market.generation_services import MarketGenerationServices
 from app.services.market.player_demand import PlayerMarketDemandService
 from app.services.market.player_routes import (
     PlayerMarketRouteService,
     PlayerMarketRouteSnapshot,
 )
-from app.services.market.player_stock import PlayerMarketStockContext
+from app.services.market.player_stores import PlayerMarketStores
 from app.services.market.scope import MarketScopeResolver
 from app.services.market.selection import MarketSelectionService
 
@@ -25,12 +26,12 @@ class MarketLifecycleService:
     """Own refresh transactions and expose pruning within dispatch."""
 
     unit_of_work: GameUnitOfWork
-    market: MarketComponents
+    generation: MarketGenerationServices
     scope: MarketScopeResolver
     clock: Callable[[], float]
     demand: PlayerMarketDemandService
     routes: PlayerMarketRouteService
-    stock: PlayerMarketStockContext
+    stores: PlayerMarketStores
     selection: MarketSelectionService
 
     def published(self, *, refresh: bool = False) -> list[ContractOffer]:
@@ -39,7 +40,7 @@ class MarketLifecycleService:
             self.demand.invalidate()
         with self.unit_of_work.read_transaction():
             owned = self.unit_of_work.repository.list_vehicles()
-            fleet = self.market.candidates.resolve_fleet(owned)
+            fleet = self.generation.candidates.resolve_fleet(owned)
             retained = self._retained(
                 self.scope.resolve(owned), fleet, self.clock()
             )
@@ -56,7 +57,7 @@ class MarketLifecycleService:
             self.demand.invalidate()
         with self.unit_of_work.read_transaction():
             owned = self.unit_of_work.repository.list_vehicles()
-            fleet = self.market.candidates.resolve_fleet(owned)
+            fleet = self.generation.candidates.resolve_fleet(owned)
             self._require_vehicle(fleet, vehicle_id)
             cities = self.scope.resolve(owned)
             now = self.clock()
@@ -103,11 +104,11 @@ class MarketLifecycleService:
         routes: PlayerMarketRouteSnapshot,
     ) -> tuple[ContractOffer, ...]:
         """Filter stock using one previously loaded route snapshot."""
-        candidates = self.market.candidates
+        candidates = self.generation.candidates
         return tuple(
             offer
             for offer in offers
-            if offer.is_available(now, self.market.model_id)
+            if offer.is_available(now, ContractFactory.model_id)
             and (
                 offer.expires_at is None
                 or offer.expires_at > now + RETAIN_MINIMUM_SECONDS
@@ -122,7 +123,7 @@ class MarketLifecycleService:
         self, offers: Sequence[ContractOffer], vehicle_id: str | None = None
     ) -> tuple[AvailableContract, ...]:
         """Attach transient eligibility and separate route references."""
-        fleet = self.market.candidates.resolve_fleet(
+        fleet = self.generation.candidates.resolve_fleet(
             self.unit_of_work.repository.list_vehicles()
         )
         self._require_vehicle(fleet, vehicle_id)
@@ -140,7 +141,7 @@ class MarketLifecycleService:
         """Project contracts from one fleet and route snapshot."""
         result = []
         for offer in offers:
-            eligible = self.market.candidates.eligible_ids(offer, fleet)
+            eligible = self.generation.candidates.eligible_ids(offer, fleet)
             if not self.routes.matches_snapshot(offer, routes):
                 continue
             eligible = self.routes.eligible_from_snapshot(

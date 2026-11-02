@@ -292,7 +292,7 @@ async def test_vehicle_switch_preserves_offer_and_checks_actual_capacity(
         await synthetic_game.quote_contract(offer.id, vehicle.id)
     vehicle._capacity_tons = original.tons + 1
     with patch.object(
-        type(synthetic_game_context.market.candidates),
+        type(synthetic_game_context.market_generation.candidates),
         "eligible_ids",
         return_value=(),
     ):

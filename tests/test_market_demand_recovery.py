@@ -22,8 +22,10 @@ async def test_exhausted_negative_demand_requires_explicit_invalidation(
     )
     synthetic_game = prepared_context.service
     owned = synthetic_game.state_repository.list_vehicles()
-    fleet = synthetic_game_context.market.candidates.resolve_fleet(owned)
-    candidate = synthetic_game_context.market.candidates.build(
+    fleet = synthetic_game_context.market_generation.candidates.resolve_fleet(
+        owned
+    )
+    candidate = synthetic_game_context.market_generation.candidates.build(
         synthetic_game_context.market_scope.resolve(owned),
         fleet,
     )[0]
@@ -76,11 +78,13 @@ async def test_batch_exhausts_deterministic_route_failures(
     synthetic_game = prepared_context.service
     batch = make_stock_batch(synthetic_game, preparation)
     owned = synthetic_game.state_repository.list_vehicles()
-    fleet = synthetic_game_context.market.candidates.resolve_fleet(owned)
-    candidates = synthetic_game_context.market.candidates.build(
+    fleet = synthetic_game_context.market_generation.candidates.resolve_fleet(
+        owned
+    )
+    candidates = synthetic_game_context.market_generation.candidates.build(
         synthetic_game_context.market_scope.resolve(owned), fleet
     )[:2]
-    synthetic_game_context.market.candidates.build = Mock(
+    synthetic_game_context.market_generation.candidates.build = Mock(
         return_value=candidates
     )
     error = RoutingError("No path")

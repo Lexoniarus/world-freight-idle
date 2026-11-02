@@ -141,7 +141,7 @@ async def test_dispatch_approach_uses_facility_identity_not_display_coordinate(
         same_city[0].location_snapshot(),
         coordinates=offer.origin.coordinates,
     )
-    readiness = synthetic_game.market_services.routes.readiness
+    readiness = synthetic_game.player_market.routes.readiness
     with patch.object(
         readiness,
         "load",

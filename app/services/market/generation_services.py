@@ -9,11 +9,10 @@ from app.services.market.vehicle_coverage import VehicleCoverageService
 
 
 @dataclass(slots=True)
-class MarketComponents:
-    """Bundle market collaborators without hiding generation side effects."""
+class MarketGenerationServices:
+    """Expose the services that generate and assess market supply."""
 
-    model_id: ClassVar[str] = ContractFactory.model_id
     cargo_system: ClassVar[str] = ContractFactory.cargo_system
     candidates: MarketCandidateService
-    factory: ContractFactory
-    vehicle_coverage: VehicleCoverageService
+    contract_factory: ContractFactory
+    coverage: VehicleCoverageService

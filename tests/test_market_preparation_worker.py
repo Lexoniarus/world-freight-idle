@@ -85,8 +85,10 @@ async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
         preparation.route_preparation.preparation,
     )
     owned = synthetic_game.state_repository.list_vehicles()
-    fleet = synthetic_game_context.market.candidates.resolve_fleet(owned)
-    pool = synthetic_game_context.market.candidates.build(
+    fleet = synthetic_game_context.market_generation.candidates.resolve_fleet(
+        owned
+    )
+    pool = synthetic_game_context.market_generation.candidates.build(
         synthetic_game_context.market_scope.resolve(owned), fleet
     )
     candidate = pool[0]

@@ -161,7 +161,7 @@ async def test_expired_contract_and_failed_routing_do_not_charge(
             await synthetic_game.dispatch(contract.id, "truck_01")
         )
     synthetic_game.state_repository.replace_offers((contract,))
-    readiness = synthetic_game.market_services.routes.readiness
+    readiness = synthetic_game.player_market.routes.readiness
     with patch.object(
         readiness,
         "load",

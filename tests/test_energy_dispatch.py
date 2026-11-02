@@ -124,7 +124,7 @@ async def test_dispatch_replans_after_routing_and_settlement_rolls_back(
         synthetic_game_context,
     )
     contract = first_berlin_contract(synthetic_game)
-    readiness = synthetic_game.market_services.routes.readiness
+    readiness = synthetic_game.player_market.routes.readiness
     original_load = readiness.load
     changed = False
 
@@ -172,7 +172,7 @@ async def test_dispatch_replans_after_routing_and_settlement_rolls_back(
 
 async def test_quote_rejects_offer_changed_during_routing(synthetic_game):
     contract = first_berlin_contract(synthetic_game)
-    readiness = synthetic_game.market_services.routes.readiness
+    readiness = synthetic_game.player_market.routes.readiness
     original_load = readiness.load
     changed = False
 

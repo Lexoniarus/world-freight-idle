@@ -20,7 +20,7 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
     synthetic_game_context, monkeypatch, synthetic_game
 ):
     contract = first_berlin_contract(synthetic_game)
-    readiness = synthetic_game.market_services.routes.readiness
+    readiness = synthetic_game.player_market.routes.readiness
     with patch.object(readiness, "load", wraps=readiness.load) as loaded:
         quote = project_quote(
             await synthetic_game.quote_contract(contract["id"], "truck_01")

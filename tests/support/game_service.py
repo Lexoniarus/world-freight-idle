@@ -17,12 +17,12 @@ from app.services.gameplay.initialization import PlayerInitializationService
 from app.services.gameplay.settlement import TransportSettlementService
 from app.services.gameplay.vehicle_costs import VehicleCostResolver
 from app.services.gameplay.vehicle_location import VehicleLocationResolver
-from app.services.market.components import MarketComponents
+from app.services.market.generation_services import MarketGenerationServices
 from app.services.market.lifecycle import MarketLifecycleService
 from app.services.market.player_demand import PlayerMarketDemandService
 from app.services.market.player_routes import PlayerMarketRouteService
 from app.services.market.player_services import PlayerMarketServices
-from app.services.market.player_stock import PlayerMarketStockContext
+from app.services.market.player_stores import PlayerMarketStores
 from app.services.market.route_preparation import MarketRoutePreparationService
 from app.services.market.scope import MarketScopeResolver
 from app.services.market.selection import MarketSelectionService
@@ -47,7 +47,7 @@ class FixtureGameContext:
     service: GameService
     world: WorldCatalogue
     catalogue: VehicleCatalogue
-    market: MarketComponents
+    market_generation: MarketGenerationServices
     market_scope: MarketScopeResolver
 
 
@@ -56,7 +56,7 @@ def build_fixture_game(
     user_id: str,
     world: WorldCatalogue,
     synthetic_vehicle_catalogue: VehicleCatalogue,
-    market: MarketComponents,
+    market_generation: MarketGenerationServices,
     clock: Callable[[], float],
     time_scale: float = 1.0,
 ) -> FixtureGameContext:
@@ -70,7 +70,7 @@ def build_fixture_game(
     )
     unit = SqliteGameUnitOfWork(database, user_id)
     scope = MarketScopeResolver(world)
-    market_services = PlayerMarketServices(
+    player_market = PlayerMarketServices(
         PlayerMarketDemandService(user_id, jobs, clock, database),
         PlayerMarketRouteService(
             readiness,
@@ -78,41 +78,41 @@ def build_fixture_game(
             database,
         ),
         MarketRoutePreparationService(readiness, preparation, clock),
-        PlayerMarketStockContext(
+        PlayerMarketStores(
             MemoryPlayerMarketStockStore(),
             MemoryMarketTemplateStore(),
         ),
     )
     lifecycle = MarketLifecycleService(
         unit,
-        market,
+        market_generation,
         scope,
         clock,
-        market_services.demand,
-        market_services.routes,
-        market_services.stock,
-        MarketSelectionService(market_services.stock.policy),
+        player_market.demand,
+        player_market.routes,
+        player_market.stores,
+        MarketSelectionService(player_market.stores.policy),
     )
     planning = DispatchPlanningService(
         VehicleCostResolver(synthetic_vehicle_catalogue),
-        market_services.routes,
+        player_market.routes,
     )
     settlement = TransportSettlementService(
         unit,
         clock,
-        market_services.demand,
+        player_market.demand,
     )
     dispatch = TransportDispatchService(
         unit,
-        market,
+        market_generation,
         planning,
-        DispatchEligibilityService(market.candidates),
+        DispatchEligibilityService(market_generation.candidates),
         VehicleLocationResolver(world),
         settlement,
         clock,
         time_scale,
-        market_services.demand,
-        market_services.stock,
+        player_market.demand,
+        player_market.stores,
     )
     service = GameService(
         unit,
@@ -123,16 +123,16 @@ def build_fixture_game(
             unit,
             world,
             synthetic_vehicle_catalogue,
-            market_services.demand,
+            player_market.demand,
         ),
         settlement,
         dispatch,
-        market_services,
+        player_market,
     )
     return FixtureGameContext(
         service,
         world,
         synthetic_vehicle_catalogue,
-        market,
+        market_generation,
         scope,
     )

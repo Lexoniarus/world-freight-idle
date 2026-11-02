@@ -13,7 +13,7 @@ from app.repositories.routing_readiness import SqliteOfferRouteStore
 from app.services.market.player_demand import PlayerMarketDemandService
 from app.services.market.player_routes import PlayerMarketRouteService
 from app.services.market.player_services import PlayerMarketServices
-from app.services.market.player_stock import PlayerMarketStockContext
+from app.services.market.player_stores import PlayerMarketStores
 from app.services.market.route_preparation import (
     MarketRoutePreparationService,
 )
@@ -27,7 +27,7 @@ async def _prepare_shared_account_stock(stock_game, database):
     for _ in range(100):
         if (await batch.process()).status == "ready":
             break
-    templates = preparation.stock.templates.templates(
+    templates = preparation.stores.templates.templates(
         (game.get_vehicle("truck").location.city.city_uid,)
     )
     with database.transaction(), database.connect() as connection:
@@ -55,7 +55,7 @@ async def _prepare_shared_account_stock(stock_game, database):
             preparation.route_preparation.preparation,
             preparation.demand.clock,
         ),
-        PlayerMarketStockContext(
+        PlayerMarketStores(
             SqlitePlayerMarketStockStore(database, "other"),
             SqliteMarketTemplateStore(database),
         ),
@@ -64,18 +64,18 @@ async def _prepare_shared_account_stock(stock_game, database):
     second = StockPreparationBatch(
         StockPublicationService(
             unit,
-            game.market_lifecycle.market,
+            game.market_lifecycle.generation,
             other.demand,
             other.routes,
-            other.stock,
+            other.stores,
             lambda: True,
         ),
         StockSnapshotReader(
             unit,
-            game.market_lifecycle.market,
+            game.market_lifecycle.generation,
             other.demand,
             other.routes,
-            other.stock,
+            other.stores,
             batch.snapshots.demand,
         ),
         batch.planning,
@@ -106,15 +106,15 @@ async def test_templates_are_shared_without_new_provider_calls(
     )
 
     city_uid = templates[0].city_uid
-    assert other.stock.templates.templates((city_uid,)) == templates
+    assert other.stores.templates.templates((city_uid,)) == templates
     common = next(
         iter(
-            preparation.stock.stock.bindings().keys()
-            & other.stock.stock.bindings().keys()
+            preparation.stores.offers.bindings().keys()
+            & other.stores.offers.bindings().keys()
         )
     )
-    first_id = preparation.stock.stock.bindings()[common]
-    second_id = other.stock.stock.bindings()[common]
+    first_id = preparation.stores.offers.bindings()[common]
+    second_id = other.stores.offers.bindings()[common]
     assert first_id != second_id
     assert game.get_vehicle("truck").location.city.city_uid == city_uid
 
@@ -127,21 +127,21 @@ async def test_template_consumption_is_once_per_account(stock_game, database):
     )
     common = next(
         iter(
-            preparation.stock.stock.bindings().keys()
-            & other.stock.stock.bindings().keys()
+            preparation.stores.offers.bindings().keys()
+            & other.stores.offers.bindings().keys()
         )
     )
-    first_id = preparation.stock.stock.bindings()[common]
-    second_id = other.stock.stock.bindings()[common]
+    first_id = preparation.stores.offers.bindings()[common]
+    second_id = other.stores.offers.bindings()[common]
 
     with database.transaction():
-        preparation.stock.stock.consume(first_id, game.now())
+        preparation.stores.offers.consume(first_id, game.now())
         with pytest.raises(ValueError, match="bereits verwendet"):
-            preparation.stock.stock.consume(first_id, game.now())
-    assert common not in other.stock.stock.used()
+            preparation.stores.offers.consume(first_id, game.now())
+    assert common not in other.stores.offers.used()
     with database.transaction():
-        other.stock.stock.consume(second_id, game.now())
-    assert common in other.stock.stock.used()
+        other.stores.offers.consume(second_id, game.now())
+    assert common in other.stores.offers.used()
 
 
 @pytest.mark.asyncio
@@ -155,13 +155,13 @@ async def test_used_template_cannot_issue_a_second_bound_offer(
     )
     common = next(
         iter(
-            preparation.stock.stock.bindings().keys()
-            & other.stock.stock.bindings().keys()
+            preparation.stores.offers.bindings().keys()
+            & other.stores.offers.bindings().keys()
         )
     )
-    first_id = preparation.stock.stock.bindings()[common]
+    first_id = preparation.stores.offers.bindings()[common]
     with database.transaction():
-        preparation.stock.stock.consume(first_id, game.now())
+        preparation.stores.offers.consume(first_id, game.now())
     existing = next(
         offer
         for offer in game.state_repository.list_offers()
@@ -170,7 +170,7 @@ async def test_used_template_cannot_issue_a_second_bound_offer(
 
     duplicate = replace(existing, id="must-not-exist")
     with pytest.raises(ValueError, match="bereits verwendet"):
-        preparation.stock.stock.issue(common, duplicate)
+        preparation.stores.offers.issue(common, duplicate)
     assert all(
         offer.id != "must-not-exist"
         for offer in game.state_repository.list_offers()

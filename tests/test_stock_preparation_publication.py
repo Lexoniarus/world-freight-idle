@@ -75,14 +75,14 @@ async def test_shared_stock_has_three_visible_ten_ready_and_does_not_expire(
     stock_game,
 ):
     game, prep, batch = stock_game
-    build = game.market_lifecycle.market.candidates.build
+    build = game.market_lifecycle.generation.candidates.build
 
     def outside_writer(*args):
-        assert prep.stock.stock.database._active.get() is None
+        assert prep.stores.offers.database._active.get() is None
         return build(*args)
 
     with patch.object(
-        game.market_lifecycle.market.candidates,
+        game.market_lifecycle.generation.candidates,
         "build",
         side_effect=outside_writer,
     ):
@@ -102,7 +102,7 @@ async def test_shared_stock_has_three_visible_ten_ready_and_does_not_expire(
     )
     assert all(o.expires_at is None for o in offers)
     assert (
-        len(prep.stock.templates.templates((offers[0].origin.city.city_uid,)))
+        len(prep.stores.templates.templates((offers[0].origin.city.city_uid,)))
         == 30
     )
     assert game.refresh_contracts() == offers
@@ -112,10 +112,10 @@ async def test_shared_stock_has_three_visible_ten_ready_and_does_not_expire(
     set_game_clock(game, lambda: future, batch.route_preparation)
     assert [o.id for o in game.list_contracts()] == ids
     chosen = choices[0].offer
-    before = set(prep.stock.stock.bindings())
+    before = set(prep.stores.offers.bindings())
     await game.dispatch(chosen.id, "truck")
-    assert len(prep.stock.stock.used()) == 1
-    assert prep.stock.stock.used() <= before
+    assert len(prep.stores.offers.used()) == 1
+    assert prep.stores.offers.used() <= before
     assert len(game.state_repository.list_offers()) == 29
     # Departure hides availability but does not delete the reserve.
     assert game.list_contracts() == []

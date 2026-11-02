@@ -17,9 +17,10 @@ from app.services.gameplay.dispatch_eligibility import (
 from app.services.gameplay.dispatch_planning import DispatchPlanningService
 from app.services.gameplay.settlement import TransportSettlementService
 from app.services.gameplay.vehicle_location import VehicleLocationResolver
-from app.services.market.components import MarketComponents
+from app.services.market.contract_factory import ContractFactory
+from app.services.market.generation_services import MarketGenerationServices
 from app.services.market.player_demand import PlayerMarketDemandService
-from app.services.market.player_stock import PlayerMarketStockContext
+from app.services.market.player_stores import PlayerMarketStores
 
 LOGGER = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class TransportDispatchService:
     """Own quote validation and atomic transport creation."""
 
     unit: GameUnitOfWork
-    market: MarketComponents
+    generation: MarketGenerationServices
     planning: DispatchPlanningService
     eligibility: DispatchEligibilityService
     vehicle_locations: VehicleLocationResolver
@@ -37,7 +38,7 @@ class TransportDispatchService:
     clock: Callable[[], float]
     time_scale: float
     market_demand: PlayerMarketDemandService
-    stock: PlayerMarketStockContext
+    stores: PlayerMarketStores
 
     async def quote_contract(
         self, contract_id: str, vehicle_id: str
@@ -111,7 +112,7 @@ class TransportDispatchService:
         repository.save_player(player)
         repository.save_vehicle(vehicle)
         repository.save_transport(trip)
-        self.stock.stock.consume(contract_id, self.clock())
+        self.stores.offers.consume(contract_id, self.clock())
         repository.remove_offer(contract_id)
         self.market_demand.invalidate()
         LOGGER.info(
@@ -139,7 +140,7 @@ class TransportDispatchService:
                 offer
                 for offer in self.unit.repository.list_offers()
                 if offer.id == contract_id
-                and offer.is_available(now, self.market.model_id)
+                and offer.is_available(now, ContractFactory.model_id)
             ),
             None,
         )

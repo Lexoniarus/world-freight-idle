@@ -20,11 +20,12 @@ from app.domain.market_stock import (
 )
 from app.domain.state_ports import GameUnitOfWork
 from app.domain.world import WorldSnapshot
-from app.services.market.components import MarketComponents
+from app.services.market.contract_factory import ContractFactory
 from app.services.market.demand import MarketDemandResolver
+from app.services.market.generation_services import MarketGenerationServices
 from app.services.market.player_demand import PlayerMarketDemandService
 from app.services.market.player_routes import PlayerMarketRouteService
-from app.services.market.player_stock import PlayerMarketStockContext
+from app.services.market.player_stores import PlayerMarketStores
 from app.services.market.vehicle_coverage import trade_key
 
 LOGGER = logging.getLogger(__name__)
@@ -80,16 +81,16 @@ class StockSnapshotReader:
     """Read and project one authoritative player-market revision."""
 
     unit: GameUnitOfWork
-    market: MarketComponents
+    generation: MarketGenerationServices
     player_demand: PlayerMarketDemandService
     routes: PlayerMarketRouteService
-    stock_context: PlayerMarketStockContext
+    stores: PlayerMarketStores
     demand: MarketDemandResolver
 
     def read(self) -> StockSnapshot:
         """Read one revision and build its immutable planning snapshot."""
         started = perf_counter()
-        templates = self.stock_context.templates
+        templates = self.stores.templates
         now = self.player_demand.clock()
         inputs = self.read_inputs()
         snapshot_ms = (perf_counter() - started) * 1000
@@ -100,7 +101,7 @@ class StockSnapshotReader:
         )
         templates_ms = (perf_counter() - phase) * 1000
         phase = perf_counter()
-        candidates = self.market.candidates.build(
+        candidates = self.generation.candidates.build(
             projection.cities,
             tuple(item.vehicle for item in projection.demands),
         )
@@ -136,7 +137,7 @@ class StockSnapshotReader:
 
     def read_inputs(self) -> StockReadInputs:
         """Read player, job and stock facts in one short transaction."""
-        stock = self.stock_context.stock
+        stock = self.stores.offers
         with self.unit.read_transaction():
             owned = self.unit.repository.list_vehicles()
             offers = self.unit.repository.list_offers()
@@ -150,7 +151,7 @@ class StockSnapshotReader:
         self, inputs: StockReadInputs, now: float
     ) -> StockDemandProjection:
         """Resolve active player demand and its bounded catalogue scopes."""
-        reference = self.market.candidates.reference()
+        reference = self.generation.candidates.reference()
         demands = self.demand.resolve(inputs.owned, inputs.arrivals, now)
         cities = tuple(sorted({item.vehicle.city_uid for item in demands}))
         scopes = tuple(
@@ -209,14 +210,16 @@ class StockSnapshotReader:
             tuple(
                 offer
                 for offer in inputs.offers
-                if offer.is_available(now, self.market.model_id)
-                and self.market.candidates.structurally_current(offer)
+                if offer.is_available(now, ContractFactory.model_id)
+                and self.generation.candidates.structurally_current(offer)
             ),
             tuple(
                 template
                 for template in templates
-                if template.offer.is_available(now, self.market.model_id)
-                and self.market.candidates.structurally_current(template.offer)
+                if template.offer.is_available(now, ContractFactory.model_id)
+                and self.generation.candidates.structurally_current(
+                    template.offer
+                )
             ),
             projection.template_scopes,
         )

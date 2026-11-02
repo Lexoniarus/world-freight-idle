@@ -41,14 +41,14 @@ def test_vehicle_coverage_reports_only_materialized_vehicle_stock(city_market):
     selected = select_three_per_distance_band(pool)
     offers = tuple(
         ContractOffer.from_snapshot(
-            market.factory.build(candidate, 2, f"small:{index}")
+            market.contract_factory.build(candidate, 2, f"small:{index}")
         )
         for index, candidate in enumerate(selected)
     )
     usable = vehicle_offers(offers, small, candidates)
     assert len(usable) == 9
     assert all(offer.tons <= 1 for offer in usable)
-    diagnostic = market.vehicle_coverage.diagnose(
+    diagnostic = market.coverage.diagnose(
         small, candidates, candidates, offers
     )
     assert diagnostic.distance_counts == (3, 3, 3)
@@ -66,7 +66,7 @@ def test_shared_materialized_offers_cover_identical_vehicles_once(city_market):
     selected = select_three_per_distance_band(candidates)
     offers = tuple(
         ContractOffer.from_snapshot(
-            market.factory.build(candidate, 1, f"shared:{index}")
+            market.contract_factory.build(candidate, 1, f"shared:{index}")
         )
         for index, candidate in enumerate(selected)
     )
@@ -80,13 +80,11 @@ def test_shared_materialized_offers_cover_identical_vehicles_once(city_market):
     )
     partial = tuple(
         ContractOffer.from_snapshot(
-            market.factory.build(candidate, 2, f"short:{index}")
+            market.contract_factory.build(candidate, 2, f"short:{index}")
         )
         for index, candidate in enumerate(short[:3])
     )
-    diagnostic = market.vehicle_coverage.diagnose(
-        other, candidates, short, partial
-    )
+    diagnostic = market.coverage.diagnose(other, candidates, short, partial)
     assert diagnostic.distance_counts == (3, 0, 0)
     assert diagnostic.unmet_bands == ("medium", "long")
 
@@ -97,10 +95,12 @@ async def test_vehicle_readiness_requires_approach_and_excludes_stale(
 ):
     context, preparation = vehicle_game
     game = context.service
-    fleet = context.market.candidates.resolve_fleet(
+    fleet = context.market_generation.candidates.resolve_fleet(
         game.state_repository.list_vehicles()
     )
-    candidates = context.market.candidates.build((fleet[0].city_uid,), fleet)
+    candidates = context.market_generation.candidates.build(
+        (fleet[0].city_uid,), fleet
+    )
     at_pickup = next(
         c
         for c in candidates
@@ -127,7 +127,9 @@ async def test_vehicle_readiness_requires_approach_and_excludes_stale(
     ready = preparation.routes.ready_candidates((at_pickup, remote))
     assert len(ready) == 2
     offers = tuple(
-        ContractOffer.from_snapshot(context.market.factory.build(item, 1))
+        ContractOffer.from_snapshot(
+            context.market_generation.contract_factory.build(item, 1)
+        )
         for item in ready
     )
     game.state_repository.replace_offers(offers)
@@ -170,13 +172,17 @@ def test_two_vehicle_projection_uses_authoritative_sets(vehicle_game):
     owned = game.get_vehicle("truck")
     from app.services.gameplay.fleet import build_owned_vehicle
 
-    model = context.market.candidates.catalogue.list_models()[0]
+    model = context.market_generation.candidates.catalogue.list_models()[0]
     other = build_owned_vehicle(model, "second", owned.location)
     game.state_repository.save_vehicle(other)
-    fleet = context.market.candidates.resolve_fleet((owned, other))
-    pool = context.market.candidates.build((fleet[0].city_uid,), fleet)
+    fleet = context.market_generation.candidates.resolve_fleet((owned, other))
+    pool = context.market_generation.candidates.build(
+        (fleet[0].city_uid,), fleet
+    )
     offers = tuple(
-        ContractOffer.from_snapshot(context.market.factory.build(pool[0], 1))
+        ContractOffer.from_snapshot(
+            context.market_generation.contract_factory.build(pool[0], 1)
+        )
         for _ in range(3)
     )
     sets = {

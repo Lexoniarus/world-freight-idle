@@ -63,7 +63,7 @@ async def test_dispatch_failure_rolls_back_reservation_and_market(
 async def test_dispatch_commits_before_followup_market_reads(synthetic_game):
     offer = other_facility_offer(synthetic_game)
     cash = synthetic_game.player_state().cash
-    assert not hasattr(synthetic_game.market_lifecycle.market, "generate")
+    assert not hasattr(synthetic_game.market_lifecycle.generation, "generate")
     trip = await synthetic_game.dispatch(offer.id, "truck_01")
     assert synthetic_game.get_vehicle("truck_01").status == "enroute"
     assert (
@@ -92,7 +92,7 @@ async def test_dispatch_retains_stock_for_another_idle_vehicle(
     )
     second = build_owned_vehicle(model, "second", first.location)
     synthetic_game.state_repository.save_vehicle(second)
-    assert not hasattr(synthetic_game.market_lifecycle.market, "generate")
+    assert not hasattr(synthetic_game.market_lifecycle.generation, "generate")
     trip = await synthetic_game.dispatch(offer.id, first.id)
     assert synthetic_game.state_repository.list_active_transports() == (trip,)
     remaining = synthetic_game.state_repository.list_offers()
@@ -158,7 +158,7 @@ def test_retention_filters_without_writing_during_market_reads(
         first, id="expiring", expires_at=synthetic_game.now() + 30
     )
     synthetic_game.state_repository.replace_offers((*offers, legacy, expired))
-    synthetic_game.market_services.routes.bind((*offers, legacy, expired))
+    synthetic_game.player_market.routes.bind((*offers, legacy, expired))
     assert synthetic_game.list_contracts() == offers
     assert synthetic_game.contract_choices(offers)[0].eligible_vehicle_ids == (
         "truck_01",
@@ -330,7 +330,7 @@ async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(
 def test_market_reads_and_refresh_never_call_providers_or_generate(
     synthetic_game,
 ):
-    readiness = synthetic_game.market_services.routes.readiness
+    readiness = synthetic_game.player_market.routes.readiness
     with patch.object(
         readiness,
         "load",

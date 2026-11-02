@@ -40,11 +40,11 @@ def test_stock_publication_read_phases_preserve_one_snapshot(stock_game):
     now = prep.demand.clock()
     inputs = reader.read_inputs()
     projection = reader.resolve_demand(inputs, now)
-    assert prep.stock is not None
-    templates = prep.stock.templates.scoped_templates(
+    assert prep.stores is not None
+    templates = prep.stores.templates.scoped_templates(
         projection.template_scopes
     )
-    candidates = reader.market.candidates.build(
+    candidates = reader.generation.candidates.build(
         projection.cities,
         tuple(demand.vehicle for demand in projection.demands),
     )
@@ -135,7 +135,7 @@ async def test_failed_approaches_and_changed_publication_do_not_create_ready_off
         assert (await batch.process()).status == "exhausted"
     assert game.state_repository.list_offers() == ()
     assert (
-        prep.stock.templates.templates(
+        prep.stores.templates.templates(
             tuple({d.vehicle.city_uid for d in snapshot.demands})
         )
         == ()
@@ -155,7 +155,7 @@ async def test_arrival_projection_rejects_inconsistent_locations_and_idle_vehicl
     game, prep, batch = stock_game
     now = game.now()
     trip = add_transport(game, departed_at=now, arrives_at=now + 60)
-    arrivals = prep.stock.stock.arrivals()
+    arrivals = prep.stores.offers.arrivals()
     assert arrivals[0].transport_id == trip.id
     vehicle = game.get_vehicle("truck")
     vehicle.arrive(trip.destination)
@@ -164,7 +164,7 @@ async def test_arrival_projection_rejects_inconsistent_locations_and_idle_vehicl
     with database.connect() as db:
         db.execute("UPDATE transports SET destination_facility_uid='wrong'")
     with pytest.raises(PersistenceError, match="Ankunft"):
-        prep.stock.stock.arrivals()
+        prep.stores.offers.arrivals()
 
 
 @pytest.mark.asyncio
@@ -179,7 +179,9 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
             break
     first = game.contract_choices(game.list_contracts(), "truck")[0].offer
     # The fixture's single model is exposed through the market catalogue.
-    model = game.market_lifecycle.market.candidates.catalogue.list_models()[0]
+    model = (
+        game.market_lifecycle.generation.candidates.catalogue.list_models()[0]
+    )
     second = build_owned_vehicle(
         model, "second", game.get_vehicle("truck").location
     )
@@ -194,7 +196,7 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
             ),
         ),
         patch.object(
-            game.market_lifecycle.market.candidates,
+            game.market_lifecycle.generation.candidates,
             "build",
             side_effect=AssertionError("Runtime builds candidates"),
         ),
@@ -210,7 +212,7 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
             break
     assert len(game.state_repository.list_offers()) >= 30
     assert second.location is not None
-    templates = prep.stock.templates.templates(
+    templates = prep.stores.templates.templates(
         (second.location.city.city_uid,)
     )
     assert len(templates) > 30
@@ -219,7 +221,7 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
             [
                 t
                 for t in templates
-                if t.template_id not in prep.stock.stock.used()
+                if t.template_id not in prep.stores.offers.used()
             ]
         )
         >= 30
@@ -242,7 +244,7 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
     assert game.state_repository.list_offers() == snapshot.offers
     # A failed financial transaction cannot retain a consumption record.
     next_offer = after[0].offer
-    unused = prep.stock.stock.used()
+    unused = prep.stores.offers.used()
     with patch.object(
         game.state_repository,
         "remove_offer",
@@ -250,5 +252,5 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
     ):
         with pytest.raises(RuntimeError, match="rollback"):
             await game.dispatch(next_offer.id, "second")
-    assert prep.stock.stock.used() == unused
+    assert prep.stores.offers.used() == unused
     assert game.get_vehicle("second").status == "idle"

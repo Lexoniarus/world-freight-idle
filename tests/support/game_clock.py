@@ -18,8 +18,8 @@ def set_game_clock(
     synthetic_game.market_lifecycle.clock = clock
     synthetic_game.settlement.clock = clock
     synthetic_game.transport_dispatch.clock = clock
-    synthetic_game.market_services.demand.clock = clock
-    synthetic_game.market_services.routes.readiness.clock = clock
+    synthetic_game.player_market.demand.clock = clock
+    synthetic_game.player_market.routes.readiness.clock = clock
     if route_preparation is not None:
         route_preparation.clock = clock
         route_preparation.evidence.clock = clock

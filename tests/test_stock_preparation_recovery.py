@@ -65,11 +65,11 @@ async def test_partial_connection_resumes_after_restart_and_never_releases_early
             == 1
         )
         # Reopen the durable checkpoint and continue the other relation.
-        prep.stock.stock = SqlitePlayerMarketStockStore(
-            prep.stock.stock.database, prep.demand.user_id
+        prep.stores.offers = SqlitePlayerMarketStockStore(
+            prep.stores.offers.database, prep.demand.user_id
         )
-        assert prep.stock.stock.pending(target.key) == trade_key(remote)
+        assert prep.stores.offers.pending(target.key) == trade_key(remote)
         await batch.process()
     assert len(game.state_repository.list_offers()) == 1
     assert len(game.contract_choices(game.list_contracts(), "truck")) == 1
-    assert prep.stock.stock.pending(target.key) is None
+    assert prep.stores.offers.pending(target.key) is None

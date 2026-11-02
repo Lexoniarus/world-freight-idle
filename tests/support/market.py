@@ -33,7 +33,7 @@ def seed_test_offers(
     bind_routes: bool = True,
 ) -> None:
     """Store deterministic local offers without invoking runtime refill."""
-    market = service.market_lifecycle.market
+    market = service.market_lifecycle.generation
     owned = service.state_repository.list_vehicles()
     fleet = market.candidates.resolve_fleet(owned)
     candidates = market.candidates.build(
@@ -47,7 +47,7 @@ def seed_test_offers(
     selected = (*local[:10], *(c for c in candidates if c not in local))
     offers = tuple(
         ContractOffer.from_snapshot(
-            market.factory.build(
+            market.contract_factory.build(
                 candidate,
                 time.time(),
                 f"fixture:{index}",
@@ -57,12 +57,12 @@ def seed_test_offers(
     )
     service.state_repository.replace_offers(offers)
     if bind_routes:
-        service.market_services.routes.bind(offers)
+        service.player_market.routes.bind(offers)
 
 
 def make_stock_batch(game: GameService, preparation):
     """Compose the production stock batch for worker behavior tests."""
-    market = game.market_lifecycle.market
+    market = game.market_lifecycle.generation
     database = preparation.routes.transactions
     SqliteMarketTemplateStore.initialize(database)
     SqlitePlayerMarketStockStore.initialize(database)
@@ -73,7 +73,7 @@ def make_stock_batch(game: GameService, preparation):
             market,
             preparation.demand,
             preparation.routes,
-            preparation.stock,
+            preparation.stores,
             lambda: True,
         ),
         StockSnapshotReader(
@@ -81,13 +81,13 @@ def make_stock_batch(game: GameService, preparation):
             market,
             preparation.demand,
             preparation.routes,
-            preparation.stock,
+            preparation.stores,
             demand,
         ),
-        StockPlanningService(preparation.stock.policy),
+        StockPlanningService(preparation.stores.policy),
         MarketTemplateService(
-            market.factory,
-            preparation.stock.policy,
+            market.contract_factory,
+            preparation.stores.policy,
             preparation.demand.clock,
         ),
         preparation.route_preparation,
@@ -105,8 +105,8 @@ def build_prepared_game(context: FixtureGameContext, database):
             prepared,
             context.world,
             context.catalogue,
-            context.market,
+            context.market_generation,
             context.market_scope,
         ),
-        prepared.market_services,
+        prepared.player_market,
     )

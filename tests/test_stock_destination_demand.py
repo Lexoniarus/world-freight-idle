@@ -19,7 +19,7 @@ async def test_destination_stock_starts_at_dispatch_without_early_settlement(
     game, prep, batch = stock_game
     now = game.now()
     trip = add_transport(game, departed_at=now, arrives_at=now + 7200)
-    world = game.market_lifecycle.market.candidates.reference()
+    world = game.market_lifecycle.generation.candidates.reference()
     output = world.facilities[0].nhm_profiles[0]
     updated = replace(
         world,
@@ -31,7 +31,7 @@ async def test_destination_stock_starts_at_dispatch_without_early_settlement(
         ),
     )
     reference = Mock(read=Mock(return_value=updated))
-    game.market_lifecycle.market.candidates.world = reference
+    game.market_lifecycle.generation.candidates.world = reference
     prep.routes.readiness.world = reference
     clock = [trip.departed_at + 1]
     set_game_clock(game, lambda: clock[0], batch.route_preparation)

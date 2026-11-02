@@ -32,8 +32,10 @@ async def test_partial_market_never_publishes_unchecked_offers(
     preparation.demand.ensure()
     assert synthetic_game.list_contracts() == []
     owned = synthetic_game.state_repository.list_vehicles()
-    fleet = synthetic_game_context.market.candidates.resolve_fleet(owned)
-    pool = synthetic_game_context.market.candidates.build(
+    fleet = synthetic_game_context.market_generation.candidates.resolve_fleet(
+        owned
+    )
+    pool = synthetic_game_context.market_generation.candidates.build(
         synthetic_game_context.market_scope.resolve(owned), fleet
     )
     candidate = pool[0]
@@ -95,8 +97,10 @@ async def test_missing_payload_is_detected_only_when_geometry_is_loaded(
     )
     synthetic_game = prepared_context.service
     owned = synthetic_game.state_repository.list_vehicles()
-    fleet = synthetic_game_context.market.candidates.resolve_fleet(owned)
-    pool = synthetic_game_context.market.candidates.build(
+    fleet = synthetic_game_context.market_generation.candidates.resolve_fleet(
+        owned
+    )
+    pool = synthetic_game_context.market_generation.candidates.build(
         synthetic_game_context.market_scope.resolve(owned), fleet
     )
     candidate = next(
@@ -298,8 +302,10 @@ async def test_dispatch_rejects_retired_and_changed_prepared_routes(
     )
     synthetic_game = prepared_context.service
     owned = synthetic_game.state_repository.list_vehicles()
-    fleet = synthetic_game_context.market.candidates.resolve_fleet(owned)
-    candidates = synthetic_game_context.market.candidates.build(
+    fleet = synthetic_game_context.market_generation.candidates.resolve_fleet(
+        owned
+    )
+    candidates = synthetic_game_context.market_generation.candidates.build(
         synthetic_game_context.market_scope.resolve(owned), fleet
     )
     candidate = next(

@@ -8,7 +8,7 @@ from uuid import UUID
 
 import pytest
 
-from app.bootstrap import build_market_components
+from app.bootstrap import build_market_generation_services
 from app.domain.cargo import FacilityNhmProfile, NhmProduct
 from app.domain.game import PlayerState
 from app.domain.geography import Coordinates
@@ -112,7 +112,7 @@ def _build_city_market(
     )
     models = Mock(list_models=Mock(return_value=(model,)))
     owned = build_owned_vehicle(model, "truck", origin.location_snapshot())
-    market = build_market_components(world, random.Random(3), models)
+    market = build_market_generation_services(world, random.Random(3), models)
     fleet = market.candidates.resolve_fleet((owned,))
     return market, owned, fleet, world, model
 

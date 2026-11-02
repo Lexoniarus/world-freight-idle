@@ -186,7 +186,7 @@ async def test_planner_routes_from_checkpoint_by_facility_identity(
     offer = other_facility_offer(synthetic_game)
     start = synthetic_game.get_vehicle("truck_01").location
     assert start is not None
-    readiness = synthetic_game.market_services.routes.readiness
+    readiness = synthetic_game.player_market.routes.readiness
 
     with patch.object(readiness, "load", wraps=readiness.load) as loaded:
         plan = await synthetic_game.transport_dispatch.planning.route(
@@ -323,7 +323,7 @@ async def test_changed_departure_and_missing_evidence_never_dispatch(
     offer = other_facility_offer(synthetic_game)
     vehicle = synthetic_game.get_vehicle("truck_01")
     cash = synthetic_game.player_state().cash
-    readiness = synthetic_game.market_services.routes.readiness
+    readiness = synthetic_game.player_market.routes.readiness
     load = readiness.load
     changed = False
 

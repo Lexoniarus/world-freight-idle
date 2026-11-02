@@ -105,7 +105,9 @@ def test_evidence_weight_orders_source_and_hierarchy_quality(city_market):
 def test_offer_compatibility_requires_city_capacity_and_profile(city_market):
     market, _, fleet, _, _ = city_market
     candidate = market.candidates.build((fleet[0].city_uid,), fleet)[0]
-    offer = ContractOffer.from_snapshot(market.factory.build(candidate, 1000))
+    offer = ContractOffer.from_snapshot(
+        market.contract_factory.build(candidate, 1000)
+    )
     profile = candidate.profile
     assert can_carry_offer(fleet[0], offer, profile)
     assert not can_carry_offer(
