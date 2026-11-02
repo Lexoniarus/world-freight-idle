@@ -9,8 +9,12 @@ class SqlitePreferenceStore:
     """Own a small account table without rewriting any game snapshots."""
 
     def __init__(self, database: SqliteGameDatabase) -> None:
-        """Bind storage and initialize its separate account table."""
+        """Bind storage after explicit runtime schema initialization."""
         self.database = database
+
+    @staticmethod
+    def initialize(database: SqliteGameDatabase) -> None:
+        """Create the account-owned preference table at composition startup."""
         with database.connect() as connection:
             connection.execute("""
                 CREATE TABLE IF NOT EXISTS account_preferences (

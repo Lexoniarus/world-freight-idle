@@ -13,6 +13,16 @@ from app.repositories.snapshot_mapping import (
 )
 
 
+def validate_transport_envelope(row: dict[str, Any]) -> None:
+    """Require the supported immutable transport snapshot envelope."""
+    if (
+        type(row["version"]) is not int
+        or row["version"] != 2
+        or row["kind"] != "transport"
+    ):
+        raise ValueError("Unsupported transport envelope.")
+
+
 def load_transport(value: dict[str, Any]) -> ActiveTransport:
     """Restore canonical dispatch facts without legacy hydration."""
     route = value["route"]

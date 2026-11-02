@@ -5,7 +5,9 @@ from app.repositories.cached_world_catalogue import CachedWorldCatalogue
 from app.repositories.market_preparation import SqlitePreparationStore
 from app.repositories.market_stock import SqlitePlayerMarketStockStore
 from app.repositories.market_templates import SqliteMarketTemplateStore
+from app.repositories.preferences import SqlitePreferenceStore
 from app.repositories.provider_cache import SqliteProviderCache
+from app.repositories.relational_traffic import SqliteTrafficReader
 from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
 from app.repositories.routing_readiness import SqliteRoutingReadinessStore
 from app.services.market.candidates import MarketCandidateService
@@ -24,6 +26,9 @@ def build_test_runtime(
     """Compose a complete local runtime without external providers."""
     SqliteMarketTemplateStore.initialize(database)
     SqlitePlayerMarketStockStore.initialize(database)
+    SqlitePreferenceStore.initialize(database)
+    SqliteTrafficReader.initialize(database)
+    public_traffic = SqliteTrafficReader(database)
     SqliteProviderCache(database)
     readiness_store = SqliteRoutingReadinessStore(database)
     preparation_jobs = SqlitePreparationStore(database)
@@ -63,6 +68,7 @@ def build_test_runtime(
         routing_evidence=routing_evidence,
         routing_preparation=routing_preparation,
         preparation_jobs=preparation_jobs,
+        public_traffic=public_traffic,
         time_scale=context.service.time_scale,
         clock=context.service.now,
     )

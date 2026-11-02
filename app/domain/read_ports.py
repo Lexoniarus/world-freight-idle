@@ -57,3 +57,7 @@ class TrafficReader(Protocol):
     def list_active_transports(
         self, active_at: float
     ) -> tuple[SharedTransport, ...]: ...
+
+    def list_active_summaries(
+        self, active_at: float
+    ) -> tuple[SharedTransport, ...]: ...

@@ -13,7 +13,6 @@ from app.repositories.leaderboard import SqliteLeaderboardReader
 from app.repositories.market_stock import SqlitePlayerMarketStockStore
 from app.repositories.market_templates import SqliteMarketTemplateStore
 from app.repositories.preferences import SqlitePreferenceStore
-from app.repositories.relational_traffic import SqliteTrafficReader
 from app.repositories.routing_readiness import SqliteOfferRouteStore
 from app.repositories.runtime_views import SqliteRuntimeReader
 from app.services.analytics import AnalyticsService
@@ -194,12 +193,12 @@ def build_map_service(runtime: GameRuntime) -> MapLocationService:
 
 def build_traffic_reader(runtime: GameRuntime) -> TrafficReader:
     """Build the relational cross-player traffic projection."""
-    return SqliteTrafficReader(runtime.database)
+    return runtime.public_traffic
 
 
 def build_runtime_reader(runtime: GameRuntime) -> SqliteRuntimeReader:
     """Compose lightweight reads separately from provider-owned resources."""
-    return SqliteRuntimeReader(runtime.database)
+    return SqliteRuntimeReader(runtime.database, runtime.public_traffic)
 
 
 def build_runtime_view(

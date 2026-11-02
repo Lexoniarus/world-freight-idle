@@ -15,15 +15,13 @@ from app.domain.energy import EnergyProfile
 from app.domain.errors import PersistenceError
 from app.domain.journeys import plan_journey
 from app.main import create_app
-from app.repositories.runtime_views import (
-    load_runtime_traffic,
-    load_runtime_transport,
-    validate_runtime_envelope,
-)
+from app.repositories.relational_traffic import project_traffic_summary_row
+from app.repositories.runtime_views import load_runtime_transport
 from app.repositories.state_snapshots import (
     dataclass_document,
     encode_snapshot,
 )
+from app.repositories.transport_mapping import validate_transport_envelope
 from tests.support.api import create_minimal_static_files
 from tests.support.application_settings import (
     build_synthetic_application_settings,
@@ -211,9 +209,9 @@ def test_runtime_projection_rejects_corrupt_scalars_without_reading_history(
         with pytest.raises(ValueError):
             replace(trip, **changes)
     with pytest.raises(ValueError):
-        validate_runtime_envelope({"version": True, "kind": "transport"})
+        validate_transport_envelope({"version": True, "kind": "transport"})
     with pytest.raises(PersistenceError):
-        load_runtime_traffic(
+        project_traffic_summary_row(
             {"version": 2, "kind": "transport", "journey": "{}"}
         )
     with pytest.raises(PersistenceError):

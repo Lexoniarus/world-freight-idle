@@ -22,7 +22,9 @@ from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.market_preparation import SqlitePreparationStore
 from app.repositories.market_stock import SqlitePlayerMarketStockStore
 from app.repositories.market_templates import SqliteMarketTemplateStore
+from app.repositories.preferences import SqlitePreferenceStore
 from app.repositories.provider_cache import SqliteProviderCache
+from app.repositories.relational_traffic import SqliteTrafficReader
 from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
 from app.repositories.routing_readiness import SqliteRoutingReadinessStore
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
@@ -49,6 +51,7 @@ class GameRuntime:
     routing_evidence: RoutingEvidenceReader
     routing_preparation: RoutingPreparationService
     preparation_jobs: SqlitePreparationStore
+    public_traffic: SqliteTrafficReader
     time_scale: float
     clock: Callable[[], float] = time.time
 
@@ -100,6 +103,9 @@ def build_game_runtime(
     """Initialize only relational storage and shared application resources."""
     database = SqliteGameDatabase(settings.db_path)
     database.initialize()
+    SqlitePreferenceStore.initialize(database)
+    SqliteTrafficReader.initialize(database)
+    public_traffic = SqliteTrafficReader(database)
     cache = SqliteProviderCache(database)
     evidence = SqliteRoutingReadinessStore(database)
     jobs = SqlitePreparationStore(database)
@@ -147,6 +153,7 @@ def build_game_runtime(
         routing_evidence=routing_evidence,
         routing_preparation=routing_preparation,
         preparation_jobs=jobs,
+        public_traffic=public_traffic,
         database=database,
         world=world,
         market_generation=build_market_generation_services(
