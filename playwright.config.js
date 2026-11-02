@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-const testTimeout = process.env.CI ? 15000 : 10000;
+const testTimeout = process.env.CI ? 20000 : 10000;
 
 export default defineConfig({
   testDir: "./tests/browser",

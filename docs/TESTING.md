@@ -447,7 +447,7 @@ UPGRADED_COPY.db NEW_RESULTS_DIR`; keine parallelen Builds oder Gesamtsuiten.
 Logs und Screenshots bleiben privat. Ein Browser-Plugin ist in dieser Sitzung
 nicht verfügbar; deshalb wird das vorhandene Playwright-Testsystem verwendet.
 Lokale Browserfälle behalten ein hartes Limit von zehn Sekunden. Der langsamere
-gehostete CI-Runner erhält 15 Sekunden Scheduling-Spielraum je Fall; der gesamte
+gehostete CI-Runner erhält 20 Sekunden Scheduling-Spielraum je Fall; der gesamte
 Browserjob bleibt unabhängig davon auf 20 Minuten begrenzt und wird nicht
 automatisch wiederholt.
 

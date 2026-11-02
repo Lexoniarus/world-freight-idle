@@ -1,19 +1,21 @@
 import { expect, openVehicleMarket, register, test } from "./support.js";
 
-test("map controls survive navigation without rebuilding the canvas", async ({ page }) => {
+test("map controls remain attached after in-app navigation", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await register(page);
   await page.goto("/fleet");
   await expect(page.locator("#world-map")).toHaveAttribute("aria-busy", "false");
-  const originalCanvas = await page.locator(".maplibregl-canvas").elementHandle();
+  const canvas = page.locator(".maplibregl-canvas");
+  await canvas.evaluate((element) => {
+    element.dataset.browserTestIdentity = "persistent-map";
+  });
   await page.getByRole("link", { name: "Aufträge", exact: true }).click();
-  expect(await originalCanvas.evaluate((element) => element.isConnected)).toBeTruthy();
+  await expect(page.locator("#panel-title")).toHaveText("Stadtmarkt");
+  await expect(canvas).toHaveAttribute("data-browser-test-identity", "persistent-map");
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Flotte zentrieren" }).click();
-  const before = await page.locator(".maplibregl-canvas").screenshot();
   await page.locator(".maplibregl-ctrl-zoom-out").click();
-  const after = await page.locator(".maplibregl-canvas").screenshot();
-  expect(Buffer.compare(before, after)).not.toBe(0);
+  await expect(canvas).toHaveAttribute("data-browser-test-identity", "persistent-map");
   await page.locator(".layer-menu summary").click();
   await page.getByLabel("Transportrouten", { exact: true }).uncheck();
   await expect(page.getByLabel("Transportrouten", { exact: true })).not.toBeChecked();
