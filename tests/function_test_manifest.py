@@ -146,9 +146,9 @@ FUNCTION_TESTS = {
     "app.providers.geocoding.NominatimGeocoder._respect_rate_limit": "test_respect_rate_limit_sleeps_remaining_time",
     "app.providers.geocoding.NominatimGeocoder.geocode": "test_geocode_calls_nominatim_and_caches",
     "app.providers.routing.ValhallaTruckRouter._build_cache_key": "test_build_cache_key_is_stable",
-    "app.providers.routing.ValhallaTruckRouter._extract_route": "test_extract_route_supports_geojson_and_rejects_empty",
     "app.providers.routing.ValhallaTruckRouter.route": "test_route_calls_valhalla_and_caches",
-    "app.providers.routing.decode_polyline6": "test_decode_polyline6_and_invalid_input",
+    "app.providers.valhalla_response.ValhallaResponseParser.extract_route": "test_extract_route_supports_geojson_and_rejects_empty",
+    "app.providers.valhalla_response.decode_polyline6": "test_decode_polyline6_and_invalid_input",
     "app.services.gameplay.dispatch.TransportDispatchService.build_trip": "test_build_trip_contains_tracking_timestamps",
     "app.services.gameplay.dispatch.TransportDispatchService.find_contract": "test_find_contract_returns_match_and_raises",
     "app.services.gameplay.dispatch.TransportDispatchService.find_vehicle": "test_find_vehicle_returns_match_and_raises",
@@ -249,8 +249,8 @@ FUNCTION_TESTS.update(
         "app.providers.routing.ValhallaTruckRouter._read_cached_route": "test_route_calls_valhalla_and_caches",
         "app.providers.routing.ValhallaTruckRouter._request_route": "test_route_calls_valhalla_and_caches",
         "app.providers.routing.ValhallaTruckRouter._observe_response": "test_route_calls_valhalla_and_caches",
-        "app.providers.routing.ValhallaTruckRouter._provider_error": "test_route_classifies_valhalla_http_failures",
-        "app.providers.routing.ValhallaTruckRouter._response_payload": "test_route_classifies_invalid_provider_response",
+        "app.providers.valhalla_response.ValhallaResponseParser.provider_error": "test_route_classifies_valhalla_http_failures",
+        "app.providers.valhalla_response.ValhallaResponseParser.response_payload": "test_route_classifies_invalid_provider_response",
     }
 )
 

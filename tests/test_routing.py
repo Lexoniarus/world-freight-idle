@@ -4,7 +4,11 @@ import httpx
 import pytest
 
 from app.domain.errors import RoutingError
-from app.providers.routing import ValhallaTruckRouter, decode_polyline6
+from app.providers.routing import ValhallaTruckRouter
+from app.providers.valhalla_response import (
+    ValhallaResponseParser,
+    decode_polyline6,
+)
 from app.repositories.provider_cache import SqliteProviderCache
 
 
@@ -57,12 +61,8 @@ def test_build_cache_key_is_stable(cache: SqliteProviderCache):
     asyncio.run(client.aclose())
 
 
-def test_extract_route_supports_geojson_and_rejects_empty(
-    cache: SqliteProviderCache,
-):
-    client = httpx.AsyncClient()
-    router = ValhallaTruckRouter(cache, client, "https://v.test", "id")
-    result = router._extract_route(
+def test_extract_route_supports_geojson_and_rejects_empty():
+    result = ValhallaResponseParser.extract_route(
         {
             "trip": {
                 "summary": {"length": 5, "time": 60},
@@ -79,14 +79,11 @@ def test_extract_route_supports_geojson_and_rejects_empty(
     )
     assert result.duration_seconds == 60
     with pytest.raises(RoutingError) as caught:
-        router._extract_route(
+        ValhallaResponseParser.extract_route(
             {"trip": {"summary": {"length": 1, "time": 1}, "legs": []}}
         )
     assert caught.value.category == "invalid_response"
     assert caught.value.retryable is False
-    import asyncio
-
-    asyncio.run(client.aclose())
 
 
 def test_decode_polyline6_and_invalid_input():
@@ -281,11 +278,7 @@ async def test_route_classifies_invalid_provider_response(
     assert error.retryable is False
 
 
-def test_extract_route_supports_polyline_duplicate_join_and_malformed(
-    cache: SqliteProviderCache,
-):
-    client = httpx.AsyncClient()
-    router = ValhallaTruckRouter(cache, client, "https://v.test", "id")
+def test_extract_route_supports_polyline_duplicate_join_and_malformed():
     data = {
         "trip": {
             "summary": {"length": 5, "time": 60},
@@ -300,10 +293,10 @@ def test_extract_route_supports_polyline_duplicate_join_and_malformed(
             ],
         }
     }
-    result = router._extract_route(data)
+    result = ValhallaResponseParser.extract_route(data)
     assert result.coordinates == ((0.2, 0.1), (0.3, 0.2))
     with pytest.raises(RoutingError, match="keine verwertbare") as caught:
-        router._extract_route(
+        ValhallaResponseParser.extract_route(
             {
                 "trip": {
                     "summary": {"length": 1, "time": 1},
@@ -313,9 +306,6 @@ def test_extract_route_supports_polyline_duplicate_join_and_malformed(
         )
     assert caught.value.category == "invalid_response"
     with pytest.raises(RoutingError, match="unerwartete") as caught:
-        router._extract_route({"unexpected": True})
+        ValhallaResponseParser.extract_route({"unexpected": True})
     assert caught.value.category == "invalid_response"
     assert caught.value.provider_message == '{"unexpected": true}'
-    import asyncio
-
-    asyncio.run(client.aclose())
