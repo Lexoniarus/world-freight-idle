@@ -94,8 +94,8 @@ def collect_test_functions(
     return functions
 
 
-def has_explicit_counter_assertion(test: TestFunction) -> bool:
-    """Return whether a test directly asserts or expects a rejection."""
+def has_direct_test_assertion(test: TestFunction) -> bool:
+    """Return whether a test contains an assertion or expected rejection."""
     for node in ast.walk(test):
         if isinstance(node, ast.Assert):
             return True
@@ -111,7 +111,8 @@ def has_explicit_counter_assertion(test: TestFunction) -> bool:
     return False
 
 
-def test_every_python_core_callable_has_an_explicit_counter_test():
+def test_every_python_core_callable_has_a_unique_asserting_test_reference():
+    """Check the structural index; semantic relevance still needs review."""
     root = Path(__file__).resolve().parents[1]
     concrete = collect_concrete_callables(root / "app")
     assert concrete == set(FUNCTION_TESTS), (
@@ -130,15 +131,15 @@ def test_every_python_core_callable_has_an_explicit_counter_test():
     implicit_tests = {
         test_name
         for test_name in FUNCTION_TESTS.values()
-        if not has_explicit_counter_assertion(available_tests[test_name][1])
+        if not has_direct_test_assertion(available_tests[test_name][1])
     }
     assert not implicit_tests, (
-        "Manifest counter-tests need a direct assertion or expected rejection: "
+        "Manifest tests need a direct assertion or expected rejection: "
         f"{sorted(implicit_tests)}"
     )
 
 
-def test_counter_tests_have_unique_names_and_responsibility_modules(
+def test_manifest_test_names_are_unique_and_owner_modules_are_scoped(
     tmp_path,
 ):
     first = tmp_path / "test_first.py"
