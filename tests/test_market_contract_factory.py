@@ -1,9 +1,12 @@
 """Deterministic market selection and immutable contract construction."""
 
 from dataclasses import replace
+from unittest.mock import patch
 
 import pytest
 
+from app.domain.contracts import ContractOffer
+from app.domain.market_profiles import TransportCapability
 from app.services.market.randomness import DeterministicMarketRandom
 
 
@@ -89,3 +92,32 @@ def test_contract_factory_snapshots_catalogue_evidence(stock_game):
     assert snapshot.destination_cargo_evidence == (
         candidate.trade.destination_cargo
     )
+
+
+def test_contract_factory_weights_eligible_vehicles(city_market):
+    """Let suitability choose the vehicle used for offer capacity."""
+    market, _, fleet, _, _ = city_market
+    candidate = market.candidates.build((fleet[0].city_uid,), fleet)[0]
+    low_capacity = replace(
+        fleet[0],
+        vehicle_id="low",
+        capacity_tons=1,
+        capabilities=(TransportCapability("general", 0.2),),
+    )
+    candidate = market.candidates._candidate(
+        candidate.trade,
+        (*fleet, low_capacity),
+    )
+    assert candidate is not None
+    with patch.object(
+        market.factory.rng,
+        "choices",
+        return_value=[candidate.vehicles[1]],
+    ) as choose:
+        offer = ContractOffer.from_snapshot(
+            market.factory.build(candidate, 1000)
+        )
+    assert choose.call_args.kwargs["weights"] == [1, 0.2]
+    assert offer.market_context is not None
+    assert offer.market_context.generated_capacity_tons == 1
+    assert 0.5 <= offer.tons <= 0.8

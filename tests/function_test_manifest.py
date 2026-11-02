@@ -114,10 +114,18 @@ FUNCTION_TESTS = {
     "app.domain.validation.require_integer": "test_domain_value_validators_reject_invalid_values",
     "app.domain.validation.require_identity": "test_domain_value_validators_reject_invalid_values",
     "app.api.v1.map.list_map_hubs": "test_map_endpoint_requires_session_and_uses_game_provider",
-    "app.api.v1.contracts.accept_contract": "test_contract_api_maps_market_and_routing_outcomes",
-    "app.api.v1.contracts.get_contract": "test_contract_api_maps_market_and_routing_outcomes",
-    "app.api.v1.contracts.list_contracts": "test_contract_api_maps_market_and_routing_outcomes",
-    "app.api.v1.contracts.quote_contract": "test_contract_api_maps_market_and_routing_outcomes",
+    "app.api.v1.contracts.accept_contract": (
+        "test_contract_dispatch_maps_domain_and_routing_failures"
+    ),
+    "app.api.v1.contracts.get_contract": (
+        "test_contract_detail_maps_present_and_missing_offer"
+    ),
+    "app.api.v1.contracts.list_contracts": (
+        "test_contract_list_projects_preparation_status"
+    ),
+    "app.api.v1.contracts.quote_contract": (
+        "test_contract_quote_maps_validation_and_routing_failures"
+    ),
     "app.api.v1.contracts.refresh_contracts": "test_market_refresh_maps_only_client_errors_to_http",
     "app.api.v1.dashboard.get_dashboard": "test_dashboard_and_system_api_expose_supported_resources",
     "app.api.v1.dependencies.get_game_service": "test_private_game_resources_are_isolated_between_accounts",
@@ -609,10 +617,18 @@ FUNCTION_TESTS.update(
         "app.domain.market_calculations.distance_band": "test_distance_and_tonnage_are_deterministic_and_bounded",
         "app.domain.market_calculations.great_circle_km": "test_distance_and_tonnage_are_deterministic_and_bounded",
         "app.domain.market_calculations.shipment_tons": "test_distance_and_tonnage_are_deterministic_and_bounded",
-        "app.domain.market_calculations.evidence_weight": "test_candidate_compatibility_and_weighting_are_separate",
-        "app.domain.market_compatibility.market_vehicle": "test_candidate_compatibility_and_weighting_are_separate",
-        "app.domain.market_compatibility.vehicle_suitability": "test_candidate_compatibility_and_weighting_are_separate",
-        "app.domain.market_compatibility.can_carry_offer": "test_candidate_compatibility_and_weighting_are_separate",
+        "app.domain.market_calculations.evidence_weight": (
+            "test_evidence_weight_orders_source_and_hierarchy_quality"
+        ),
+        "app.domain.market_compatibility.market_vehicle": (
+            "test_market_vehicle_rejects_model_mismatch_and_active_vehicle"
+        ),
+        "app.domain.market_compatibility.vehicle_suitability": (
+            "test_vehicle_suitability_uses_scale_and_capability"
+        ),
+        "app.domain.market_compatibility.can_carry_offer": (
+            "test_offer_compatibility_requires_city_capacity_and_profile"
+        ),
         "app.domain.market.MarketVehicle.__post_init__": "test_candidate_value_invariants_reject_invalid_context",
         "app.domain.market.CompatibleVehicle.__post_init__": "test_candidate_value_invariants_reject_invalid_context",
         "app.domain.market.MarketCandidate.__post_init__": "test_candidate_value_invariants_reject_invalid_context",
@@ -623,8 +639,12 @@ FUNCTION_TESTS.update(
         "app.services.market.candidates.MarketCandidateService.__init__": "test_reference_cache_and_empty_origin_relations",
         "app.services.market.candidates.MarketCandidateService.reference": "test_reference_cache_and_empty_origin_relations",
         "app.services.market.candidates.MarketCandidateService.resolve_fleet": "test_model_resolution_is_explicit_and_saved_capacity_wins",
-        "app.services.market.candidates.MarketCandidateService.build": "test_candidate_compatibility_and_weighting_are_separate",
-        "app.services.market.candidates.MarketCandidateService._candidate": "test_candidate_compatibility_and_weighting_are_separate",
+        "app.services.market.candidates.MarketCandidateService.build": (
+            "test_candidate_build_is_immutable_and_requires_city_scope"
+        ),
+        "app.services.market.candidates.MarketCandidateService._candidate": (
+            "test_vehicle_suitability_uses_scale_and_capability"
+        ),
         "app.services.market.candidates.MarketCandidateService.eligible_ids": "test_retention_requires_structure_and_actual_vehicle_compatibility",
         "app.services.market.candidates.MarketCandidateService.structurally_current": "test_retention_requires_structure_and_actual_vehicle_compatibility",
         "app.services.market.diversity.MarketDiversity.record": "test_market_diversity_counts_only_persisted_offer_dimensions",

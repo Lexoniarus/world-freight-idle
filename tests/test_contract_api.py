@@ -22,12 +22,13 @@ def test_route_reference_belongs_only_to_available_market_projection(
     assert "route_reference" not in project_contract(historical)
 
 
-def test_contract_api_maps_market_and_routing_outcomes(
-    tmp_path,
-    synthetic_game,
-):
+def test_contract_list_requires_vehicle_scope(tmp_path, synthetic_game):
     with fake_game_api_client(tmp_path, synthetic_game) as client:
         assert client.get("/api/v1/contracts").status_code == 422
+
+
+def test_contract_list_projects_preparation_status(tmp_path, synthetic_game):
+    with fake_game_api_client(tmp_path, synthetic_game) as client:
         response = client.get("/api/v1/contracts?vehicle_id=truck_01")
         assert response.json()["preparation"] == {
             "preparation_id": "preparation1",
@@ -47,9 +48,22 @@ def test_contract_api_maps_market_and_routing_outcomes(
             ).status_code
             == 200
         )
+
+
+def test_contract_detail_maps_present_and_missing_offer(
+    tmp_path,
+    synthetic_game,
+):
+    with fake_game_api_client(tmp_path, synthetic_game) as client:
         assert client.get("/api/v1/contracts/c1").json()["id"] == "c1"
         assert client.get("/api/v1/contracts/missing").status_code == 404
 
+
+def test_contract_quote_maps_validation_and_routing_failures(
+    tmp_path,
+    synthetic_game,
+):
+    with fake_game_api_client(tmp_path, synthetic_game) as client:
         quote_url = "/api/v1/contracts/c1/quote"
         assert (
             client.post(quote_url, json={"vehicle_id": "truck_01"}).json()[
@@ -82,6 +96,12 @@ def test_contract_api_maps_market_and_routing_outcomes(
             assert client.post(quote_url, json=body).status_code == 422
         assert client.post(quote_url).status_code == 422
 
+
+def test_contract_dispatch_maps_domain_and_routing_failures(
+    tmp_path,
+    synthetic_game,
+):
+    with fake_game_api_client(tmp_path, synthetic_game) as client:
         accept_url = "/api/v1/contracts/c1/accept"
         assert (
             client.post(accept_url, json={"vehicle_id": "truck_01"}).json()[
@@ -100,7 +120,17 @@ def test_contract_api_maps_market_and_routing_outcomes(
             )
             assert response.status_code == status
 
+
+def test_contract_refresh_requires_vehicle_scope(tmp_path, synthetic_game):
+    with fake_game_api_client(tmp_path, synthetic_game) as client:
         assert client.post("/api/v1/contracts/refresh").status_code == 422
+
+
+def test_contract_refresh_returns_authoritative_stock(
+    tmp_path,
+    synthetic_game,
+):
+    with fake_game_api_client(tmp_path, synthetic_game) as client:
         refreshed = client.post(
             "/api/v1/contracts/refresh?vehicle_id=truck_01"
         )

@@ -1,7 +1,6 @@
 """City market selection, coverage and immutable materialization behavior."""
 
 from dataclasses import FrozenInstanceError, replace
-from unittest.mock import patch
 
 import pytest
 
@@ -21,20 +20,31 @@ from app.domain.market_profiles import (
 from app.services.market.trade_network import TradeNetwork
 
 
-def test_candidate_compatibility_and_weighting_are_separate(city_market):
-    market, owned, fleet, world, model = city_market
+def test_candidate_build_is_immutable_and_requires_city_scope(city_market):
+    market, owned, fleet, _, _ = city_market
     city = owned.location.city.city_uid
     candidates = market.candidates.build((city,), fleet)
     assert candidates
     first = candidates[0]
     with pytest.raises(FrozenInstanceError):
         first.weight = 0
-    profile = first.profile
     assert market.candidates.build((), fleet) == ()
+
+
+def test_candidate_build_rejects_incompatible_vehicle_mode(city_market):
+    market, owned, fleet, _, _ = city_market
+    city = owned.location.city.city_uid
     assert (
         market.candidates.build((city,), (replace(fleet[0], mode="rail"),))
         == ()
     )
+
+
+def test_vehicle_suitability_uses_scale_and_capability(city_market):
+    market, owned, fleet, _, _ = city_market
+    city = owned.location.city.city_uid
+    first = market.candidates.build((city,), fleet)[0]
+    profile = first.profile
     assert (
         vehicle_suitability(replace(fleet[0], capabilities=()), profile) == 0
     )
@@ -63,6 +73,12 @@ def test_candidate_compatibility_and_weighting_are_separate(city_market):
     candidate = market.candidates._candidate(first.trade, (*fleet, low))
     assert candidate.weight == pytest.approx(evidence_weight(first.trade))
     assert [v.suitability for v in candidate.vehicles] == [1, 0.2]
+
+
+def test_evidence_weight_orders_source_and_hierarchy_quality(city_market):
+    market, owned, fleet, _, _ = city_market
+    city = owned.location.city.city_uid
+    first = market.candidates.build((city,), fleet)[0]
     documented = replace(
         first.trade,
         origin_cargo=replace(
@@ -84,17 +100,13 @@ def test_candidate_compatibility_and_weighting_are_separate(city_market):
             ),
         )
     ) < evidence_weight(first.trade)
-    # Candidate max never forces the later materialization vehicle.
-    with patch.object(
-        market.factory.rng, "choices", return_value=[candidate.vehicles[1]]
-    ) as choose:
-        offer = ContractOffer.from_snapshot(
-            market.factory.build(candidate, 1000)
-        )
-    assert choose.call_args.kwargs["weights"] == [1, 0.2]
-    assert offer.market_context is not None
-    assert offer.market_context.generated_capacity_tons == 1
-    assert 0.5 <= offer.tons <= 0.8
+
+
+def test_offer_compatibility_requires_city_capacity_and_profile(city_market):
+    market, _, fleet, _, _ = city_market
+    candidate = market.candidates.build((fleet[0].city_uid,), fleet)[0]
+    offer = ContractOffer.from_snapshot(market.factory.build(candidate, 1000))
+    profile = candidate.profile
     assert can_carry_offer(fleet[0], offer, profile)
     assert not can_carry_offer(
         replace(fleet[0], city_uid="elsewhere"), offer, profile
@@ -102,12 +114,21 @@ def test_candidate_compatibility_and_weighting_are_separate(city_market):
     assert not can_carry_offer(
         replace(fleet[0], capacity_tons=0.01), offer, profile
     )
+
+
+def test_market_vehicle_rejects_model_mismatch_and_active_vehicle(city_market):
+    market, owned, _, _, model = city_market
     with pytest.raises(ValueError):
         market_vehicle(owned, replace(model, id="other"), owned.location)
     owned.start_trip()
-    assert market.candidates.resolve_fleet((owned,)) == ()
     with pytest.raises(ValueError):
         market_vehicle(owned, model, owned.location)
+
+
+def test_candidate_fleet_excludes_active_vehicle(city_market):
+    market, owned, _, _, _ = city_market
+    owned.start_trip()
+    assert market.candidates.resolve_fleet((owned,)) == ()
 
 
 def test_reference_cache_and_empty_origin_relations(city_market):
