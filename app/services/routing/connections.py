@@ -42,7 +42,7 @@ class RoutingConnectionValidator:
         """Require real return access without reversing a route polyline."""
         try:
             async with asyncio.timeout(120):
-                return await self._search(
+                return await self._search_candidate_pairs(
                     origin,
                     destination,
                     router,
@@ -54,7 +54,7 @@ class RoutingConnectionValidator:
         except TimeoutError as error:
             raise RoutingError("Connection preparation timed out.") from error
 
-    async def _search(
+    async def _search_candidate_pairs(
         self,
         origin: Facility,
         destination: Facility,
@@ -162,7 +162,7 @@ class RoutingConnectionValidator:
         record: Callable[[RoutingAttempt], None] | None,
     ) -> ValidatedConnection:
         """Certify one candidate pair only after both directions succeed."""
-        forward = await self._route(
+        forward = await self._validate_direction(
             origin.facility_uid,
             destination.facility_uid,
             start,
@@ -171,7 +171,7 @@ class RoutingConnectionValidator:
             clock,
             record,
         )
-        reverse = await self._route(
+        reverse = await self._validate_direction(
             destination.facility_uid,
             origin.facility_uid,
             end,
@@ -187,7 +187,7 @@ class RoutingConnectionValidator:
             reverse,
         )
 
-    async def _route(
+    async def _validate_direction(
         self,
         origin: str,
         destination: str,

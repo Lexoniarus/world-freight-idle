@@ -100,7 +100,11 @@ async def test_connection_requires_both_route_directions(case, failure):
 async def test_connection_deadline_is_reported_as_transient(case):
     scope = WorldScope(case.service.world.read())
     validator = RoutingConnectionValidator()
-    with patch.object(validator, "_search", side_effect=TimeoutError):
+    with patch.object(
+        validator,
+        "_search_candidate_pairs",
+        side_effect=TimeoutError,
+    ):
         with pytest.raises(RoutingError) as failure:
             await validator.validate(
                 scope.facility(ORIGIN),
