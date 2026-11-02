@@ -3,7 +3,11 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import pytest
+
 from tests.function_test_manifest import FUNCTION_TESTS
+
+TestFunction = ast.FunctionDef | ast.AsyncFunctionDef
 
 
 def collect_concrete_callables(app_root: Path) -> set[str]:
@@ -69,16 +73,42 @@ def collect_concrete_callables(app_root: Path) -> set[str]:
     return callables
 
 
-def collect_test_functions(tests_root: Path) -> set[str]:
-    names = set()
+def collect_test_functions(
+    tests_root: Path,
+) -> dict[str, tuple[Path, TestFunction]]:
+    """Index uniquely named top-level tests with their owning modules."""
+    functions: dict[str, tuple[Path, TestFunction]] = {}
     for path in tests_root.glob("test_*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
-        names.update(
-            node.name
-            for node in tree.body
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-        )
-    return names
+        for node in tree.body:
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            if not node.name.startswith("test_"):
+                continue
+            if node.name in functions:
+                first_path = functions[node.name][0]
+                raise AssertionError(
+                    f"Duplicate test name {node.name}: {first_path}, {path}"
+                )
+            functions[node.name] = (path, node)
+    return functions
+
+
+def has_explicit_counter_assertion(test: TestFunction) -> bool:
+    """Return whether a test directly asserts or expects a rejection."""
+    for node in ast.walk(test):
+        if isinstance(node, ast.Assert):
+            return True
+        if not isinstance(node, ast.With):
+            continue
+        for item in node.items:
+            expression = item.context_expr
+            if not isinstance(expression, ast.Call):
+                continue
+            if isinstance(expression.func, ast.Attribute):
+                if expression.func.attr == "raises":
+                    return True
+    return False
 
 
 def test_every_python_core_callable_has_an_explicit_counter_test():
@@ -97,6 +127,37 @@ def test_every_python_core_callable_has_an_explicit_counter_test():
     assert not missing_tests, (
         f"Manifest points to missing tests: {missing_tests}"
     )
+    implicit_tests = {
+        test_name
+        for test_name in FUNCTION_TESTS.values()
+        if not has_explicit_counter_assertion(available_tests[test_name][1])
+    }
+    assert not implicit_tests, (
+        "Manifest counter-tests need a direct assertion or expected rejection: "
+        f"{sorted(implicit_tests)}"
+    )
+
+
+def test_counter_tests_have_unique_names_and_responsibility_modules(
+    tmp_path,
+):
+    first = tmp_path / "test_first.py"
+    second = tmp_path / "test_second.py"
+    first.write_text("def test_contract(): assert True\n", encoding="utf-8")
+    second.write_text("def test_contract(): assert False\n", encoding="utf-8")
+    with pytest.raises(AssertionError, match="Duplicate test name"):
+        collect_test_functions(tmp_path)
+
+    root = Path(__file__).resolve().parents[1]
+    retired_collectors = {
+        "test_market.py",
+        "test_multiplayer.py",
+        "test_review_regressions.py",
+        "test_runtime_views.py",
+        "test_stock_preparation.py",
+    }
+    present = {path.name for path in (root / "tests").glob("test_*.py")}
+    assert retired_collectors.isdisjoint(present)
 
 
 def test_callable_scanner_includes_constructors_and_nested_implementations(
