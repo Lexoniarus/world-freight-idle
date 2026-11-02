@@ -81,7 +81,7 @@ Verträge, keine konkreten Callables des Manifest-Gates.
 | `app/services/analytics.py` · `breakdown` | Analytics | Skalarhistorie nach unveränderten IDs aggregieren | Zeilen, Dimension, optionale Labels | rein; Label verändert Gruppierung nicht |
 | `app/services/analytics.py` · `AnalyticsService.analyze` | Service | Statistik-Lese-Use-Case orchestrieren | Reader-Port, Aggregatoren, Label-Funktion | Read und strukturiertes Log; keine Mutationen |
 | `app/services/market/contract_factory.py` · `ContractFactory.build` | Service | einen Candidate zu einem Offer materialisieren | injizierter RNG, immutable Candidate, reine Mengen-/Tariffunktionen | RNG-Verbrauch; kein SQL/Routing, kein Gewinn-Retry |
-| `app/services/cost_profiles.py` · `VehicleCostResolver.resolve` | Service | explizites Kostenprofil zum Modell auflösen | VehicleCatalogue-Port | Referenzread; keine Rückrechnung |
+| `app/services/gameplay/vehicle_costs.py` · `VehicleCostResolver.resolve` | Service | explizites Kostenprofil zum Modell auflösen | VehicleCatalogue-Port | Referenzread; keine Rückrechnung |
 | `app/services/dispatch_planning.py` · `DispatchPlanningService.quote` | Service | revalidierten Route-/Fahrzeugkontext zur Quote komponieren | Kostenresolver, Journey/Kosten/Pricing-Domain | Referenzread; keine Schreibtransaktion oder Offeränderung |
 | `app/services/game.py` · `GameService._build_trip` | Service | geprüfte Quote als Transport einfrieren | Quote, Offer, Abfahrtszeit | UUID-Erzeugung; keine neue Preis-/Routingregel |
 | `app/services/market/candidates.py` · `MarketCandidateService.__init__` | Service | Referenzports und Indexzustand besitzen | World-/Vehicle-Ports | lokaler Cachezustand |

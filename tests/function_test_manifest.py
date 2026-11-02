@@ -656,7 +656,7 @@ FUNCTION_TESTS.update(
         "app.domain.economics.journey_costs": "test_cost_values_reject_invalid_or_inconsistent_components",
         "app.domain.tariffs.FreightTariff.__post_init__": "test_tariff_uses_concrete_nhm_and_explicit_maintenance",
         "app.domain.tariffs.freight_tariff": "test_tariff_uses_concrete_nhm_and_explicit_maintenance",
-        "app.services.cost_profiles.VehicleCostResolver.resolve": "test_tariff_uses_concrete_nhm_and_explicit_maintenance",
+        "app.services.gameplay.vehicle_costs.VehicleCostResolver.resolve": "test_tariff_uses_concrete_nhm_and_explicit_maintenance",
         "app.repositories.transport_mapping.load_cost_breakdown": "test_cost_values_reject_invalid_or_inconsistent_components",
         "app.bootstrap.build_preferences": "test_preferences_are_account_scoped_persistent_and_palette_validated",
         "app.repositories.preferences.SqlitePreferenceStore.__init__": "test_preferences_are_account_scoped_persistent_and_palette_validated",

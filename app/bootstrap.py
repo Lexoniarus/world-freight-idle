@@ -50,7 +50,6 @@ from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.repositories.world_geography import WorldGeographyRepository
 from app.services.analytics import AnalyticsService
-from app.services.cost_profiles import VehicleCostResolver
 from app.services.economy_audit import EconomyAuditService
 from app.services.gameplay.dispatch import TransportDispatchService
 from app.services.gameplay.dispatch_eligibility import (
@@ -61,6 +60,7 @@ from app.services.gameplay.fleet import FleetService
 from app.services.gameplay.game import GameService
 from app.services.gameplay.initialization import PlayerInitializationService
 from app.services.gameplay.settlement import TransportSettlementService
+from app.services.gameplay.vehicle_costs import VehicleCostResolver
 from app.services.gameplay.vehicle_location import VehicleLocationResolver
 from app.services.map_locations import MapLocationService
 from app.services.market.candidates import MarketCandidateService

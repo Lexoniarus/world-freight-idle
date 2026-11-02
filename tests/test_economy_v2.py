@@ -19,7 +19,7 @@ from app.domain.energy import EnergyKind, EnergyProfile, EnergyUnit
 from app.domain.journeys import plan_journey, unmetered_journey
 from app.domain.tariffs import FreightTariff, freight_tariff
 from app.repositories.transport_mapping import load_cost_breakdown
-from app.services.cost_profiles import VehicleCostResolver
+from app.services.gameplay.vehicle_costs import VehicleCostResolver
 
 
 def metered(kind: EnergyKind = "diesel", level=100, distance=1000):

@@ -6,7 +6,6 @@ from typing import cast
 from app.domain.ports import VehicleCatalogue, WorldCatalogue
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
-from app.services.cost_profiles import VehicleCostResolver
 from app.services.gameplay.dispatch import TransportDispatchService
 from app.services.gameplay.dispatch_eligibility import (
     DispatchEligibilityService,
@@ -15,6 +14,7 @@ from app.services.gameplay.dispatch_planning import DispatchPlanningService
 from app.services.gameplay.game import GameService
 from app.services.gameplay.initialization import PlayerInitializationService
 from app.services.gameplay.settlement import TransportSettlementService
+from app.services.gameplay.vehicle_costs import VehicleCostResolver
 from app.services.gameplay.vehicle_location import VehicleLocationResolver
 from app.services.market.components import MarketComponents
 from app.services.market.lifecycle import MarketLifecycleService

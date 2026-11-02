@@ -10,7 +10,7 @@ from app.domain.pricing import calculate_price
 from app.domain.results import ContractQuote
 from app.domain.routes import DispatchRoutePlan, RouteSnapshot
 from app.domain.world import FacilityLocationSnapshot
-from app.services.cost_profiles import VehicleCostResolver
+from app.services.gameplay.vehicle_costs import VehicleCostResolver
 from app.services.market.player_routes import PlayerMarketRouteService
 
 
