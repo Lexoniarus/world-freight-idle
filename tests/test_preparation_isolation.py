@@ -171,10 +171,10 @@ def test_payload_validation_cache_detects_changes(
         decode.assert_called_once()
     # Force the bounded memo through eviction without expensive geometry work.
     for index in range(2047):
-        store._validated_payloads[str(index)] = True
+        store.relations._validated_payloads[str(index)] = True
     with database.connect() as db:
         db.execute("UPDATE route_cache SET payload='{}'")
     assert not store.payload_available(relation.reference)
-    assert len(store._validated_payloads) == 2048
+    assert len(store.relations._validated_payloads) == 2048
     assert decode_route_payload("[]") is None
     assert decode_route_payload("invalid") is None

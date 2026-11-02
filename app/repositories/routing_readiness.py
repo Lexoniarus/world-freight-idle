@@ -1,7 +1,6 @@
 """Composition facade for focused routing persistence repositories."""
 
 from contextlib import AbstractContextManager
-from sqlite3 import Row
 
 from app.domain.routing_anchors import RoutingAnchor
 from app.domain.routing_connections import ValidatedConnection
@@ -47,7 +46,6 @@ class SqliteRoutingReadinessStore:
             self.anchors,
         )
         self.attempts = SqliteRoutingAttemptRepository(database)
-        self._validated_payloads = self.relations._validated_payloads
         with database.connect() as connection:
             connection.executescript(SCHEMA)
 
@@ -65,11 +63,6 @@ class SqliteRoutingReadinessStore:
         """Read current directed relations in one bounded query."""
         return self.relations.get_many(relation_ids)
 
-    @staticmethod
-    def _relation(row: Row) -> RoutingRelation:
-        """Decode one row through the relation repository."""
-        return SqliteRoutingRelationRepository._decode_relation(row)
-
     def payload(self, reference: RouteReference) -> RoutePayload | None:
         """Load one validated immutable route payload."""
         return self.relations.payload(reference)
@@ -77,10 +70,6 @@ class SqliteRoutingReadinessStore:
     def payload_available(self, reference: RouteReference) -> bool:
         """Report whether one exact payload is valid and available."""
         return self.relations.payload_available(reference)
-
-    def _payload_document(self, reference: RouteReference) -> str | None:
-        """Read one raw payload document for compatibility diagnostics."""
-        return self.relations._payload_document(reference)
 
     def acquire(
         self, subject: str, owner: str, now: float, expires_at: float
