@@ -842,7 +842,7 @@ FUNCTION_TESTS.update(
 
 FUNCTION_TESTS.update(
     {
-        "app.domain.routing_anchors.distance_m": "test_search_budget_is_transient_and_successful_direct_path_is_certified",
+        "app.domain.routing_anchors.distance_m": "test_candidate_search_budget_is_bounded_and_direct_path_is_certified",
         "app.domain.routing_connections.connection_identity": "test_reverse_requests_cancellation_and_expired_leases",
         "app.domain.routing_connections.connection_leases": "test_reverse_requests_cancellation_and_expired_leases",
         "app.domain.routing_connections.anchor_identity": "test_anchor_fingerprints_survive_sqlite_numeric_normalization",
@@ -851,13 +851,13 @@ FUNCTION_TESTS.update(
         "app.services.routing.anchors.RoutingAnchorResolver._cache_is_current": "test_certified_access_is_stable_and_legacy_access_is_only_candidate",
         "app.services.routing.anchors.RoutingAnchorResolver._address_candidates": "test_address_and_missing_coordinate_fallbacks_are_bounded",
         "app.services.routing.anchors.RoutingAnchorResolver._rank_candidates": "test_certified_access_is_stable_and_legacy_access_is_only_candidate",
-        "app.services.routing.connections.RoutingConnectionValidator.validate": "test_connection_deadline_is_transient_for_direct_planning",
-        "app.services.routing.connections.RoutingConnectionValidator._search": "test_search_budget_is_transient_and_successful_direct_path_is_certified",
-        "app.services.routing.connections.RoutingConnectionValidator._extend_candidates": "test_search_budget_is_transient_and_successful_direct_path_is_certified",
-        "app.services.routing.connections.RoutingConnectionValidator._ordered_pairs": "test_shifted_success_endpoint_tries_next_real_candidate",
-        "app.services.routing.connections.RoutingConnectionValidator._validate_pair": "test_no_direction_is_published_without_matching_return_geometry",
-        "app.services.routing.connections.RoutingConnectionValidator._route": "test_no_direction_is_published_without_matching_return_geometry",
-        "app.services.routing.connections.RoutingConnectionValidator._anchor": "test_wolfsburg_real_candidates_recover_without_changing_facility",
+        "app.services.routing.connections.RoutingConnectionValidator.validate": "test_connection_deadline_is_reported_as_transient",
+        "app.services.routing.connections.RoutingConnectionValidator._search": "test_candidate_search_budget_is_bounded_and_direct_path_is_certified",
+        "app.services.routing.connections.RoutingConnectionValidator._extend_candidates": "test_candidate_search_budget_is_bounded_and_direct_path_is_certified",
+        "app.services.routing.connections.RoutingConnectionValidator._ordered_pairs": "test_shifted_endpoint_tries_the_next_candidate",
+        "app.services.routing.connections.RoutingConnectionValidator._validate_pair": "test_connection_requires_both_route_directions",
+        "app.services.routing.connections.RoutingConnectionValidator._route": "test_connection_requires_both_route_directions",
+        "app.services.routing.connections.RoutingConnectionValidator._anchor": "test_primary_candidate_recovers_wolfsburg_connection",
         "app.repositories.routing_readiness.SqliteRoutingReadinessStore.connected": "test_route_certificates_outlive_payloads_but_versions_invalidate",
         "app.repositories.routing_readiness.SqliteRoutingReadinessStore.publish_connection": "test_connection_publication_rolls_back_both_directions_and_anchors",
     }
