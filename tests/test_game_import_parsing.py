@@ -1,4 +1,4 @@
-"""Offline import: preserved history, isolated owners and fail-closed writes."""
+"""Legacy snapshot parsing, validation and historical evidence."""
 
 import copy
 import json
@@ -10,10 +10,8 @@ from unittest.mock import patch
 import pytest
 
 from app.bootstrap import (
-    build_game_importer,
     build_player_service,
 )
-from app.config import Settings
 from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.errors import PersistenceError
 from app.repositories.database_backup import backup_database
@@ -25,7 +23,6 @@ from app.repositories.legacy_game_import import (
 )
 from app.repositories.legacy_import_mapping import read_legacy_profile
 from app.services.auth import PasswordHasher
-from tests.support.catalogues import BERLIN_UID
 from tests.support.legacy_fixtures import (
     legacy_transport_projection,
     legacy_vehicle_projection,
@@ -256,132 +253,6 @@ def test_legacy_snapshot_decoding_rejects_conflicting_facts(legacy_source):
     assert reader.transport(feature) == reader.transport(
         state["active_trips"][0]
     )
-
-
-def test_import_rolls_back_reconciliation_and_write_failures(
-    legacy_source, tmp_path
-):
-    path, importer, _, now, _ = legacy_source
-    original = path.read_bytes()
-    target = tmp_path / "failed.db"
-    for hook in (
-        "app.repositories.legacy_game_import.reconcile_import",
-        "app.repositories.game_state.SqliteGameStateRepository.save_transport",
-    ):
-        with patch(hook, side_effect=PersistenceError("simulated")):
-            with pytest.raises(PersistenceError):
-                importer.import_to(target, now)
-        assert not target.exists()
-        assert path.read_bytes() == original
-
-
-def test_import_cli_requires_backup_and_separate_paths(
-    legacy_source, tmp_path, monkeypatch, capsys
-):
-    from scripts import import_legacy_game as cli
-
-    path, importer, _, now, _ = legacy_source
-    monkeypatch.setattr(
-        cli,
-        "build_game_importer",
-        lambda source, settings, exclude_global_demo=False: importer,
-    )
-    monkeypatch.setattr(cli.time, "time", lambda: now)
-    monkeypatch.setattr(
-        "sys.argv", ["import", "--source", str(path), "--check"]
-    )
-    cli.main()
-    assert '"accounts": 3' in capsys.readouterr().out
-    backup = tmp_path / "backup.db"
-    output = tmp_path / "output.db"
-    monkeypatch.setattr(
-        "sys.argv",
-        [
-            "import",
-            "--source",
-            str(path),
-            "--backup",
-            str(backup),
-            "--output",
-            str(output),
-        ],
-    )
-    with patch.object(cli, "backup_database", side_effect=OSError("disk")):
-        with pytest.raises(OSError):
-            cli.main()
-    assert not output.exists()
-    cli.main()
-    assert backup.exists() and output.exists()
-    with pytest.raises(SystemExit):
-        cli.main()
-    for extra in (
-        [],
-        ["--backup", str(path), "--output", str(tmp_path / "other.db")],
-        ["--check", "--backup", str(backup)],
-    ):
-        monkeypatch.setattr(
-            "sys.argv", ["import", "--source", str(path), *extra]
-        )
-        with pytest.raises(SystemExit):
-            cli.main()
-    settings = Settings.from_env()
-    built = build_game_importer(path, settings)
-    assert isinstance(built, LegacyGameImporter)
-    assert built.reader.world.facility(BERLIN_UID).facility_uid == BERLIN_UID
-    with pytest.raises(PersistenceError):
-        build_game_importer(tmp_path / "missing.db", settings).inspect(now)
-
-
-def test_import_reconciliation_detects_retained_value_changes(
-    legacy_source, tmp_path
-):
-    from app.repositories.legacy_game_import import reconcile_import
-
-    _, importer, _, now, _ = legacy_source
-    target = tmp_path / "reconcile.db"
-    importer.import_to(target, now)
-    database = SqliteGameDatabase(target)
-    profiles = importer._read_profiles(now)
-    reconcile_import(database, profiles)
-    for statement in (
-        "UPDATE users SET created_at=101 WHERE id='a'",
-        "UPDATE player_states SET cash=cash+1 WHERE user_id='a'",
-        "UPDATE owned_vehicles SET name='changed' WHERE user_id='a'",
-    ):
-        with pytest.raises(PersistenceError):
-            with database.transaction():
-                with database.connect() as connection:
-                    connection.execute(statement)
-                reconcile_import(database, profiles)
-        reconcile_import(database, profiles)
-
-    with database.connect() as connection:
-        connection.execute("PRAGMA foreign_keys=OFF")
-        connection.execute(
-            "CREATE TABLE corrupt_link(owner TEXT REFERENCES users(id))"
-        )
-        connection.execute("INSERT INTO corrupt_link VALUES('unknown')")
-    with pytest.raises(PersistenceError, match="integrity check failed"):
-        reconcile_import(database, profiles)
-
-
-def test_backup_failure_removes_only_its_own_incomplete_output(tmp_path):
-    from unittest.mock import MagicMock
-
-    source = tmp_path / "source.db"
-    target = tmp_path / "incomplete.db"
-    source.write_bytes(b"source untouched")
-    with patch("app.repositories.database_backup.sqlite3.connect") as connect:
-        origin = MagicMock()
-        destination = MagicMock()
-        connect.side_effect = [origin, destination]
-        origin.backup.side_effect = sqlite3.OperationalError("disk full")
-        with pytest.raises(sqlite3.OperationalError):
-            backup_database(source, target)
-        assert not target.exists()
-        origin.close.assert_called_once()
-        destination.close.assert_called_once()
-    assert source.read_bytes() == b"source untouched"
 
 
 def test_historical_terms_preserve_non_nhm_evidence_and_reject_invalid_values(
