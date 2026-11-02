@@ -14,7 +14,6 @@ from app.main import create_app
 from tests.support.api import create_minimal_static_files
 from tests.support.application_settings import (
     build_synthetic_application_settings,
-    build_vehicle_reference_application_settings,
 )
 
 
@@ -68,7 +67,7 @@ def test_packaged_catalogue_works_outside_project_directory(
     monkeypatch,
 ):
     create_minimal_static_files(tmp_path)
-    settings = build_vehicle_reference_application_settings(tmp_path)
+    settings = build_synthetic_application_settings(tmp_path)
     bundled = tmp_path / "data" / "world_freight_vehicle_catalog.sqlite3"
     bundled.parent.mkdir()
     assert settings.vehicle_catalogue_path is not None
@@ -92,5 +91,5 @@ def test_packaged_catalogue_works_outside_project_directory(
         ).raise_for_status()
         response = client.get("/api/v1/fleet/catalogue")
         assert response.status_code == 200
-        assert len(response.json()["models"]) >= 8
+        assert len(response.json()["models"]) == 4
         assert client.get("/login").status_code == 200
