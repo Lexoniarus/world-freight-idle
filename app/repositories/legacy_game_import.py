@@ -18,10 +18,8 @@ from app.domain.vehicles import VehicleModel
 from app.domain.world_scopes import WorldScope
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameStateRepository
-from app.repositories.legacy_import_mapping import (
-    LegacyFieldError,
-    LegacySnapshotReader,
-)
+from app.repositories.legacy_import_mapping import LegacySnapshotReader
+from app.repositories.legacy_import_values import LegacyFieldError
 
 LOGGER = logging.getLogger(__name__)
 

@@ -91,12 +91,12 @@ FUNCTION_TESTS = {
     "app.api.v1.map.exact_facility": "test_analytics_and_exact_api_require_session",
     "app.services.map_locations.MapLocationService.exact_city": "test_analytics_and_exact_api_require_session",
     "app.services.map_locations.MapLocationService.exact_facility": "test_analytics_and_exact_api_require_session",
-    "app.repositories.legacy_import_mapping.LegacyFieldError.__init__": "test_import_modes_reject_nested_loss_without_outputs",
-    "app.repositories.legacy_import_mapping.require_legacy_array": "test_nested_cargo_sources_and_arrays_reject_unknown_values",
-    "app.repositories.legacy_import_mapping.read_legacy_source": "test_nested_cargo_sources_and_arrays_reject_unknown_values",
-    "app.repositories.legacy_import_mapping.read_legacy_sources": "test_nested_cargo_sources_and_arrays_reject_unknown_values",
-    "app.repositories.legacy_import_mapping.read_legacy_good": "test_nested_cargo_sources_and_arrays_reject_unknown_values",
-    "app.repositories.legacy_import_mapping.read_legacy_route": "test_legacy_route_rejects_unretained_feature_metadata",
+    "app.repositories.legacy_import_values.LegacyFieldError.__init__": "test_import_modes_reject_nested_loss_without_outputs",
+    "app.repositories.legacy_import_values.require_legacy_array": "test_nested_cargo_sources_and_arrays_reject_unknown_values",
+    "app.repositories.legacy_import_values.read_legacy_source": "test_nested_cargo_sources_and_arrays_reject_unknown_values",
+    "app.repositories.legacy_import_values.read_legacy_sources": "test_nested_cargo_sources_and_arrays_reject_unknown_values",
+    "app.repositories.legacy_import_values.read_legacy_good": "test_nested_cargo_sources_and_arrays_reject_unknown_values",
+    "app.repositories.legacy_import_values.read_legacy_route": "test_legacy_route_rejects_unretained_feature_metadata",
     "app.repositories.game_database.SqliteGameDatabase._validate_keys": "test_schema_rejects_missing_or_changed_ownership_keys",
     "app.repositories.game_database.SqliteGameDatabase._validate_guards": "test_schema_rejects_ineffective_unique_index",
     "app.repositories.game_database.schema_sql_tokens": "test_schema_accepts_formatting_but_preserves_literals",
@@ -510,12 +510,12 @@ FUNCTION_TESTS.update(
         "app.repositories.legacy_import_mapping.LegacySnapshotReader.vehicle": "test_legacy_snapshot_decoding_rejects_conflicting_facts",
         "app.repositories.legacy_import_mapping.LegacySnapshotReader.offer": "test_legacy_snapshot_decoding_rejects_conflicting_facts",
         "app.repositories.legacy_import_mapping.LegacySnapshotReader.transport": "test_legacy_snapshot_decoding_rejects_conflicting_facts",
-        "app.repositories.legacy_import_mapping.read_legacy_profile": "test_legacy_snapshot_decoding_rejects_conflicting_facts",
+        "app.repositories.legacy_import_values.read_legacy_profile": "test_legacy_snapshot_decoding_rejects_conflicting_facts",
     }
 )
 
 FUNCTION_TESTS[
-    "app.repositories.legacy_import_mapping.reject_unknown_fields"
+    "app.repositories.legacy_import_values.reject_unknown_fields"
 ] = "test_legacy_snapshot_decoding_rejects_conflicting_facts"
 
 FUNCTION_TESTS.update(
@@ -525,7 +525,7 @@ FUNCTION_TESTS.update(
         "app.domain.contracts.HistoricalContractSnapshot.from_offer": "test_historical_terms_preserve_non_nhm_evidence_and_reject_invalid_values",
         "app.repositories.snapshot_mapping.load_documented_cargo": "test_historical_terms_preserve_non_nhm_evidence_and_reject_invalid_values",
         "app.repositories.snapshot_mapping.load_historical_contract": "test_historical_terms_preserve_non_nhm_evidence_and_reject_invalid_values",
-        "app.repositories.legacy_import_mapping.read_documented_cargo": "test_old_reference_documents_and_retired_offers_are_explicitly_handled",
+        "app.repositories.legacy_import_values.read_documented_cargo": "test_old_reference_documents_and_retired_offers_are_explicitly_handled",
         "app.repositories.legacy_import_mapping.LegacySnapshotReader.historical_contract": "test_old_reference_documents_and_retired_offers_are_explicitly_handled",
         "app.repositories.legacy_import_mapping.LegacySnapshotReader.validate_obsolete_offer": "test_old_reference_documents_and_retired_offers_are_explicitly_handled",
         "app.repositories.legacy_game_import.LegacyGameImporter._exclude_global_demo": "test_global_demo_exclusion_requires_explicit_choice",

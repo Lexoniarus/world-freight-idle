@@ -9,7 +9,7 @@ from dataclasses import asdict
 import pytest
 
 from app.domain.errors import PersistenceError
-from app.repositories.legacy_import_mapping import (
+from app.repositories.legacy_import_values import (
     LegacyFieldError,
     read_documented_cargo,
     read_legacy_good,

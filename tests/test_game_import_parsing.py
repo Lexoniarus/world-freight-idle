@@ -21,7 +21,7 @@ from app.repositories.legacy_game_import import (
     LegacyGameImporter,
     read_legacy_json,
 )
-from app.repositories.legacy_import_mapping import read_legacy_profile
+from app.repositories.legacy_import_values import read_legacy_profile
 from app.services.auth import PasswordHasher
 from tests.support.legacy_fixtures import (
     legacy_transport_projection,
@@ -307,7 +307,7 @@ def test_old_reference_documents_and_retired_offers_are_explicitly_handled(
 ):
     from dataclasses import asdict
 
-    from app.repositories.legacy_import_mapping import read_documented_cargo
+    from app.repositories.legacy_import_values import read_documented_cargo
     from app.repositories.snapshot_mapping import load_location
 
     _, importer, state, _, _ = legacy_source
