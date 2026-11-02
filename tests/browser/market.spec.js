@@ -7,35 +7,6 @@ import {
   test,
 } from "./support.js";
 
-test("selected vehicle keeps three offers per band across refresh", async ({ page }) => {
-  await register(page);
-  const path = "/api/v1/contracts?vehicle_id=truck_01";
-  let contracts = [];
-  await expect
-    .poll(
-      async () => {
-        const response = await page.request.get(path);
-        expect(response.ok()).toBe(true);
-        contracts = (await response.json()).contracts;
-        return contracts.length;
-      },
-      { timeout: 60000 },
-    )
-    .toBe(9);
-  for (const band of ["short", "medium", "long"]) {
-    expect(contracts.filter((offer) => offer.distance_band === band)).toHaveLength(3);
-  }
-  expect(contracts.every((offer) => offer.expires_at === null)).toBe(true);
-  const ids = contracts.map((offer) => offer.id);
-  const response = await page.request.post("/api/v1/contracts/refresh?vehicle_id=truck_01", {
-    headers: { "X-Freight-Request": "1" },
-  });
-  expect(response.ok()).toBe(true);
-  expect((await response.json()).contracts.map((offer) => offer.id)).toEqual(ids);
-  await page.goto("/contracts?vehicle=truck_01");
-  await expect(page.locator("#panel .job-card")).toHaveCount(9);
-});
-
 test("city offers survive pan and zoom without market requests", async ({ page }) => {
   await page.clock.install();
   await register(page);

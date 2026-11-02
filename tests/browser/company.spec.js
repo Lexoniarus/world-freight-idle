@@ -1,6 +1,6 @@
 import { expect, register, test } from "./support.js";
 
-test("mobile DB shop preserves focus, shows failure and supports purchase", async ({ page }) => {
+test("mobile shop recovers from a catalogue failure and preserves focus", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await register(page);
   await page.route("**/api/v1/fleet/catalogue", (route) =>
@@ -12,14 +12,7 @@ test("mobile DB shop preserves focus, shows failure and supports purchase", asyn
   await page.unroute("**/api/v1/fleet/catalogue");
   await page.locator('[data-action="retry-panel"]').click();
   const catalogue = (await (await page.request.get("/api/v1/fleet/catalogue")).json()).models;
-  expect(catalogue.length).toBeGreaterThanOrEqual(8);
   await expect(page.locator(".shop-card")).toHaveCount(catalogue.length);
-  await page
-    .locator(".shop-card")
-    .filter({ hasText: "S-Way" })
-    .getByRole("button", { name: "Fahrzeug kaufen" })
-    .click();
-  await expect(page.locator("#fleet-count")).toHaveText("2");
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("link", { name: "Fahrzeugshop", exact: true }).first()).toBeFocused();

@@ -38,7 +38,7 @@ async function harness(page) {
       "/__modules__/node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs",
     );
   });
-  await mkdir("artifacts/map-regressions", { recursive: true });
+  await mkdir("artifacts/maplibre-vehicle-groups", { recursive: true });
 }
 async function setupMap(page) {
   await harness(page);
