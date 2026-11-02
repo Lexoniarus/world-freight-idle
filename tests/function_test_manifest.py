@@ -233,6 +233,11 @@ FUNCTION_TESTS.update(
         "app.api.v1.dependencies.get_map_service": "test_map_endpoint_requires_session_and_uses_game_provider",
         "app.providers.geocoding.NominatimGeocoder._resolve_address": "test_geocode_calls_nominatim_and_caches",
         "app.providers.routing.ValhallaTruckRouter._resolve_route": "test_route_calls_valhalla_and_caches",
+        "app.providers.routing.ValhallaTruckRouter._read_cached_route": "test_route_calls_valhalla_and_caches",
+        "app.providers.routing.ValhallaTruckRouter._request_route": "test_route_calls_valhalla_and_caches",
+        "app.providers.routing.ValhallaTruckRouter._observe_response": "test_route_calls_valhalla_and_caches",
+        "app.providers.routing.ValhallaTruckRouter._provider_error": "test_route_classifies_valhalla_http_failures",
+        "app.providers.routing.ValhallaTruckRouter._response_payload": "test_route_classifies_invalid_provider_response",
     }
 )
 
@@ -732,6 +737,12 @@ FUNCTION_TESTS.update(
             "test_truck_anchor_locator_uses_real_locate_edge_shape"
         ),
         "app.providers.routing_anchor.ValhallaTruckAnchorLocator.locate": (
+            "test_truck_anchor_locator_uses_real_locate_edge_shape"
+        ),
+        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._request": (
+            "test_truck_anchor_locator_uses_real_locate_edge_shape"
+        ),
+        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._decode_locate": (
             "test_truck_anchor_locator_uses_real_locate_edge_shape"
         ),
         "app.providers.routing_anchor.ValhallaTruckAnchorLocator._correlated_location": (

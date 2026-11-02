@@ -142,6 +142,29 @@ class ValhallaTruckRouter:
             destination_lat,
             destination_lon,
         )
+        cached = self._read_cached_route(cache_key)
+        if cached is not None:
+            return cached
+        response = await self._request_route(
+            origin_lat,
+            origin_lon,
+            destination_lat,
+            destination_lon,
+        )
+        self._observe_response(response)
+        if response.status_code >= 400:
+            raise self._provider_error(response)
+        payload = self._response_payload(response)
+        route_result = self._extract_route(payload)
+        if self.cache_enabled:
+            self.cache.put_route(
+                cache_key,
+                route_cache_document(route_result),
+            )
+        return route_result
+
+    def _read_cached_route(self, cache_key: str) -> RouteSnapshot | None:
+        """Return one valid cached route and reject corrupt documents."""
         try:
             cached = (
                 self.cache.get_route(cache_key) if self.cache_enabled else None
@@ -164,7 +187,16 @@ class ValhallaTruckRouter:
                     "Invalid cached route",
                     extra={"event": "route.cache_invalid"},
                 )
+        return None
 
+    async def _request_route(
+        self,
+        origin_lat: float,
+        origin_lon: float,
+        destination_lat: float,
+        destination_lon: float,
+    ) -> httpx.Response:
+        """Submit one rate-limited truck request to Valhalla."""
         body = {
             "locations": [
                 {"lat": origin_lat, "lon": origin_lon},
@@ -186,7 +218,7 @@ class ValhallaTruckRouter:
             },
         )
         async with self.limiter.request():
-            response = await self.client.post(
+            return await self.client.post(
                 f"{self.base_url}/route",
                 json=body,
                 headers={
@@ -194,73 +226,77 @@ class ValhallaTruckRouter:
                     "X-Trace-Id": get_trace_id(),
                 },
             )
+
+    def _observe_response(self, response: httpx.Response) -> None:
+        """Publish provider pacing and graph-revision metadata."""
         self.limiter.defer(response.headers.get("Retry-After"))
         revision = graph_revision(response.headers)
         if revision and self.revision_observer:
             self.revision_observer(revision)
-        if response.status_code >= 400:
-            provider_code: int | None = None
-            provider_message = response.text[:200] or None
-            try:
-                payload = response.json()
-            except (ValueError, UnicodeError):
-                payload = None
-            if isinstance(payload, dict):
-                raw_code = payload.get("error_code")
-                if isinstance(raw_code, int) and not isinstance(
-                    raw_code, bool
-                ):
-                    provider_code = raw_code
-                raw_message = payload.get("error")
-                if isinstance(raw_message, str) and raw_message.strip():
-                    provider_message = raw_message.strip()
 
-            normalized_message = (provider_message or "").casefold()
-            category: RoutingFailureCategory
-            message: str
-            retryable = False
-            if provider_code in _ENDPOINT_UNREACHABLE_CODES or any(
-                marker in normalized_message
-                for marker in (
-                    "no suitable edges near location",
-                    "no data found for location",
-                    "location is unreachable",
-                )
-            ):
-                category = "endpoint_unreachable"
-                message = (
-                    "Routing-Endpunkt ist im Straßennetz nicht erreichbar."
-                )
-            elif provider_code in _NO_PATH_CODES or any(
-                marker in normalized_message
-                for marker in (
-                    "no path could be found for input",
-                    "unconnected regions",
-                )
-            ):
-                category = "no_path"
-                message = "Zwischen den Endpunkten existiert kein Straßenpfad."
-            elif (
-                provider_code in _DISTANCE_LIMIT_CODES
-                or "path distance exceeds the max distance limit"
-                in normalized_message
-            ):
-                category = "distance_limit"
-                message = "Die Straßenroute überschreitet das Distanzlimit."
-            else:
-                category = "provider_unavailable"
-                message = "Routing-Anbieter nicht verfügbar."
-                retryable = response.status_code in {408, 429} or (
-                    response.status_code >= 500
-                )
+    @staticmethod
+    def _provider_error(response: httpx.Response) -> RoutingError:
+        """Translate one Valhalla HTTP failure into stable categories."""
+        provider_code: int | None = None
+        provider_message = response.text[:200] or None
+        try:
+            payload = response.json()
+        except (ValueError, UnicodeError):
+            payload = None
+        if isinstance(payload, dict):
+            raw_code = payload.get("error_code")
+            if isinstance(raw_code, int) and not isinstance(raw_code, bool):
+                provider_code = raw_code
+            raw_message = payload.get("error")
+            if isinstance(raw_message, str) and raw_message.strip():
+                provider_message = raw_message.strip()
 
-            error = RoutingError(message)
-            error.category = category
-            error.provider_code = provider_code
-            error.provider_message = provider_message
-            error.retryable = retryable
-            raise error
+        normalized_message = (provider_message or "").casefold()
+        category: RoutingFailureCategory
+        message: str
+        retryable = False
+        if provider_code in _ENDPOINT_UNREACHABLE_CODES or any(
+            marker in normalized_message
+            for marker in (
+                "no suitable edges near location",
+                "no data found for location",
+                "location is unreachable",
+            )
+        ):
+            category = "endpoint_unreachable"
+            message = "Routing-Endpunkt ist im Straßennetz nicht erreichbar."
+        elif provider_code in _NO_PATH_CODES or any(
+            marker in normalized_message
+            for marker in (
+                "no path could be found for input",
+                "unconnected regions",
+            )
+        ):
+            category = "no_path"
+            message = "Zwischen den Endpunkten existiert kein Straßenpfad."
+        elif provider_code in _DISTANCE_LIMIT_CODES or (
+            "path distance exceeds the max distance limit"
+            in normalized_message
+        ):
+            category = "distance_limit"
+            message = "Die Straßenroute überschreitet das Distanzlimit."
+        else:
+            category = "provider_unavailable"
+            message = "Routing-Anbieter nicht verfügbar."
+            retryable = response.status_code in {408, 429} or (
+                response.status_code >= 500
+            )
 
+        error = RoutingError(message)
+        error.category = category
+        error.provider_code = provider_code
+        error.provider_message = provider_message
+        error.retryable = retryable
+        return error
+
+    @staticmethod
+    def _response_payload(response: httpx.Response) -> dict[str, Any]:
+        """Decode one successful provider response with bounded evidence."""
         try:
             payload = response.json()
         except (ValueError, UnicodeError) as exc:
@@ -271,11 +307,15 @@ class ValhallaTruckRouter:
             error.provider_message = response.text[:200] or None
             error.retryable = False
             raise error from exc
-
-        route_result = self._extract_route(payload)
-        if self.cache_enabled:
-            self.cache.put_route(cache_key, route_cache_document(route_result))
-        return route_result
+        if not isinstance(payload, dict):
+            error = RoutingError(
+                "Routing-Anbieter lieferte eine ungültige Antwort."
+            )
+            error.category = "invalid_response"
+            error.provider_message = response.text[:200] or None
+            error.retryable = False
+            raise error
+        return payload
 
     def _build_cache_key(
         self,
