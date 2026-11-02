@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { addOverlayLayers } from "./map/layers.js";
+import { addOverlayLayers } from "./map/overlay-layers.js";
 
 test("moving icons rotate with the map while idle icons remain upright", () => {
   const layers = new Map();

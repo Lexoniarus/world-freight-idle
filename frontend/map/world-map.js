@@ -3,7 +3,7 @@ import * as maplibregl from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { unwrapRoute } from "../geometry.js";
 import { OverlayData, previewFeatures, routeGeometry } from "./overlay-data.js";
-import { addOverlayLayers } from "./layers.js";
+import { addOverlayLayers } from "./overlay-layers.js";
 import { MapCamera } from "./camera.js";
 import { VehicleAnimator } from "./vehicle-animator.js";
 import { VehicleIconRegistry } from "./vehicle-icon-registry.js";
