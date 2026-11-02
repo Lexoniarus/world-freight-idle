@@ -17,18 +17,18 @@ def add_transport(
     transport_id: str = "fixture-trip",
 ) -> ActiveTransport:
     """Reserve a real owned vehicle and persist a complete test snapshot."""
+    market = synthetic_game.market_lifecycle.market
+    market_scope = synthetic_game.market_lifecycle.scope
     owned = synthetic_game.state_repository.list_vehicles()
-    fleet = synthetic_game.market.candidates.resolve_fleet(owned)
-    candidates = synthetic_game.market.candidates.build(
-        synthetic_game.market_scope.resolve(owned), fleet
-    )
+    fleet = market.candidates.resolve_fleet(owned)
+    candidates = market.candidates.build(market_scope.resolve(owned), fleet)
     candidate = next(
         item
         for item in candidates
         if item.trade.origin.facility_uid == owned[0].facility_uid
     )
     offer = ContractOffer.from_snapshot(
-        synthetic_game.market.factory.build(candidate, synthetic_game.now())
+        market.factory.build(candidate, synthetic_game.now())
     )
     offer = replace(offer, created_at=0, expires_at=max(arrives_at, 10))
     if tons is not None:

@@ -130,6 +130,7 @@ def test_repair_rejects_unknown_damage_and_removes_failed_outputs(
 
 
 def test_repair_reconciliation_and_archive_reject_any_unapproved_change(
+    synthetic_game_context,
     active_trip,
     database,
     tmp_path,
@@ -174,15 +175,16 @@ def test_repair_reconciliation_and_archive_reject_any_unapproved_change(
     # Normal game settlement, never the repair tool, applies the due payout.
     repaired_database = SqliteGameDatabase(target)
     unit = SqliteGameUnitOfWork(repaired_database, "test-owner")
-    repaired_game = build_fixture_game(
+    repaired_context = build_fixture_game(
         repaired_database,
         "test-owner",
-        synthetic_game.world,
-        synthetic_game.catalogue,
-        synthetic_game.market,
+        synthetic_game_context.world,
+        synthetic_game_context.catalogue,
+        synthetic_game_context.market,
         synthetic_game.now,
         synthetic_game.time_scale,
     )
+    repaired_game = repaired_context.service
     set_game_clock(repaired_game, lambda: active_trip.arrives_at + 1)
     assert repaired_game.reconcile_arrival()
     paid = unit.repository.get_player()

@@ -63,7 +63,7 @@ async def test_dispatch_failure_rolls_back_reservation_and_market(
 async def test_dispatch_commits_before_followup_market_reads(synthetic_game):
     offer = other_facility_offer(synthetic_game)
     cash = synthetic_game.player_state().cash
-    assert not hasattr(synthetic_game.market, "generate")
+    assert not hasattr(synthetic_game.market_lifecycle.market, "generate")
     trip = await synthetic_game.dispatch(offer.id, "truck_01")
     assert synthetic_game.get_vehicle("truck_01").status == "enroute"
     assert (
@@ -80,17 +80,19 @@ async def test_dispatch_commits_before_followup_market_reads(synthetic_game):
     assert synthetic_game.player_state().cash == cash - trip.operating_cost_eur
 
 
-async def test_dispatch_retains_stock_for_another_idle_vehicle(synthetic_game):
+async def test_dispatch_retains_stock_for_another_idle_vehicle(
+    synthetic_game_context, synthetic_game
+):
     offer = other_facility_offer(synthetic_game)
     first = synthetic_game.get_vehicle("truck_01")
     model = next(
         m
-        for m in synthetic_game.catalogue.list_models()
+        for m in synthetic_game_context.catalogue.list_models()
         if m.id == first.model_id
     )
     second = build_owned_vehicle(model, "second", first.location)
     synthetic_game.state_repository.save_vehicle(second)
-    assert not hasattr(synthetic_game.market, "generate")
+    assert not hasattr(synthetic_game.market_lifecycle.market, "generate")
     trip = await synthetic_game.dispatch(offer.id, first.id)
     assert synthetic_game.state_repository.list_active_transports() == (trip,)
     remaining = synthetic_game.state_repository.list_offers()
@@ -100,7 +102,7 @@ async def test_dispatch_retains_stock_for_another_idle_vehicle(synthetic_game):
 
 
 async def test_arrival_activates_city_and_preserves_historical_terms(
-    synthetic_game, monkeypatch
+    synthetic_game_context, synthetic_game, monkeypatch
 ):
     offer = next(
         o
@@ -130,7 +132,7 @@ async def test_arrival_activates_city_and_preserves_historical_terms(
     trip = historical
     set_game_clock(synthetic_game, lambda: trip.arrives_at + 1)
     with patch.object(
-        synthetic_game.catalogue,
+        synthetic_game_context.catalogue,
         "list_models",
         side_effect=CatalogueError("offline"),
     ):
@@ -144,7 +146,9 @@ async def test_arrival_activates_city_and_preserves_historical_terms(
     assert offers == []
 
 
-def test_retention_filters_without_writing_during_market_reads(synthetic_game):
+def test_retention_filters_without_writing_during_market_reads(
+    synthetic_game_context, synthetic_game
+):
     offers = synthetic_game.list_contracts()
     first = offers[0]
     legacy = replace(
@@ -165,7 +169,7 @@ def test_retention_filters_without_writing_during_market_reads(synthetic_game):
     new = synthetic_game.list_contracts()
     assert new == []
     with patch.object(
-        synthetic_game.catalogue,
+        synthetic_game_context.catalogue,
         "list_models",
         side_effect=CatalogueError("offline"),
     ):
@@ -285,6 +289,7 @@ async def test_dispatch_resolves_only_missing_exact_facility_snapshot(
 
 
 async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(
+    synthetic_game_context,
     synthetic_game,
 ):
     offer = synthetic_game.list_contracts()[0]
@@ -299,7 +304,7 @@ async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(
     )
     model = next(
         m
-        for m in synthetic_game.catalogue.list_models()
+        for m in synthetic_game_context.catalogue.list_models()
         if m.id == vehicle.model_id
     )
     unsupported = replace(
@@ -310,7 +315,9 @@ async def test_quote_rejects_changed_capabilities_and_missing_saved_cost(
         ),
     )
     with patch.object(
-        synthetic_game.catalogue, "list_models", return_value=(unsupported,)
+        synthetic_game_context.catalogue,
+        "list_models",
+        return_value=(unsupported,),
     ):
         with pytest.raises(ValueError, match="Transportklasse"):
             await synthetic_game.quote_contract(offer.id, vehicle.id)

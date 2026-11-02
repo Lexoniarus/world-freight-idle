@@ -18,7 +18,7 @@ def test_structural_candidates_are_reused_until_fleet_context_changes(
 ):
     """Reuse expensive trade projections without freezing changed demand."""
     game, _, batch = stock_game
-    candidates = game.market.candidates
+    candidates = game.market_lifecycle.market.candidates
     snapshot = batch.snapshots.read()
     cities = tuple(sorted({d.vehicle.city_uid for d in snapshot.demands}))
     fleet = tuple(d.vehicle for d in snapshot.demands)
@@ -41,7 +41,7 @@ def test_stock_policy_selection_and_corrupt_storage_are_rejected(
             replace(StockPolicy(), reserve_per_band=invalid)
     snapshot = batch.snapshots.read()
     offer = ContractOffer.from_snapshot(
-        game.market.factory.build(snapshot.candidates[0], 1)
+        game.market_lifecycle.market.factory.build(snapshot.candidates[0], 1)
     )
     template = PreparedTemplate(
         "template", "model", offer.origin.city.city_uid, offer
@@ -162,7 +162,7 @@ def test_demand_models_and_owned_capacity_remain_separate(stock_game):
 
     game, prep, batch = stock_game
     vehicle = game.get_vehicle("truck")
-    catalogue = game.market.candidates.catalogue
+    catalogue = game.market_lifecycle.market.candidates.catalogue
     model = catalogue.list_models()[0]
     with pytest.raises(ValueError, match="Fahrzeugmodell"):
         planning_vehicle(

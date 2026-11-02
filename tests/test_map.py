@@ -14,8 +14,10 @@ from tests.support.api import make_settings, make_static_files
 
 
 @pytest.mark.asyncio
-async def test_map_hubs_resolve_and_preserve_read_failures(synthetic_game):
-    service = MapLocationService(synthetic_game.world)
+async def test_map_hubs_resolve_and_preserve_read_failures(
+    synthetic_game_context, synthetic_game
+):
+    service = MapLocationService(synthetic_game_context.world)
     result = service.list_facilities(FacilityQuery()).facilities
     assert len(result) == 6
     assert all(hub.resolution_status == "resolved" for hub in result)
@@ -26,7 +28,7 @@ async def test_map_hubs_resolve_and_preserve_read_failures(synthetic_game):
     assert berlin in projection.facilities
     assert projection.unavailable_count == 0
     with patch.object(
-        synthetic_game.world,
+        synthetic_game_context.world,
         "read",
         side_effect=WorldCatalogueError("unavailable"),
     ):
@@ -35,7 +37,7 @@ async def test_map_hubs_resolve_and_preserve_read_failures(synthetic_game):
 
 
 def test_map_endpoint_requires_session_and_uses_game_provider(
-    tmp_path, synthetic_game
+    synthetic_game_context, tmp_path, synthetic_game
 ):
     make_static_files(tmp_path)
     application = create_app(make_settings(tmp_path))
@@ -45,6 +47,7 @@ def test_map_endpoint_requires_session_and_uses_game_provider(
         application.dependency_overrides[get_game_service] = lambda: (
             synthetic_game
         )
+        application.state.game_runtime.world = synthetic_game_context.world
         response = client.get("/api/v1/map/hubs")
         assert response.status_code == 200
         assert len(response.json()["hubs"]) == 6
@@ -60,7 +63,7 @@ def test_map_endpoint_requires_session_and_uses_game_provider(
             == []
         )
         with patch.object(
-            synthetic_game.world,
+            synthetic_game_context.world,
             "read",
             side_effect=WorldCatalogueError("unavailable"),
         ):

@@ -21,7 +21,7 @@ from tests.support.catalogues import (
     build_synthetic_world_catalogue,
 )
 from tests.support.game import create_active_trip
-from tests.support.game_service import build_fixture_game
+from tests.support.game_service import FixtureGameContext, build_fixture_game
 from tests.support.legacy_fixtures import legacy_source as legacy_source
 from tests.support.market import make_stock_batch, seed_test_offers
 from tests.support.market_fixtures import (
@@ -68,17 +68,17 @@ def small_world_catalogue(tmp_path):
 
 
 @pytest.fixture
-def synthetic_game(
+def synthetic_game_context(
     database,
     synthetic_vehicle_catalogue,
     synthetic_world_catalogue,
-) -> GameService:
+) -> FixtureGameContext:
     market = build_market_components(
         synthetic_world_catalogue,
         random.Random(7),
         synthetic_vehicle_catalogue,
     )
-    service = build_fixture_game(
+    context = build_fixture_game(
         database,
         "test-owner",
         synthetic_world_catalogue,
@@ -86,17 +86,27 @@ def synthetic_game(
         market,
         time.time,
     )
-    service.ensure_initial_state()
-    seed_test_offers(service)
-    return service
+    context.service.ensure_initial_state()
+    seed_test_offers(context.service)
+    return context
+
+
+@pytest.fixture
+def synthetic_game(synthetic_game_context) -> GameService:
+    """Expose only the production facade to ordinary game tests."""
+    return synthetic_game_context.service
 
 
 @pytest.fixture
 def stock_game(vehicle_game):
     """Compose one player market with local stock preparation services."""
-    game, preparation = vehicle_game
+    context, preparation = vehicle_game
     preparation.demand.ensure()
-    return game, preparation, make_stock_batch(game, preparation)
+    return (
+        context.service,
+        preparation,
+        make_stock_batch(context.service, preparation),
+    )
 
 
 @pytest.fixture
@@ -138,5 +148,5 @@ def database(tmp_path):
 
 
 @pytest.fixture
-def synthetic_runtime(synthetic_game, database):
-    return build_test_runtime(synthetic_game, database)
+def synthetic_runtime(synthetic_game_context, database):
+    return build_test_runtime(synthetic_game_context, database)

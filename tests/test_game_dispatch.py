@@ -26,6 +26,7 @@ from tests.support.game import first_berlin_contract
 
 @pytest.mark.asyncio
 async def test_quote_contract_geocodes_routes_and_prices(
+    synthetic_game_context,
     synthetic_game: GameService,
 ):
     contract = first_berlin_contract(synthetic_game)
@@ -34,7 +35,7 @@ async def test_quote_contract_geocodes_routes_and_prices(
     )
     assert (
         quote["origin"]["address"]
-        == WorldScope(synthetic_game.world.read())
+        == WorldScope(synthetic_game_context.world.read())
         .facility(BERLIN_UID)
         .address.display_text()
     )
@@ -48,6 +49,7 @@ async def test_quote_contract_geocodes_routes_and_prices(
 
 @pytest.mark.asyncio
 async def test_dispatch_builds_persisted_trip_and_debits_cost(
+    synthetic_game_context,
     synthetic_game: GameService,
 ):
     contract = first_berlin_contract(synthetic_game)
@@ -58,7 +60,7 @@ async def test_dispatch_builds_persisted_trip_and_debits_cost(
     after_cash = synthetic_game.player_state().cash
     assert (
         trip["origin"]["address"]
-        == WorldScope(synthetic_game.world.read())
+        == WorldScope(synthetic_game_context.world.read())
         .facility(BERLIN_UID)
         .address.display_text()
     )
@@ -71,6 +73,7 @@ async def test_dispatch_builds_persisted_trip_and_debits_cost(
 
 
 def test_validate_dispatch_checks_location_capacity_mode_and_status(
+    synthetic_game_context,
     synthetic_game: GameService,
 ):
     contract = first_berlin_contract(synthetic_game)
@@ -92,7 +95,7 @@ def test_validate_dispatch_checks_location_capacity_mode_and_status(
     )
     from app.domain.world_scopes import WorldScope
 
-    other_city = WorldScope(synthetic_game.world.read()).facility(
+    other_city = WorldScope(synthetic_game_context.world.read()).facility(
         "hamburg_cta"
     )
     for changes, message in (

@@ -48,7 +48,7 @@ def legacy_transport_projection(trip):
 
 
 @pytest.fixture
-def legacy_source(tmp_path, synthetic_game):
+def legacy_source(tmp_path, synthetic_game, synthetic_game_context):
     """Build a representative pre-relational game database."""
     now = synthetic_game.now()
     vehicle = synthetic_game.state_repository.list_vehicles()[0]
@@ -126,9 +126,9 @@ CREATE TABLE route_cache(cache_key TEXT,payload TEXT,updated_at REAL);
         connection.commit()
     importer = LegacyGameImporter(
         path,
-        WorldScope(synthetic_game.world.read()),
+        WorldScope(synthetic_game_context.world.read()),
         "nhm_v1",
-        synthetic_game.catalogue.list_models(),
+        synthetic_game_context.catalogue.list_models(),
     )
     return path, importer, state, now, password_hash
 

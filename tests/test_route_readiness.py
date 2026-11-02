@@ -22,16 +22,19 @@ from tests.support.routing import (
 
 @pytest.mark.asyncio
 async def test_partial_market_never_publishes_unchecked_offers(
-    synthetic_game, database
+    synthetic_game_context, database
 ):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
     batch = make_stock_batch(synthetic_game, preparation)
     preparation.demand.ensure()
     assert synthetic_game.list_contracts() == []
     owned = synthetic_game.state_repository.list_vehicles()
-    fleet = synthetic_game.market.candidates.resolve_fleet(owned)
-    pool = synthetic_game.market.candidates.build(
-        synthetic_game.market_scope.resolve(owned), fleet
+    fleet = synthetic_game_context.market.candidates.resolve_fleet(owned)
+    pool = synthetic_game_context.market.candidates.build(
+        synthetic_game_context.market_scope.resolve(owned), fleet
     )
     candidate = pool[0]
     origin = candidate.trade.origin.facility_uid
@@ -85,13 +88,16 @@ async def test_partial_market_never_publishes_unchecked_offers(
 
 @pytest.mark.asyncio
 async def test_missing_payload_is_detected_only_when_geometry_is_loaded(
-    synthetic_game, database
+    synthetic_game_context, database
 ):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
     owned = synthetic_game.state_repository.list_vehicles()
-    fleet = synthetic_game.market.candidates.resolve_fleet(owned)
-    pool = synthetic_game.market.candidates.build(
-        synthetic_game.market_scope.resolve(owned), fleet
+    fleet = synthetic_game_context.market.candidates.resolve_fleet(owned)
+    pool = synthetic_game_context.market.candidates.build(
+        synthetic_game_context.market_scope.resolve(owned), fleet
     )
     candidate = next(
         item
@@ -124,9 +130,12 @@ async def test_missing_payload_is_detected_only_when_geometry_is_loaded(
 
 @pytest.mark.asyncio
 async def test_global_negative_cache_timeout_and_stale_payload(
-    synthetic_game, database
+    synthetic_game_context, database
 ):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
     readiness = RoutingTestHarness(
         preparation.routes.readiness,
         preparation.route_preparation.preparation,
@@ -171,7 +180,7 @@ async def test_global_negative_cache_timeout_and_stale_payload(
             readiness.store,
             readiness.anchors,
             readiness.router,
-            synthetic_game.world,
+            synthetic_game_context.world,
             synthetic_game.now,
             0,
         )
@@ -179,9 +188,12 @@ async def test_global_negative_cache_timeout_and_stale_payload(
 
 @pytest.mark.asyncio
 async def test_players_share_one_provider_calculation(
-    synthetic_game, database
+    synthetic_game_context, database
 ):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
     readiness = RoutingTestHarness(
         preparation.routes.readiness,
         preparation.route_preparation.preparation,
@@ -209,9 +221,12 @@ async def test_players_share_one_provider_calculation(
 
 @pytest.mark.asyncio
 async def test_route_publication_rechecks_inputs_after_provider_await(
-    synthetic_game, database
+    synthetic_game_context, database
 ):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
     readiness = RoutingTestHarness(
         preparation.routes.readiness,
         preparation.route_preparation.preparation,
@@ -247,11 +262,14 @@ async def test_route_publication_rechecks_inputs_after_provider_await(
 
 @pytest.mark.asyncio
 async def test_observed_global_graph_revision_invalidates_shared_routes(
-    synthetic_game, database
+    synthetic_game_context, database
 ):
     from functools import partial
 
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
     readiness = RoutingTestHarness(
         preparation.routes.readiness,
         preparation.route_preparation.preparation,
@@ -273,13 +291,16 @@ async def test_observed_global_graph_revision_invalidates_shared_routes(
 
 @pytest.mark.asyncio
 async def test_dispatch_rejects_retired_and_changed_prepared_routes(
-    synthetic_game, database
+    synthetic_game_context, database
 ):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
     owned = synthetic_game.state_repository.list_vehicles()
-    fleet = synthetic_game.market.candidates.resolve_fleet(owned)
-    candidates = synthetic_game.market.candidates.build(
-        synthetic_game.market_scope.resolve(owned), fleet
+    fleet = synthetic_game_context.market.candidates.resolve_fleet(owned)
+    candidates = synthetic_game_context.market.candidates.build(
+        synthetic_game_context.market_scope.resolve(owned), fleet
     )
     candidate = next(
         item

@@ -14,6 +14,7 @@ from app.services.market.stock.preparation import StockPreparationBatch
 from app.services.market.stock.publication import StockPublicationService
 from app.services.market.stock.snapshot import StockSnapshotReader
 from app.services.market.templates import MarketTemplateService
+from tests.support.game_service import FixtureGameContext
 from tests.support.runtime import build_test_runtime
 
 T = TypeVar("T")
@@ -32,11 +33,11 @@ def seed_test_offers(
     bind_routes: bool = True,
 ) -> None:
     """Store deterministic local offers without invoking runtime refill."""
-    market = service.market
+    market = service.market_lifecycle.market
     owned = service.state_repository.list_vehicles()
     fleet = market.candidates.resolve_fleet(owned)
     candidates = market.candidates.build(
-        service.market_scope.resolve(owned), fleet
+        service.market_lifecycle.scope.resolve(owned), fleet
     )
     local = tuple(
         candidate
@@ -59,24 +60,25 @@ def seed_test_offers(
         service.market_services.routes.bind(offers)
 
 
-def make_stock_batch(synthetic_game, preparation):
+def make_stock_batch(game: GameService, preparation):
     """Compose the production stock batch for worker behavior tests."""
+    market = game.market_lifecycle.market
     database = preparation.routes.transactions
     SqliteMarketTemplateStore.initialize(database)
     SqlitePlayerMarketStockStore.initialize(database)
-    demand = MarketDemandResolver(synthetic_game.market.candidates)
+    demand = MarketDemandResolver(market.candidates)
     return StockPreparationBatch(
         StockPublicationService(
-            synthetic_game.unit_of_work,
-            synthetic_game.market,
+            game.unit_of_work,
+            market,
             preparation.demand,
             preparation.routes,
             preparation.stock,
             lambda: True,
         ),
         StockSnapshotReader(
-            synthetic_game.unit_of_work,
-            synthetic_game.market,
+            game.unit_of_work,
+            market,
             preparation.demand,
             preparation.routes,
             preparation.stock,
@@ -84,7 +86,7 @@ def make_stock_batch(synthetic_game, preparation):
         ),
         StockPlanningService(preparation.stock.policy),
         MarketTemplateService(
-            synthetic_game.market.factory,
+            market.factory,
             preparation.stock.policy,
             preparation.demand.clock,
         ),
@@ -92,10 +94,19 @@ def make_stock_batch(synthetic_game, preparation):
     )
 
 
-def build_prepared_game(synthetic_game, database):
+def build_prepared_game(context: FixtureGameContext, database):
     """Recompose one game with real local preparation collaborators."""
     prepared = build_player_service(
-        build_test_runtime(synthetic_game, database),
+        build_test_runtime(context, database),
         "test-owner",
     )
-    return prepared, prepared.market_services
+    return (
+        FixtureGameContext(
+            prepared,
+            context.world,
+            context.catalogue,
+            context.market,
+            context.market_scope,
+        ),
+        prepared.market_services,
+    )

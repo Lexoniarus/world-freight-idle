@@ -11,10 +11,10 @@ from tests.support.market import build_prepared_game
 
 
 def test_audit_inventory_is_structural_and_report_preserves_history(
-    synthetic_game, database
+    synthetic_game_context, synthetic_game, database
 ):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
-    world = synthetic_game.world.read()
+    _, preparation = build_prepared_game(synthetic_game_context, database)
+    world = synthetic_game_context.world.read()
     pairs = tuple(routing_inventory(world, "Berlin"))
     assert pairs
     assert len(pairs) == len(set(pairs))

@@ -44,7 +44,7 @@ def without_city_uids(value):
 
 
 def test_offline_import_preserves_profiles_history_and_settles_once(
-    legacy_source, tmp_path, synthetic_game
+    synthetic_game_context, legacy_source, tmp_path, synthetic_game
 ):
     path, importer, state, now, password_hash = legacy_source
     original = path.read_bytes()
@@ -102,7 +102,7 @@ def test_offline_import_preserves_profiles_history_and_settles_once(
         assert without_city_uids(
             legacy_vehicle_projection(repository.list_vehicles()[0])
         ) == without_city_uids(state["vehicles"][0])
-    runtime = build_test_runtime(synthetic_game, database)
+    runtime = build_test_runtime(synthetic_game_context, database)
     service = build_player_service(runtime, "a")
     assert service.reconcile_arrival()
     assert not service.reconcile_arrival()

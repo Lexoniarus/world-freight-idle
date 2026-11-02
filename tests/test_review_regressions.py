@@ -21,14 +21,17 @@ from tests.support.market import (
 
 @pytest.mark.asyncio
 async def test_exhausted_negative_demand_requires_explicit_invalidation(
-    synthetic_game, database
+    synthetic_game_context, database
 ):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
-    fleet = synthetic_game.market.candidates.resolve_fleet(
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
+    fleet = synthetic_game_context.market.candidates.resolve_fleet(
         synthetic_game.state_repository.list_vehicles()
     )
-    pool = synthetic_game.market.candidates.build(
-        synthetic_game.market_scope.resolve(
+    pool = synthetic_game_context.market.candidates.build(
+        synthetic_game_context.market_scope.resolve(
             synthetic_game.state_repository.list_vehicles()
         ),
         fleet,
@@ -73,8 +76,13 @@ async def test_exhausted_negative_demand_requires_explicit_invalidation(
 
 
 @pytest.mark.asyncio
-async def test_reference_replacement_owns_rollback(synthetic_game, database):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+async def test_reference_replacement_owns_rollback(
+    synthetic_game_context, database
+):
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
     offer = synthetic_game.state_repository.list_offers()[0]
     pair = offer.origin.facility_uid, offer.destination.facility_uid
     await preparation.route_preparation.preparation.prepare(*pair)
@@ -153,17 +161,22 @@ async def test_worker_vanished_job_and_start_failure():
 
 @pytest.mark.asyncio
 async def test_batch_exhausts_deterministic_route_failures(
-    synthetic_game, database
+    synthetic_game_context, database
 ):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
     batch = make_stock_batch(synthetic_game, preparation)
     # Bound the structural pool so exhausting it is deterministic and fast.
     owned = synthetic_game.state_repository.list_vehicles()
-    fleet = synthetic_game.market.candidates.resolve_fleet(owned)
-    candidates = synthetic_game.market.candidates.build(
-        synthetic_game.market_scope.resolve(owned), fleet
+    fleet = synthetic_game_context.market.candidates.resolve_fleet(owned)
+    candidates = synthetic_game_context.market.candidates.build(
+        synthetic_game_context.market_scope.resolve(owned), fleet
     )[:2]
-    synthetic_game.market.candidates.build = Mock(return_value=candidates)
+    synthetic_game_context.market.candidates.build = Mock(
+        return_value=candidates
+    )
     error = RoutingError("No path")
     error.category = "no_path"
     routing = preparation.route_preparation.preparation

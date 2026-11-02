@@ -9,7 +9,6 @@ from app.domain.contracts import ContractOffer
 from app.domain.game import OwnedVehicle, PlayerState
 from app.domain.market import VehicleCoverageDiagnostic
 from app.domain.market_preparation import PreparationStatus
-from app.domain.ports import VehicleCatalogue, WorldCatalogue
 from app.domain.results import (
     AvailableContract,
     ContractQuote,
@@ -21,10 +20,8 @@ from app.domain.transports import ActiveTransport
 from app.services.gameplay.dispatch import TransportDispatchService
 from app.services.gameplay.initialization import PlayerInitializationService
 from app.services.gameplay.settlement import TransportSettlementService
-from app.services.market.components import MarketComponents
 from app.services.market.lifecycle import MarketLifecycleService
 from app.services.market.player_services import PlayerMarketServices
-from app.services.market.scope import MarketScopeResolver
 
 
 @dataclass
@@ -32,10 +29,6 @@ class GameService:
     """Expose player use cases while delegating stateful workflows."""
 
     unit_of_work: GameUnitOfWork
-    world: WorldCatalogue
-    market: MarketComponents
-    catalogue: VehicleCatalogue
-    market_scope: MarketScopeResolver
     now: Callable[[], float]
     time_scale: float
     market_lifecycle: MarketLifecycleService

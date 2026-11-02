@@ -1,6 +1,7 @@
 """Explicit production-shaped player composition for local tests."""
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import cast
 
 from app.domain.ports import VehicleCatalogue, WorldCatalogue
@@ -39,6 +40,17 @@ from tests.support.routing import (
 )
 
 
+@dataclass(frozen=True, slots=True)
+class FixtureGameContext:
+    """Keep test-only collaborators outside the production game facade."""
+
+    service: GameService
+    world: WorldCatalogue
+    catalogue: VehicleCatalogue
+    market: MarketComponents
+    market_scope: MarketScopeResolver
+
+
 def build_fixture_game(
     database: SqliteGameDatabase,
     user_id: str,
@@ -47,7 +59,7 @@ def build_fixture_game(
     market: MarketComponents,
     clock: Callable[[], float],
     time_scale: float = 1.0,
-) -> GameService:
+) -> FixtureGameContext:
     """Compose every mandatory player dependency without provider access."""
     jobs = FixturePreparationStore()
     fixture_evidence = FixtureRoutingReadiness(world, clock)
@@ -102,12 +114,8 @@ def build_fixture_game(
         market_services.demand,
         market_services.stock,
     )
-    return GameService(
+    service = GameService(
         unit,
-        world,
-        market,
-        synthetic_vehicle_catalogue,
-        scope,
         clock,
         time_scale,
         lifecycle,
@@ -120,4 +128,11 @@ def build_fixture_game(
         settlement,
         dispatch,
         market_services,
+    )
+    return FixtureGameContext(
+        service,
+        world,
+        synthetic_vehicle_catalogue,
+        market,
+        scope,
     )

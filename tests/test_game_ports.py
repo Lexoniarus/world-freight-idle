@@ -17,7 +17,7 @@ from tests.support.market import seed_test_offers
 
 
 @pytest.fixture
-def relational_game(synthetic_game, tmp_path):
+def relational_game(synthetic_game_context, synthetic_game, tmp_path):
     database = SqliteGameDatabase(tmp_path / "port-state.db")
     database.initialize()
     with database.connect() as connection:
@@ -27,9 +27,9 @@ def relational_game(synthetic_game, tmp_path):
     return build_fixture_game(
         database,
         "owner",
-        synthetic_game.world,
-        synthetic_game.catalogue,
-        synthetic_game.market,
+        synthetic_game_context.world,
+        synthetic_game_context.catalogue,
+        synthetic_game_context.market,
         synthetic_game.now,
     )
 
@@ -37,10 +37,14 @@ def relational_game(synthetic_game, tmp_path):
 async def test_relational_game_use_cases_preserve_atomic_settlement(
     relational_game, monkeypatch
 ):
-    game = relational_game
+    game = relational_game.service
     with pytest.raises(ValueError, match="initialisiert"):
         project_dashboard(game.dashboard())
-    fleet = FleetService(game.unit_of_work, game.catalogue, game.world)
+    fleet = FleetService(
+        game.unit_of_work,
+        relational_game.catalogue,
+        relational_game.world,
+    )
     with pytest.raises(ValueError, match="initialisiert"):
         project_vehicle(fleet.purchase("iveco_sway_500"))
     game.ensure_initial_state()
@@ -72,7 +76,7 @@ async def test_relational_game_use_cases_preserve_atomic_settlement(
 async def test_relational_dispatch_rolls_back_all_mutations(
     relational_game, monkeypatch
 ):
-    game = relational_game
+    game = relational_game.service
     game.ensure_initial_state()
     seed_test_offers(game)
     offer = [project_contract(value) for value in game.list_contracts()][0]

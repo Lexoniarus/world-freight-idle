@@ -25,14 +25,16 @@ async def test_shared_stock_has_three_visible_ten_ready_and_does_not_expire(
     stock_game,
 ):
     game, prep, batch = stock_game
-    build = game.market.candidates.build
+    build = game.market_lifecycle.market.candidates.build
 
     def outside_writer(*args):
         assert prep.stock.stock.database._active.get() is None
         return build(*args)
 
     with patch.object(
-        game.market.candidates, "build", side_effect=outside_writer
+        game.market_lifecycle.market.candidates,
+        "build",
+        side_effect=outside_writer,
     ):
         result = await batch.process()
     for _ in range(100):
@@ -128,7 +130,7 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
     second = StockPreparationBatch(
         StockPublicationService(
             unit,
-            game.market,
+            game.market_lifecycle.market,
             other.demand,
             other.routes,
             other.stock,
@@ -136,7 +138,7 @@ async def test_templates_are_shared_but_consumption_is_once_per_account(
         ),
         StockSnapshotReader(
             unit,
-            game.market,
+            game.market_lifecycle.market,
             other.demand,
             other.routes,
             other.stock,
@@ -199,7 +201,7 @@ async def test_destination_stock_starts_at_dispatch_without_early_settlement(
     game, prep, batch = stock_game
     now = game.now()
     trip = add_transport(game, departed_at=now, arrives_at=now + 7200)
-    world = game.market.candidates.reference()
+    world = game.market_lifecycle.market.candidates.reference()
     output = world.facilities[0].nhm_profiles[0]
     updated = replace(
         world,
@@ -211,7 +213,7 @@ async def test_destination_stock_starts_at_dispatch_without_early_settlement(
         ),
     )
     reference = Mock(read=Mock(return_value=updated))
-    game.market.candidates.world = reference
+    game.market_lifecycle.market.candidates.world = reference
     prep.routes.readiness.world = reference
     clock = [trip.departed_at + 1]
     set_game_clock(game, lambda: clock[0], batch.route_preparation)
@@ -328,7 +330,9 @@ async def test_catalogue_changes_block_old_supply_without_deleting_terms(
             break
     saved = game.state_repository.list_offers()
     with patch.object(
-        game.market.candidates, "structurally_current", return_value=False
+        game.market_lifecycle.market.candidates,
+        "structurally_current",
+        return_value=False,
     ):
         snapshot = batch.snapshots.read()
         assert not snapshot.usable_offers
@@ -338,7 +342,7 @@ async def test_catalogue_changes_block_old_supply_without_deleting_terms(
     assert game.state_repository.list_offers() == saved
     # A changed freight class must not count incompatible old snapshots as
     # sufficient stock and thereby prevent the worker from replacing them.
-    reference = game.market.candidates.reference()
+    reference = game.market_lifecycle.market.candidates.reference()
     changed = replace(
         reference,
         market_profiles=tuple(
@@ -346,8 +350,10 @@ async def test_catalogue_changes_block_old_supply_without_deleting_terms(
             for p in reference.market_profiles
         ),
     )
-    game.market.candidates.world = Mock(read=Mock(return_value=changed))
-    catalogue = game.market.candidates.catalogue
+    game.market_lifecycle.market.candidates.world = Mock(
+        read=Mock(return_value=changed)
+    )
+    catalogue = game.market_lifecycle.market.candidates.catalogue
     models = tuple(
         replace(m, transport_capabilities=(TransportCapability("special", 1),))
         for m in catalogue.list_models()
@@ -397,8 +403,8 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
     )
     lifecycle = MarketLifecycleService(
         unit,
-        game.market,
-        game.market_scope,
+        game.market_lifecycle.market,
+        game.market_lifecycle.scope,
         game.now,
         prep.demand,
         prep.routes,
@@ -412,10 +418,10 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
     )
     dispatch_service = TransportDispatchService(
         unit,
-        game.market,
+        game.market_lifecycle.market,
         game.transport_dispatch.planning,
         game.transport_dispatch.eligibility,
-        VehicleLocationResolver(game.world),
+        VehicleLocationResolver(game.market_lifecycle.scope.world),
         settlement,
         game.now,
         game.time_scale,
@@ -424,17 +430,13 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
     )
     other = GameService(
         unit,
-        game.world,
-        game.market,
-        game.catalogue,
-        game.market_scope,
         game.now,
         game.time_scale,
         lifecycle,
         PlayerInitializationService(
             unit,
-            game.world,
-            game.catalogue,
+            game.market_lifecycle.scope.world,
+            game.market_lifecycle.market.candidates.catalogue,
             prep.demand,
         ),
         settlement,

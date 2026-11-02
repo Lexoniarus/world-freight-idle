@@ -124,13 +124,14 @@ async def test_dispatch_routing_rejects_failed_anchor(
 
 @pytest.mark.asyncio
 async def test_dispatch_approach_uses_facility_identity_not_display_coordinate(
+    synthetic_game_context,
     synthetic_game,
 ):
     offer = synthetic_game.state_repository.list_offers()[0]
     origin_uid = offer.origin.facility_uid
     same_city = [
         item
-        for item in synthetic_game.world.read().facilities
+        for item in synthetic_game_context.world.read().facilities
         if item.address.city.city_uid == offer.origin.city.city_uid
         and item.facility_uid != origin_uid
         and item.coordinates is not None

@@ -34,9 +34,9 @@ def test_wal_read_snapshot_rejects_writes_and_resets_after_failure(database):
 
 
 def test_durable_demand_coalesces_and_fences_stale_diagnostics(
-    synthetic_game, database
+    synthetic_game_context, database
 ):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    _, preparation = build_prepared_game(synthetic_game_context, database)
     jobs = preparation.demand.jobs
     assert isinstance(jobs, SqlitePreparationStore)
     notify = Mock()
@@ -73,11 +73,12 @@ def test_durable_demand_coalesces_and_fences_stale_diagnostics(
 
 
 def test_runtime_never_builds_candidates_and_worker_plans_outside_writer(
-    synthetic_game, database
+    synthetic_game_context, database
 ):
-    synthetic_game, _ = build_prepared_game(synthetic_game, database)
+    prepared_context, _ = build_prepared_game(synthetic_game_context, database)
+    synthetic_game = prepared_context.service
     with patch.object(
-        type(synthetic_game.market.candidates),
+        type(synthetic_game_context.market.candidates),
         "build",
         side_effect=AssertionError("Runtime planned"),
     ):
@@ -98,9 +99,12 @@ def test_runtime_never_builds_candidates_and_worker_plans_outside_writer(
 
 @pytest.mark.asyncio
 async def test_readiness_read_view_reuses_facts_but_never_crosses_publication(
-    synthetic_game, database
+    synthetic_game_context, database
 ):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
     readiness = preparation.routes.readiness
     assert readiness.store.get_many(()) == {}
     assert readiness.anchor_store.get_many((), "truck") == {}

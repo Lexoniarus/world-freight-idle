@@ -72,14 +72,15 @@ def get_fleet_service(
     game: GameService = Depends(get_game_service),
 ) -> FleetService:
     """Resolve the authenticated fleet service through the composition root."""
-    return build_fleet_service(game, request.app.state.settings)
+    return build_fleet_service(request.app.state.game_runtime, game)
 
 
 def get_map_service(
+    request: Request,
     game: GameService = Depends(get_game_service),
 ) -> MapLocationService:
     """Resolve the authenticated catalogue map service."""
-    return build_map_service(game)
+    return build_map_service(request.app.state.game_runtime)
 
 
 def get_traffic_reader(request: Request) -> TrafficReader:

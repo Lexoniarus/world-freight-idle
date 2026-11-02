@@ -274,6 +274,7 @@ def test_analytics_labels_expand_colliding_short_identities():
 
 
 async def test_vehicle_switch_preserves_offer_and_checks_actual_capacity(
+    synthetic_game_context,
     synthetic_game,
 ):
     offer = synthetic_game.list_contracts()[0]
@@ -291,7 +292,9 @@ async def test_vehicle_switch_preserves_offer_and_checks_actual_capacity(
         await synthetic_game.quote_contract(offer.id, vehicle.id)
     vehicle._capacity_tons = original.tons + 1
     with patch.object(
-        type(synthetic_game.market.candidates), "eligible_ids", return_value=()
+        type(synthetic_game_context.market.candidates),
+        "eligible_ids",
+        return_value=(),
     ):
         with pytest.raises(ValueError, match="Transportklasse"):
             synthetic_game.transport_dispatch.validate_dispatch(vehicle, offer)

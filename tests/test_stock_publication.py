@@ -179,7 +179,7 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
             break
     first = game.contract_choices(game.list_contracts(), "truck")[0].offer
     # The fixture's single model is exposed through the market catalogue.
-    model = game.market.candidates.catalogue.list_models()[0]
+    model = game.market_lifecycle.market.candidates.catalogue.list_models()[0]
     second = build_owned_vehicle(
         model, "second", game.get_vehicle("truck").location
     )
@@ -194,7 +194,7 @@ async def test_reserve_replacement_and_publication_failure_keep_atomic_state(
             ),
         ),
         patch.object(
-            game.market.candidates,
+            game.market_lifecycle.market.candidates,
             "build",
             side_effect=AssertionError("Runtime builds candidates"),
         ),

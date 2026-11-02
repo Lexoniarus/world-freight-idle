@@ -97,7 +97,7 @@ def city_market(synthetic_world_catalogue, synthetic_vehicle_catalogue):
 def vehicle_game(city_market, database, synthetic_vehicle_catalogue):
     """Compose a compact city game with real preparation collaborators."""
     market, owned, _, world, _ = city_market
-    game = build_fixture_game(
+    context = build_fixture_game(
         database,
         "test-owner",
         world,
@@ -108,6 +108,6 @@ def vehicle_game(city_market, database, synthetic_vehicle_catalogue):
     with database.transaction(), database.connect() as connection:
         connection.execute("DELETE FROM contract_offers")
         connection.execute("DELETE FROM owned_vehicles")
-        game.state_repository.save_player(PlayerState(175000, 0, 0))
-        game.state_repository.save_vehicle(owned)
-    return build_prepared_game(game, database)
+        context.service.state_repository.save_player(PlayerState(175000, 0, 0))
+        context.service.state_repository.save_vehicle(owned)
+    return build_prepared_game(context, database)

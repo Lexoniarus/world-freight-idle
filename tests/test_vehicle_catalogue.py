@@ -19,7 +19,11 @@ from app.api.v1.game_projection import (
     project_transport,
     project_vehicle,
 )
-from app.bootstrap import build_fleet_service, build_player_service
+from app.bootstrap import (
+    build_fleet_service,
+    build_player_service,
+    build_vehicle_catalogue,
+)
 from app.domain.energy import EnergyProfile
 from app.domain.errors import CatalogueError
 from app.domain.game import OwnedVehicle, PlayerState
@@ -162,12 +166,12 @@ def test_catalogue_numeric_nonfinite_and_negative_cost(
 
 
 def test_purchase_reputation_snapshots_and_rollback(
-    synthetic_game, small_vehicle_catalogue
+    synthetic_game_context, synthetic_game, small_vehicle_catalogue
 ):
     fleet = FleetService(
         synthetic_game.unit_of_work,
         small_vehicle_catalogue,
-        synthetic_game.world,
+        synthetic_game_context.world,
     )
     with pytest.raises(ValueError, match="Reputation"):
         project_vehicle(fleet.purchase("daf_xg_plus_480"))
@@ -211,7 +215,10 @@ def test_purchase_reputation_snapshots_and_rollback(
 
 
 async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
-    monkeypatch, synthetic_game, small_vehicle_catalogue
+    synthetic_game_context,
+    monkeypatch,
+    synthetic_game,
+    small_vehicle_catalogue,
 ):
     original = synthetic_game.state_repository.list_vehicles()[0]
     legacy = OwnedVehicle(
@@ -242,7 +249,7 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
         FleetService(
             synthetic_game.unit_of_work,
             small_vehicle_catalogue,
-            synthetic_game.world,
+            synthetic_game_context.world,
         ).purchase("iveco_sway_500")
     )
     quote = project_quote(
@@ -331,36 +338,40 @@ def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
         app.state.settings = replace(
             settings, vehicle_catalogue_path=tmp_path / "missing.db"
         )
-        assert client.get("/api/v1/fleet/catalogue").status_code == 503
-        assert (
-            client.post(
-                "/api/v1/fleet/purchase", json={"model_id": "iveco_sway_500"}
-            ).status_code
-            == 503
-        )
+        cached = client.get("/api/v1/fleet/catalogue")
+        assert cached.status_code == 200
+        assert len(cached.json()["models"]) >= 8
         assert client.get("/api/v1/fleet").status_code == 200
         assert (
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 175000
         )
 
 
-def test_catalogue_builder_default_path(
-    synthetic_runtime, synthetic_game, tmp_path
+def test_fleet_builder_reuses_validated_runtime_catalogue(
+    synthetic_runtime,
+    synthetic_game,
 ):
     with synthetic_runtime.database.connect() as connection:
         connection.execute(
             "INSERT INTO users VALUES (?, ?, ?, 0)",
             ("new-account", "new-account", "test-only"),
         )
+    fleet = build_fleet_service(synthetic_runtime, synthetic_game)
+    assert len(project_catalogue(fleet.list_catalogue())["models"]) == len(
+        synthetic_runtime.catalogue.list_models()
+    )
+    isolated = build_player_service(synthetic_runtime, "new-account")
+    assert project_state(isolated.state())["player"]["cash"] == 175000
+
+
+def test_catalogue_builder_default_path(tmp_path):
     settings = replace(
         make_settings(tmp_path),
         vehicle_catalogue_path=None,
         base_dir=Path(__file__).resolve().parents[1],
     )
-    fleet = build_fleet_service(synthetic_game, settings)
-    assert len(project_catalogue(fleet.list_catalogue())["models"]) >= 8
-    isolated = build_player_service(synthetic_runtime, "new-account")
-    assert project_state(isolated.state())["player"]["cash"] == 175000
+
+    assert len(build_vehicle_catalogue(settings).list_models()) >= 8
 
 
 def test_packaged_catalogue_works_outside_project_directory(
@@ -398,7 +409,7 @@ def test_packaged_catalogue_works_outside_project_directory(
 
 
 def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
-    database, synthetic_runtime, synthetic_game
+    synthetic_game_context, database, synthetic_runtime, synthetic_game
 ):
     with synthetic_runtime.database.connect() as connection:
         connection.execute(
@@ -411,7 +422,7 @@ def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
         )
     model = next(
         item
-        for item in synthetic_game.catalogue.list_models()
+        for item in synthetic_game_context.catalogue.list_models()
         if item.id == "iveco_sway_500"
     )
     starter = project_vehicle(synthetic_game.get_vehicle("truck_01"))
@@ -430,7 +441,7 @@ def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
     synthetic_runtime.catalogue = InMemoryVehicleCatalogue(
         tuple(
             changed if item.id == changed.id else item
-            for item in synthetic_game.catalogue.list_models()
+            for item in synthetic_game_context.catalogue.list_models()
         )
     )
     synthetic_game.ensure_initial_state()

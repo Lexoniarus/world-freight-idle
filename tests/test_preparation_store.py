@@ -9,9 +9,12 @@ from tests.support.market import (
 
 
 def test_preparation_store_generation_and_reference_rollback(
-    synthetic_game, database
+    synthetic_game_context, database
 ):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
     assert preparation.demand.jobs.status("missing") is None
     with pytest.raises(ValueError, match="publication"):
         preparation.routes.bind(synthetic_game.state_repository.list_offers())
@@ -36,7 +39,6 @@ def test_preparation_store_generation_and_reference_rollback(
 
 
 def test_preparation_composition_uses_complete_local_runtime(
-    synthetic_game,
     synthetic_runtime,
 ):
     from app.bootstrap import (

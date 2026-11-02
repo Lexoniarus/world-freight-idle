@@ -17,7 +17,7 @@ from tests.support.game_clock import set_game_clock
 
 
 async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
-    monkeypatch, synthetic_game
+    synthetic_game_context, monkeypatch, synthetic_game
 ):
     contract = first_berlin_contract(synthetic_game)
     readiness = synthetic_game.market_services.routes.readiness
@@ -30,7 +30,7 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
         await synthetic_game.dispatch(contract["id"], "truck_01")
     )
     with patch.object(
-        synthetic_game.world,
+        synthetic_game_context.world,
         "read",
         side_effect=WorldCatalogueError("offline"),
     ):
@@ -54,6 +54,7 @@ async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
 
 
 def test_api_projection_never_invents_missing_vehicle_locations(
+    synthetic_game_context,
     synthetic_game,
 ):
     vehicle = OwnedVehicle(
@@ -68,7 +69,9 @@ def test_api_projection_never_invents_missing_vehicle_locations(
         top_speed_kmh=90,
     )
     with patch.object(
-        synthetic_game.world, "read", side_effect=AssertionError("lookup")
+        synthetic_game_context.world,
+        "read",
+        side_effect=AssertionError("lookup"),
     ):
         assert project_vehicle(vehicle)["hub"] is None
         known = synthetic_game.state_repository.list_vehicles()[0]

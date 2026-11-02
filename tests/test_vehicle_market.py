@@ -95,11 +95,12 @@ def test_shared_materialized_offers_cover_identical_vehicles_once(city_market):
 async def test_vehicle_readiness_requires_approach_and_excludes_stale(
     vehicle_game,
 ):
-    game, preparation = vehicle_game
-    fleet = game.market.candidates.resolve_fleet(
+    context, preparation = vehicle_game
+    game = context.service
+    fleet = context.market.candidates.resolve_fleet(
         game.state_repository.list_vehicles()
     )
-    candidates = game.market.candidates.build((fleet[0].city_uid,), fleet)
+    candidates = context.market.candidates.build((fleet[0].city_uid,), fleet)
     at_pickup = next(
         c
         for c in candidates
@@ -126,7 +127,7 @@ async def test_vehicle_readiness_requires_approach_and_excludes_stale(
     ready = preparation.routes.ready_candidates((at_pickup, remote))
     assert len(ready) == 2
     offers = tuple(
-        ContractOffer.from_snapshot(game.market.factory.build(item, 1))
+        ContractOffer.from_snapshot(context.market.factory.build(item, 1))
         for item in ready
     )
     game.state_repository.replace_offers(offers)
@@ -163,18 +164,19 @@ async def test_vehicle_readiness_requires_approach_and_excludes_stale(
 
 
 def test_two_vehicle_projection_uses_authoritative_sets(vehicle_game):
-    game, _ = vehicle_game
+    context, _ = vehicle_game
+    game = context.service
     # Verify projection independently of materialization and HTTP formatting.
     owned = game.get_vehicle("truck")
     from app.services.gameplay.fleet import build_owned_vehicle
 
-    model = game.market.candidates.catalogue.list_models()[0]
+    model = context.market.candidates.catalogue.list_models()[0]
     other = build_owned_vehicle(model, "second", owned.location)
     game.state_repository.save_vehicle(other)
-    fleet = game.market.candidates.resolve_fleet((owned, other))
-    pool = game.market.candidates.build((fleet[0].city_uid,), fleet)
+    fleet = context.market.candidates.resolve_fleet((owned, other))
+    pool = context.market.candidates.build((fleet[0].city_uid,), fleet)
     offers = tuple(
-        ContractOffer.from_snapshot(game.market.factory.build(pool[0], 1))
+        ContractOffer.from_snapshot(context.market.factory.build(pool[0], 1))
         for _ in range(3)
     )
     sets = {
@@ -210,7 +212,8 @@ async def test_vehicle_projection_api_enforces_owned_idle_selection(
 
     from app.api.v1.contracts import list_contracts, refresh_contracts
 
-    game, preparation = vehicle_game
+    context, preparation = vehicle_game
+    game = context.service
     batch = make_stock_batch(game, preparation)
     preparation.demand.ensure()
     for _ in range(100):

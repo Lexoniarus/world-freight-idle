@@ -97,6 +97,7 @@ def test_catalogue_requires_non_diesel_stop_time(small_vehicle_catalogue):
 
 
 def test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction(
+    synthetic_game_context,
     synthetic_game,
 ):
     vehicle = synthetic_game.state_repository.list_vehicles()[0]
@@ -129,7 +130,7 @@ def test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction(
             vehicle.consume_energy(amount)
     model = next(
         m
-        for m in synthetic_game.catalogue.list_models()
+        for m in synthetic_game_context.catalogue.list_models()
         if m.energy.kind == "electric"
     )
     vehicle.apply_model(model)

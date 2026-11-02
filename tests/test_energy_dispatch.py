@@ -16,11 +16,11 @@ from tests.support.game_clock import set_game_clock
 from tests.support.market import seed_test_offers
 
 
-def prepare_electric_vehicle(synthetic_game):
+def prepare_electric_vehicle(synthetic_game, synthetic_game_context):
     vehicle = synthetic_game.state_repository.list_vehicles()[0]
     model = next(
         m
-        for m in synthetic_game.catalogue.list_models()
+        for m in synthetic_game_context.catalogue.list_models()
         if m.id == vehicle.model_id
     )
     vehicle.apply_model(
@@ -36,9 +36,12 @@ def prepare_electric_vehicle(synthetic_game):
 
 
 async def test_energy_quote_dispatch_pause_and_offline_settlement(
-    synthetic_game, database
+    synthetic_game, synthetic_game_context, database
 ):
-    vehicle = prepare_electric_vehicle(synthetic_game)
+    vehicle = prepare_electric_vehicle(
+        synthetic_game,
+        synthetic_game_context,
+    )
     now = [synthetic_game.now()]
     set_game_clock(synthetic_game, lambda: now[0])
     contract = first_berlin_contract(synthetic_game)
@@ -88,7 +91,7 @@ async def test_energy_quote_dispatch_pause_and_offline_settlement(
     now[0] = trip.arrives_at + 1
     before = synthetic_game.player_state().cash
     with patch.object(
-        synthetic_game.catalogue,
+        synthetic_game_context.catalogue,
         "list_models",
         side_effect=CatalogueError("offline"),
     ):
@@ -114,8 +117,12 @@ async def test_energy_quote_dispatch_pause_and_offline_settlement(
 
 async def test_dispatch_replans_after_routing_and_settlement_rolls_back(
     synthetic_game,
+    synthetic_game_context,
 ):
-    vehicle = prepare_electric_vehicle(synthetic_game)
+    vehicle = prepare_electric_vehicle(
+        synthetic_game,
+        synthetic_game_context,
+    )
     contract = first_berlin_contract(synthetic_game)
     readiness = synthetic_game.market_services.routes.readiness
     original_load = readiness.load

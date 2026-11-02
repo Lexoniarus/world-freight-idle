@@ -99,7 +99,7 @@ def prepare_energy_fixture(
     vehicle = synthetic_game.get_vehicle("truck_01")
     model = next(
         m
-        for m in synthetic_game.catalogue.list_models()
+        for m in app.state.game_runtime.catalogue.list_models()
         if m.id == vehicle.model_id
     )
     capacity = 1000 if single_stop else 100
@@ -129,7 +129,7 @@ def prepare_approach_fixture(
     offer = synthetic_game.state_repository.list_offers()[0]
     facility = next(
         item
-        for item in synthetic_game.world.read().facilities
+        for item in app.state.game_runtime.world.read().facilities
         if item.address.city.city_uid == offer.origin.city.city_uid
         and item.facility_uid != offer.origin.facility_uid
         and item.coordinates is not None

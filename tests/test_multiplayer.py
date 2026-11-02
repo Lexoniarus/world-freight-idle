@@ -98,10 +98,13 @@ def test_player_service_isolation_and_atomic_purchases(
         )
     alice = build_player_service(synthetic_runtime, "alice")
     bob = build_player_service(synthetic_runtime, "bob")
-    assert alice.world is bob.world
+    assert alice.market_lifecycle.scope.world is synthetic_runtime.world
+    assert bob.market_lifecycle.scope.world is synthetic_runtime.world
     vehicle = project_vehicle(
         FleetService(
-            alice.unit_of_work, synthetic_vehicle_catalogue, alice.world
+            alice.unit_of_work,
+            synthetic_vehicle_catalogue,
+            synthetic_runtime.world,
         ).purchase("iveco_sway_500")
     )
     assert alice.get_vehicle(vehicle["id"]).capacity_tons == 24.2
@@ -111,13 +114,17 @@ def test_player_service_isolation_and_atomic_purchases(
     with pytest.raises(ValueError, match="Nicht genug"):
         project_vehicle(
             FleetService(
-                alice.unit_of_work, synthetic_vehicle_catalogue, alice.world
+                alice.unit_of_work,
+                synthetic_vehicle_catalogue,
+                synthetic_runtime.world,
             ).purchase("renault_t_high_520")
         )
     with pytest.raises(ValueError, match="Unbekanntes"):
         project_vehicle(
             FleetService(
-                alice.unit_of_work, synthetic_vehicle_catalogue, alice.world
+                alice.unit_of_work,
+                synthetic_vehicle_catalogue,
+                synthetic_runtime.world,
             ).purchase("fake")
         )
     with pytest.raises(KeyError):
@@ -147,7 +154,7 @@ def test_concurrent_purchases_cannot_overdraw(
                 FleetService(
                     service.unit_of_work,
                     synthetic_vehicle_catalogue,
-                    service.world,
+                    synthetic_runtime.world,
                 ).purchase("iveco_sway_500")
             )
         except ValueError:
@@ -163,13 +170,13 @@ def test_concurrent_purchases_cannot_overdraw(
 
 
 async def test_parallel_transports_and_offline_settlement(
-    synthetic_game, synthetic_vehicle_catalogue
+    synthetic_game_context, synthetic_game, synthetic_vehicle_catalogue
 ):
     second_vehicle = project_vehicle(
         FleetService(
             synthetic_game.unit_of_work,
             synthetic_vehicle_catalogue,
-            synthetic_game.world,
+            synthetic_game_context.world,
         ).purchase("iveco_sway_500")
     )
     [project_contract(value) for value in synthetic_game.refresh_contracts()]

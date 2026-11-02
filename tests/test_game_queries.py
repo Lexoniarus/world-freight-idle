@@ -39,11 +39,13 @@ def test_contract_reads_never_generate_inside_request(
     assert any(contract["origin_hub_id"] == BERLIN_UID for contract in forced)
 
 
-def test_state_expands_contract_addresses(synthetic_game: GameService):
+def test_state_expands_contract_addresses(
+    synthetic_game_context, synthetic_game: GameService
+):
     state = project_state(synthetic_game.state())
     assert (
         state["hubs"][0]["address"]
-        == WorldScope(synthetic_game.world.read())
+        == WorldScope(synthetic_game_context.world.read())
         .facility(BERLIN_UID)
         .address.display_text()
     )
@@ -137,7 +139,9 @@ def test_vehicle_location_resolution_is_explicit_and_eligibility_is_pure(
     assert vehicle.location is not None
 
 
-def test_contract_projection_retains_endpoint_snapshots(synthetic_game):
+def test_contract_projection_retains_endpoint_snapshots(
+    synthetic_game_context, synthetic_game
+):
     offer = synthetic_game.state_repository.list_offers()[0]
     projected = project_contract(offer)
     assert projected["origin_hub_id"] == offer.origin.facility_uid
@@ -145,7 +149,9 @@ def test_contract_projection_retains_endpoint_snapshots(synthetic_game):
     assert projected["destination"]["address"] == offer.destination.address
 
     with patch.object(
-        synthetic_game.world, "read", side_effect=AssertionError("lookup")
+        synthetic_game_context.world,
+        "read",
+        side_effect=AssertionError("lookup"),
     ):
         assert project_contract(offer) == projected
 
@@ -218,13 +224,15 @@ def test_market_presentation_filters_coverage_for_requested_vehicle(
     )
 
 
-def test_list_get_and_expand_vehicles(synthetic_game: GameService):
+def test_list_get_and_expand_vehicles(
+    synthetic_game_context, synthetic_game: GameService
+):
     vehicles = [
         project_vehicle(value) for value in synthetic_game.list_vehicles()
     ]
     assert (
         vehicles[0]["hub"]["address"]
-        == WorldScope(synthetic_game.world.read())
+        == WorldScope(synthetic_game_context.world.read())
         .facility(BERLIN_UID)
         .address.display_text()
     )

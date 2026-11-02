@@ -106,6 +106,7 @@ def test_route_snapshot_rejects_invalid_measurements_and_geometry():
 
 
 def test_transport_settlement_keeps_saved_location_without_catalogue(
+    synthetic_game_context,
     synthetic_game,
 ):
     from unittest.mock import patch
@@ -115,7 +116,7 @@ def test_transport_settlement_keeps_saved_location_without_catalogue(
 
     trip = add_transport(synthetic_game, payout=50)
     with patch.object(
-        synthetic_game.world, "read", side_effect=WorldCatalogueError()
+        synthetic_game_context.world, "read", side_effect=WorldCatalogueError()
     ):
         assert synthetic_game.reconcile_arrival()
         assert [

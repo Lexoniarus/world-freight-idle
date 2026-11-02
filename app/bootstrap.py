@@ -262,10 +262,6 @@ def build_player_service(runtime: GameRuntime, user_id: str) -> GameService:
     )
     game = GameService(
         unit,
-        runtime.world,
-        runtime.market,
-        runtime.catalogue,
-        runtime.market_scope,
         runtime.clock,
         runtime.time_scale,
         lifecycle,
@@ -291,19 +287,22 @@ def build_vehicle_catalogue(settings: Settings) -> SqliteVehicleCatalogue:
     )
 
 
-def build_fleet_service(game: GameService, settings: Settings) -> FleetService:
+def build_fleet_service(
+    runtime: GameRuntime,
+    game: GameService,
+) -> FleetService:
     """Assemble purchasing against the authenticated player's unit of work."""
     return FleetService(
         game.unit_of_work,
-        build_vehicle_catalogue(settings),
-        game.world,
+        runtime.catalogue,
+        runtime.world,
         game.market_services.demand.invalidate,
     )
 
 
-def build_map_service(game: GameService) -> MapLocationService:
+def build_map_service(runtime: GameRuntime) -> MapLocationService:
     """Project real catalogue locations without a network lookup."""
-    return MapLocationService(game.world)
+    return MapLocationService(runtime.world)
 
 
 def build_traffic_reader(

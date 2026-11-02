@@ -24,9 +24,12 @@ from tests.support.routing import (
 
 @pytest.mark.asyncio
 async def test_worker_fills_ready_market_and_owns_shutdown(
-    synthetic_game, database
+    synthetic_game_context, database
 ):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
     batch = make_stock_batch(synthetic_game, preparation)
     preparation.demand.ensure()
     worker = MarketPreparationWorker(
@@ -70,18 +73,21 @@ async def test_worker_fills_ready_market_and_owns_shutdown(
 
 @pytest.mark.asyncio
 async def test_preparation_failures_backoff_fencing_and_worker_cleanup(
-    synthetic_game,
+    synthetic_game_context,
     database,
 ):
-    synthetic_game, preparation = build_prepared_game(synthetic_game, database)
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
     readiness = RoutingTestHarness(
         preparation.routes.readiness,
         preparation.route_preparation.preparation,
     )
     owned = synthetic_game.state_repository.list_vehicles()
-    fleet = synthetic_game.market.candidates.resolve_fleet(owned)
-    pool = synthetic_game.market.candidates.build(
-        synthetic_game.market_scope.resolve(owned), fleet
+    fleet = synthetic_game_context.market.candidates.resolve_fleet(owned)
+    pool = synthetic_game_context.market.candidates.build(
+        synthetic_game_context.market_scope.resolve(owned), fleet
     )
     candidate = pool[0]
     pair = (

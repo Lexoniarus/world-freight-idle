@@ -43,7 +43,7 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
     bob_vehicle = bob_game.state_repository.list_vehicles()[0]
     model = next(
         item
-        for item in bob_game.catalogue.list_models()
+        for item in synthetic_runtime.catalogue.list_models()
         if item.id == "daf_xg_plus_480"
     )
     bob_vehicle.apply_model(model)

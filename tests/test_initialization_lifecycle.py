@@ -18,7 +18,7 @@ from app.main import lifespan
 @pytest.mark.parametrize("failure", ["catalogue", "write"])
 @pytest.mark.parametrize("existing_player", [False, True])
 def test_initialization_direct_failure_is_atomic(
-    synthetic_game, failure, existing_player
+    synthetic_game_context, synthetic_game, failure, existing_player
 ):
     repository = synthetic_game.state_repository
     repository.reset()
@@ -27,7 +27,7 @@ def test_initialization_direct_failure_is_atomic(
     before = repository.get_player()
     failures = {
         "catalogue": patch.object(
-            synthetic_game.catalogue,
+            synthetic_game_context.catalogue,
             "list_models",
             side_effect=CatalogueError("unavailable"),
         ),
@@ -52,18 +52,20 @@ def test_initialization_direct_failure_is_atomic(
 
 def test_initialization_creates_no_market_stock(synthetic_game):
     synthetic_game.state_repository.reset()
-    assert not hasattr(synthetic_game.market, "generate")
+    assert not hasattr(synthetic_game.market_lifecycle.market, "generate")
     synthetic_game.ensure_initial_state()
     assert synthetic_game.state_repository.list_offers() == ()
 
 
-def test_reset_failure_restores_deleted_state(synthetic_game):
+def test_reset_failure_restores_deleted_state(
+    synthetic_game_context, synthetic_game
+):
     repository = synthetic_game.state_repository
     player = repository.get_player()
     vehicles = repository.list_vehicles()
     offers = repository.list_offers()
     with patch.object(
-        synthetic_game.catalogue,
+        synthetic_game_context.catalogue,
         "list_models",
         side_effect=CatalogueError("catalogue failed"),
     ):
