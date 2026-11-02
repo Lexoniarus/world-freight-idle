@@ -1,8 +1,8 @@
-import { LatestRequest } from "../state.js";
+import { LatestRequest } from "../latest-request.js";
 
 /** Execute game use cases; views only emit action names and resource IDs. */
 export class GameActions {
-  /** @param {{focus?: import("./map-focus-controller.js").MapFocusController, api: import('../api.js').GameApiClient, state: import("../state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../types.js").GameMap | null, contractMarket: import("./contract-market-controller.js").ContractMarketController, notify: import('../types.js').Notify, navigate: import('../types.js').Navigate, refresh: () => Promise<void>, logout: () => Promise<void>}} dependencies */
+  /** @param {{focus?: import("./map-focus-controller.js").MapFocusController, api: import('../api.js').GameApiClient, state: import("../game-state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../types.js").GameMap | null, contractMarket: import("./contract-market-controller.js").ContractMarketController, notify: import('../types.js').Notify, navigate: import('../types.js').Navigate, refresh: () => Promise<void>, logout: () => Promise<void>}} dependencies */
   constructor({
     api,
     state,

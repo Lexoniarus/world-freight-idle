@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { GameState } from "./state.js";
+import { GameState } from "./game-state.js";
 
 test("traffic failures preserve the last public snapshot and remain visible", async () => {
   let trafficFails = false;

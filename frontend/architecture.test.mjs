@@ -24,7 +24,7 @@ function assertBoundaries(name, text) {
     assert.ok(!dependency.includes("static/"), name);
     if (name.startsWith("views/") || name.startsWith("ui/"))
       assert.ok(
-        !["api.js", "state.js", "bootstrap.js", "application.js"].includes(dependency) &&
+        !["api.js", "game-state.js", "bootstrap.js", "application.js"].includes(dependency) &&
           !dependency.startsWith("controllers/") &&
           !dependency.startsWith("map/"),
         name,
@@ -36,7 +36,7 @@ function assertBoundaries(name, text) {
           !dependency.startsWith("views/"),
         name,
       );
-    if (name === "state.js")
+    if (name === "game-state.js")
       assert.ok(dependency !== "api.js" && !/^(views|controllers|map)\//.test(dependency), name);
   }
   function visit(node) {
@@ -79,7 +79,7 @@ test("view boundary rejects controller imports, re-exports and dynamic imports",
   for (const source of [
     'import { GameActions } from "../controllers/game-actions.js";',
     'export * from "../controllers/panel-controller.js";',
-    'export { GameState } from "../state.js";',
+    'export { GameState } from "../game-state.js";',
     'import("../controllers/game-actions.js");',
     "import(`../controllers/game-actions.js`);",
     'globalThis.fetch("/api/v1/fleet");',

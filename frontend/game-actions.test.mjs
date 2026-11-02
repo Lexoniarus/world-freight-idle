@@ -2,7 +2,7 @@ import "./test-dom.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { GameActions } from "./controllers/game-actions.js";
-import { GameState } from "./state.js";
+import { GameState } from "./game-state.js";
 import { requiredElement } from "./ui/dom.js";
 import {
   contract,

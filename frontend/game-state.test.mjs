@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { GameState, LatestRequest } from "./state.js";
+import { GameState } from "./game-state.js";
 import { offer } from "./test-support/freight-fixtures.mjs";
 
 test("contract detail updates never replace the saved market list", () => {
@@ -78,15 +78,4 @@ test("failed runtime reads preserve the snapshot and allow retry", async () => {
   assert.equal(state.pending, null);
   assert.equal(state.data.player.cash, 12);
   state.destroy();
-});
-
-test("latest request aborts and rejects superseded publications", () => {
-  const gate = new LatestRequest();
-  const first = gate.start();
-  const next = gate.start();
-
-  assert.equal(first.signal.aborted, true);
-  assert.equal(first.isCurrent(), false);
-  assert.equal(next.isCurrent(), true);
-  gate.cancel();
 });

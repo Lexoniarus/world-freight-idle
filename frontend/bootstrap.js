@@ -9,7 +9,7 @@ import { LayerStateController } from "./controllers/layer-state-controller.js";
 import { AnalyticsController } from "./controllers/analytics-controller.js";
 import { ManagementInput } from "./controllers/management-input.js";
 import { GameApiClient, ApiError } from "./api.js";
-import { GameState } from "./state.js";
+import { GameState } from "./game-state.js";
 import { BrowserRouter } from "./navigation.js";
 import { GameApplication } from "./application.js";
 import { AuthController } from "./controllers/auth-controller.js";

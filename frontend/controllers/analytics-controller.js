@@ -1,4 +1,4 @@
-import { LatestRequest } from "../state.js";
+import { LatestRequest } from "../latest-request.js";
 
 /** Load private analytics only while its management view is open. */
 export class AnalyticsController {

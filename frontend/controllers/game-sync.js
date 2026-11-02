@@ -6,7 +6,7 @@ import { progressDisplay } from "../views/transports.js";
 
 /** Synchronize global game state with the HUD, panels and map. */
 export class GameSync {
-  /** @param {{state: import("../state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../types.js").GameMap | null, notify: import("../types.js").Notify}} dependencies */
+  /** @param {{state: import("../game-state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../types.js").GameMap | null, notify: import("../types.js").Notify}} dependencies */
   constructor({ state, panel, map, notify }) {
     this.state = state;
     this.panel = panel;

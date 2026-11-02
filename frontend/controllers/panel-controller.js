@@ -1,5 +1,5 @@
 import { matchVehicleImages } from "../ui/preserve-vehicle-images.js";
-import { LatestRequest } from "../state.js";
+import { LatestRequest } from "../latest-request.js";
 import { eligibleVehicles } from "../geometry.js";
 import { renderPanel } from "../panels.js";
 import { panelTitle } from "../navigation.js";

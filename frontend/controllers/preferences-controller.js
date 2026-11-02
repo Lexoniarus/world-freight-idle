@@ -1,4 +1,4 @@
-import { LatestRequest } from "../state.js";
+import { LatestRequest } from "../latest-request.js";
 
 /** Own account preference requests and publish one shared company color. */
 export class PreferencesController {

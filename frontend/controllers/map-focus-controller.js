@@ -2,7 +2,7 @@ import { focusCoordinates } from "../map/focus-targets.js";
 
 /** Consume each navigation focus intent once, after its data and map are ready. */
 export class MapFocusController {
-  /** @param {{state: import('../state.js').GameState, view: import('../types.js').PanelView, map: import('../types.js').GameMap | null}} dependencies */
+  /** @param {{state: import('../game-state.js').GameState, view: import('../types.js').PanelView, map: import('../types.js').GameMap | null}} dependencies */
   constructor({ state, view, map }) {
     this.state = state;
     this.view = view;

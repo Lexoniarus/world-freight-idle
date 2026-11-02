@@ -1,9 +1,9 @@
 import { marketVehicle } from "../market-context.js";
-import { LatestRequest } from "../state.js";
+import { LatestRequest } from "../latest-request.js";
 
 /** Own city-market reads independently of map navigation. */
 export class ContractMarketController {
-  /** @param {{state: import("../state.js").GameState, api: import("../api.js").GameApiClient, notify: import("../types.js").Notify, currentUrl: () => URL}} dependencies */
+  /** @param {{state: import("../game-state.js").GameState, api: import("../api.js").GameApiClient, notify: import("../types.js").Notify, currentUrl: () => URL}} dependencies */
   constructor({ state, api, notify, currentUrl }) {
     this.state = state;
     this.api = api;

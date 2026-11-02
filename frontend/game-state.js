@@ -222,25 +222,3 @@ export class GameState extends EventTarget {
     return this.refresh();
   }
 }
-
-/** Cancel and invalidate selection-specific async work. */
-export class LatestRequest {
-  cancel() {
-    this.controller?.abort();
-    this.version++;
-  }
-
-  constructor() {
-    this.version = 0;
-  }
-
-  start() {
-    this.controller?.abort();
-    this.controller = new AbortController();
-    const version = ++this.version;
-    return {
-      signal: this.controller.signal,
-      isCurrent: () => this.version === version,
-    };
-  }
-}

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { ContractMarketController } from "./controllers/contract-market-controller.js";
-import { GameState } from "./state.js";
+import { GameState } from "./game-state.js";
 import { freightApi, offer } from "./test-support/freight-fixtures.mjs";
 
 test("market list and detail publish independently", async () => {

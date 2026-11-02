@@ -1,10 +1,10 @@
-import { LatestRequest } from "../state.js";
+import { LatestRequest } from "../latest-request.js";
 import { cityLocations, activeCityIds, resolveLegacyCity } from "../city-context.js";
 import { marketVehicle, vehicleCity } from "../market-context.js";
 
 /** Resolve route-local city context without scoping the world overview. */
 export class CityContextController {
-  /** @param {{state: import('../state.js').GameState, view: import('../types.js').PanelView, request: import('../types.js').RequestJson, notify: import('../types.js').Notify}} dependencies */
+  /** @param {{state: import('../game-state.js').GameState, view: import('../types.js').PanelView, request: import('../types.js').RequestJson, notify: import('../types.js').Notify}} dependencies */
   constructor({ state, view, request, notify }) {
     this.state = state;
     this.view = view;

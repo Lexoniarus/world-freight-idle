@@ -2,7 +2,7 @@ import "./test-dom.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { CityContextController } from "./controllers/city-context-controller.js";
-import { GameState } from "./state.js";
+import { GameState } from "./game-state.js";
 import { berlin, offer, other, vehicle } from "./test-support/freight-fixtures.mjs";
 
 function cityFixture() {
