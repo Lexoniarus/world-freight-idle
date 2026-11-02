@@ -14,7 +14,10 @@ from app.domain.errors import PersistenceError
 from app.main import create_app
 from app.repositories.analytics import SqliteAnalyticsReader
 from app.services.analytics import AnalyticsService, summarize, validate_scope
-from tests.support.api import make_settings, make_static_files
+from tests.support.api import create_minimal_static_files
+from tests.support.application_settings import (
+    build_synthetic_application_settings,
+)
 from tests.support.game_clock import set_game_clock
 
 NOW = datetime(2026, 9, 25, 12, tzinfo=UTC).timestamp()
@@ -211,8 +214,8 @@ async def test_analytics_offline_arrival_is_idempotent(
         choice.offer.id, choice.eligible_vehicle_ids[0]
     )
     set_game_clock(synthetic_game, lambda: trip.arrives_at + 1)
-    make_static_files(tmp_path)
-    application = create_app(make_settings(tmp_path))
+    create_minimal_static_files(tmp_path)
+    application = create_app(build_synthetic_application_settings(tmp_path))
     with TestClient(application) as client:
         application.state.game_runtime = synthetic_runtime
         application.dependency_overrides[get_game_service] = lambda: (
@@ -284,8 +287,8 @@ def test_analytics_is_read_only_and_account_scoped(
 def test_analytics_and_exact_api_require_session(
     tmp_path, synthetic_game, synthetic_runtime
 ):
-    make_static_files(tmp_path)
-    application = create_app(make_settings(tmp_path))
+    create_minimal_static_files(tmp_path)
+    application = create_app(build_synthetic_application_settings(tmp_path))
     with TestClient(application) as client:
         for path in (
             "company/analytics",

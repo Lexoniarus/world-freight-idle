@@ -283,6 +283,9 @@ INSERT INTO cargo_types VALUES(1, '01', 'General goods');
 INSERT INTO facility_handled_goods VALUES(
     1, 1, 'Machine parts', 1, 'official', 2, NULL
 );
+INSERT INTO facility_handled_goods VALUES(
+    2, 2, 'Machine parts', 1, 'official', 2, NULL
+);
 INSERT INTO nhm_codes VALUES(
     100, 2, NULL, 1, '0100', '0100', 4, 1, 'Maschinenteile',
     'Maschinenteile', 'Machine parts', 'Machine parts', NULL, NULL,
@@ -290,6 +293,9 @@ INSERT INTO nhm_codes VALUES(
 );
 INSERT INTO facility_nhm_profiles VALUES(
     1, 1, 100, 'both', 1, 'high', 1, 2, 'official', NULL
+);
+INSERT INTO facility_nhm_profiles VALUES(
+    2, 2, 100, 'both', 1, 'high', 1, 2, 'official', NULL
 );
 INSERT INTO nhm_market_profiles VALUES(
     100, 'general', 500, 'synthetic', '2026', 2, 1, 1, NULL

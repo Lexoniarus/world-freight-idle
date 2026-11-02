@@ -1,7 +1,12 @@
 """Counter-tests for deterministic support boundaries."""
 
+from pathlib import Path
+
 import pytest
 
+from tests.support.application_settings import (
+    build_synthetic_application_settings,
+)
 from tests.support.catalogues import (
     BERLIN_UID,
     build_synthetic_vehicle_catalogue,
@@ -46,3 +51,30 @@ def test_synthetic_catalogues_cover_gameplay_without_file_access():
         "scania_r460_gas",
         "mercedes_eactros_600",
     ]
+
+
+def test_synthetic_application_settings_use_compact_sql_catalogues(tmp_path):
+    settings = build_synthetic_application_settings(tmp_path)
+
+    assert settings.world_catalogue_path is not None
+    assert settings.vehicle_catalogue_path is not None
+    assert settings.world_catalogue_path.parent == tmp_path
+    assert settings.vehicle_catalogue_path.parent == tmp_path
+    assert settings.world_catalogue_path.stat().st_size < 200_000
+    assert settings.vehicle_catalogue_path.stat().st_size < 100_000
+
+
+def test_reference_application_settings_are_acceptance_only():
+    tests_root = Path(__file__).parent
+    consumers = {
+        path.name
+        for path in tests_root.glob("test_*.py")
+        if path != Path(__file__)
+        if "build_reference_application_settings"
+        in path.read_text(encoding="utf-8")
+    }
+
+    assert consumers == {
+        "test_vehicle_catalogue.py",
+        "test_world_catalogue.py",
+    }

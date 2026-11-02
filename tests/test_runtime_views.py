@@ -30,7 +30,10 @@ from app.repositories.state_snapshots import (
     dataclass_document,
     encode_snapshot,
 )
-from tests.support.api import make_settings, make_static_files
+from tests.support.api import create_minimal_static_files
+from tests.support.application_settings import (
+    build_synthetic_application_settings,
+)
 
 
 def test_runtime_reads_exclude_geometry_and_keep_private_energy(
@@ -97,8 +100,8 @@ def test_runtime_reads_exclude_geometry_and_keep_private_energy(
     with pytest.raises(PersistenceError):
         encode_snapshot("transport", object())
 
-    make_static_files(tmp_path)
-    app = create_app(make_settings(tmp_path))
+    create_minimal_static_files(tmp_path)
+    app = create_app(build_synthetic_application_settings(tmp_path))
     app.state.game_runtime = synthetic_runtime
     app.dependency_overrides[get_current_user] = lambda: {"id": "test-owner"}
     app.dependency_overrides[get_vehicle_catalogue] = lambda: (

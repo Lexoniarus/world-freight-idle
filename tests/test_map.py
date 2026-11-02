@@ -10,7 +10,10 @@ from app.domain.errors import WorldCatalogueError
 from app.domain.world import FacilityQuery
 from app.main import create_app
 from app.services.map_locations import MapLocationService
-from tests.support.api import make_settings, make_static_files
+from tests.support.api import create_minimal_static_files
+from tests.support.application_settings import (
+    build_synthetic_application_settings,
+)
 
 
 @pytest.mark.asyncio
@@ -39,8 +42,8 @@ async def test_map_hubs_resolve_and_preserve_read_failures(
 def test_map_endpoint_requires_session_and_uses_game_provider(
     synthetic_game_context, tmp_path, synthetic_game
 ):
-    make_static_files(tmp_path)
-    application = create_app(make_settings(tmp_path))
+    create_minimal_static_files(tmp_path)
+    application = create_app(build_synthetic_application_settings(tmp_path))
     with TestClient(application) as client:
         for route in ("hubs", "facilities"):
             assert client.get(f"/api/v1/map/{route}").status_code == 401

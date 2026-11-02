@@ -1,10 +1,8 @@
-"""Shared HTTP application doubles and local settings for tests."""
+"""Shared HTTP application doubles and minimal static files for tests."""
 
-import shutil
 from dataclasses import replace
 from pathlib import Path
 
-from app.config import Settings
 from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.game import PlayerState
 from app.domain.journeys import unmetered_journey
@@ -13,8 +11,6 @@ from app.domain.pricing import PriceQuote
 from app.domain.results import ContractQuote, GameSnapshot
 from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.providers.routing import RoutingError
-
-REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
 class FakeGame:
@@ -144,35 +140,7 @@ class FakeGame:
         return self.trip
 
 
-def make_settings(tmp_path: Path) -> Settings:
-    """Create isolated local application settings and catalogue copies."""
-    catalogue = tmp_path / "vehicles.sqlite3"
-    shutil.copyfile(
-        REPOSITORY_ROOT / "data/world_freight_vehicle_catalog.sqlite3",
-        catalogue,
-    )
-    world = tmp_path / "world.sqlite3"
-    shutil.copyfile(
-        REPOSITORY_ROOT / "data/world_freight_company_facility_mvp.sqlite3",
-        world,
-    )
-    return Settings(
-        world_catalogue_path=world,
-        vehicle_catalogue_path=catalogue,
-        base_dir=tmp_path,
-        data_dir=tmp_path / "data",
-        db_path=tmp_path / "data" / "game.db",
-        nominatim_url="https://n.test",
-        valhalla_url="https://v.test",
-        http_user_agent="agent",
-        valhalla_client_id="client",
-        request_timeout_seconds=1,
-        game_time_scale=1,
-        log_level="CRITICAL",
-    )
-
-
-def make_static_files(tmp_path: Path) -> None:
+def create_minimal_static_files(tmp_path: Path) -> None:
     """Create the minimal built frontend tree required by API tests."""
     static = tmp_path / "static"
     static.mkdir(parents=True)

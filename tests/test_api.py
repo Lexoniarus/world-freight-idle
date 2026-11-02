@@ -10,7 +10,10 @@ from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.results import AvailableContract
 from app.domain.routing_readiness import RouteReference
 from app.main import create_app
-from tests.support.api import FakeGame, make_settings, make_static_files
+from tests.support.api import FakeGame, create_minimal_static_files
+from tests.support.application_settings import (
+    build_synthetic_application_settings,
+)
 
 
 def test_route_reference_belongs_only_to_available_market_projection(
@@ -31,8 +34,8 @@ def test_route_reference_belongs_only_to_available_market_projection(
 def test_v1_resource_endpoints_and_error_mapping(
     tmp_path: Path, synthetic_game
 ):
-    make_static_files(tmp_path)
-    app = create_app(make_settings(tmp_path))
+    create_minimal_static_files(tmp_path)
+    app = create_app(build_synthetic_application_settings(tmp_path))
     with TestClient(app) as client:
         app.dependency_overrides[get_game_service] = lambda: FakeGame(
             synthetic_game
@@ -146,8 +149,8 @@ def test_v1_resource_endpoints_and_error_mapping(
 
 
 def test_product_pages_are_distinct_routes(tmp_path: Path):
-    make_static_files(tmp_path)
-    app = create_app(make_settings(tmp_path))
+    create_minimal_static_files(tmp_path)
+    app = create_app(build_synthetic_application_settings(tmp_path))
     with TestClient(app) as client:
         client.headers["X-Freight-Request"] = "1"
         expected = {
@@ -172,7 +175,7 @@ def test_persistence_outage_does_not_expose_database_details(tmp_path):
     from app.domain.errors import PersistenceError
 
     (tmp_path / "static").mkdir()
-    app = create_app(make_settings(tmp_path))
+    app = create_app(build_synthetic_application_settings(tmp_path))
 
     def unavailable():
         raise PersistenceError("private database path and contents")
@@ -193,8 +196,8 @@ def test_market_reference_errors_have_explicit_http_responses(
 
     from app.domain.errors import CatalogueError, UnresolvedVehicleModel
 
-    make_static_files(tmp_path)
-    app = create_app(make_settings(tmp_path))
+    create_minimal_static_files(tmp_path)
+    app = create_app(build_synthetic_application_settings(tmp_path))
     app.dependency_overrides[get_game_service] = lambda: synthetic_game
     with TestClient(app) as client:
         for error, status, message in (
@@ -215,8 +218,8 @@ def test_market_reference_errors_have_explicit_http_responses(
 
 
 def test_color_preference_http_validation_and_session_isolation(tmp_path):
-    make_static_files(tmp_path)
-    app = create_app(make_settings(tmp_path))
+    create_minimal_static_files(tmp_path)
+    app = create_app(build_synthetic_application_settings(tmp_path))
     with TestClient(app) as client:
         client.headers["X-Freight-Request"] = "1"
         assert client.get("/api/v1/auth/preferences").status_code == 401
@@ -269,8 +272,8 @@ def test_request_initialization_catalogue_failure_is_explicit(tmp_path):
 
     from app.domain.errors import CatalogueError
 
-    make_static_files(tmp_path)
-    app = create_app(make_settings(tmp_path))
+    create_minimal_static_files(tmp_path)
+    app = create_app(build_synthetic_application_settings(tmp_path))
     with TestClient(app) as client:
         client.headers["X-Freight-Request"] = "1"
         client.post(

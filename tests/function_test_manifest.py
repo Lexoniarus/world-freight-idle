@@ -260,7 +260,7 @@ FUNCTION_TESTS.update(
         "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue.list_models": "test_catalogue_projects_all_offers_without_writing",
         "app.services.auth.AuthService.__init__": "test_auth_sessions_expire_revoke_and_throttle",
         "app.services.gameplay.fleet.FleetService.__init__": "test_purchase_reputation_snapshots_and_rollback",
-        "app.services.gameplay.fleet.FleetService.list_catalogue": "test_catalogue_api_errors_and_vehicle_quote_validation",
+        "app.services.gameplay.fleet.FleetService.list_catalogue": "test_catalogue_api_uses_validated_startup_snapshot",
         "app.services.gameplay.game.GameService.__post_init__": "test_player_service_isolation_and_atomic_purchases",
         "app.services.map_locations.MapLocationService.__init__": "test_map_hubs_resolve_and_preserve_read_failures",
     }

@@ -17,7 +17,10 @@ from app.bootstrap import (
 from app.main import create_app
 from app.repositories.accounts import AccountRepository
 from app.repositories.relational_traffic import SqliteTrafficReader
-from tests.support.api import make_settings, make_static_files
+from tests.support.api import create_minimal_static_files
+from tests.support.application_settings import (
+    build_synthetic_application_settings,
+)
 from tests.transport_fixtures import add_transport
 
 PASSWORD = "test-only-password-42"
@@ -130,8 +133,8 @@ def test_player_color_is_stable_and_changes_between_users():
 def test_multiplayer_map_endpoint_requires_login_and_shares_other_players(
     tmp_path,
 ):
-    make_static_files(tmp_path)
-    app = create_app(make_settings(tmp_path))
+    create_minimal_static_files(tmp_path)
+    app = create_app(build_synthetic_application_settings(tmp_path))
     with TestClient(app) as client:
         client.headers["X-Freight-Request"] = "1"
         assert client.get("/api/v1/map/traffic").status_code == 401

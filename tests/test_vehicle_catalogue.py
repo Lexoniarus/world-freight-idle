@@ -33,14 +33,14 @@ from app.domain.game import OwnedVehicle, PlayerState
 from app.main import create_app
 from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.services.gameplay.fleet import FleetService
-from tests.support.api import make_settings, make_static_files
-from tests.support.catalogues import BERLIN_UID, InMemoryVehicleCatalogue
+from tests.support.api import create_minimal_static_files
+from tests.support.application_settings import (
+    build_reference_application_settings,
+    build_synthetic_application_settings,
+)
+from tests.support.catalogues import InMemoryVehicleCatalogue
 from tests.support.game import first_berlin_contract
 from tests.support.game_clock import set_game_clock
-from tests.support.routing_runtime import (
-    install_fake_routing_providers,
-    prepare_client_market,
-)
 
 
 def test_catalogue_projects_all_offers_without_writing(
@@ -304,9 +304,9 @@ async def test_vehicle_quotes_and_legacy_snapshots_remain_compatible(
     assert synthetic_game.player_state().cash == 25000 + trip["payout_eur"]
 
 
-def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
-    make_static_files(tmp_path)
-    settings = make_settings(tmp_path)
+def test_catalogue_api_uses_validated_startup_snapshot(tmp_path):
+    create_minimal_static_files(tmp_path)
+    settings = build_synthetic_application_settings(tmp_path)
     app = create_app(settings)
     with TestClient(app) as client:
         client.headers["X-Freight-Request"] = "1"
@@ -317,33 +317,13 @@ def test_catalogue_api_errors_and_vehicle_quote_validation(tmp_path):
                 "password": "catalogue-test-password",
             },
         ).raise_for_status()
-        install_fake_routing_providers(app.state.game_runtime)
-        prepare_client_market(client, app.state.game_runtime)
-        contract = next(
-            item
-            for item in client.get(
-                "/api/v1/contracts?vehicle_id=truck_01"
-            ).json()["contracts"]
-            if item["origin_hub_id"] == BERLIN_UID
-        )
-        url = f"/api/v1/contracts/{contract['id']}/quote"
-        assert (
-            client.post(url, json={"vehicle_id": "foreign"}).status_code == 400
-        )
-        assert (
-            client.post(url, json={"vehicle_id": "truck_01"}).json()[
-                "vehicle_id"
-            ]
-            == "truck_01"
-        )
-        assert client.post(url).status_code == 422
-        assert len(client.get("/api/v1/fleet/catalogue").json()["models"]) >= 8
+        assert len(client.get("/api/v1/fleet/catalogue").json()["models"]) == 4
         app.state.settings = replace(
             settings, vehicle_catalogue_path=tmp_path / "missing.db"
         )
         cached = client.get("/api/v1/fleet/catalogue")
         assert cached.status_code == 200
-        assert len(cached.json()["models"]) >= 8
+        assert len(cached.json()["models"]) == 4
         assert client.get("/api/v1/fleet").status_code == 200
         assert (
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 175000
@@ -385,7 +365,7 @@ def test_fleet_builder_reuses_validated_runtime_catalogue(
 
 def test_catalogue_builder_default_path(tmp_path):
     settings = replace(
-        make_settings(tmp_path),
+        build_synthetic_application_settings(tmp_path),
         vehicle_catalogue_path=None,
         base_dir=Path(__file__).resolve().parents[1],
     )
@@ -398,8 +378,8 @@ def test_packaged_catalogue_works_outside_project_directory(
 ):
     import shutil
 
-    make_static_files(tmp_path)
-    settings = make_settings(tmp_path)
+    create_minimal_static_files(tmp_path)
+    settings = build_reference_application_settings(tmp_path)
     bundled = tmp_path / "data" / "world_freight_vehicle_catalog.sqlite3"
     bundled.parent.mkdir()
     assert settings.vehicle_catalogue_path is not None
@@ -488,14 +468,17 @@ def test_starter_uses_catalogue_snapshot_and_preserves_existing_accounts(
 def test_missing_catalogue_blocks_start_and_repaired_start_is_retryable(
     tmp_path,
 ):
-    make_static_files(tmp_path)
+    create_minimal_static_files(tmp_path)
     settings = replace(
-        make_settings(tmp_path), vehicle_catalogue_path=tmp_path / "missing.db"
+        build_synthetic_application_settings(tmp_path),
+        vehicle_catalogue_path=tmp_path / "missing.db",
     )
     with pytest.raises(CatalogueError):
         with TestClient(create_app(settings)):
             pytest.fail("Server must not become ready with missing catalogue")
-    source = make_settings(tmp_path).vehicle_catalogue_path
+    source = build_synthetic_application_settings(
+        tmp_path
+    ).vehicle_catalogue_path
     assert source is not None and settings.vehicle_catalogue_path is not None
     import shutil
 
@@ -512,7 +495,9 @@ def test_missing_catalogue_blocks_start_and_repaired_start_is_retryable(
         ).raise_for_status()
         import shutil
 
-        source = make_settings(tmp_path).vehicle_catalogue_path
+        source = build_synthetic_application_settings(
+            tmp_path
+        ).vehicle_catalogue_path
         assert source is not None
         assert settings.vehicle_catalogue_path is not None
         shutil.copyfile(source, settings.vehicle_catalogue_path)

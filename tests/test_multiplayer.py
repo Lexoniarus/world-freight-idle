@@ -27,7 +27,10 @@ from app.main import create_app
 from app.repositories.accounts import AccountRepository
 from app.services.auth import SESSION_COOKIE, AuthService, PasswordHasher
 from app.services.gameplay.fleet import FleetService
-from tests.support.api import make_settings, make_static_files
+from tests.support.api import create_minimal_static_files
+from tests.support.application_settings import (
+    build_synthetic_application_settings,
+)
 from tests.support.catalogues import BERLIN_UID
 from tests.support.game import first_berlin_contract
 from tests.support.game_clock import set_game_clock
@@ -310,8 +313,8 @@ def test_leaderboard_counts_offline_arrivals_without_double_counting(
 
 
 def test_auth_api_and_private_game_resources(tmp_path):
-    make_static_files(tmp_path)
-    app = create_app(make_settings(tmp_path))
+    create_minimal_static_files(tmp_path)
+    app = create_app(build_synthetic_application_settings(tmp_path))
     with TestClient(app) as client:
         install_fake_routing_providers(app.state.game_runtime)
         for path in (
@@ -356,7 +359,7 @@ def test_auth_api_and_private_game_resources(tmp_path):
             client.get("/api/v1/dashboard").json()["player"]["cash"] == 175000
         )
         models = client.get("/api/v1/fleet/catalogue").json()["models"]
-        assert len(models) >= 8
+        assert len(models) == 4
         purchase = client.post(
             "/api/v1/fleet/purchase",
             json={"model_id": "iveco_sway_500", "price_eur": 1},
@@ -446,7 +449,7 @@ async def test_initialization_does_not_implicitly_import_legacy_trips(
     from app.bootstrap import build_game_runtime
     from app.domain.errors import UnsupportedGameSchema
 
-    settings = make_settings(tmp_path)
+    settings = build_synthetic_application_settings(tmp_path)
     import sqlite3
 
     settings.db_path.parent.mkdir(parents=True, exist_ok=True)

@@ -30,7 +30,9 @@ from app.services.gameplay.fleet import build_owned_vehicle
 from app.services.gameplay.game import GameService
 from app.services.profile_maintenance import ProfileMaintenanceService
 from scripts.update_test_profile import main, parse_assignments
-from tests.support.api import make_settings
+from tests.support.application_settings import (
+    build_synthetic_application_settings,
+)
 from tests.support.game import first_berlin_contract
 from tests.support.market import seed_test_offers
 from tests.transport_fixtures import add_transport
@@ -56,7 +58,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
 ):
     service = build_profile_maintenance_service(
         replace(
-            make_settings(tmp_path),
+            build_synthetic_application_settings(tmp_path),
             db_path=database.path,
             vehicle_catalogue_path=small_vehicle_catalogue.path,
         )
@@ -138,7 +140,7 @@ def maintenance(
     tmp_path,
 ):
     settings = replace(
-        make_settings(tmp_path),
+        build_synthetic_application_settings(tmp_path),
         db_path=database.path,
         vehicle_catalogue_path=small_vehicle_catalogue.path,
     )
