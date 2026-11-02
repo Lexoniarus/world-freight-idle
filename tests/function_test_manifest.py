@@ -114,7 +114,7 @@ FUNCTION_TESTS = {
     "app.domain.validation.require_finite": "test_domain_value_validators_reject_invalid_values",
     "app.domain.validation.require_integer": "test_domain_value_validators_reject_invalid_values",
     "app.domain.validation.require_identity": "test_domain_value_validators_reject_invalid_values",
-    "app.api.v1.map.list_map_hubs": "test_map_endpoint_requires_session_and_uses_game_provider",
+    "app.api.v1.map.list_map_hubs": "test_map_endpoint_requires_session_and_uses_map_service",
     "app.api.v1.contracts.accept_contract": (
         "test_contract_dispatch_maps_domain_and_routing_failures"
     ),
@@ -241,9 +241,9 @@ FUNCTION_TESTS.update(
 FUNCTION_TESTS.update(
     {
         "app.composition.player.build_fleet_service": "test_authenticated_account_exposes_only_valid_initial_resources",
-        "app.composition.player.build_map_service": "test_map_endpoint_requires_session_and_uses_game_provider",
+        "app.composition.player.build_map_service": "test_map_endpoint_requires_session_and_uses_map_service",
         "app.api.v1.dependencies.get_fleet_service": "test_authenticated_account_exposes_only_valid_initial_resources",
-        "app.api.v1.dependencies.get_map_service": "test_map_endpoint_requires_session_and_uses_game_provider",
+        "app.api.v1.dependencies.get_map_service": "test_map_endpoint_requires_session_and_uses_map_service",
         "app.providers.geocoding.NominatimGeocoder._resolve_address": "test_geocode_calls_nominatim_and_caches",
         "app.providers.routing.ValhallaTruckRouter._resolve_route": "test_route_calls_valhalla_and_caches",
         "app.providers.routing.ValhallaTruckRouter._read_cached_route": "test_route_calls_valhalla_and_caches",
@@ -308,7 +308,7 @@ FUNCTION_TESTS[
 
 FUNCTION_TESTS.update(
     {
-        "app.api.v1.map.list_map_facilities": "test_map_endpoint_requires_session_and_uses_game_provider",
+        "app.api.v1.map.list_map_facilities": "test_map_endpoint_requires_session_and_uses_map_service",
         "app.composition.runtime.build_world_catalogue": "test_world_catalogue_composition_uses_explicit_path_without_game_state",
         "app.domain.cargo.NhmProduct.is_compatible_with": "test_nhm_cargo_profiles_follow_parent_hierarchy",
         "app.domain.world.Facility.has_verified_location": "test_world_snapshot_identity_provenance_and_query",
@@ -318,7 +318,7 @@ FUNCTION_TESTS.update(
         "app.domain.world.Facility.outbound_profiles": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.FacilityQuery.includes": "test_world_snapshot_identity_provenance_and_query",
         "app.domain.world.FacilityQuery.parse": "test_world_snapshot_identity_provenance_and_query",
-        "app.main.world_catalogue_error": "test_map_endpoint_requires_session_and_uses_game_provider",
+        "app.main.world_catalogue_error": "test_map_endpoint_requires_session_and_uses_map_service",
         "app.repositories.cached_world_catalogue.CachedWorldCatalogue.__init__": "test_cached_world_catalogue_reads_source_once",
         "app.repositories.cached_world_catalogue.CachedWorldCatalogue.read": "test_cached_world_catalogue_reads_source_once",
         "app.repositories.world_catalogue.SqliteWorldCatalogue.__init__": "test_world_repository_readonly_and_cleanup",

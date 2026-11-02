@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.v1.dependencies import get_game_service
+from app.api.v1.dependencies import get_map_service
 from app.domain.errors import WorldCatalogueError
 from app.domain.world import FacilityQuery
 from app.main import create_app
@@ -39,16 +39,17 @@ async def test_map_hubs_resolve_and_preserve_read_failures(
             service.list_facilities(FacilityQuery()).facilities
 
 
-def test_map_endpoint_requires_session_and_uses_game_provider(
-    synthetic_game_context, tmp_path, synthetic_game
+def test_map_endpoint_requires_session_and_uses_map_service(
+    synthetic_game_context,
+    tmp_path,
 ):
     create_minimal_static_files(tmp_path)
     application = create_app(build_synthetic_application_settings(tmp_path))
     with TestClient(application) as client:
         for route in ("hubs", "facilities"):
             assert client.get(f"/api/v1/map/{route}").status_code == 401
-        application.dependency_overrides[get_game_service] = lambda: (
-            synthetic_game
+        application.dependency_overrides[get_map_service] = lambda: (
+            MapLocationService(synthetic_game_context.world)
         )
         application.state.game_runtime.world = synthetic_game_context.world
         response = client.get("/api/v1/map/hubs")

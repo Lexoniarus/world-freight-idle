@@ -71,7 +71,7 @@ def test_request_initialization_catalogue_failure_is_explicit(tmp_path):
             },
         )
         with patch(
-            "app.api.v1.dependencies.build_player_service",
+            "app.api.v1.dependencies.build_player_context",
             side_effect=CatalogueError("Unavailable catalogue"),
         ):
             assert client.get("/api/v1/dashboard").status_code == 503
