@@ -1,4 +1,4 @@
-"""Compact polling retains authoritative facts without hydrating geometry."""
+"""Compact runtime snapshots and HTTP privacy boundaries."""
 
 import json
 from dataclasses import replace
@@ -9,9 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api.v1.dependencies import get_current_user, get_vehicle_catalogue
-from app.api.v1.runtime import (
-    project_runtime,
-)
+from app.api.v1.runtime import project_runtime
 from app.bootstrap import build_runtime_reader, build_runtime_view
 from app.domain.energy import EnergyProfile
 from app.domain.errors import PersistenceError
@@ -32,10 +30,9 @@ from tests.support.application_settings import (
 )
 
 
-def test_runtime_reads_exclude_geometry_and_keep_private_energy(
+def test_runtime_reader_excludes_geometry_and_enforces_visibility(
     active_trip,
     synthetic_runtime,
-    tmp_path,
 ):
     reader = build_runtime_reader(synthetic_runtime)
     service = build_runtime_view(synthetic_runtime, "test-owner")
@@ -45,6 +42,43 @@ def test_runtime_reads_exclude_geometry_and_keep_private_energy(
     ):
         view = service.read()
         public = reader.traffic(active_trip.departed_at)
+
+    assert view.state.transports[0].id == active_trip.id
+    assert public[0].coordinates == ()
+    assert public[0].distance_km == active_trip.route.distance_km
+    assert view.state.player.cash == 175000
+    with pytest.raises(PersistenceError):
+        reader.read("missing-owner")
+    assert reader.visible(
+        "test-owner",
+        active_trip.id,
+        "other",
+        active_trip.departed_at,
+    )
+    assert not reader.visible(
+        "test-owner",
+        active_trip.id,
+        "other",
+        active_trip.arrives_at,
+    )
+    assert reader.visible(
+        "test-owner",
+        active_trip.id,
+        "test-owner",
+        active_trip.arrives_at,
+    )
+    assert not reader.visible("other", active_trip.id, "test-owner", 0)
+    route = reader.geometry("test-owner", active_trip.id)
+    assert route.coordinates == active_trip.route.coordinates
+    with pytest.raises(KeyError):
+        reader.geometry("other", active_trip.id)
+
+
+def test_runtime_projection_keeps_private_energy(
+    active_trip,
+    synthetic_runtime,
+):
+    view = build_runtime_view(synthetic_runtime, "test-owner").read()
     transport = view.state.transports[0]
     journey = plan_journey(
         transport.distance_km,
@@ -64,38 +98,31 @@ def test_runtime_reads_exclude_geometry_and_keep_private_energy(
         state=replace(view.state, transports=(metered,)),
         server_time=transport.departed_at + 1,
     )
+
     projected = project_runtime(
-        metered_view, "test-owner", synthetic_runtime.catalogue
+        metered_view,
+        "test-owner",
+        synthetic_runtime.catalogue,
     )
+
     assert projected["vehicles"][0]["energy_level"] < 100
-    assert view.state.transports[0].id == active_trip.id
-    assert public[0].coordinates == ()
-    assert public[0].distance_km == active_trip.route.distance_km
-    assert view.state.player.cash == 175000
-    with pytest.raises(PersistenceError):
-        reader.read("missing-owner")
-    assert reader.visible(
-        "test-owner", active_trip.id, "other", active_trip.departed_at
-    )
-    assert not reader.visible(
-        "test-owner", active_trip.id, "other", active_trip.arrives_at
-    )
-    assert reader.visible(
-        "test-owner", active_trip.id, "test-owner", active_trip.arrives_at
-    )
-    assert not reader.visible("other", active_trip.id, "test-owner", 0)
-    assert (
-        reader.geometry("test-owner", active_trip.id).coordinates
-        == active_trip.route.coordinates
-    )
-    with pytest.raises(KeyError):
-        reader.geometry("other", active_trip.id)
+    assert projected["transports"][0]["payout_eur"] == active_trip.payout_eur
+
+
+def test_snapshot_encoding_rejects_unsupported_values(active_trip):
     assert dataclass_document(active_trip)["route"] is active_trip.route
     with pytest.raises(TypeError):
         dataclass_document(type(active_trip))
     with pytest.raises(PersistenceError):
         encode_snapshot("transport", object())
 
+
+def test_runtime_api_separates_summary_geometry_and_public_traffic(
+    active_trip,
+    synthetic_runtime,
+    tmp_path,
+):
+    reader = build_runtime_reader(synthetic_runtime)
     create_minimal_static_files(tmp_path)
     app = create_app(build_synthetic_application_settings(tmp_path))
     app.state.game_runtime = synthetic_runtime
@@ -104,66 +131,71 @@ def test_runtime_reads_exclude_geometry_and_keep_private_energy(
         synthetic_runtime.catalogue
     )
     client = TestClient(app)
-    summary = client.get("/api/v1/runtime")
-    assert summary.status_code == 200
-    body = summary.json()
-    assert '"coordinates":[' not in summary.text
-    assert "route_geojson" not in summary.text
-    assert body["transports"][0]["payout_eur"] == active_trip.payout_eur
-    reference = body["transports"][0]["route_ref"]
-    response = client.get("/api/v1/map/routes/" + reference)
-    assert response.status_code == 200
-    assert response.json()["coordinates"] == [
-        list(p) for p in active_trip.route.coordinates
-    ]
-    assert response.json()["legs"] == []
-    with patch.object(
-        type(reader),
-        "geometry",
-        side_effect=AssertionError("304 decoded route"),
-    ):
-        assert (
-            client.get(
+    try:
+        summary = client.get("/api/v1/runtime")
+        assert summary.status_code == 200
+        body = summary.json()
+        assert '"coordinates":[' not in summary.text
+        assert "route_geojson" not in summary.text
+        assert body["transports"][0]["payout_eur"] == active_trip.payout_eur
+
+        reference = body["transports"][0]["route_ref"]
+        response = client.get("/api/v1/map/routes/" + reference)
+        assert response.status_code == 200
+        assert response.json()["coordinates"] == [
+            list(point) for point in active_trip.route.coordinates
+        ]
+        assert response.json()["legs"] == []
+        with patch.object(
+            type(reader),
+            "geometry",
+            side_effect=AssertionError("304 decoded route"),
+        ):
+            cached = client.get(
                 "/api/v1/map/routes/" + reference,
                 headers={"If-None-Match": response.headers["etag"]},
-            ).status_code
-            == 304
-        )
-    traffic = client.get("/api/v1/map/traffic?representation=summary")
-    assert traffic.status_code == 200
-    assert traffic.json()["transports"][0]["route_ref"] == reference
-    for private in ("coordinates", "payout_eur", "energy", "contract"):
-        assert private not in traffic.text
-    assert (
-        client.get("/api/v1/map/traffic?representation=unknown").status_code
-        == 422
-    )
-    assert client.get("/api/v1/map/routes/invalid").status_code == 404
-    with patch.object(
-        type(reader), "geometry", side_effect=KeyError("disappeared")
-    ):
-        assert client.get("/api/v1/map/routes/" + reference).status_code == 404
-    app.dependency_overrides[get_current_user] = lambda: {"id": "other"}
-    with patch(
-        "app.api.v1.runtime.time.time", return_value=active_trip.arrives_at
-    ):
-        assert (
-            client.get(
+            )
+            assert cached.status_code == 304
+
+        traffic = client.get("/api/v1/map/traffic?representation=summary")
+        assert traffic.status_code == 200
+        assert traffic.json()["transports"][0]["route_ref"] == reference
+        for private in ("coordinates", "payout_eur", "energy", "contract"):
+            assert private not in traffic.text
+        invalid = client.get("/api/v1/map/traffic?representation=unknown")
+        assert invalid.status_code == 422
+        assert client.get("/api/v1/map/routes/invalid").status_code == 404
+        with patch.object(
+            type(reader),
+            "geometry",
+            side_effect=KeyError("disappeared"),
+        ):
+            missing = client.get("/api/v1/map/routes/" + reference)
+            assert missing.status_code == 404
+
+        app.dependency_overrides[get_current_user] = lambda: {"id": "other"}
+        with patch(
+            "app.api.v1.runtime.time.time",
+            return_value=active_trip.arrives_at,
+        ):
+            hidden = client.get(
                 "/api/v1/map/routes/" + reference,
                 headers={"If-None-Match": response.headers["etag"]},
-            ).status_code
-            == 404
+            )
+            assert hidden.status_code == 404
+        app.dependency_overrides.pop(get_current_user)
+        app.state.auth = SimpleNamespace(
+            accounts=SimpleNamespace(session_user=lambda _: None)
         )
-    app.dependency_overrides.pop(get_current_user)
-    app.state.auth = SimpleNamespace(
-        accounts=SimpleNamespace(session_user=lambda _: None)
-    )
-    assert client.get("/api/v1/runtime").status_code == 401
-    assert client.get("/api/v1/map/routes/" + reference).status_code == 401
+        assert client.get("/api/v1/runtime").status_code == 401
+        assert client.get("/api/v1/map/routes/" + reference).status_code == 401
+    finally:
+        client.close()
 
 
 def test_runtime_projection_rejects_corrupt_scalars_without_reading_history(
-    active_trip, synthetic_runtime
+    active_trip,
+    synthetic_runtime,
 ):
     reader = build_runtime_reader(synthetic_runtime)
     trip = reader.read("test-owner").transports[0]
@@ -186,8 +218,8 @@ def test_runtime_projection_rejects_corrupt_scalars_without_reading_history(
         )
     with pytest.raises(PersistenceError):
         load_runtime_transport({"version": 2, "kind": "transport"})
-    with synthetic_runtime.database.connect() as db:
-        raw = db.execute(
+    with synthetic_runtime.database.connect() as database:
+        raw = database.execute(
             "SELECT transport_snapshot FROM transports"
         ).fetchone()[0]
         value = json.loads(raw)
@@ -198,12 +230,13 @@ def test_runtime_projection_rejects_corrupt_scalars_without_reading_history(
         ):
             document = json.loads(raw)
             document["data"][field] = invalid
-            db.execute(
+            database.execute(
                 "UPDATE transports SET transport_snapshot=?",
                 (json.dumps(document),),
             )
             with pytest.raises(PersistenceError):
                 reader.read("test-owner")
-        db.execute(
-            "UPDATE transports SET transport_snapshot=?", (json.dumps(value),)
+        database.execute(
+            "UPDATE transports SET transport_snapshot=?",
+            (json.dumps(value),),
         )
