@@ -111,10 +111,10 @@ Automatisierte Mobilansicht ist keine reale iPad-Abnahme. Provider-Mocks beweise
 keine öffentliche Dienstverfügbarkeit. Tatsächlich ausgeführte Ergebnisse stehen
 in QUALITY_REPORT.md; historische Läufe sind keine aktuelle Freigabe.
 
-Aktuelle lokale Abnahme vom 02.11.2026: 591 Python-Tests mit 100 %
-App-Statement-Coverage, 127 Frontend-Verhaltenstests und 14 Playwright-Fälle.
-Der langsamste Pythonfall lief 5,71 Sekunden, der langsamste Browserfall
-7,1 Sekunden. Alle Tests blieben unter der harten Zehn-Sekunden-Grenze.
+Aktuelle lokale Abnahme vom 02.11.2026: 593 Python-Tests mit 100 %
+App-Statement-Coverage, 128 Frontend-Verhaltenstests und 14 Playwright-Fälle.
+Der langsamste Pythonfall lief 5,35 Sekunden, der langsamste Browserfall
+7,2 Sekunden. Alle Tests blieben unter der harten Zehn-Sekunden-Grenze.
 
 ## Regressionen des Persistenzreviews
 

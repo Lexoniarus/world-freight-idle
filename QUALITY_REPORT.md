@@ -14,10 +14,10 @@ Repositoryabnahmen gelesen. Generische `game`-, `runtime`-, `catalogue`- und
 Repositoryfehler verwenden zwei kleine SQL-Kataloge mit zwei Standorten und
 vier Fahrzeugmodellen; die großen Referenzdateien bleiben dabei unverändert.
 
-Der lokale Python-Diagnoselauf bestand alle **591 Tests in 65,60 Sekunden**; der
-langsamste Fall benötigte 5,71 Sekunden. Die **127 Frontendtests** bestanden in
-8,74 Sekunden. Playwright besteht aus **14** getrennten UI-Grenzen und lief in
-1,0 Minute; der langsamste Browserfall benötigte 7,1 Sekunden. Öffentliche
+Der lokale Python-Abnahmelauf bestand alle **593 Tests in 64,18 Sekunden**; der
+langsamste Fall benötigte 5,35 Sekunden. Die **128 Frontendtests** bestanden in
+8,86 Sekunden. Playwright besteht aus **14** getrennten UI-Grenzen und lief in
+1,0 Minute; der langsamste Browserfall benötigte 7,2 Sekunden. Öffentliche
 Tiles, echte Provider und Supabase waren in allen Läufen ausgeschlossen.
 
 Fahrzeuge werden im Flotten-Read-Modell nach ID genau einmal verbunden und
@@ -61,10 +61,9 @@ direkt ein. Die distinct Flottenprojektion bleibt unverändert: ein Fahrzeug
 erscheint auch bei Abfahrts- und Zielstadtfilter nur einmal.
 
 Die Arbeitscommits wurden ausschließlich mit ihren Eigentümertests, Ruff,
-mypy beziehungsweise ESLint, Prettier und checkJs geprüft. Supabase, reale
-Provider und öffentliche Tiles wurden nicht angesprochen. Die nachfolgend
-dokumentierte frühere Gesamtabnahme ist erst nach dem nun folgenden einmaligen
-vollständigen Quality- und Browserlauf für diesen Refactor erneut aktuell.
+mypy beziehungsweise ESLint, Prettier und checkJs geprüft. Danach bestanden
+das vollständige Quality-Gate und alle 14 Browsergrenzen. Supabase, reale
+Provider und öffentliche Tiles wurden nicht angesprochen.
 
 Die lokale Runtime besitzt einen Lifespan-Worker. Reads bleiben rein lesend;
 Zustandsänderungen und ausdrücklicher Refresh schreiben Bedarf und wecken ihn.
@@ -126,18 +125,18 @@ wird in begrenzten Einzelrunden bis zu drei sichtbaren und zehn gespeicherten
 Angeboten je Distanzband versorgt; ein `ready`-Job wird nicht erneut ausgewählt.
 
 Der abschließende kombinierte Lauf von `.venv/Scripts/python.exe -X utf8
-scripts/quality.py` prüft **591 Python-Tests** mit **100,00 %
-app-Statement-Coverage**, **127 Frontend-Verhaltenstests** sowie Ruff,
+scripts/quality.py` prüft **593 Python-Tests** mit **100,00 %
+app-Statement-Coverage**, **128 Frontend-Verhaltenstests** sowie Ruff,
 Formatierung, mypy, Pyright, ESLint, Stylelint, Prettier, checkJs,
 Produktionsbuild und compileall. Architektur- und
 Funktionsmanifestprüfungen sind Teil dieses Laufs. Der langsamste einzelne
-Python-Test benötigt 5,71 Sekunden; kein Python-Test überschreitet zehn
+Python-Test benötigt 5,35 Sekunden; kein Python-Test überschreitet zehn
 Sekunden.
 
 `npm run test:e2e` umfasst **14** klar abgegrenzte Browserfälle gegen einen
 isolierten lokalen Einprozess-Server mit lokaler Datenbank und lokalem
 Routing-Fixture. Die Suite benötigt eine Minute; der langsamste Browserfall
-7,1 Sekunden. Backendberechnungen liegen in Python-, Controllerdarstellung in
+7,2 Sekunden. Backendberechnungen liegen in Python-, Controllerdarstellung in
 DOM-Tests. Browserfälle prüfen nur Authentifizierung und Navigation,
 Dispositionsgrenzen, Markt-, Firmen- und Kartenoberflächen. Absichtlich
 abgebrochene Browserrequests können unter Windows den bekannten

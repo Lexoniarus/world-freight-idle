@@ -21,6 +21,9 @@
   Protocols, zustandsbehaftete Grenzen Komposition und Dependency Injection.
   Verbleibende große Facades, Entities und Repository-Mapper wurden auf eine
   zusammenhängende Verantwortung geprüft.
+- Die abschließende lokale Abnahme bestand mit 593 Python-Tests, 100 %
+  App-Statement-Coverage, 128 Frontendtests und 14 Playwright-Fällen. Kein
+  Einzelfall überschritt zehn Sekunden; Supabase und Live-Provider blieben aus.
 
 ## Eigentümerklare Testmodule und eindeutige Flotte – 02.11.2026
 
