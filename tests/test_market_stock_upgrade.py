@@ -116,8 +116,8 @@ def test_market_upgrade_rejects_unknown_schema_and_rolls_back_bad_output(
     upgrade = MarketStockUpgradeRepository(source, now)
     target = tmp_path / "failed.db"
     with patch.object(
-        upgrade,
-        "_validate_repaired_copy",
+        type(upgrade.reconciler),
+        "validate",
         side_effect=PersistenceError("mismatch"),
     ):
         with pytest.raises(PersistenceError, match="mismatch"):
@@ -164,12 +164,12 @@ def test_market_upgrade_reconciliation_rejects_unapproved_change(
     ):
         original.row_factory = output.row_factory = sqlite3.Row
         original.backup(output)
-        upgrade._apply(output)
-        upgrade._validate_repaired_copy(original, output)
+        upgrade.transformer.apply(output)
+        upgrade.reconciler.validate(original, output)
         output.execute("BEGIN")
         output.execute(sql)
         with pytest.raises(PersistenceError, match=expected):
-            upgrade._validate_repaired_copy(original, output)
+            upgrade.reconciler.validate(original, output)
         output.rollback()
 
 
@@ -193,9 +193,9 @@ def test_market_upgrade_rejects_stock_collision_and_failed_integrity(
     ):
         original.row_factory = output.row_factory = sqlite3.Row
         original.backup(output)
-        upgrade._apply(output)
+        upgrade.transformer.apply(output)
         with pytest.raises(PersistenceError, match="inkonsistent"):
-            upgrade._validate_repaired_copy(original, output)
+            upgrade.reconciler.validate(original, output)
         original.execute("CREATE TABLE market_templates (unexpected TEXT)")
         original.commit()
     with pytest.raises(PersistenceError, match="Vorratstabellen"):
@@ -219,9 +219,9 @@ def test_market_upgrade_supports_schema_without_offer_route_references(
     ):
         original.row_factory = output.row_factory = sqlite3.Row
         original.backup(output)
-        upgrade._apply(output)
-        upgrade._validate_repaired_copy(original, output)
-        assert upgrade._expected_route_references(original) is None
+        upgrade.transformer.apply(output)
+        upgrade.reconciler.validate(original, output)
+        assert upgrade.reconciler.expected_route_references(original) is None
         assert not output.execute(
             "SELECT 1 FROM sqlite_master WHERE name='offer_route_references'"
         ).fetchone()
