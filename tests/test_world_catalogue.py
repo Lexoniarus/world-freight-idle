@@ -18,6 +18,38 @@ from tests.support.application_settings import (
 )
 
 
+def test_world_facility_mapping_preserves_sources_and_aliases(
+    small_world_catalogue,
+):
+    facility = WorldScope(small_world_catalogue.read()).facility(
+        "berlin_westhafen"
+    )
+    assert facility.sources[0].url == "https://example.test/facility/1"
+    assert facility.aliases == ("berlin_westhafen",)
+
+
+def test_world_facility_mapping_preserves_coordinate_evidence(
+    small_world_catalogue,
+):
+    facility = WorldScope(small_world_catalogue.read()).facility(
+        "berlin_westhafen"
+    )
+    evidence = facility.coordinate_evidence[0]
+    assert evidence.url == "https://example.test/facility/1"
+    assert evidence.precision == "official_facility_coordinate"
+    assert evidence.provider == "tests"
+
+
+def test_world_facility_mapping_preserves_documented_goods(
+    small_world_catalogue,
+):
+    facility = WorldScope(small_world_catalogue.read()).facility(
+        "berlin_westhafen"
+    )
+    assert facility.handled_goods[0].description == "Machine parts"
+    assert facility.handled_goods[0].cargo_code == "01"
+
+
 def test_world_snapshot_identity_provenance_and_query(
     reference_world_catalogue,
 ):
