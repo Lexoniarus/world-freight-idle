@@ -4,12 +4,13 @@ import { eligibleVehicles } from "../geometry.js";
 import { renderPanel } from "../views/panel.js";
 import { panelTitle } from "../navigation.js";
 import { requiredElement } from "../ui/dom.js";
+import { PanelViewState } from "./panel-view-state.js";
 
 /** Own panel selection, auxiliary reads and focus-preserving presentation. */
 export class PanelController {
   /** @param {{view: import('../types.js').PanelView, request: import('../types.js').RequestJson, notify: import('../types.js').Notify, now: import('../types.js').Clock, images?: import('../vehicle-image-bindings.js').VehicleImageController | null}} options */
   constructor({ view, request, notify, now, images = null }) {
-    this.view = view;
+    this.presentation = new PanelViewState(view);
     this.request = request;
     this.notify = notify;
     this.now = now;
@@ -22,155 +23,17 @@ export class PanelController {
     this.disposed = false;
     this.images = images;
   }
-  /** Report whether a mutation or quote currently owns the panel.
-   * @returns {boolean}
+  /** Expose a read model to renderers and controller decisions.
+   * @returns {import('../types.js').PanelView}
    */
-  isBusy() {
-    return this.view.busy;
+  get view() {
+    return this.presentation.value;
   }
   /** Report whether the panel surface is currently visible.
    * @returns {boolean}
    */
   isOpen() {
     return !this.panel.hidden;
-  }
-  /** Return the currently published quote for map focus and dispatch.
-   * @returns {import('../types.js').Quote | null}
-   */
-  currentQuote() {
-    return this.view.quote;
-  }
-  /** Publish quote progress without exposing writable view state.
-   * @param {boolean} active
-   * @returns {void}
-   */
-  setQuotePending(active) {
-    this.view.quoting = active;
-  }
-  /** Select a vehicle and discard economics from the prior selection.
-   * @param {string} vehicleId
-   * @returns {void}
-   */
-  selectVehicle(vehicleId) {
-    this.view.selectedVehicle = vehicleId;
-    this.view.url.searchParams.set("vehicle", vehicleId);
-    window.history.replaceState({}, "", this.view.url.pathname + this.view.url.search);
-    this.view.quote = null;
-  }
-  /** Publish a quote belonging to the current vehicle selection.
-   * @param {import('../types.js').Quote | null} quote
-   * @returns {void}
-   */
-  publishQuote(quote) {
-    this.view.quote = quote;
-  }
-  /** Publish mutation progress owned by action orchestration.
-   * @param {boolean} active
-   * @returns {void}
-   */
-  setMutationPending(active) {
-    this.view.mutating = active;
-  }
-  /** Publish one synchronized game and market-detail snapshot.
-   * @param {import('../types.js').GameSnapshot} state
-   * @param {import('../types.js').Contract | null} detailContract
-   * @param {string | null} detailId
-   * @param {boolean} marketLoaded
-   * @param {boolean} marketStale
-   * @returns {void}
-   */
-  publishGameState(state, detailContract, detailId, marketLoaded, marketStale) {
-    Object.assign(this.view, {
-      state,
-      detailContract,
-      detailId,
-      marketLoaded,
-      marketStale,
-    });
-  }
-  /** Publish route-local city labels resolved by the city controller.
-   * @param {string} cityUid
-   * @param {Array<import('../types.js').FacilityLocation>} cities
-   * @param {Array<string>} activeCities
-   * @returns {void}
-   */
-  publishCityContext(cityUid, cities, activeCities) {
-    Object.assign(this.view, {
-      cityUid,
-      cities,
-      activeCities,
-      marketCities: cities.filter((city) => activeCities.includes(city.city_uid)),
-    });
-  }
-  /** Mark a preference read as pending.
-   * @returns {void}
-   */
-  beginPreferenceLoad() {
-    this.view.preferenceStatus = "loading";
-  }
-  /** Publish the curated preference palette and confirmed color.
-   * @param {Array<string>} palette
-   * @param {string} color
-   * @returns {void}
-   */
-  publishPreferences(palette, color) {
-    this.view.preferenceStatus = "ready";
-    this.view.companyPalette = palette;
-    this.view.user.company_color = color;
-  }
-  /** Mark a preference read as unavailable.
-   * @returns {void}
-   */
-  failPreferenceLoad() {
-    this.view.preferenceStatus = "error";
-  }
-  /** Publish whether the latest preference write failed.
-   * @param {boolean} failed
-   * @returns {void}
-   */
-  setPreferenceSaveError(failed) {
-    this.view.preferenceSaveError = failed;
-  }
-  /** Publish one optimistic or confirmed company color.
-   * @param {string} color
-   * @returns {void}
-   */
-  publishCompanyColor(color) {
-    this.view.user.company_color = color;
-  }
-  /** Report whether a color belongs to the server-provided palette.
-   * @param {string} color
-   * @returns {boolean}
-   */
-  acceptsCompanyColor(color) {
-    return Boolean(this.view.companyPalette?.includes(color));
-  }
-  /** Mark analytics loading and clear an obsolete error.
-   * @returns {void}
-   */
-  beginAnalyticsLoad() {
-    this.view.analyticsLoading = true;
-    this.view.analyticsError = false;
-  }
-  /** Publish one analytics response and its company breakdowns.
-   * @param {import('../types.js').AnalyticsReport & {scope: {type: string}}} result
-   * @returns {void}
-   */
-  publishAnalytics(result) {
-    this.view.analytics = result;
-    if (result.scope.type === "company") this.view.analyticsChoices = result.breakdowns;
-  }
-  /** Mark the latest analytics read as failed.
-   * @returns {void}
-   */
-  failAnalyticsLoad() {
-    this.view.analyticsError = true;
-  }
-  /** Finish the current analytics request.
-   * @returns {void}
-   */
-  finishAnalyticsLoad() {
-    this.view.analyticsLoading = false;
   }
   /** Toggle between contextual and management panel presentation.
    * @returns {void}
@@ -191,13 +54,7 @@ export class PanelController {
     const scroll = this.content.scrollTop;
     this.returnFocus = document.activeElement?.closest(".nav-item") || this.returnFocus;
     this.pending.cancel();
-    Object.assign(this.view, {
-      url,
-      quote: null,
-      selectedVehicle: url.searchParams.get("vehicle") ?? "",
-      rankings: null,
-      panelError: false,
-    });
+    this.presentation.selectRoute(url);
     if (!sameView) this.contentFocus = null;
     if (!sameView || !this.panel.dataset.mode)
       this.panel.dataset.mode = url.pathname === "/company" ? "management" : "context";
@@ -230,13 +87,11 @@ export class PanelController {
     try {
       const result = await this.request(endpoint, { signal: request.signal });
       if (!request.isCurrent()) return;
-      if (endpoint === "/leaderboard") this.view.rankings = result.players;
-      else this.view.catalogue = result;
-      this.view.panelError = false;
+      this.presentation.publishDetails(endpoint, result);
     } catch (error) {
       if (!request.isCurrent() || error.name === "AbortError") return;
       this.notify(error.message);
-      this.view.panelError = true;
+      this.presentation.failDetails();
     }
     this.render();
   }
@@ -275,10 +130,9 @@ export class PanelController {
         : this.view.state?.contracts.find((item) => item.id === contractId);
     const vehicles = contract ? eligibleVehicles(this.view.state.vehicles, contract) : [];
     if (contractId && !vehicles.some((vehicle) => vehicle.id === this.view.selectedVehicle)) {
-      this.view.selectedVehicle = this.view.url.searchParams.get("vehicle")
-        ? ""
-        : vehicles[0]?.id || "";
-      this.view.quote = null;
+      this.presentation.replaceVehicleSelection(
+        this.view.url.searchParams.get("vehicle") ? "" : vehicles[0]?.id || "",
+      );
     }
   }
   /** Mark exactly the active navigation destination.

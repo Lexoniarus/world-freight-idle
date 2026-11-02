@@ -21,18 +21,18 @@ export class AnalyticsController {
     });
     if (view.url.searchParams.has("scope_id"))
       params.set("scope_id", view.url.searchParams.get("scope_id"));
-    this.panel.beginAnalyticsLoad();
+    this.panel.presentation.beginAnalyticsLoad();
     this.panel.render();
     try {
       const result = await this.request("/company/analytics?" + params, { signal: pending.signal });
       if (!pending.isCurrent()) return;
-      this.panel.publishAnalytics(result);
+      this.panel.presentation.publishAnalytics(result);
     } catch (error) {
       if (!pending.isCurrent() || error.name === "AbortError") return;
-      this.panel.failAnalyticsLoad();
+      this.panel.presentation.failAnalyticsLoad();
     } finally {
       if (pending.isCurrent()) {
-        this.panel.finishAnalyticsLoad();
+        this.panel.presentation.finishAnalyticsLoad();
         this.panel.render();
       }
     }

@@ -7,13 +7,15 @@ import { berlin, offer, other, vehicle } from "./test-support/freight-fixtures.m
 
 function panelFor(view) {
   return {
-    publishCityContext(cityUid, cities, activeCities) {
-      Object.assign(view, {
-        cityUid,
-        cities,
-        activeCities,
-        marketCities: cities.filter((city) => activeCities.includes(city.city_uid)),
-      });
+    presentation: {
+      publishCityContext(cityUid, cities, activeCities) {
+        Object.assign(view, {
+          cityUid,
+          cities,
+          activeCities,
+          marketCities: cities.filter((city) => activeCities.includes(city.city_uid)),
+        });
+      },
     },
   };
 }

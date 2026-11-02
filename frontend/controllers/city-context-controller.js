@@ -36,7 +36,7 @@ export class CityContextController {
       this.writeCity(this.route);
     }
     const cities = [...this.known.values()].sort((a, b) => a.city.localeCompare(b.city));
-    this.panel.publishCityContext(this.selected, cities, active);
+    this.panel.presentation.publishCityContext(this.selected, cities, active);
   }
   /** Normalize only this route's city parameter.
    * @param {URL} url

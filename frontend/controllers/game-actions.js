@@ -39,7 +39,8 @@ export class GameActions {
       close: () => this.navigate("/"),
       "focus-fleet": () => this.map?.focusFleet(),
       "focus-quote": () =>
-        this.panel.currentQuote() && this.map?.focusRoute(this.panel.currentQuote().route_geojson),
+        this.panel.presentation.currentQuote() &&
+        this.map?.focusRoute(this.panel.presentation.currentQuote().route_geojson),
       "focus-trip": () => this.focusTransport(id),
       "retry-panel": () => this.panel.loadDetails(),
       retry: () => this.refresh(),
@@ -70,7 +71,7 @@ export class GameActions {
    */
   cancelQuote() {
     this.quoteRequest.cancel();
-    this.panel.setQuotePending(false);
+    this.panel.presentation.setQuotePending(false);
   }
   /** Select a vehicle and discard economics belonging to its predecessor.
    * @param {string} vehicleId
@@ -79,7 +80,7 @@ export class GameActions {
    */
   selectVehicle(vehicleId) {
     this.cancelQuote();
-    this.panel.selectVehicle(vehicleId);
+    this.panel.presentation.selectVehicle(vehicleId);
     this.map?.setPreview(null);
     this.panel.render();
   }
@@ -87,23 +88,24 @@ export class GameActions {
    * @returns {Promise<void>}
    */
   async calculateQuote() {
-    if (this.disposed || this.panel.isBusy() || !this.panel.view.selectedVehicle) return;
+    if (this.disposed || this.panel.presentation.isBusy() || !this.panel.view.selectedVehicle)
+      return;
     const contractId = this.panel.view.url.pathname.split("/").at(-1);
     const vehicleId = this.panel.view.selectedVehicle;
     const request = this.quoteRequest.start();
-    this.panel.setQuotePending(true);
+    this.panel.presentation.setQuotePending(true);
     this.panel.render();
     try {
       const quote = await this.api.quoteFreightOffer(contractId, vehicleId, request.signal);
       if (!request.isCurrent() || vehicleId !== (this.panel.view.selectedVehicle || null)) return;
-      this.panel.publishQuote(quote);
+      this.panel.presentation.publishQuote(quote);
       this.map?.setPreview(quote);
       this.focus?.quote(quote);
     } catch (error) {
       if (request.isCurrent() && error.name !== "AbortError") this.notify(error.message);
     } finally {
       if (request.isCurrent()) {
-        this.panel.setQuotePending(false);
+        this.panel.presentation.setQuotePending(false);
         this.panel.render();
       }
     }
@@ -115,8 +117,8 @@ export class GameActions {
    * @returns {Promise<void>}
    */
   async runMutation(operation, reconcile = true) {
-    if (this.disposed || this.panel.isBusy()) return;
-    this.panel.setMutationPending(true);
+    if (this.disposed || this.panel.presentation.isBusy()) return;
+    this.panel.presentation.setMutationPending(true);
     this.panel.render();
     try {
       await operation();
@@ -132,7 +134,7 @@ export class GameActions {
         }
       }
     } finally {
-      this.panel.setMutationPending(false);
+      this.panel.presentation.setMutationPending(false);
       if (!this.disposed) this.panel.render();
     }
   }
@@ -152,7 +154,7 @@ export class GameActions {
     const route = this.panel.view.url;
     const contractId = this.panel.view.url.pathname.split("/").at(-1);
     const vehicleId = this.panel.view.selectedVehicle;
-    const quote = this.panel.currentQuote();
+    const quote = this.panel.presentation.currentQuote();
     if (!quote || quote.vehicle_id !== vehicleId) return;
     const trip = await this.api.dispatchFreightOffer(contractId, vehicleId);
     if (this.disposed) return;

@@ -22,6 +22,7 @@ test("analytics publishes only the newest requested scope", async () => {
     },
     render() {},
   };
+  panel.presentation = panel;
   const controller = new AnalyticsController({
     panel,
     request: (path, options) => new Promise((resolve) => pending.push({ resolve, path, options })),

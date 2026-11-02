@@ -30,7 +30,7 @@ export class GameSync {
    */
   publish({ previous, current, mapOnly = false }) {
     if (this.disposed) return;
-    this.panel.publishGameState(
+    this.panel.presentation.publishGameState(
       current,
       this.state.contractDetail,
       this.state.contractDetailId,
@@ -78,7 +78,7 @@ export class GameSync {
       marketLoaded: this.state.marketLoaded,
       marketStale: this.state.marketStale,
     });
-    if (!this.panel.isBusy() && revision !== this.panelRevision) {
+    if (!this.panel.presentation.isBusy() && revision !== this.panelRevision) {
       this.panelRevision = revision;
       this.panel.render();
     }

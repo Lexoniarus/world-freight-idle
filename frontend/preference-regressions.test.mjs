@@ -5,7 +5,7 @@ import { PreferencesController } from "./controllers/preferences-controller.js";
 import { renderCompanyPreferences } from "./ui/company-preferences.js";
 
 function preferencePanel(view) {
-  return {
+  const panel = {
     view,
     acceptsCompanyColor(color) {
       return view.companyPalette?.includes(color) ?? false;
@@ -29,6 +29,8 @@ function preferencePanel(view) {
     },
     render() {},
   };
+  panel.presentation = panel;
+  return panel;
 }
 
 test("preference queue previews immediately, serializes writes and rolls back failed final save", async () => {

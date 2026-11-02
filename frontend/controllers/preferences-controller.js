@@ -46,17 +46,17 @@ export class PreferencesController {
   async refresh() {
     if (this.saving || this.disposed) return;
     const task = this.pending.start();
-    this.panel.beginPreferenceLoad();
+    this.panel.presentation.beginPreferenceLoad();
     this.panel.render();
     try {
       const result = await this.request("/auth/preferences", { signal: task.signal });
       if (!task.isCurrent()) return;
       this.confirmed = result.company_color;
-      this.panel.publishPreferences(result.palette, result.company_color);
+      this.panel.presentation.publishPreferences(result.palette, result.company_color);
       this.publish(result.company_color);
     } catch (error) {
       if (task.isCurrent() && error.name !== "AbortError") {
-        this.panel.failPreferenceLoad();
+        this.panel.presentation.failPreferenceLoad();
         this.panel.render();
       }
     }
@@ -67,10 +67,10 @@ export class PreferencesController {
    * @returns {Promise<void>}
    */
   async save(color) {
-    if (this.disposed || !this.panel.acceptsCompanyColor(color)) return;
+    if (this.disposed || !this.panel.presentation.acceptsCompanyColor(color)) return;
     this.pending.cancel();
     this.desired = color;
-    this.panel.setPreferenceSaveError(false);
+    this.panel.presentation.setPreferenceSaveError(false);
     this.publish(color);
     if (this.saving) return;
     this.saving = true;
@@ -101,7 +101,7 @@ export class PreferencesController {
     } catch (error) {
       if (this.disposed || error.name === "AbortError") return;
       if (this.desired === null) {
-        this.panel.setPreferenceSaveError(true);
+        this.panel.presentation.setPreferenceSaveError(true);
         this.publish(this.confirmed);
         this.notify("Firmenfarbe konnte nicht gespeichert werden.");
       }
@@ -113,7 +113,7 @@ export class PreferencesController {
    * @returns {void}
    */
   publish(color) {
-    this.panel.publishCompanyColor(color);
+    this.panel.presentation.publishCompanyColor(color);
     this.page.documentElement.style.setProperty("--company-color", color);
     this.map?.setCompanyColor(color);
     this.panel.render();
