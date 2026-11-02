@@ -7,6 +7,7 @@ from app.api.v1.game_projection import (
     project_vehicle,
 )
 from app.bootstrap import (
+    build_player_context,
     build_player_service,
 )
 from app.services.gameplay.fleet import FleetService
@@ -27,13 +28,21 @@ def test_player_service_isolation_and_atomic_purchases(
             "INSERT INTO users VALUES (?, ?, ?, 0)",
             ("bob", "bob", "test-only"),
         )
-    alice = build_player_service(synthetic_runtime, "alice")
-    bob = build_player_service(synthetic_runtime, "bob")
-    assert alice.market_lifecycle.scope.world is synthetic_runtime.world
-    assert bob.market_lifecycle.scope.world is synthetic_runtime.world
+    alice_context = build_player_context(synthetic_runtime, "alice")
+    bob_context = build_player_context(synthetic_runtime, "bob")
+    alice = alice_context.game
+    bob = bob_context.game
+    assert (
+        alice_context.market.routes.readiness
+        is synthetic_runtime.routing_evidence
+    )
+    assert (
+        bob_context.market.routes.readiness
+        is synthetic_runtime.routing_evidence
+    )
     vehicle = project_vehicle(
         FleetService(
-            alice.unit_of_work,
+            alice_context.unit_of_work,
             synthetic_vehicle_catalogue,
             synthetic_runtime.world,
         ).purchase("iveco_sway_500")
@@ -45,7 +54,7 @@ def test_player_service_isolation_and_atomic_purchases(
     with pytest.raises(ValueError, match="Nicht genug"):
         project_vehicle(
             FleetService(
-                alice.unit_of_work,
+                alice_context.unit_of_work,
                 synthetic_vehicle_catalogue,
                 synthetic_runtime.world,
             ).purchase("renault_t_high_520")
@@ -53,7 +62,7 @@ def test_player_service_isolation_and_atomic_purchases(
     with pytest.raises(ValueError, match="Unbekanntes"):
         project_vehicle(
             FleetService(
-                alice.unit_of_work,
+                alice_context.unit_of_work,
                 synthetic_vehicle_catalogue,
                 synthetic_runtime.world,
             ).purchase("fake")

@@ -1,7 +1,10 @@
 """Authenticated player and background-market dependency assembly."""
 
+from dataclasses import dataclass
+
 from app.composition.runtime import GameRuntime
 from app.domain.read_ports import LeaderboardReader, TrafficReader
+from app.domain.state_ports import GameStateRepository
 from app.repositories.analytics import SqliteAnalyticsReader
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.leaderboard import SqliteLeaderboardReader
@@ -42,6 +45,20 @@ from app.services.preferences import PreferenceService
 from app.services.runtime_views import RuntimeViewService
 
 
+@dataclass(frozen=True, slots=True)
+class PlayerServiceContext:
+    """Keep composition collaborators outside the public player facade."""
+
+    game: PlayerGameFacade
+    unit_of_work: SqliteGameUnitOfWork
+    state_repository: GameStateRepository
+    market: PlayerMarketServices
+    lifecycle: MarketLifecycleService
+    initialization: PlayerInitializationService
+    settlement: TransportSettlementService
+    dispatch: TransportDispatchService
+
+
 def build_analytics_service(
     runtime: GameRuntime, user_id: str
 ) -> AnalyticsService:
@@ -49,10 +66,10 @@ def build_analytics_service(
     return AnalyticsService(SqliteAnalyticsReader(runtime.database, user_id))
 
 
-def build_player_service(
+def build_player_context(
     runtime: GameRuntime, user_id: str
-) -> PlayerGameFacade:
-    """Bind one authenticated owner to the shared relational transaction."""
+) -> PlayerServiceContext:
+    """Compose one player and retain collaborators at the composition edge."""
     player_market = build_player_market_services(runtime, user_id)
     unit = SqliteGameUnitOfWork(runtime.database, user_id)
     lifecycle = MarketLifecycleService(
@@ -86,35 +103,52 @@ def build_player_service(
         player_market.demand,
         player_market.stores,
     )
+    initialization = PlayerInitializationService(
+        unit,
+        runtime.world,
+        runtime.catalogue,
+        player_market.demand,
+    )
     game = PlayerGameFacade(
         unit,
         runtime.clock,
         runtime.time_scale,
         lifecycle,
-        PlayerInitializationService(
-            unit,
-            runtime.world,
-            runtime.catalogue,
-            player_market.demand,
-        ),
+        initialization,
         settlement,
         dispatch,
         player_market,
     )
     game.ensure_initial_state()
-    return game
+    return PlayerServiceContext(
+        game,
+        unit,
+        unit.repository,
+        player_market,
+        lifecycle,
+        initialization,
+        settlement,
+        dispatch,
+    )
+
+
+def build_player_service(
+    runtime: GameRuntime, user_id: str
+) -> PlayerGameFacade:
+    """Return only the public player facade for ordinary consumers."""
+    return build_player_context(runtime, user_id).game
 
 
 def build_fleet_service(
     runtime: GameRuntime,
-    game: PlayerGameFacade,
+    context: PlayerServiceContext,
 ) -> FleetService:
     """Assemble purchasing against the authenticated player's unit of work."""
     return FleetService(
-        game.unit_of_work,
+        context.unit_of_work,
         runtime.catalogue,
         runtime.world,
-        game.player_market.demand.invalidate,
+        context.market.demand.invalidate,
     )
 
 

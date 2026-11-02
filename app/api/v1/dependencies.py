@@ -3,10 +3,11 @@
 from fastapi import Depends, HTTPException, Request
 
 from app.bootstrap import (
+    PlayerServiceContext,
     build_fleet_service,
     build_leaderboard_reader,
     build_map_service,
-    build_player_service,
+    build_player_context,
     build_runtime_reader,
     build_runtime_view,
     build_traffic_reader,
@@ -53,13 +54,13 @@ def get_current_user(
     return dict(user)
 
 
-def get_game_service(
+def get_player_context(
     request: Request,
     user: dict = Depends(get_current_user),
-) -> PlayerGameFacade:
-    """Build a request-scoped game service for the authenticated owner."""
+) -> PlayerServiceContext:
+    """Build one request-scoped player composition for private endpoints."""
     try:
-        return build_player_service(
+        return build_player_context(
             request.app.state.game_runtime,
             user["id"],
         )
@@ -67,17 +68,24 @@ def get_game_service(
         raise HTTPException(503, str(exc)) from exc
 
 
+def get_game_service(
+    context: PlayerServiceContext = Depends(get_player_context),
+) -> PlayerGameFacade:
+    """Expose only the public player facade to HTTP handlers."""
+    return context.game
+
+
 def get_fleet_service(
     request: Request,
-    game: PlayerGameFacade = Depends(get_game_service),
+    context: PlayerServiceContext = Depends(get_player_context),
 ) -> FleetService:
     """Resolve the authenticated fleet service through the composition root."""
-    return build_fleet_service(request.app.state.game_runtime, game)
+    return build_fleet_service(request.app.state.game_runtime, context)
 
 
 def get_map_service(
     request: Request,
-    game: PlayerGameFacade = Depends(get_game_service),
+    _context: PlayerServiceContext = Depends(get_player_context),
 ) -> MapLocationService:
     """Resolve the authenticated catalogue map service."""
     return build_map_service(request.app.state.game_runtime)

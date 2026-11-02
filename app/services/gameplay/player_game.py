@@ -28,34 +28,34 @@ from app.services.market.player_services import PlayerMarketServices
 class PlayerGameFacade:
     """Expose player use cases while delegating stateful workflows."""
 
-    unit_of_work: GameUnitOfWork
+    _unit_of_work: GameUnitOfWork
     now: Callable[[], float]
     time_scale: float
-    market_lifecycle: MarketLifecycleService
-    initialization: PlayerInitializationService
-    settlement: TransportSettlementService
-    transport_dispatch: TransportDispatchService
-    player_market: PlayerMarketServices
-    state_repository: GameStateRepository = field(init=False)
+    _market_lifecycle: MarketLifecycleService
+    _initialization: PlayerInitializationService
+    _settlement: TransportSettlementService
+    _transport_dispatch: TransportDispatchService
+    _player_market: PlayerMarketServices
+    _state_repository: GameStateRepository = field(init=False)
 
     def __post_init__(self) -> None:
         """Normalize timing and expose the repository read boundary."""
         self.time_scale = max(0.001, self.time_scale)
-        self.state_repository = self.unit_of_work.repository
+        self._state_repository = self._unit_of_work.repository
 
     def ensure_initial_state(self) -> None:
         """Create missing player state through its dedicated service."""
-        self.initialization.ensure()
+        self._initialization.ensure()
 
     def preparation_status(self) -> PreparationStatus | None:
         """Expose typed progress for the authenticated player's market."""
-        return self.player_market.demand.status()
+        return self._player_market.demand.status()
 
     async def quote_contract(
         self, contract_id: str, vehicle_id: str
     ) -> ContractQuote:
         """Quote one contract through the dispatch boundary."""
-        return await self.transport_dispatch.quote_contract(
+        return await self._transport_dispatch.quote_contract(
             contract_id,
             vehicle_id,
         )
@@ -66,52 +66,52 @@ class PlayerGameFacade:
         vehicle_id: str,
     ) -> ActiveTransport:
         """Dispatch one contract through the atomic transport service."""
-        return await self.transport_dispatch.dispatch(contract_id, vehicle_id)
+        return await self._transport_dispatch.dispatch(contract_id, vehicle_id)
 
     def reconcile_arrival(self) -> bool:
         """Settle due transports through the settlement boundary."""
-        return self.settlement.reconcile()
+        return self._settlement.reconcile()
 
     def player_state(self) -> PlayerState:
         """Return initialized player economy state."""
-        return self.settlement.player_state()
+        return self._settlement.player_state()
 
     def state(self) -> GameSnapshot:
         """Synchronize and read the complete player-owned state."""
         arrived = self.reconcile_arrival()
         if not arrived:
-            self.market_lifecycle.published()
-        with self.unit_of_work.read_transaction():
+            self._market_lifecycle.published()
+        with self._unit_of_work.read_transaction():
             return GameSnapshot(
                 self.now(),
                 self.time_scale,
                 self.player_state(),
-                self.state_repository.list_vehicles(),
-                self.state_repository.list_active_transports(),
-                self.state_repository.list_offers(),
+                self._state_repository.list_vehicles(),
+                self._state_repository.list_active_transports(),
+                self._state_repository.list_offers(),
             )
 
     def dashboard(self) -> GameSnapshot:
         """Read startup state without generating a contract market."""
         self.reconcile_arrival()
-        with self.unit_of_work.read_transaction():
+        with self._unit_of_work.read_transaction():
             return GameSnapshot(
                 self.now(),
                 self.time_scale,
                 self.player_state(),
-                self.state_repository.list_vehicles(),
-                self.state_repository.list_active_transports(),
+                self._state_repository.list_vehicles(),
+                self._state_repository.list_active_transports(),
             )
 
     def list_contracts(self) -> list[ContractOffer]:
         """Reconcile arrivals and return already published local stock."""
         self.reconcile_arrival()
-        return self.market_lifecycle.published()
+        return self._market_lifecycle.published()
 
     def refresh_contracts(self) -> list[ContractOffer]:
         """Request background refill and return already published stock."""
         self.reconcile_arrival()
-        return self.market_lifecycle.published(refresh=True)
+        return self._market_lifecycle.published(refresh=True)
 
     def read_market(
         self,
@@ -121,7 +121,7 @@ class PlayerGameFacade:
     ) -> MarketPresentation:
         """Reconcile and read one vehicle market through one snapshot."""
         self.reconcile_arrival()
-        return self.market_lifecycle.read_market(
+        return self._market_lifecycle.read_market(
             vehicle_id,
             refresh=refresh,
         )
@@ -130,7 +130,7 @@ class PlayerGameFacade:
         self, offers: Sequence[ContractOffer], vehicle_id: str | None = None
     ) -> tuple[AvailableContract, ...]:
         """Expose server-side vehicle choices for already read offers."""
-        return self.market_lifecycle.present(offers, vehicle_id)
+        return self._market_lifecycle.present(offers, vehicle_id)
 
     def market_presentation(
         self,
@@ -138,7 +138,7 @@ class PlayerGameFacade:
         vehicle_id: str,
     ) -> MarketPresentation:
         """Read authorized offers and diagnostics in one local transaction."""
-        with self.unit_of_work.read_transaction():
+        with self._unit_of_work.read_transaction():
             contracts = self.contract_choices(offers, vehicle_id)
             coverage = tuple(
                 item
@@ -153,24 +153,24 @@ class PlayerGameFacade:
 
     def vehicle_coverage(self) -> tuple[VehicleCoverageDiagnostic, ...]:
         """Delegate actual per-vehicle coverage diagnostics."""
-        return self.market_lifecycle.vehicle_diagnostics()
+        return self._market_lifecycle.vehicle_diagnostics()
 
     def get_contract(self, contract_id: str) -> ContractOffer:
         """Return one available offer with historical endpoint values."""
         self.list_contracts()
-        return self.transport_dispatch.find_contract(contract_id)
+        return self._transport_dispatch.find_contract(contract_id)
 
     def list_vehicles(self) -> tuple[OwnedVehicle, ...]:
         """Return owned vehicles after settling any due deliveries."""
         self.reconcile_arrival()
-        return self.state_repository.list_vehicles()
+        return self._state_repository.list_vehicles()
 
     def get_vehicle(self, vehicle_id: str) -> OwnedVehicle:
         """Find one owned vehicle or report a missing resource."""
         vehicle = next(
             (
                 item
-                for item in self.state_repository.list_vehicles()
+                for item in self._state_repository.list_vehicles()
                 if item.id == vehicle_id
             ),
             None,
@@ -182,7 +182,7 @@ class PlayerGameFacade:
     def list_transports(self) -> tuple[ActiveTransport, ...]:
         """Return pending deliveries after settling due arrivals."""
         self.reconcile_arrival()
-        return self.state_repository.list_active_transports()
+        return self._state_repository.list_active_transports()
 
     def get_transport(self, transport_id: str) -> ActiveTransport:
         """Find a pending transport owned by the current player."""
@@ -190,7 +190,7 @@ class PlayerGameFacade:
         trip = next(
             (
                 item
-                for item in self.state_repository.list_active_transports()
+                for item in self._state_repository.list_active_transports()
                 if item.id == transport_id
             ),
             None,
@@ -201,5 +201,5 @@ class PlayerGameFacade:
 
     def reset(self) -> GameSnapshot:
         """Reset player progress while retaining provider caches."""
-        self.initialization.reset()
+        self._initialization.reset()
         return self.state()

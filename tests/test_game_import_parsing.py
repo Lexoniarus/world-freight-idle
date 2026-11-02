@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 
 from app.bootstrap import (
-    build_player_service,
+    build_player_context,
 )
 from app.domain.contracts import HistoricalContractSnapshot
 from app.domain.errors import PersistenceError
@@ -103,10 +103,10 @@ def test_offline_import_preserves_profiles_history_and_settles_once(
             legacy_vehicle_projection(repository.list_vehicles()[0])
         ) == without_city_uids(state["vehicles"][0])
     runtime = build_test_runtime(synthetic_game_context, database)
-    service = build_player_service(runtime, "a")
-    assert service.reconcile_arrival()
-    assert not service.reconcile_arrival()
-    settled_player = service.state_repository.get_player()
+    context = build_player_context(runtime, "a")
+    assert context.game.reconcile_arrival()
+    assert not context.game.reconcile_arrival()
+    settled_player = context.state_repository.get_player()
     other_player = SqliteGameStateRepository(database, "b").get_player()
     assert settled_player is not None and other_player is not None
     assert settled_player.cash == 124443

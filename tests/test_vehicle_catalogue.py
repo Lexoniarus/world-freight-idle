@@ -24,6 +24,7 @@ from app.api.v1.game_projection import (
 from app.api.v1.schemas import PurchaseRequest
 from app.bootstrap import (
     build_fleet_service,
+    build_player_context,
     build_player_service,
     build_vehicle_catalogue,
 )
@@ -355,7 +356,10 @@ def test_fleet_builder_reuses_validated_runtime_catalogue(
             "INSERT INTO users VALUES (?, ?, ?, 0)",
             ("new-account", "new-account", "test-only"),
         )
-    fleet = build_fleet_service(synthetic_runtime, synthetic_game)
+    fleet = build_fleet_service(
+        synthetic_runtime,
+        build_player_context(synthetic_runtime, "test-owner"),
+    )
     assert len(project_catalogue(fleet.list_catalogue())["models"]) == len(
         synthetic_runtime.catalogue.list_models()
     )

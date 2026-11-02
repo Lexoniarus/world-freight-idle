@@ -3,18 +3,20 @@
 import time
 from typing import TypeVar
 
-from app.bootstrap import build_player_service
+from app.bootstrap import PlayerServiceContext, build_player_context
 from app.domain.contracts import ContractOffer
 from app.repositories.market_stock import SqlitePlayerMarketStockStore
 from app.repositories.market_templates import SqliteMarketTemplateStore
-from app.services.gameplay.player_game import PlayerGameFacade
 from app.services.market.demand import MarketDemandResolver
 from app.services.market.stock.planning import StockPlanningService
 from app.services.market.stock.preparation import StockPreparationBatch
 from app.services.market.stock.publication import StockPublicationService
 from app.services.market.stock.snapshot import StockSnapshotReader
 from app.services.market.templates import MarketTemplateService
-from tests.support.game_service import FixtureGameContext
+from tests.support.game_service import (
+    FixtureGameContext,
+    FixturePlayerGameFacade,
+)
 from tests.support.runtime import build_test_runtime
 
 T = TypeVar("T")
@@ -27,18 +29,30 @@ def require_value(value: T | None) -> T:
 
 
 def seed_test_offers(
-    service: PlayerGameFacade,
+    service: FixturePlayerGameFacade,
     count: int = 30,
     *,
     bind_routes: bool = True,
+    context: PlayerServiceContext | None = None,
 ) -> None:
     """Store deterministic local offers without invoking runtime refill."""
-    market = service.market_lifecycle.generation
-    owned = service.state_repository.list_vehicles()
-    fleet = market.candidates.resolve_fleet(owned)
-    candidates = market.candidates.build(
-        service.market_lifecycle.scope.resolve(owned), fleet
+    lifecycle = (
+        context.lifecycle if context is not None else service.market_lifecycle
     )
+    repository = (
+        context.state_repository
+        if context is not None
+        else service.state_repository
+    )
+    routes = (
+        context.market.routes
+        if context is not None
+        else service.player_market.routes
+    )
+    market = lifecycle.generation
+    owned = repository.list_vehicles()
+    fleet = market.candidates.resolve_fleet(owned)
+    candidates = market.candidates.build(lifecycle.scope.resolve(owned), fleet)
     local = tuple(
         candidate
         for candidate in candidates
@@ -55,12 +69,12 @@ def seed_test_offers(
         )
         for index, candidate in enumerate(selected[:count])
     )
-    service.state_repository.replace_offers(offers)
+    repository.replace_offers(offers)
     if bind_routes:
-        service.player_market.routes.bind(offers)
+        routes.bind(offers)
 
 
-def make_stock_batch(game: PlayerGameFacade, preparation):
+def make_stock_batch(game: FixturePlayerGameFacade, preparation):
     """Compose the production stock batch for worker behavior tests."""
     market = game.market_lifecycle.generation
     database = preparation.routes.transactions
@@ -96,17 +110,27 @@ def make_stock_batch(game: PlayerGameFacade, preparation):
 
 def build_prepared_game(context: FixtureGameContext, database):
     """Recompose one game with real local preparation collaborators."""
-    prepared = build_player_service(
+    prepared = build_player_context(
         build_test_runtime(context, database),
         "test-owner",
     )
+    fixture_service = FixturePlayerGameFacade(
+        prepared.unit_of_work,
+        prepared.game.now,
+        prepared.game.time_scale,
+        prepared.lifecycle,
+        prepared.initialization,
+        prepared.settlement,
+        prepared.dispatch,
+        prepared.market,
+    )
     return (
         FixtureGameContext(
-            prepared,
+            fixture_service,
             context.world,
             context.catalogue,
             context.market_generation,
             context.market_scope,
         ),
-        prepared.player_market,
+        prepared.market,
     )

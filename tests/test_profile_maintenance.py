@@ -11,11 +11,14 @@ from unittest.mock import patch
 import pytest
 
 from app.api.v1.game_projection import (
+    project_contract,
     project_player,
     project_transport,
     project_vehicle,
 )
 from app.bootstrap import (
+    PlayerServiceContext,
+    build_player_context,
     build_player_service,
     build_profile_maintenance_service,
 )
@@ -33,7 +36,7 @@ from scripts.update_test_profile import main, parse_assignments
 from tests.support.application_settings import (
     build_synthetic_application_settings,
 )
-from tests.support.game import first_berlin_contract
+from tests.support.catalogues import BERLIN_UID
 from tests.support.market import seed_test_offers
 from tests.transport_fixtures import add_transport
 
@@ -44,9 +47,14 @@ class MaintenanceCase:
 
     settings: Settings
     service: ProfileMaintenanceService
-    game: PlayerGameFacade
+    context: PlayerServiceContext
     accounts: AccountRepository
     world: WorldCatalogue
+
+    @property
+    def game(self) -> PlayerGameFacade:
+        """Return the public facade used by maintenance scenarios."""
+        return self.context.game
 
 
 def test_profile_update_preserves_other_players_and_trip_snapshots(
@@ -66,13 +74,21 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
 
     accounts = AccountRepository(database)
     user = accounts.create_user("Selected", "not-a-real-hash")
-    selected = build_player_service(synthetic_runtime, user["id"])
+    selected_context = build_player_context(synthetic_runtime, user["id"])
+    selected = selected_context.game
+    repository = selected_context.state_repository
     other = accounts.create_user("Untouched", "not-a-real-hash")
     other_game = build_player_service(synthetic_runtime, other["id"])
-    add_transport(selected, payout=123, arrives_at=9999999999, tons=24)
+    add_transport(
+        selected,
+        payout=123,
+        arrives_at=9999999999,
+        tons=24,
+        context=selected_context,
+    )
     selected_location = selected.get_vehicle("truck_01").location
     assert selected_location is not None
-    selected.state_repository.save_vehicle(
+    repository.save_vehicle(
         build_owned_vehicle(
             small_vehicle_catalogue.list_models()[0],
             "free",
@@ -83,7 +99,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
         service.update_profile("Selected", {"truck_01": "iveco_sway_500"})
     before = [
         asdict(item)
-        for item in selected.state_repository.list_transports()
+        for item in repository.list_transports()
         if item.status == "active"
     ]
     other_before = project_player(other_game.player_state())
@@ -99,7 +115,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
         assert result["cash"] == 175000
     assert [
         asdict(item)
-        for item in selected.state_repository.list_transports()
+        for item in repository.list_transports()
         if item.status == "active"
     ] == before
     assert (
@@ -107,9 +123,7 @@ def test_profile_update_preserves_other_players_and_trip_snapshots(
         == "iveco_sway_500"
     )
     assert project_player(other_game.player_state()) == other_before
-    selected.state_repository.save_player(
-        PlayerState(**{**other_before, "cash": 12345})
-    )
+    repository.save_player(PlayerState(**{**other_before, "cash": 12345}))
     service.update_profile(
         "Selected",
         {"free": "iveco_sway_500"},
@@ -146,12 +160,12 @@ def maintenance(
     )
     accounts = AccountRepository(database)
     user = accounts.create_user("Selected", "test-hash")
-    selected = build_player_service(synthetic_runtime, user["id"])
+    selected_context = build_player_context(synthetic_runtime, user["id"])
     service = build_profile_maintenance_service(settings)
     return MaintenanceCase(
         settings,
         service,
-        selected,
+        selected_context,
         accounts,
         synthetic_runtime.world,
     )
@@ -173,12 +187,10 @@ def maintenance(
 def test_maintenance_validation_preserves_state(maintenance, failure):
     service = maintenance.service
     selected = maintenance.game
+    repository = maintenance.context.state_repository
     accounts = maintenance.accounts
     before = (
-        [
-            project_vehicle(item)
-            for item in selected.state_repository.list_vehicles()
-        ],
+        [project_vehicle(item) for item in repository.list_vehicles()],
         project_player(selected.player_state()),
     )
     username = "Selected"
@@ -200,10 +212,7 @@ def test_maintenance_validation_preserves_state(maintenance, failure):
     with pytest.raises(ValueError):
         service.update_profile(username, assignments, cash)
     assert (
-        [
-            project_vehicle(item)
-            for item in selected.state_repository.list_vehicles()
-        ],
+        [project_vehicle(item) for item in repository.list_vehicles()],
         project_player(selected.player_state()),
     ) == before
 
@@ -212,8 +221,8 @@ def test_maintenance_write_failure_rolls_back_and_retains_unselected(
     maintenance,
 ):
     service = maintenance.service
-    selected = maintenance.game
-    vehicle = selected.state_repository.list_vehicles()[0]
+    repository = maintenance.context.state_repository
+    vehicle = repository.list_vehicles()[0]
     hamburg = WorldScope(maintenance.world.read()).facility("hamburg_cta")
     vehicle.start_trip()
     vehicle.arrive(hamburg.location_snapshot())
@@ -232,10 +241,11 @@ def test_maintenance_write_failure_rolls_back_and_retains_unselected(
         top_speed_kmh=90,
     )
     vehicles = [project_vehicle(vehicle), project_vehicle(other)]
-    selected.state_repository.save_vehicle(vehicle)
-    selected.state_repository.save_vehicle(other)
-    repository = selected.state_repository
-    service.player_unit_of_work_factory = lambda user_id: selected.unit_of_work
+    repository.save_vehicle(vehicle)
+    repository.save_vehicle(other)
+    service.player_unit_of_work_factory = lambda user_id: (
+        maintenance.context.unit_of_work
+    )
     before = project_player(repository.get_player())
     with patch.object(
         repository,
@@ -306,7 +316,7 @@ def test_cli_backs_up_before_mutation_and_preserves_cash(
     maintenance, monkeypatch, capsys, cash
 ):
     settings = maintenance.settings
-    selected = maintenance.game
+    repository = maintenance.context.state_repository
     monkeypatch.setattr(
         sys,
         "argv",
@@ -320,10 +330,7 @@ def test_cli_backs_up_before_mutation_and_preserves_cash(
     )
     if cash is not None:
         sys.argv.extend(["--cash", str(cash)])
-    before = [
-        project_vehicle(item)
-        for item in selected.state_repository.list_vehicles()
-    ]
+    before = [project_vehicle(item) for item in repository.list_vehicles()]
     with patch(
         "scripts.update_test_profile.Settings.from_env", return_value=settings
     ):
@@ -336,10 +343,9 @@ def test_cli_backs_up_before_mutation_and_preserves_cash(
             "WHERE user_id = (SELECT id FROM users WHERE username='Selected')"
         ).fetchall()
     assert stored == [(item["id"], item["model_id"]) for item in before]
-    assert [
-        project_vehicle(item)
-        for item in selected.state_repository.list_vehicles()
-    ][0]["model_id"] == "man_tgx_520"
+    assert [project_vehicle(item) for item in repository.list_vehicles()][0][
+        "model_id"
+    ] == "man_tgx_520"
 
 
 def test_cli_backup_failure_never_constructs_mutation_service(
@@ -396,28 +402,30 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
 ):
     service = maintenance.service
     game = maintenance.game
+    context = maintenance.context
+    repository = context.state_repository
     route_started = asyncio.Event()
     release_route = asyncio.Event()
     before = 112 if limited_cash else 175000
     player = project_player(game.player_state())
-    game.state_repository.save_player(
-        PlayerState(**{**player, "cash": before})
+    repository.save_player(PlayerState(**{**player, "cash": before}))
+    seed_test_offers(game, bind_routes=False, context=context)
+    contract = next(
+        project_contract(item)
+        for item in repository.list_offers()
+        if item.origin.facility_uid == BERLIN_UID
     )
-    seed_test_offers(game, bind_routes=False)
-    contract = first_berlin_contract(game)
     offer = next(
-        item
-        for item in game.state_repository.list_offers()
-        if item.id == contract["id"]
+        item for item in repository.list_offers() if item.id == contract["id"]
     )
-    routes = game.market_lifecycle.routes
+    routes = context.lifecycle.routes
     assert routes is not None
-    await game.player_market.route_preparation.preparation.prepare(
+    await context.market.route_preparation.preparation.prepare(
         offer.origin.facility_uid,
         offer.destination.facility_uid,
     )
     routes.bind((offer,))
-    planning = game.transport_dispatch.planning
+    planning = context.dispatch.planning
     original_route = planning.route
 
     async def delayed_route(_planning, *args):
@@ -439,7 +447,7 @@ async def test_dispatch_reprices_after_concurrent_profile_maintenance(
         else:
             trip = project_transport(await task)
     if limited_cash:
-        assert game.state_repository.list_transports() == ()
+        assert repository.list_transports() == ()
         assert game.player_state().cash == before
     else:
         assert trip is not None

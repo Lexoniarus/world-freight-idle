@@ -13,9 +13,7 @@ from app.api.v1.game_projection import (
     project_transport,
     project_vehicle,
 )
-from app.bootstrap import (
-    build_player_service,
-)
+from app.bootstrap import build_player_context
 from app.domain.transports import ActiveTransport
 from app.services.gameplay.fleet import FleetService
 from tests.support.catalogues import BERLIN_UID
@@ -34,8 +32,8 @@ def test_concurrent_purchases_cannot_overdraw(
             "INSERT INTO users VALUES (?, ?, ?, 0)",
             ("race", "race", "test-only"),
         )
-    first = build_player_service(synthetic_runtime, "race")
-    second = build_player_service(synthetic_runtime, "race")
+    first = build_player_context(synthetic_runtime, "race")
+    second = build_player_context(synthetic_runtime, "race")
 
     def purchase(service):
         try:
@@ -52,9 +50,10 @@ def test_concurrent_purchases_cannot_overdraw(
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(purchase, [first, second]))
     assert sum(item is not None for item in results) == 1
-    assert project_state(first.state())["player"]["cash"] == 26000
+    assert project_state(first.game.state())["player"]["cash"] == 26000
     assert (
-        len([project_vehicle(value) for value in first.list_vehicles()]) == 2
+        len([project_vehicle(value) for value in first.game.list_vehicles()])
+        == 2
     )
 
 
@@ -183,9 +182,11 @@ def test_concurrent_arrivals_pay_once(synthetic_runtime, synthetic_game):
             "INSERT INTO users VALUES (?, ?, ?, 0)",
             ("arrival", "arrival", "test-only"),
         )
-    alice = build_player_service(synthetic_runtime, "arrival")
-    other = build_player_service(synthetic_runtime, "arrival")
-    add_transport(alice)
+    alice_context = build_player_context(synthetic_runtime, "arrival")
+    other_context = build_player_context(synthetic_runtime, "arrival")
+    alice = alice_context.game
+    other = other_context.game
+    add_transport(alice, context=alice_context)
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures = [
             pool.submit(service.reconcile_arrival)

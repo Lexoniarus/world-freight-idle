@@ -11,10 +11,12 @@ from app.composition.maintenance import (
     build_transport_repair,
 )
 from app.composition.player import (
+    PlayerServiceContext,
     build_analytics_service,
     build_fleet_service,
     build_leaderboard_reader,
     build_map_service,
+    build_player_context,
     build_player_market_services,
     build_player_service,
     build_preferences,
@@ -34,6 +36,7 @@ from app.composition.runtime import (
 
 __all__ = [
     "GameRuntime",
+    "PlayerServiceContext",
     "build_analytics_service",
     "build_economy_audit",
     "build_energy_upgrade",
@@ -47,6 +50,7 @@ __all__ = [
     "build_market_stock_repair",
     "build_market_stock_upgrade",
     "build_player_market_services",
+    "build_player_context",
     "build_player_service",
     "build_preferences",
     "build_preparation_worker",

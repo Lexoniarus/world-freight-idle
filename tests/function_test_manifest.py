@@ -1,4 +1,5 @@
 FUNCTION_TESTS = {
+    "app.composition.player.build_player_context": "test_player_service_isolation_and_atomic_purchases",
     "app.composition.audits.build_routing_audit": "test_audit_report_is_local_and_prewarm_counts_every_request",
     "app.domain.market_preparation.required_relations": "test_preparation_failures_backoff_fencing_and_worker_cleanup",
     "app.providers.valhalla_metadata.graph_revision": "test_graph_revision_prefers_graph_metadata_without_inventing_versions",
@@ -129,6 +130,7 @@ FUNCTION_TESTS = {
     "app.api.v1.contracts.refresh_contracts": "test_market_refresh_maps_only_client_errors_to_http",
     "app.api.v1.dashboard.get_dashboard": "test_dashboard_and_system_api_expose_supported_resources",
     "app.api.v1.dependencies.get_game_service": "test_private_game_resources_are_isolated_between_accounts",
+    "app.api.v1.dependencies.get_player_context": "test_private_game_resources_are_isolated_between_accounts",
     "app.api.v1.fleet.get_vehicle": "test_fleet_api_lists_and_gets_owned_vehicles",
     "app.api.v1.fleet.list_fleet": "test_fleet_api_lists_and_gets_owned_vehicles",
     "app.api.v1.router.build_v1_router": "test_dashboard_and_system_api_expose_supported_resources",

@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.api.v1.traffic_projection import player_color, project_traffic
 from app.bootstrap import (
-    build_player_service,
+    build_player_context,
     build_preferences,
     build_traffic_reader,
 )
@@ -39,27 +39,30 @@ def test_multiplayer_map_projects_shared_active_traffic_without_private_economy(
     accounts = AccountRepository(database)
     alice = accounts.create_user("Alice", "unused")
     bob = accounts.create_user("Bob", "unused")
-    alice_game = build_player_service(synthetic_runtime, alice["id"])
-    bob_game = build_player_service(synthetic_runtime, bob["id"])
+    alice_context = build_player_context(synthetic_runtime, alice["id"])
+    bob_context = build_player_context(synthetic_runtime, bob["id"])
+    alice_game = alice_context.game
+    bob_game = bob_context.game
     now = synthetic_game.now()
 
-    bob_vehicle = bob_game.state_repository.list_vehicles()[0]
+    bob_vehicle = bob_context.state_repository.list_vehicles()[0]
     model = next(
         item
         for item in synthetic_runtime.catalogue.list_models()
         if item.id == "daf_xg_plus_480"
     )
     bob_vehicle.apply_model(model)
-    bob_game.state_repository.save_vehicle(bob_vehicle)
-    for service, identity in (
-        (alice_game, "alice-trip"),
-        (bob_game, "bob-trip"),
+    bob_context.state_repository.save_vehicle(bob_vehicle)
+    for service, context, identity in (
+        (alice_game, alice_context, "alice-trip"),
+        (bob_game, bob_context, "bob-trip"),
     ):
         add_transport(
             service,
             departed_at=now - 10,
             arrives_at=now + 100,
             transport_id=identity,
+            context=context,
         )
     build_preferences(synthetic_runtime).update(bob["id"], "#e45756")
     repository = SqliteTrafficReader(database)
@@ -144,16 +147,18 @@ def test_multiplayer_map_endpoint_requires_login_and_shares_other_players(
             json={"username": "Alice", "password": PASSWORD},
         )
         alice = alice_response.json()
-        alice_game = build_player_service(
+        alice_context = build_player_context(
             app.state.game_runtime,
             alice["id"],
         )
+        alice_game = alice_context.game
         now = alice_game.now()
         add_transport(
             alice_game,
             departed_at=now - 10,
             arrives_at=now + 100,
             transport_id="alice-live",
+            context=alice_context,
         )
 
         bob_response = client.post(

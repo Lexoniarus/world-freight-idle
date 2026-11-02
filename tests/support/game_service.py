@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import cast
 
 from app.domain.ports import VehicleCatalogue, WorldCatalogue
+from app.domain.state_ports import GameStateRepository
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.services.gameplay.dispatch import TransportDispatchService
@@ -38,6 +39,45 @@ from tests.support.routing import (
     FixtureRoutingReadiness,
     MemoryOfferRouteStore,
 )
+
+
+class FixturePlayerGameFacade(PlayerGameFacade):
+    """Expose injected collaborators only inside explicit test composition."""
+
+    @property
+    def unit_of_work(self) -> SqliteGameUnitOfWork:
+        """Return the fixture transaction boundary for failure injection."""
+        return cast(SqliteGameUnitOfWork, self._unit_of_work)
+
+    @property
+    def state_repository(self) -> GameStateRepository:
+        """Return fixture persistence for repository-level assertions."""
+        return self._state_repository
+
+    @property
+    def market_lifecycle(self) -> MarketLifecycleService:
+        """Return the fixture market lifecycle for focused service tests."""
+        return self._market_lifecycle
+
+    @property
+    def initialization(self) -> PlayerInitializationService:
+        """Return the fixture initialization workflow."""
+        return self._initialization
+
+    @property
+    def settlement(self) -> TransportSettlementService:
+        """Return the fixture settlement workflow."""
+        return self._settlement
+
+    @property
+    def transport_dispatch(self) -> TransportDispatchService:
+        """Return the fixture dispatch workflow."""
+        return self._transport_dispatch
+
+    @property
+    def player_market(self) -> PlayerMarketServices:
+        """Return the fixture market collaborators."""
+        return self._player_market
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,7 +154,7 @@ def build_fixture_game(
         player_market.demand,
         player_market.stores,
     )
-    service = PlayerGameFacade(
+    service = FixturePlayerGameFacade(
         unit,
         clock,
         time_scale,
