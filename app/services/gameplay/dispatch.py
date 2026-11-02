@@ -17,9 +17,9 @@ from app.services.gameplay.dispatch_eligibility import (
 from app.services.gameplay.dispatch_planning import DispatchPlanningService
 from app.services.gameplay.settlement import TransportSettlementService
 from app.services.gameplay.vehicle_location import VehicleLocationResolver
-from app.services.market_components import MarketComponents
-from app.services.player_market_demand import PlayerMarketDemandService
-from app.services.player_market_stock import PlayerMarketStockContext
+from app.services.market.components import MarketComponents
+from app.services.market.player_demand import PlayerMarketDemandService
+from app.services.market.player_stock import PlayerMarketStockContext
 
 LOGGER = logging.getLogger(__name__)
 

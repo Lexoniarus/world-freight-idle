@@ -20,12 +20,12 @@ from app.domain.market_stock import (
 )
 from app.domain.state_ports import GameUnitOfWork
 from app.domain.world import WorldSnapshot
-from app.services.market_components import MarketComponents
-from app.services.market_demand import MarketDemandResolver
-from app.services.player_market_demand import PlayerMarketDemandService
-from app.services.player_market_routes import PlayerMarketRouteService
-from app.services.player_market_stock import PlayerMarketStockContext
-from app.services.vehicle_coverage import trade_key
+from app.services.market.components import MarketComponents
+from app.services.market.demand import MarketDemandResolver
+from app.services.market.player_demand import PlayerMarketDemandService
+from app.services.market.player_routes import PlayerMarketRouteService
+from app.services.market.player_stock import PlayerMarketStockContext
+from app.services.market.vehicle_coverage import trade_key
 
 LOGGER = logging.getLogger(__name__)
 

@@ -7,6 +7,9 @@ from app.domain.market_preparation import (
     PreparationBatchResult,
     required_relations,
 )
+from app.services.market.route_preparation import (
+    MarketRoutePreparationService,
+)
 from app.services.market.stock.planning import (
     StockPlanningService,
     StockTarget,
@@ -18,11 +21,8 @@ from app.services.market.stock.snapshot import (
     StockSnapshot,
     StockSnapshotReader,
 )
-from app.services.market_route_preparation import (
-    MarketRoutePreparationService,
-)
-from app.services.market_templates import MarketTemplateService
-from app.services.vehicle_coverage import trade_key
+from app.services.market.templates import MarketTemplateService
+from app.services.market.vehicle_coverage import trade_key
 
 
 @dataclass(slots=True)

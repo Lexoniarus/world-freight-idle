@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from app.domain.game import PlayerState
 from app.domain.state_ports import GameUnitOfWork
 from app.domain.transports import ActiveTransport
-from app.services.player_market_demand import PlayerMarketDemandService
+from app.services.market.player_demand import PlayerMarketDemandService
 
 LOGGER = logging.getLogger(__name__)
 

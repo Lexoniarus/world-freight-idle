@@ -2,12 +2,12 @@
 
 from dataclasses import dataclass
 
-from app.services.market_route_preparation import (
+from app.services.market.player_demand import PlayerMarketDemandService
+from app.services.market.player_routes import PlayerMarketRouteService
+from app.services.market.player_stock import PlayerMarketStockContext
+from app.services.market.route_preparation import (
     MarketRoutePreparationService,
 )
-from app.services.player_market_demand import PlayerMarketDemandService
-from app.services.player_market_routes import PlayerMarketRouteService
-from app.services.player_market_stock import PlayerMarketStockContext
 
 
 @dataclass(slots=True)

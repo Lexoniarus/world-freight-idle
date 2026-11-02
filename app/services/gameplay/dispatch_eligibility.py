@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from app.domain.contracts import ContractOffer
 from app.domain.game import OwnedVehicle
-from app.services.market_candidates import MarketCandidateService
+from app.services.market.candidates import MarketCandidateService
 
 
 @dataclass(frozen=True, slots=True)

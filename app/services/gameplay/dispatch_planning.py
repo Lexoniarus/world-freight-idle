@@ -11,7 +11,7 @@ from app.domain.results import ContractQuote
 from app.domain.routes import DispatchRoutePlan, RouteSnapshot
 from app.domain.world import FacilityLocationSnapshot
 from app.services.cost_profiles import VehicleCostResolver
-from app.services.player_market_routes import PlayerMarketRouteService
+from app.services.market.player_routes import PlayerMarketRouteService
 
 
 @dataclass(slots=True)

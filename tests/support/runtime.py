@@ -8,9 +8,9 @@ from app.repositories.market_templates import SqliteMarketTemplateStore
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
 from app.repositories.routing_readiness import SqliteRoutingReadinessStore
-from app.services.market_candidates import MarketCandidateService
-from app.services.market_components import MarketComponents
-from app.services.market_scope import MarketScopeResolver
+from app.services.market.candidates import MarketCandidateService
+from app.services.market.components import MarketComponents
+from app.services.market.scope import MarketScopeResolver
 from app.services.routing.evidence import RoutingEvidenceReader
 from app.services.routing.preparation import RoutingPreparationService
 from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver

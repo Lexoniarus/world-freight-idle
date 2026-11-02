@@ -26,7 +26,7 @@ from app.domain.market_profiles import NhmMarketProfile
 from app.domain.ports import VehicleCatalogue, WorldCatalogue
 from app.domain.world import Facility, WorldSnapshot
 from app.domain.world_scopes import WorldScope
-from app.services.trade_network import TradeNetwork
+from app.services.market.trade_network import TradeNetwork
 
 
 class MarketCandidateService:

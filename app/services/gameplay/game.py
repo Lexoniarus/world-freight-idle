@@ -21,10 +21,10 @@ from app.domain.transports import ActiveTransport
 from app.services.gameplay.dispatch import TransportDispatchService
 from app.services.gameplay.initialization import PlayerInitializationService
 from app.services.gameplay.settlement import TransportSettlementService
-from app.services.market_components import MarketComponents
-from app.services.market_lifecycle import MarketLifecycleService
-from app.services.market_scope import MarketScopeResolver
-from app.services.player_market_services import PlayerMarketServices
+from app.services.market.components import MarketComponents
+from app.services.market.lifecycle import MarketLifecycleService
+from app.services.market.player_services import PlayerMarketServices
+from app.services.market.scope import MarketScopeResolver
 
 
 @dataclass

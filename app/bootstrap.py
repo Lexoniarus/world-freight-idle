@@ -50,7 +50,6 @@ from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 from app.repositories.world_catalogue import SqliteWorldCatalogue
 from app.repositories.world_geography import WorldGeographyRepository
 from app.services.analytics import AnalyticsService
-from app.services.contract_factory import ContractFactory
 from app.services.cost_profiles import VehicleCostResolver
 from app.services.economy_audit import EconomyAuditService
 from app.services.gameplay.dispatch import TransportDispatchService
@@ -64,24 +63,26 @@ from app.services.gameplay.initialization import PlayerInitializationService
 from app.services.gameplay.settlement import TransportSettlementService
 from app.services.gameplay.vehicle_location import VehicleLocationResolver
 from app.services.map_locations import MapLocationService
+from app.services.market.candidates import MarketCandidateService
+from app.services.market.components import MarketComponents
+from app.services.market.contract_factory import ContractFactory
+from app.services.market.demand import MarketDemandResolver
+from app.services.market.lifecycle import MarketLifecycleService
+from app.services.market.player_demand import PlayerMarketDemandService
+from app.services.market.player_routes import PlayerMarketRouteService
+from app.services.market.player_services import PlayerMarketServices
+from app.services.market.player_stock import PlayerMarketStockContext
+from app.services.market.route_preparation import (
+    MarketRoutePreparationService,
+)
+from app.services.market.scope import MarketScopeResolver
+from app.services.market.selection import MarketSelectionService
 from app.services.market.stock.planning import StockPlanningService
 from app.services.market.stock.preparation import StockPreparationBatch
 from app.services.market.stock.publication import StockPublicationService
 from app.services.market.stock.snapshot import StockSnapshotReader
-from app.services.market_candidates import MarketCandidateService
-from app.services.market_components import MarketComponents
-from app.services.market_demand import MarketDemandResolver
-from app.services.market_lifecycle import MarketLifecycleService
-from app.services.market_route_preparation import (
-    MarketRoutePreparationService,
-)
-from app.services.market_scope import MarketScopeResolver
-from app.services.market_selection import MarketSelectionService
-from app.services.market_templates import MarketTemplateService
-from app.services.player_market_demand import PlayerMarketDemandService
-from app.services.player_market_routes import PlayerMarketRouteService
-from app.services.player_market_services import PlayerMarketServices
-from app.services.player_market_stock import PlayerMarketStockContext
+from app.services.market.templates import MarketTemplateService
+from app.services.market.vehicle_coverage import VehicleCoverageService
 from app.services.preferences import PreferenceService
 from app.services.preparation_worker import MarketPreparationWorker
 from app.services.profile_maintenance import ProfileMaintenanceService
@@ -89,7 +90,6 @@ from app.services.routing.anchors import RoutingAnchorResolver
 from app.services.routing.evidence import RoutingEvidenceReader
 from app.services.routing.preparation import RoutingPreparationService
 from app.services.runtime_views import RuntimeViewService
-from app.services.vehicle_coverage import VehicleCoverageService
 
 
 @dataclass

@@ -4,7 +4,7 @@ from dataclasses import replace
 
 import pytest
 
-from app.services.deterministic_market_random import DeterministicMarketRandom
+from app.services.market.randomness import DeterministicMarketRandom
 
 
 def test_deterministic_market_random_is_stable_and_rejects_bad_choices(

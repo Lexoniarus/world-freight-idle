@@ -7,15 +7,15 @@ from app.domain.contracts import ContractOffer
 from app.domain.market import MarketVehicle, VehicleCoverageDiagnostic
 from app.domain.results import AvailableContract, MarketPresentation
 from app.domain.state_ports import GameUnitOfWork
-from app.services.market_components import MarketComponents
-from app.services.market_scope import MarketScopeResolver
-from app.services.market_selection import MarketSelectionService
-from app.services.player_market_demand import PlayerMarketDemandService
-from app.services.player_market_routes import (
+from app.services.market.components import MarketComponents
+from app.services.market.player_demand import PlayerMarketDemandService
+from app.services.market.player_routes import (
     PlayerMarketRouteService,
     PlayerMarketRouteSnapshot,
 )
-from app.services.player_market_stock import PlayerMarketStockContext
+from app.services.market.player_stock import PlayerMarketStockContext
+from app.services.market.scope import MarketScopeResolver
+from app.services.market.selection import MarketSelectionService
 
 RETAIN_MINIMUM_SECONDS = 60
 

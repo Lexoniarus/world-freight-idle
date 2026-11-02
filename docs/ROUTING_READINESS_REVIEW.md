@@ -287,7 +287,7 @@ Schicht: Service. Grenze: Injizierte Ports und Domainregeln; kein SQL/HTTP-Parsi
 | Funktion | Zweck | Direkte Aufrufe / Abhängigkeiten | Review |
 | --- | --- | --- | --- |
 | `MarketGenerator.generate` | Return retained and newly materialized offers with diagnostics. | `ContractOffer.from_snapshot`, `self.candidates.build`, `self.coverage.plan`, `self.factory.build`, `tuple` | Eine zusammenhängende Aufgabe; Schichtgrenze eingehalten. |
-### `app/services/market_lifecycle.py`
+### `app/services/market/lifecycle.py`
 
 Schicht: Service. Grenze: Injizierte Ports und Domainregeln; kein SQL/HTTP-Parsing.
 

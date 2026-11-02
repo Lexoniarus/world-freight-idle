@@ -41,9 +41,9 @@ FUNCTION_TESTS = {
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.release": "test_global_lease_fences_expired_and_competing_writers",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.renew": "test_global_lease_fences_expired_and_competing_writers",
     "app.services.gameplay.game.GameService.preparation_status": "test_preparation_store_generation_and_reference_rollback",
-    "app.services.player_market_routes.PlayerMarketRouteService.bind": "test_partial_market_never_publishes_unchecked_offers",
-    "app.services.market_route_preparation.MarketRoutePreparationService.prepare": "test_preparation_failures_backoff_fencing_and_worker_cleanup",
-    "app.services.player_market_routes.PlayerMarketRouteService.retained_current": "test_partial_market_never_publishes_unchecked_offers",
+    "app.services.market.player_routes.PlayerMarketRouteService.bind": "test_partial_market_never_publishes_unchecked_offers",
+    "app.services.market.route_preparation.MarketRoutePreparationService.prepare": "test_preparation_failures_backoff_fencing_and_worker_cleanup",
+    "app.services.market.player_routes.PlayerMarketRouteService.retained_current": "test_partial_market_never_publishes_unchecked_offers",
     "app.services.preparation_worker.MarketPreparationWorker.__init__": "test_worker_fills_ready_market_and_owns_shutdown",
     "app.services.preparation_worker.MarketPreparationWorker._run": "test_preparation_failures_backoff_fencing_and_worker_cleanup",
     "app.services.preparation_worker.MarketPreparationWorker.close": "test_worker_fills_ready_market_and_owns_shutdown",
@@ -162,23 +162,23 @@ FUNCTION_TESTS = {
     "app.domain.game.OwnedVehicle.start_trip": "test_owned_vehicle_domain_rules",
     "app.domain.game.OwnedVehicle.arrive": "test_owned_vehicle_domain_rules",
     "app.domain.game.OwnedVehicle.apply_model": "test_owned_vehicle_domain_rules",
-    "app.services.contract_factory.ContractFactory.build": (
+    "app.services.market.contract_factory.ContractFactory.build": (
         "test_materialization_snapshots_profile_terms_and_validates_context"
     ),
-    "app.services.contract_factory.ContractFactory._draw_offer": (
+    "app.services.market.contract_factory.ContractFactory._draw_offer": (
         "test_contract_factory_draw_is_context_stable_with_fresh_identity"
     ),
-    "app.services.contract_factory.ContractFactory._derive_terms": (
+    "app.services.market.contract_factory.ContractFactory._derive_terms": (
         "test_contract_factory_derives_terms_from_selected_vehicle"
     ),
-    "app.services.contract_factory.ContractFactory._build_snapshot": (
+    "app.services.market.contract_factory.ContractFactory._build_snapshot": (
         "test_contract_factory_snapshots_catalogue_evidence"
     ),
-    "app.services.trade_network.TradeNetwork.__init__": "test_reference_cache_and_empty_origin_relations",
-    "app.services.trade_network.TradeNetwork._build_trade_options": "test_reference_cache_and_empty_origin_relations",
-    "app.services.trade_network.TradeNetwork._index_inbound_profiles": "test_reference_cache_and_empty_origin_relations",
-    "app.services.trade_network.TradeNetwork.options_for": "test_reference_cache_and_empty_origin_relations",
-    "app.services.market_scope.MarketScopeResolver.resolve": "test_city_scope_uses_only_distinct_idle_city_identities",
+    "app.services.market.trade_network.TradeNetwork.__init__": "test_reference_cache_and_empty_origin_relations",
+    "app.services.market.trade_network.TradeNetwork._build_trade_options": "test_reference_cache_and_empty_origin_relations",
+    "app.services.market.trade_network.TradeNetwork._index_inbound_profiles": "test_reference_cache_and_empty_origin_relations",
+    "app.services.market.trade_network.TradeNetwork.options_for": "test_reference_cache_and_empty_origin_relations",
+    "app.services.market.scope.MarketScopeResolver.resolve": "test_city_scope_uses_only_distinct_idle_city_identities",
     "app.tracing.TraceIdMiddleware.dispatch": "test_trace_id_middleware_propagates_header_and_context",
     "app.tracing.get_trace_id": "test_get_trace_id_default",
     "app.tracing.new_trace_id": "test_new_trace_id_is_unique_hex",
@@ -612,17 +612,17 @@ FUNCTION_TESTS.update(
         "app.domain.market_terms.OfferMarketContext.validate_tonnage": "test_materialization_snapshots_profile_terms_and_validates_context",
         "app.repositories.snapshot_mapping.load_market_context": "test_historical_v2_and_missing_context_roundtrip_without_catalogue",
         "app.services.gameplay.game.GameService.contract_choices": "test_retention_filters_without_writing_during_market_reads",
-        "app.services.market_candidates.MarketCandidateService.__init__": "test_reference_cache_and_empty_origin_relations",
-        "app.services.market_candidates.MarketCandidateService.reference": "test_reference_cache_and_empty_origin_relations",
-        "app.services.market_candidates.MarketCandidateService.resolve_fleet": "test_model_resolution_is_explicit_and_saved_capacity_wins",
-        "app.services.market_candidates.MarketCandidateService.build": "test_candidate_compatibility_and_weighting_are_separate",
-        "app.services.market_candidates.MarketCandidateService._candidate": "test_candidate_compatibility_and_weighting_are_separate",
-        "app.services.market_candidates.MarketCandidateService.eligible_ids": "test_retention_requires_structure_and_actual_vehicle_compatibility",
-        "app.services.market_candidates.MarketCandidateService.structurally_current": "test_retention_requires_structure_and_actual_vehicle_compatibility",
-        "app.services.market_diversity.MarketDiversity.record": "test_market_diversity_counts_only_persisted_offer_dimensions",
-        "app.services.market_diversity.MarketDiversity.rank": "test_market_diversity_counts_only_persisted_offer_dimensions",
-        "app.services.market_lifecycle.MarketLifecycleService._retained": "test_retention_filters_without_writing_during_market_reads",
-        "app.services.market_lifecycle.MarketLifecycleService.present": "test_retention_filters_without_writing_during_market_reads",
+        "app.services.market.candidates.MarketCandidateService.__init__": "test_reference_cache_and_empty_origin_relations",
+        "app.services.market.candidates.MarketCandidateService.reference": "test_reference_cache_and_empty_origin_relations",
+        "app.services.market.candidates.MarketCandidateService.resolve_fleet": "test_model_resolution_is_explicit_and_saved_capacity_wins",
+        "app.services.market.candidates.MarketCandidateService.build": "test_candidate_compatibility_and_weighting_are_separate",
+        "app.services.market.candidates.MarketCandidateService._candidate": "test_candidate_compatibility_and_weighting_are_separate",
+        "app.services.market.candidates.MarketCandidateService.eligible_ids": "test_retention_requires_structure_and_actual_vehicle_compatibility",
+        "app.services.market.candidates.MarketCandidateService.structurally_current": "test_retention_requires_structure_and_actual_vehicle_compatibility",
+        "app.services.market.diversity.MarketDiversity.record": "test_market_diversity_counts_only_persisted_offer_dimensions",
+        "app.services.market.diversity.MarketDiversity.rank": "test_market_diversity_counts_only_persisted_offer_dimensions",
+        "app.services.market.lifecycle.MarketLifecycleService._retained": "test_retention_filters_without_writing_during_market_reads",
+        "app.services.market.lifecycle.MarketLifecycleService.present": "test_retention_filters_without_writing_during_market_reads",
     }
 )
 
@@ -777,30 +777,30 @@ FUNCTION_TESTS.update(
         "app.services.economy_audit.audit_vehicle": "test_economy_audit_is_typed_and_reproducible",
         "app.services.economy_audit.summarize_economy": "test_economy_audit_is_typed_and_reproducible",
         "app.services.gameplay.game.GameService.vehicle_coverage": "test_market_presentation_filters_coverage_for_requested_vehicle",
-        "app.services.market_lifecycle.MarketLifecycleService.vehicle_diagnostics": "test_vehicle_projection_api_enforces_owned_idle_selection",
-        "app.services.market_lifecycle.MarketLifecycleService.read_market": "test_vehicle_projection_api_enforces_owned_idle_selection",
-        "app.services.market_lifecycle.MarketLifecycleService._retained_from": "test_vehicle_projection_api_enforces_owned_idle_selection",
-        "app.services.market_lifecycle.MarketLifecycleService._present_from": "test_vehicle_projection_api_enforces_owned_idle_selection",
-        "app.services.market_lifecycle.MarketLifecycleService._route_snapshot": "test_vehicle_projection_api_enforces_owned_idle_selection",
-        "app.services.market_lifecycle.MarketLifecycleService._require_vehicle": "test_vehicle_projection_api_enforces_owned_idle_selection",
-        "app.services.player_market_routes.PlayerMarketRouteService.read": "test_vehicle_projection_api_enforces_owned_idle_selection",
-        "app.services.player_market_routes.PlayerMarketRouteService.matches_snapshot": "test_vehicle_projection_api_enforces_owned_idle_selection",
-        "app.services.player_market_routes.PlayerMarketRouteService.eligible_from_snapshot": "test_vehicle_projection_api_enforces_owned_idle_selection",
-        "app.services.player_market_routes.PlayerMarketRouteService._required_pairs": "test_vehicle_projection_api_enforces_owned_idle_selection",
-        "app.services.player_market_routes.PlayerMarketRouteService.bind_in_transaction": "test_reference_replacement_owns_rollback",
-        "app.services.player_market_routes.PlayerMarketRouteService._ready_candidates": "test_vehicle_readiness_requires_approach_and_excludes_stale",
-        "app.services.player_market_routes.PlayerMarketRouteService.demand_state": "test_exhausted_negative_demand_requires_explicit_invalidation",
-        "app.services.player_market_routes.PlayerMarketRouteService.ready_candidates": "test_vehicle_readiness_requires_approach_and_excludes_stale",
-        "app.services.player_market_routes.PlayerMarketRouteService.ready_context": "test_vehicle_readiness_requires_approach_and_excludes_stale",
+        "app.services.market.lifecycle.MarketLifecycleService.vehicle_diagnostics": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market.lifecycle.MarketLifecycleService.read_market": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market.lifecycle.MarketLifecycleService._retained_from": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market.lifecycle.MarketLifecycleService._present_from": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market.lifecycle.MarketLifecycleService._route_snapshot": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market.lifecycle.MarketLifecycleService._require_vehicle": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market.player_routes.PlayerMarketRouteService.read": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market.player_routes.PlayerMarketRouteService.matches_snapshot": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market.player_routes.PlayerMarketRouteService.eligible_from_snapshot": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market.player_routes.PlayerMarketRouteService._required_pairs": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market.player_routes.PlayerMarketRouteService.bind_in_transaction": "test_reference_replacement_owns_rollback",
+        "app.services.market.player_routes.PlayerMarketRouteService._ready_candidates": "test_vehicle_readiness_requires_approach_and_excludes_stale",
+        "app.services.market.player_routes.PlayerMarketRouteService.demand_state": "test_exhausted_negative_demand_requires_explicit_invalidation",
+        "app.services.market.player_routes.PlayerMarketRouteService.ready_candidates": "test_vehicle_readiness_requires_approach_and_excludes_stale",
+        "app.services.market.player_routes.PlayerMarketRouteService.ready_context": "test_vehicle_readiness_requires_approach_and_excludes_stale",
         "app.services.preparation_worker.MarketPreparationWorker._iteration": "test_worker_recovers_entire_iteration",
         "app.services.preparation_worker.MarketPreparationWorker._wait_for_work": "test_worker_fills_ready_market_and_owns_shutdown",
         "app.services.preparation_worker.MarketPreparationWorker.running": "test_worker_fills_ready_market_and_owns_shutdown",
         "app.services.preparation_worker.MarketPreparationWorker._drain_due_jobs": "test_worker_recovers_entire_iteration",
         "app.services.preparation_worker.MarketPreparationWorker._recover_after_failure": "test_worker_recovers_entire_iteration",
-        "app.services.vehicle_coverage.VehicleCoverageService.diagnose": "test_shared_materialized_offers_cover_identical_vehicles_once",
-        "app.services.vehicle_coverage.restrict_candidate": "test_vehicle_coverage_reports_only_materialized_vehicle_stock",
-        "app.services.vehicle_coverage.vehicle_candidates": "test_shared_materialized_offers_cover_identical_vehicles_once",
-        "app.services.vehicle_coverage.vehicle_offers": "test_vehicle_coverage_reports_only_materialized_vehicle_stock",
+        "app.services.market.vehicle_coverage.VehicleCoverageService.diagnose": "test_shared_materialized_offers_cover_identical_vehicles_once",
+        "app.services.market.vehicle_coverage.restrict_candidate": "test_vehicle_coverage_reports_only_materialized_vehicle_stock",
+        "app.services.market.vehicle_coverage.vehicle_candidates": "test_shared_materialized_offers_cover_identical_vehicles_once",
+        "app.services.market.vehicle_coverage.vehicle_offers": "test_vehicle_coverage_reports_only_materialized_vehicle_stock",
     }
 )
 
@@ -891,17 +891,17 @@ FUNCTION_TESTS.update(
         "app.repositories.transport_repair.TransportRepairRepository.repair_to": "test_repair_rejects_unknown_damage_and_removes_failed_outputs",
         "app.repositories.transport_repair.repaired_transport": "test_repair_rejects_unknown_damage_and_removes_failed_outputs",
         "app.repositories.transport_repair.table_digest": "test_repair_reconciliation_and_archive_reject_any_unapproved_change",
-        "app.services.market_lifecycle.MarketLifecycleService.published": "test_runtime_never_builds_candidates_and_worker_plans_outside_writer",
-        "app.services.player_market_demand.PlayerMarketDemandService.ensure": "test_durable_demand_coalesces_and_fences_stale_diagnostics",
-        "app.services.player_market_demand.PlayerMarketDemandService.invalidate": "test_durable_demand_coalesces_and_fences_stale_diagnostics",
-        "app.services.player_market_demand.PlayerMarketDemandService.status": "test_preparation_store_generation_and_reference_rollback",
-        "app.services.player_market_demand.PlayerMarketDemandService.diagnostics": "test_vehicle_projection_api_enforces_owned_idle_selection",
-        "app.services.player_market_demand.PlayerMarketDemandService.publish_diagnostics": "test_stock_publication_commit_is_fenced_and_atomic",
+        "app.services.market.lifecycle.MarketLifecycleService.published": "test_runtime_never_builds_candidates_and_worker_plans_outside_writer",
+        "app.services.market.player_demand.PlayerMarketDemandService.ensure": "test_durable_demand_coalesces_and_fences_stale_diagnostics",
+        "app.services.market.player_demand.PlayerMarketDemandService.invalidate": "test_durable_demand_coalesces_and_fences_stale_diagnostics",
+        "app.services.market.player_demand.PlayerMarketDemandService.status": "test_preparation_store_generation_and_reference_rollback",
+        "app.services.market.player_demand.PlayerMarketDemandService.diagnostics": "test_vehicle_projection_api_enforces_owned_idle_selection",
+        "app.services.market.player_demand.PlayerMarketDemandService.publish_diagnostics": "test_stock_publication_commit_is_fenced_and_atomic",
         "app.services.routing.evidence.RoutingEvidenceReader._current": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
         "app.services.routing.evidence.RoutingEvidenceReader.reading": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
         "app.services.routing.evidence.RoutingEvidenceReader._preload": "test_readiness_read_view_reuses_facts_but_never_crosses_publication",
         "app.services.runtime_views.RuntimeViewService.read": "test_runtime_reads_exclude_geometry_and_keep_private_energy",
-        "app.services.vehicle_coverage.trade_key": "test_shared_materialized_offers_cover_identical_vehicles_once",
+        "app.services.market.vehicle_coverage.trade_key": "test_shared_materialized_offers_cover_identical_vehicles_once",
     }
 )
 
@@ -928,9 +928,9 @@ FUNCTION_TESTS.update(
         "app.repositories.market_stock_upgrade.MarketStockUpgradeRepository._validate": "test_market_upgrade_rejects_unknown_schema_and_rolls_back_bad_output",
         "app.repositories.market_stock_upgrade.MarketStockUpgradeRepository.inspect": "test_market_upgrade_preserves_source_history_and_only_converts_live_offers",
         "app.repositories.market_stock_upgrade.MarketStockUpgradeRepository.upgrade_to": "test_market_upgrade_preserves_source_history_and_only_converts_live_offers",
-        "app.services.market_demand.MarketDemandResolver.resolve": "test_destination_stock_starts_at_dispatch_without_early_settlement",
-        "app.services.market_selection.MarketSelectionService.select": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
-        "app.services.market_templates.MarketTemplateService.materialize": "test_templates_are_shared_but_consumption_is_once_per_account",
+        "app.services.market.demand.MarketDemandResolver.resolve": "test_destination_stock_starts_at_dispatch_without_early_settlement",
+        "app.services.market.selection.MarketSelectionService.select": "test_stock_policy_selection_and_corrupt_storage_are_rejected",
+        "app.services.market.templates.MarketTemplateService.materialize": "test_templates_are_shared_but_consumption_is_once_per_account",
         "app.services.market.stock.planning.StockPlanningService.choose": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
         "app.services.market.stock.planning.StockPlanningService.order": "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work",
         "app.services.market.stock.planning.StockPlanningService.targets": "test_demand_models_and_owned_capacity_remain_separate",
@@ -1009,10 +1009,10 @@ FUNCTION_TESTS.update(
         "app.repositories.market_templates.SqliteMarketTemplateStore.templates": (
             "test_stock_policy_selection_and_corrupt_storage_are_rejected"
         ),
-        "app.services.deterministic_market_random.DeterministicMarketRandom.fraction": (
+        "app.services.market.randomness.DeterministicMarketRandom.fraction": (
             "test_deterministic_market_random_is_stable_and_rejects_bad_choices"
         ),
-        "app.services.deterministic_market_random.DeterministicMarketRandom.weighted_index": (
+        "app.services.market.randomness.DeterministicMarketRandom.weighted_index": (
             "test_deterministic_market_random_is_stable_and_rejects_bad_choices"
         ),
         "app.services.gameplay.dispatch_eligibility.DispatchEligibilityService.require_eligible": (
@@ -1027,7 +1027,7 @@ FUNCTION_TESTS.update(
         "app.services.market.stock.planning.StockPlanningService.preferred": (
             "test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work"
         ),
-        "app.services.market_candidates.MarketCandidateService.build": (
+        "app.services.market.candidates.MarketCandidateService.build": (
             "test_candidate_cache_discards_oldest_context_after_bound"
         ),
     }

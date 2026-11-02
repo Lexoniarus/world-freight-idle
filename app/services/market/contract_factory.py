@@ -12,7 +12,7 @@ from app.domain.market import MarketCandidate, MarketVehicle
 from app.domain.market_calculations import biased_load_factor, shipment_tons
 from app.domain.market_terms import OfferMarketContext
 from app.domain.tariffs import freight_tariff
-from app.services.deterministic_market_random import (
+from app.services.market.randomness import (
     DeterministicMarketRandom,
 )
 from app.simulation import STANDARD_RATE

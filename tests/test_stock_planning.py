@@ -10,7 +10,7 @@ from app.domain.errors import PersistenceError
 from app.domain.market_stock import PreparedTemplate, StockPolicy
 from app.domain.results import AvailableContract
 from app.repositories.market_stock import SqlitePlayerMarketStockStore
-from app.services.market_selection import MarketSelectionService
+from app.services.market.selection import MarketSelectionService
 
 
 def test_structural_candidates_are_reused_until_fleet_context_changes(
@@ -136,7 +136,7 @@ def test_stock_rotation_prioritizes_unserved_vehicles_and_resumes_work(
 ):
     from app.domain.market_stock import MarketDemand
     from app.services.market.stock.planning import StockTarget
-    from app.services.vehicle_coverage import trade_key
+    from app.services.market.vehicle_coverage import trade_key
 
     game, prep, batch = stock_game
     snapshot = batch.snapshots.read()

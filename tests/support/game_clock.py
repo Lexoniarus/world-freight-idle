@@ -3,7 +3,7 @@
 from collections.abc import Callable
 
 from app.services.gameplay.game import GameService
-from app.services.market_route_preparation import (
+from app.services.market.route_preparation import (
     MarketRoutePreparationService,
 )
 

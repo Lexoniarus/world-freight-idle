@@ -10,11 +10,11 @@ from app.domain.market import VehicleCoverageDiagnostic
 from app.domain.market_stock import PreparedTemplate
 from app.domain.routing_readiness import RouteReference
 from app.domain.state_ports import GameUnitOfWork
+from app.services.market.components import MarketComponents
+from app.services.market.player_demand import PlayerMarketDemandService
+from app.services.market.player_routes import PlayerMarketRouteService
+from app.services.market.player_stock import PlayerMarketStockContext
 from app.services.market.stock.snapshot import StockSnapshot
-from app.services.market_components import MarketComponents
-from app.services.player_market_demand import PlayerMarketDemandService
-from app.services.player_market_routes import PlayerMarketRouteService
-from app.services.player_market_stock import PlayerMarketStockContext
 
 LOGGER = logging.getLogger(__name__)
 

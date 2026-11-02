@@ -12,8 +12,8 @@ from app.domain.market_preparation import (
 from app.domain.readiness_ports import OfferRouteStore
 from app.domain.routing_readiness import RouteReference
 from app.domain.state_ports import TransactionBoundary
+from app.services.market.vehicle_coverage import restrict_candidate
 from app.services.routing.evidence import RoutingEvidenceReader
-from app.services.vehicle_coverage import restrict_candidate
 
 RoutePair = tuple[str, str]
 

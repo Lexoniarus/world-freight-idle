@@ -9,7 +9,7 @@ from app.services.gameplay.fleet import (
     create_starter_vehicle,
     resolve_delivery_facility,
 )
-from app.services.player_market_demand import PlayerMarketDemandService
+from app.services.market.player_demand import PlayerMarketDemandService
 
 
 @dataclass(slots=True)

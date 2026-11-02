@@ -24,8 +24,8 @@ from app.domain.market_profiles import (
     TransportCapability,
 )
 from app.services.gameplay.fleet import build_owned_vehicle
-from app.services.market_scope import MarketScopeResolver
-from app.services.trade_network import TradeNetwork
+from app.services.market.scope import MarketScopeResolver
+from app.services.market.trade_network import TradeNetwork
 
 
 def test_city_scope_uses_only_distinct_idle_city_identities(city_market):
@@ -168,7 +168,7 @@ def test_candidate_compatibility_and_weighting_are_separate(city_market):
 
 
 def test_market_diversity_counts_only_persisted_offer_dimensions(city_market):
-    from app.services.market_diversity import MarketDiversity
+    from app.services.market.diversity import MarketDiversity
 
     market, owned, fleet, _, _ = city_market
     candidates = market.candidates.build(

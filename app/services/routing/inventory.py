@@ -3,7 +3,7 @@
 from collections.abc import Iterator
 
 from app.domain.world import WorldSnapshot
-from app.services.trade_network import TradeNetwork
+from app.services.market.trade_network import TradeNetwork
 
 
 def routing_inventory(

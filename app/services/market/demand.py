@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from app.domain.game import OwnedVehicle
 from app.domain.market_compatibility import planning_vehicle
 from app.domain.market_stock import MarketArrival, MarketDemand
-from app.services.market_candidates import MarketCandidateService
+from app.services.market.candidates import MarketCandidateService
 
 
 @dataclass(slots=True)

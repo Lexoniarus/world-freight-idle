@@ -8,7 +8,10 @@ import pytest
 
 from app.domain.contracts import ContractOffer
 from app.domain.market import MarketCandidate
-from app.services.vehicle_coverage import vehicle_candidates, vehicle_offers
+from app.services.market.vehicle_coverage import (
+    vehicle_candidates,
+    vehicle_offers,
+)
 from tests.support.market import make_stock_batch
 
 

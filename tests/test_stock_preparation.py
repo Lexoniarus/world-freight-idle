@@ -7,16 +7,16 @@ import pytest
 
 from app.repositories.market_stock import SqlitePlayerMarketStockStore
 from app.repositories.market_templates import SqliteMarketTemplateStore
+from app.services.market.player_demand import PlayerMarketDemandService
+from app.services.market.player_routes import PlayerMarketRouteService
+from app.services.market.player_services import PlayerMarketServices
+from app.services.market.player_stock import PlayerMarketStockContext
+from app.services.market.route_preparation import (
+    MarketRoutePreparationService,
+)
 from app.services.market.stock.preparation import StockPreparationBatch
 from app.services.market.stock.publication import StockPublicationService
 from app.services.market.stock.snapshot import StockSnapshotReader
-from app.services.market_route_preparation import (
-    MarketRoutePreparationService,
-)
-from app.services.player_market_demand import PlayerMarketDemandService
-from app.services.player_market_routes import PlayerMarketRouteService
-from app.services.player_market_services import PlayerMarketServices
-from app.services.player_market_stock import PlayerMarketStockContext
 from tests.support.game_clock import set_game_clock
 
 
@@ -279,7 +279,7 @@ async def test_partial_connection_resumes_after_restart_and_never_releases_early
     stock_game,
 ):
     from app.domain.market_preparation import required_relations
-    from app.services.vehicle_coverage import trade_key
+    from app.services.market.vehicle_coverage import trade_key
 
     game, prep, batch = stock_game
     snapshot = batch.snapshots.read()
@@ -384,7 +384,7 @@ async def test_parallel_dispatch_consumes_one_template_and_debits_once(
     )
     from app.services.gameplay.settlement import TransportSettlementService
     from app.services.gameplay.vehicle_location import VehicleLocationResolver
-    from app.services.market_lifecycle import MarketLifecycleService
+    from app.services.market.lifecycle import MarketLifecycleService
 
     game, prep, batch = stock_game
     for _ in range(30):

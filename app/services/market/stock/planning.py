@@ -12,11 +12,11 @@ from app.domain.market_stock import (
     StockPolicy,
     TradeKey,
 )
-from app.services.deterministic_market_random import (
+from app.services.market.diversity import MarketDiversity
+from app.services.market.randomness import (
     DeterministicMarketRandom,
 )
-from app.services.market_diversity import MarketDiversity
-from app.services.vehicle_coverage import (
+from app.services.market.vehicle_coverage import (
     restrict_candidate,
     trade_key,
     vehicle_offers,

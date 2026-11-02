@@ -174,7 +174,7 @@ Schicht: Repository. Abhängigkeiten: read-only SQLite und WorldSnapshot.
 | `validate_world_schema` | Validate the NHM-capable schema and cross-table invariants. | SELECT; strukturierte Referenzdiagnose; Zuständigkeit gewahrt |
 | `read_world_snapshot` | Read one complete revision and report the routability boundary. | SELECT; strukturierte Referenzdiagnose; Zuständigkeit gewahrt |
 
-## app/services/contract_factory.py
+## app/services/market/contract_factory.py
 
 Schicht: Service. Abhängigkeiten: Candidate, injizierter RNG und reine Tonnagefunktion.
 
@@ -209,7 +209,7 @@ Schicht: Service. Abhängigkeiten: Candidate-, Coverage-Service und Factory.
 | --- | --- | --- |
 | `MarketGenerator.generate` | Return retained and newly materialized offers with diagnostics. | delegierte RNG-Auswahl; keine Transaktion; Zuständigkeit gewahrt |
 
-## app/services/market_candidates.py
+## app/services/market/candidates.py
 
 Schicht: Service. Abhängigkeiten: Katalogports, TradeNetwork, Kompatibilitätsfunktionen.
 
@@ -236,7 +236,7 @@ Schicht: Service. Abhängigkeiten: Candidates, Retained Offers, injizierter RNG.
 | `MarketCoverageService._plan_city` | Apply facility coverage first and then fill available bands. | nur Planungscounter und RNG; kein Offer/SQL; Zuständigkeit gewahrt |
 | `MarketCoverageService._select` | Choose by diversity rank then candidate weight and record it. | nur Planungscounter und RNG; kein Offer/SQL; Zuständigkeit gewahrt |
 
-## app/services/market_lifecycle.py
+## app/services/market/lifecycle.py
 
 Schicht: Service. Abhängigkeiten: UoW-Port, Generator, Scope und Uhr.
 
@@ -249,7 +249,7 @@ Schicht: Service. Abhängigkeiten: UoW-Port, Generator, Scope und Uhr.
 | `MarketLifecycleService.refill_after_commit` | Keep a committed trip successful even when separate refill fails. | Marktpersistenz und strukturierte Diagnosen; Zuständigkeit gewahrt |
 | `MarketLifecycleService.present` | Attach transient eligibility without changing offer snapshots. | Marktpersistenz und strukturierte Diagnosen; Zuständigkeit gewahrt |
 
-## app/services/market_scope.py
+## app/services/market/scope.py
 
 Schicht: Service. Abhängigkeiten: OwnedVehicle-Snapshots und WorldCatalogue-Port.
 
@@ -257,7 +257,7 @@ Schicht: Service. Abhängigkeiten: OwnedVehicle-Snapshots und WorldCatalogue-Por
 | --- | --- | --- |
 | `MarketScopeResolver.resolve` | Return stable distinct city UIDs even for multiple idle trucks. | nur optionaler Referenzread; Zuständigkeit gewahrt |
 
-## app/services/trade_network.py
+## app/services/market/trade_network.py
 
 Schicht: Service. Abhängigkeiten: immutable Facilities und NHM-Profile.
 

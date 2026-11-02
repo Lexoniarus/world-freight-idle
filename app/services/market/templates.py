@@ -7,9 +7,9 @@ from uuid import uuid4
 from app.domain.contracts import ContractOffer
 from app.domain.market import MarketCandidate
 from app.domain.market_stock import PreparedTemplate, StockPolicy
-from app.services.contract_factory import ContractFactory
+from app.services.market.contract_factory import ContractFactory
 from app.services.market.stock.planning import StockTarget
-from app.services.vehicle_coverage import trade_key
+from app.services.market.vehicle_coverage import trade_key
 
 
 @dataclass(slots=True)

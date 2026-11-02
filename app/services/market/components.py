@@ -3,9 +3,9 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
-from app.services.contract_factory import ContractFactory
-from app.services.market_candidates import MarketCandidateService
-from app.services.vehicle_coverage import VehicleCoverageService
+from app.services.market.candidates import MarketCandidateService
+from app.services.market.contract_factory import ContractFactory
+from app.services.market.vehicle_coverage import VehicleCoverageService
 
 
 @dataclass(slots=True)
