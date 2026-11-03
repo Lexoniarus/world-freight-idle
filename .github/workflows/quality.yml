@@ -1,10 +1,19 @@
 name: Quality
-on: [push, pull_request]
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 jobs:
   branch-policy:
-    timeout-minutes: 20
+    timeout-minutes: 3
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +32,7 @@ jobs:
           fi
           sh .githooks/check-branch-name "$WORK_BRANCH"
   python-quality:
-    timeout-minutes: 20
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,9 +47,12 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: npm ci
       - run: python scripts/quality.py --python
+        env:
+          PYTEST_ADDOPTS: -vv
+          PYTHONUNBUFFERED: '1'
 
   frontend-quality:
-    timeout-minutes: 20
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +67,7 @@ jobs:
       - run: python scripts/quality.py --frontend
 
   browser-regression:
-    timeout-minutes: 20
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
