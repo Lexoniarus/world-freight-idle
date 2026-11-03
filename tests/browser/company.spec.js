@@ -1,8 +1,8 @@
-import { expect, register, test } from "./support.js";
+import { createPlayerSession, expect, test } from "./support.js";
 
 test("mobile shop recovers from a catalogue failure and preserves focus", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await register(page);
+  await createPlayerSession(page);
   await page.route("**/api/v1/fleet/catalogue", (route) =>
     route.fulfill({ status: 503, json: { detail: "Fahrzeugkatalog derzeit nicht verfügbar." } }),
   );
@@ -20,7 +20,7 @@ test("mobile shop recovers from a catalogue failure and preserves focus", async 
 
 test("account layer overrides persist per view and reload", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await register(page);
+  await createPlayerSession(page);
   const user = await (await page.request.get("/api/v1/auth/me")).json();
   await page.goto("/fleet");
   await page.locator(".layer-menu summary").click();
@@ -46,7 +46,7 @@ test("account layer overrides persist per view and reload", async ({ page }) => 
 
 test("company palette exposes a retry after a failed preference read", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await register(page);
+  await createPlayerSession(page);
   let failing = true;
   await page.route("**/api/v1/auth/preferences", (route) =>
     failing && route.request().method() === "GET"

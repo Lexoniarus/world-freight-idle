@@ -1,7 +1,13 @@
-import { expect, openEligibleOffer, register, screenshot, test } from "./support.js";
+import {
+  createPlayerSession,
+  expect,
+  openEligibleOffer,
+  registerThroughUi,
+  screenshot,
+  test,
+} from "./support.js";
 
-test("fleet controls work while the map renderer module is delayed", async ({ page }) => {
-  await register(page);
+test("registration remains usable while the map renderer is delayed", async ({ page }) => {
   let release;
   const blocked = new Promise((resolve) => {
     release = resolve;
@@ -11,7 +17,8 @@ test("fleet controls work while the map renderer module is delayed", async ({ pa
     await route.continue();
   });
   try {
-    await page.goto("/fleet", { waitUntil: "domcontentloaded" });
+    await registerThroughUi(page);
+    await page.getByRole("link", { name: "Flotte", exact: true }).click();
     await expect(page.locator("#panel .vehicle-card").first()).toBeVisible();
     await expect(page.locator(".maplibregl-canvas")).toHaveCount(0);
     await page.getByLabel("Fahrzeugname").fill("missing-model");
@@ -25,7 +32,7 @@ test("fleet controls work while the map renderer module is delayed", async ({ pa
 test("mobile sheet navigation, keyboard and attribution stay usable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await register(page);
+  await createPlayerSession(page, { waitForMap: true });
   await page.getByRole("link", { name: "Flotte", exact: true }).click();
   await expect(page.locator("#panel-title")).toHaveText("Deine Flotte");
   await expect(page.locator("#panel-title")).toBeFocused();
@@ -42,7 +49,7 @@ test("mobile sheet navigation, keyboard and attribution stay usable", async ({ p
 });
 
 test("routing failure stays visible and keeps dispatch disabled", async ({ page }) => {
-  await register(page);
+  await createPlayerSession(page, { allowMarketPreparation: true });
   await page.route("**/api/v1/contracts/*/quote", (route) =>
     route.fulfill({
       status: 502,

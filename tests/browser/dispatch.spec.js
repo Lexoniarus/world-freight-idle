@@ -1,8 +1,8 @@
 import {
   advanceServerTime,
+  createPlayerSession,
   expect,
   openEligibleOffer,
-  register,
   synchronizeGameState,
   test,
 } from "./support.js";
@@ -13,7 +13,7 @@ test("dispatch and settlement render authoritative state", async ({ page }) => {
     if (message.type() === "error")
       errors.push(message.text() + " (" + message.location().url + ")");
   });
-  await register(page, { waitForMap: false });
+  await createPlayerSession(page, { allowMarketPreparation: true });
   await expect(page.locator("#map-notice")).toBeHidden();
   const fleetForOffer = (await (await page.request.get("/api/v1/fleet")).json()).vehicles;
   await openEligibleOffer(page, [fleetForOffer[0].id]);

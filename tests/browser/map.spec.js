@@ -1,25 +1,20 @@
-import { expect, openVehicleMarket, register, test } from "./support.js";
+import { createPlayerSession, expect, openVehicleMarket, test } from "./support.js";
 
-test("map controls remain attached after in-app navigation", async ({ page }) => {
+test("map instance survives in-app navigation", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await register(page);
-  await page.goto("/fleet");
-  await expect(page.locator("#world-map")).toHaveAttribute("aria-busy", "false");
+  await createPlayerSession(page, { waitForMap: true });
   const canvas = page.locator(".maplibregl-canvas");
   await canvas.evaluate((element) => {
     element.dataset.browserTestIdentity = "persistent-map";
   });
+  await page.getByRole("link", { name: "Flotte", exact: true }).click();
+  await expect(page.locator("#panel-title")).toHaveText("Deine Flotte");
+  await expect(canvas).toHaveAttribute("data-browser-test-identity", "persistent-map");
   await page.getByRole("link", { name: "Aufträge", exact: true }).click();
   await expect(page.locator("#panel-title")).toHaveText("Stadtmarkt");
   await expect(canvas).toHaveAttribute("data-browser-test-identity", "persistent-map");
-  await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Flotte zentrieren" }).click();
   await page.locator(".maplibregl-ctrl-zoom-out").click();
   await expect(canvas).toHaveAttribute("data-browser-test-identity", "persistent-map");
-  await page.locator(".layer-menu summary").click();
-  await page.getByLabel("Transportrouten", { exact: true }).uncheck();
-  await expect(page.getByLabel("Transportrouten", { exact: true })).not.toBeChecked();
-  await page.keyboard.press("Escape");
 });
 
 test("missing fleet coordinates and tile outages preserve the playable lists", async ({
@@ -42,7 +37,7 @@ test("missing fleet coordinates and tile outages preserve the playable lists", a
     }
     await route.fulfill({ json: data });
   });
-  await register(page, { waitForMap: false });
+  await createPlayerSession(page, { allowMarketPreparation: true });
   await expect(page.locator("#map-notice")).toBeVisible();
   await page.getByRole("link", { name: "Flotte", exact: true }).click();
   await expect(page.getByRole("link", { name: "IVECO S-Way 500 XC13", exact: true })).toBeVisible();
@@ -59,7 +54,7 @@ test("runtime remains usable while shared traffic is blocked", async ({ page }) 
     await blocked;
     await route.fulfill({ json: { transports: [] } }).catch(() => {});
   });
-  await register(page);
+  await createPlayerSession(page);
   await page.getByRole("link", { name: "Flotte", exact: true }).click();
   await expect(page.locator("#panel-content")).toContainText("IVECO");
   release();

@@ -1,15 +1,18 @@
 import {
   expect,
+  createPlayerSession,
   openVehicleMarket,
   readyContracts,
-  register,
   screenshot,
   test,
 } from "./support.js";
 
 test("city offers survive pan and zoom without market requests", async ({ page }) => {
   await page.clock.install();
-  await register(page);
+  await createPlayerSession(page, {
+    allowMarketPreparation: true,
+    waitForMap: true,
+  });
   await openVehicleMarket(page);
   await expect(page.locator(".job-card").first()).toBeVisible();
   await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
@@ -41,7 +44,10 @@ test("city offers survive pan and zoom without market requests", async ({ page }
 test("vehicle market shows only eligible offers and switches shared city vehicles", async ({
   page,
 }) => {
-  await register(page);
+  await createPlayerSession(page, {
+    allowMarketPreparation: true,
+    waitForMap: true,
+  });
   await expect(page.locator("#current-city-label")).toHaveCount(0);
   await expect(page).not.toHaveURL(/city=/);
   const fleet = await (await page.request.get("/api/v1/fleet")).json();

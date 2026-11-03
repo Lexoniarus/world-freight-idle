@@ -1,8 +1,8 @@
-import { expect, register, screenshot, test } from "./support.js";
+import { createPlayerSession, expect, screenshot, test } from "./support.js";
 
 test("fleet and shop render their local vehicle asset", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await register(page);
+  await createPlayerSession(page);
   for (const [surface, title] of [
     ["fleet", "Flotte"],
     ["shop", "Fahrzeugshop"],
