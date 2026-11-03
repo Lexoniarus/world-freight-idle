@@ -1,5 +1,6 @@
 import { reportCleanup } from "./lifecycle.js";
 import { MapFocusController } from "./controllers/map-focus-controller.js";
+import { MapSelectionController } from "./controllers/map-selection-controller.js";
 import { VehicleColorAssets } from "./vehicle-color-assets.js";
 import { VehicleImageController } from "./vehicle-image-bindings.js";
 import { PreferencesController } from "./controllers/preferences-controller.js";
@@ -8,7 +9,7 @@ import { LayerStateController } from "./controllers/layer-state-controller.js";
 import { AnalyticsController } from "./controllers/analytics-controller.js";
 import { ManagementInput } from "./controllers/management-input.js";
 import { GameApiClient, ApiError } from "./api.js";
-import { GameState } from "./state.js";
+import { GameState } from "./game-state.js";
 import { BrowserRouter } from "./navigation.js";
 import { GameApplication } from "./application.js";
 import { AuthController } from "./controllers/auth-controller.js";
@@ -21,7 +22,7 @@ import { MobileSheet } from "./controllers/mobile-sheet.js";
 import { Notifications } from "./controllers/notifications.js";
 import { RefreshScheduler } from "./controllers/refresh-scheduler.js";
 import { DeferredMap } from "./map/deferred-map.js";
-import { createBasemap } from "./map/provider.js";
+import { createRasterBasemap } from "./map/provider.js";
 import { renderShell } from "./views/shell.js";
 import { html, requiredElement } from "./ui/dom.js";
 
@@ -31,8 +32,12 @@ export async function bootstrap() {
   const redirect = (path) => window.location.replace(path);
   const api = new GameApiClient(globalThis.fetch.bind(globalThis), redirect);
   let application;
+  const releaseOwner = () => {
+    if (application) application.destroy();
+    else api.destroy();
+  };
   const pagehide = () => {
-    reportCleanup([() => application?.destroy(), () => api.destroy()]);
+    reportCleanup([releaseOwner]);
   };
   window.addEventListener("pagehide", pagehide, { once: true });
   // A disposed application restored from the back-forward cache needs a fresh lifecycle.
@@ -50,7 +55,7 @@ export async function bootstrap() {
     }
     await application.start();
   } catch (error) {
-    reportCleanup([() => application?.destroy(), () => api.destroy()]);
+    reportCleanup([releaseOwner]);
     if (error instanceof ApiError && error.status === 401) {
       redirect("/login");
       return;
@@ -99,28 +104,33 @@ function createGameApplication(api, user, redirect) {
   );
   const notify = notifications.show;
   const assets = new VehicleColorAssets(api.requestAsset);
-  const panel = new PanelController({ view, request: api.request, notify, now: () => state.now() });
-  panel.images = new VehicleImageController(assets);
+  const images = new VehicleImageController(assets);
+  const panel = new PanelController({
+    view,
+    request: api.request,
+    notify,
+    now: () => state.now(),
+    images,
+  });
   let application;
   const router = new BrowserRouter(window, (url) => application.navigateTo(url));
   const navigate = (path) => router.navigate(path);
   const map = new DeferredMap({
-    create: () => createWorldMap(navigate, notify, () => state.now(), api.requestAsset, assets),
+    create: () => createWorldMap(notify, () => state.now(), api.requestAsset, assets),
     notify,
   });
   map?.setCompanyColor(user.company_color);
   const preferences = new PreferencesController({ request: api.request, panel, map, notify });
-  const city = new CityContextController({ state, view, request: api.request, notify });
+  const city = new CityContextController({ state, panel, request: api.request, notify });
   const layers = new LayerStateController({ userId: user.id, map });
   const analytics = new AnalyticsController({ request: api.request, panel });
   const sync = new GameSync({ state, panel, map, notify });
   const contractMarket = new ContractMarketController({
     state,
-    request: api.request,
+    api,
     notify,
     currentUrl: () => view.url,
   });
-  contractMarket.ordersVisible = () => layers.effective().orders;
   const managementInput = new ManagementInput({
     page: document,
     view,
@@ -131,9 +141,10 @@ function createGameApplication(api, user, redirect) {
     market: contractMarket,
   });
   const focus = new MapFocusController({ state, view, map });
+  const mapSelection = new MapSelectionController({ map, navigate, notify });
   const actions = new GameActions({
     focus,
-    request: api.request,
+    api,
     state,
     panel,
     map,
@@ -146,7 +157,6 @@ function createGameApplication(api, user, redirect) {
   const scheduler = new RefreshScheduler({
     refresh: async () => {
       await sync.refreshGameState();
-      await contractMarket.refresh();
       if (view.url.pathname === "/leaderboard") await panel.loadDetails();
     },
     updateProgress: () => sync.updateProgress(),
@@ -174,22 +184,22 @@ function createGameApplication(api, user, redirect) {
     managementInput,
     preferences,
     assets,
+    mapSelection,
     redirect,
   });
   return application;
 }
 
 /** Keep game controls usable when the browser cannot initialize WebGL. */
-async function createWorldMap(navigate, notify, now, loadAsset, assets) {
+async function createWorldMap(notify, now, loadAsset, assets) {
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const { WorldMap } = await import("./map/world-map.js");
   return new WorldMap("world-map", {
-    navigate,
     notify,
     now,
     loadAsset,
     assets,
-    provider: createBasemap(),
+    provider: createRasterBasemap(),
     reducedMotion: () => reducedMotion.matches,
     isHidden: () => document.hidden,
     viewport: () => ({

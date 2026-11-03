@@ -13,11 +13,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.bootstrap import (  # noqa: E402
     build_game_runtime,
-    build_preparation_worker,
     build_routing_audit,
 )
 from app.config import Settings  # noqa: E402
-from app.services.routing_inventory import routing_inventory  # noqa: E402
+from app.services.routing.inventory import routing_inventory  # noqa: E402
 from app.tracing import background_trace  # noqa: E402
 
 
@@ -56,28 +55,21 @@ async def run(args: argparse.Namespace) -> None:
         runtime = build_game_runtime(settings, client)
         world = runtime.world.read()
         runtime.catalogue.list_models()
-        readiness = runtime.readiness
-        assert readiness is not None
+        evidence = runtime.routing_evidence
+        preparation = runtime.routing_preparation
         pairs = tuple(routing_inventory(world, args.city))
         if args.prewarm:
-            lease = build_preparation_worker(runtime).lease
-            assert lease is not None
 
             async def prepare() -> None:
-                """Share exclusive provider ownership with regular workers."""
+                """Prepare bounded relations through repository leases."""
                 for origin, destination in pairs:
-                    await readiness.prepare(origin, destination)
+                    await preparation.prepare(origin, destination)
 
             try:
                 with background_trace("cli-routing-prewarm"):
-                    if not await lease.run(prepare):
-                        raise RuntimeError(
-                            "Preparation worker already active."
-                        )
+                    await prepare()
             except RequestBudgetExceeded as error:
                 print(str(error), file=sys.stderr)
-            finally:
-                lease.close()
         focused = tuple(
             f.facility_uid
             for f in world.facilities
@@ -98,7 +90,7 @@ async def run(args: argparse.Namespace) -> None:
         report["current_relations"] = dict(
             Counter(
                 relation.status
-                if (relation := readiness.current(*pair))
+                if (relation := evidence.current(*pair))
                 else "unchecked"
                 for pair in pairs
             )

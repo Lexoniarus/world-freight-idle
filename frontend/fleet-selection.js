@@ -1,42 +1,58 @@
-/** Group vehicles by physical idle location and explicit journey direction. */
-export function fleetGroups(state, cityUid) {
-  const groups = new Map();
-  const add = (city, role, vehicle, trip) => {
-    if (cityUid && city?.city_uid !== cityUid) return;
-    city = city ?? { city: "Standort unbekannt" };
-    if (!groups.has(city.city_uid))
-      groups.set(city.city_uid, { city, stationed: [], outbound: [], inbound: [] });
-    groups.get(city.city_uid)[role].push({ vehicle, trip });
-  };
-  for (const vehicle of state.vehicles) {
-    const trip = state.transports.find((item) => item.vehicle_id === vehicle.id);
-    if (!trip) add(vehicle.location_snapshot ?? vehicle.hub, "stationed", vehicle, null);
-    else {
-      add(trip.origin, "outbound", vehicle, trip);
-      if (trip.destination.city_uid !== trip.origin.city_uid)
-        add(trip.destination, "inbound", vehicle, trip);
-    }
-  }
-  return [...groups.values()].sort((a, b) => (a.city.city ?? "").localeCompare(b.city.city ?? ""));
+/** Join each owned vehicle to at most one active transport. */
+export function fleetEntries(state) {
+  const trips = new Map(state.transports.map((trip) => [trip.vehicle_id, trip]));
+  return state.vehicles.map((vehicle) => ({
+    vehicle,
+    trip: trips.get(vehicle.id) ?? null,
+  }));
 }
 
-/** Select exactly the city groups displayed by the fleet view.
- * @param {any} state @param {URL} url @param {string} [cityUid]
- */
-export function selectFleetGroups(state, url, cityUid = "") {
+/** Decide whether one distinct fleet entry belongs to a city filter. */
+export function matchesFleetCity(entry, cityUid) {
+  if (!cityUid) return true;
+  if (entry.trip)
+    return entry.trip.origin?.city_uid === cityUid || entry.trip.destination?.city_uid === cityUid;
+  const location = entry.vehicle.location_snapshot ?? entry.vehicle.hub;
+  return location?.city_uid === cityUid;
+}
+
+/** Group distinct entries by physical station or one shared journey section. */
+export function groupFleetEntries(entries) {
+  const sections = new Map();
+  const section = (key, label, kind) => {
+    if (!sections.has(key)) sections.set(key, { key, label, kind, entries: [] });
+    return sections.get(key);
+  };
+  for (const entry of entries) {
+    if (entry.trip) {
+      section("enroute", "Unterwegs", "enroute").entries.push(entry);
+      continue;
+    }
+    const location = entry.vehicle.location_snapshot ?? entry.vehicle.hub ?? null;
+    const key = "city:" + (location?.city_uid ?? "unknown");
+    section(key, location?.city ?? "Standort unbekannt", "stationed").entries.push(entry);
+  }
+  return [...sections.values()].sort((left, right) => {
+    if (left.kind !== right.kind) return left.kind === "stationed" ? -1 : 1;
+    return left.label.localeCompare(right.label, "de");
+  });
+}
+
+/** Select unique fleet entries displayed by the current fleet route. */
+export function selectFleetEntries(state, url, cityUid = "") {
   const model = url.searchParams.get("model");
   const status = url.searchParams.get("status");
   const search = (url.searchParams.get("search") ?? "").toLocaleLowerCase("de");
-  return fleetGroups(
-    {
-      ...state,
-      vehicles: state.vehicles.filter(
-        (vehicle) =>
-          (!model || vehicle.model_id === model) &&
-          (!status || vehicle.status === status) &&
-          vehicle.name.toLocaleLowerCase("de").includes(search),
-      ),
-    },
-    cityUid,
+  return fleetEntries(state).filter(
+    (entry) =>
+      matchesFleetCity(entry, cityUid) &&
+      (!model || entry.vehicle.model_id === model) &&
+      (!status || entry.vehicle.status === status) &&
+      entry.vehicle.name.toLocaleLowerCase("de").includes(search),
   );
+}
+
+/** Select and group the distinct entries displayed by the fleet view. */
+export function selectFleetSections(state, url, cityUid = "") {
+  return groupFleetEntries(selectFleetEntries(state, url, cityUid));
 }

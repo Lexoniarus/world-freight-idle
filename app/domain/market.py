@@ -105,25 +105,6 @@ class MarketCandidate:
 
 
 @dataclass(frozen=True, slots=True)
-class CoverageDiagnostic:
-    """Compact coverage counts for one active city."""
-
-    city_uid: str
-    eligible_facilities: int
-    covered_facilities: int
-    distance_counts: tuple[int, int, int]
-    unmet_bands: tuple[str, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class CoveragePlan:
-    """Selected candidates and expected coverage, without materialization."""
-
-    selected: tuple[MarketCandidate, ...]
-    diagnostics: tuple[CoverageDiagnostic, ...]
-
-
-@dataclass(frozen=True, slots=True)
 class VehicleCoverageDiagnostic:
     """Describe actual usable offers and structural targets per vehicle."""
 

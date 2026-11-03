@@ -6,15 +6,15 @@ import pytest
 
 from app.domain.errors import WorldCatalogueError
 from app.repositories.routing_audit import SqliteRoutingAudit
-from app.services.routing_inventory import routing_inventory
-from tests.test_market_preparation import bind_preparation
+from app.services.routing.inventory import routing_inventory
+from tests.support.market import build_prepared_game
 
 
 def test_audit_inventory_is_structural_and_report_preserves_history(
-    game, database
+    synthetic_game_context, synthetic_game, database
 ):
-    preparation = bind_preparation(game, database)
-    world = game.world.read()
+    _, preparation = build_prepared_game(synthetic_game_context, database)
+    world = synthetic_game_context.world.read()
     pairs = tuple(routing_inventory(world, "Berlin"))
     assert pairs
     assert len(pairs) == len(set(pairs))
@@ -44,4 +44,4 @@ def test_audit_inventory_is_structural_and_report_preserves_history(
         "attempts": [],
         "focused_attempts": [],
     }
-    assert preparation.readiness.store.get("missing") is None
+    assert preparation.routes.readiness.store.get("missing") is None

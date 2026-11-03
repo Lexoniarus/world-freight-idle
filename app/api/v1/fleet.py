@@ -16,8 +16,8 @@ from app.api.v1.schemas import PurchaseRequest
 from app.api.v1.vehicle_presentation import present_vehicles
 from app.domain.errors import CatalogueError
 from app.domain.ports import VehicleCatalogue
-from app.services.fleet import FleetService
-from app.services.game import GameService
+from app.services.gameplay.fleet import FleetService
+from app.services.gameplay.player_game import PlayerGameFacade
 
 router = APIRouter(prefix="/fleet", tags=["fleet"])
 
@@ -35,7 +35,7 @@ def get_catalogue(fleet: FleetService = Depends(get_fleet_service)) -> dict:
 def purchase_vehicle(
     body: PurchaseRequest,
     fleet: FleetService = Depends(get_fleet_service),
-    game: GameService = Depends(get_game_service),
+    game: PlayerGameFacade = Depends(get_game_service),
 ) -> dict:
     """Purchase one vehicle for the authenticated player's fleet."""
     game.reconcile_arrival()
@@ -50,7 +50,7 @@ def purchase_vehicle(
 
 @router.get("")
 def list_fleet(
-    game: GameService = Depends(get_game_service),
+    game: PlayerGameFacade = Depends(get_game_service),
     catalogue: VehicleCatalogue = Depends(get_vehicle_catalogue),
 ) -> dict:
     """Return all player vehicles with their current real-world hub."""
@@ -64,7 +64,7 @@ def list_fleet(
 @router.get("/{vehicle_id}")
 def get_vehicle(
     vehicle_id: str,
-    game: GameService = Depends(get_game_service),
+    game: PlayerGameFacade = Depends(get_game_service),
     catalogue: VehicleCatalogue = Depends(get_vehicle_catalogue),
 ) -> dict:
     """Return one player vehicle."""

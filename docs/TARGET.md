@@ -1,5 +1,29 @@
 # Ziel- und Abnahmedokumentation
 
+## Geplante Abnahme der neuen Frontend-Zielrichtung
+
+Stand: 28.10.2026. Grundlage sind [Gesamtkonzept](FRONTEND_CONCEPT.md) und
+[Umsetzungsplan](FRONTEND_IMPLEMENTATION_PLAN.md). Die folgenden Punkte sind
+neue, noch offene Ziele; sie ersetzen keine bisherigen Funktionsnachweise.
+
+- [ ] Bestätigte Grafikrichtung, Firmenidentität und kompakter HUD im echten
+      Frontend mit vorhandenen Daten, Navigation und Fehlerzuständen.
+- [ ] Einheitliche Verwaltungsansichten mit kompakten vergleichbaren Listen,
+      Details und direkter Rückkehr zur erhaltenen Kartenansicht.
+- [ ] Am Lkw verankerte Informationsbubble mit korrekten Zustandsaktionen;
+      Mitarbeiterdaten erst nach Einführung des entsprechenden Fachmodells.
+- [ ] Reale Vektorgeometrien, Gelände aus Höhendaten/Heightmap und gemeinsame
+      Höhenbasis für Gebäude, Straßen, Fahrzeuge und Informationsdarstellung.
+- [ ] Abgenommene Materialvarianten und Zoomübergänge bei dokumentierter
+      Datengrundlage, Nutzung und Attribution ohne doppelte Gebäudeoberflächen.
+- [ ] Ein räumliches Fahrzeugmodell mit passenden Ansichten, Farbe,
+      Bewegung, Auswahl, Gruppierung und geprüfter Laufzeit.
+- [ ] Firmen-/Depot-/Personalansichten erst mit echten fachlichen Zuständen
+      und separat abgenommenen Regeln; keine Vorschauwerte im Produkt.
+
+Offene Fragen F01–F11 stehen in den jeweiligen Konzeptabschnitten. Die
+Dokumentation selbst ist kein Nachweis für einen dieser Implementierungspunkte.
+
 ## M1-Teilumfang – Mehrspielergrundlage
 
 Maßgeblich ist `GOAL.md`, Abschnitt 35. Der Gesamt-MVP ist noch offen:
@@ -34,6 +58,8 @@ in TESTING.md; die Gesamt-M1-Abnahme bleibt bis zum Backend-Ausbau offen.
 - [x] Ruff/Format mit 79 Zeichen; Architekturabnahme wird gesondert dokumentiert.
 - [ ] Öffentlicher Produktionsbetrieb/Hosting (separater Meilenstein).
 - [ ] Global begrenzter gemeinsamer Markt.
+- [ ] Roadmap-Entscheidung zu Fahrer/Mitarbeitern und Arbeitsmarkt; die
+      Dispatch-Grenze ist vorbereitet, das Fachmodell aber nicht implementiert.
 
 ## M1-Teilumfang – API-getriebener Road-Freight-Kern
 
@@ -63,7 +89,8 @@ aus GOAL.md und MILESTONES.md.
 
 ### Architektur
 
-- [x] Composition Root in `app/main.py` + `app/bootstrap.py`
+- [x] Composition Root in `app/composition`; stabile Importfassade in
+  `app/bootstrap.py`, Prozesslebenszyklus in `app/main.py`
 - [x] API-Layer getrennt von Services
 - [x] Provider-Adapter getrennt von Game-Core
 - [x] Persistence als Repository
@@ -155,6 +182,16 @@ und NHM-Load-Factors; reale Warenbelege bleiben von simulierten Aufträgen
 getrennt. Historische payload_band-Werte bleiben ausschließlich lesbar.
 Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
 
+### Architekturziel für den folgenden Unternehmensausbau
+
+- Account bleibt Authentitäts-/Präferenzgrenze, nicht Firmenaggregate.
+- `PlayerCompany` wird Eigentümer von Flotte, Depots und später Employment.
+- Öffentliche World-Facilities werden nicht als eigene Depots umgedeutet.
+- Marktangebot bleibt unabhängig von Personal; Fahrer-/Schichtregeln werden
+  beim Dispatch über die vorhandene `DispatchEligibilityService`-Grenze geprüft.
+- Vor Implementierung werden Aggregat, Repository-Port, Migration und
+  M1-/Folgemeilenstein-Zuordnung im Roadmap-Review entschieden.
+
 ## Abnahme – gemeinsamer Live-Verkehr
 
 - [x] Aktive Transporte anderer angemeldeter Spieler sind auf derselben Karte sichtbar.
@@ -165,6 +202,15 @@ Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
 - [x] Ausgeführte/abgelaufene Transporte werden nicht mehr als Live-Verkehr projiziert.
 
 - [x] TrafficReader gibt nur öffentliche Trackingwerte weiter; der SQLite-Leser validiert zuvor gespeicherte Transport-Snapshots.
+- [x] Öffentliche Traffic-Reads sind auf 100 aktive, zuletzt gestartete
+      Transporte begrenzt und werden vor der Snapshot-Projektion limitiert.
+- [x] Ein partieller Index deckt aktive Auswahl und Abfahrtsreihenfolge ab;
+      der Query-Plan benötigt keinen temporären Sortierbaum.
+- [x] Vollständige und kompakte Verkehrssichten teilen je Repräsentation einen
+      Runtime-Snapshot, statt pro verbundenem Client erneut SQL auszuführen.
+- [x] Sämtliche additiven Account-, Cache-, Routing-, Markt- und
+      Traffic-Schemata werden explizit und idempotent initialisiert;
+      Adapterkonstruktion besitzt keine versteckte Schema-Seitenwirkung.
 - [x] Private Vertrags-, Erlös-, Kosten- und Guthabendaten werden nicht projiziert.
 - [x] Multiplayer-Traffic-Fehler werden in der UI sichtbar und nicht still verschluckt.
 - [x] Letzter gültiger Traffic-Stand bleibt bei temporärem Fehler erhalten.
@@ -195,7 +241,11 @@ Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
+Die folgenden datierten Abnahmeabschnitte dokumentieren frühere
+Implementierungsschritte. Branch- und Prüfangaben gelten für den jeweiligen
+damaligen Stand; die aktuelle Gesamtabnahme steht im Qualitätsbericht.
+
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.2.0) und
 WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
@@ -209,10 +259,11 @@ Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abn
 Stadtmärkte eigener idle Fahrzeuge ersetzen Nutzlastklassen und Viewport-Scope.
 V2 bewahrt gültige fahrbare Angebote und ergänzt Facility-/Distanz-Coverage.
 Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Die tatsächliche
-Anfahrt wird mitgeplant; Dispatch und anschließender Markt-Refill besitzen
-getrennte Transaktionen. Historische Transporte und gespeicherte Konditionen
-bleiben erhalten. Trailer, Versicherungen und weitere Simulationen sind nicht
-Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
+Anfahrt wird mitgeplant. Dispatch verbraucht genau das gewählte Angebot und
+invalidiert den dauerhaften Bedarf in derselben Transaktion. Der Lifespan-Worker
+füllt später bedarfsgesteuert auf. Historische Transporte und gespeicherte
+Konditionen bleiben erhalten. Trailer, Versicherungen und weitere Simulationen
+sind nicht Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
 Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
 den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
 Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
@@ -278,12 +329,12 @@ ein Offer darf mehrere Fahrzeuge versorgen.
   persistiert; es gibt keine synthetischen Straßenkoordinaten.
 
 
-## Global Routing Readiness
+## Historische Teilabnahme: Global Routing Readiness (27.09.2026)
 
-Routing-Readiness-Implementierung: implementiert / vollständige lokale Quality- und E2E-Gates bestanden.
-495 Python-Tests, 100 % Core-Statement-Coverage, 101 Frontendtests und
-30 Playwright-Fälle bestanden. Branch-Push ausdrücklich freigegeben;
-kein PR oder Merge.
+Die damalige Teilabnahme bestand 495 Python-Tests, 100 %
+Core-Statement-Coverage, 101 Frontendtests und 30 Playwright-Fälle. Diese Zahlen
+sind historische Evidenz, nicht der aktuelle Gesamtstand; dafür gilt der
+[Qualitätsbericht](../QUALITY_REPORT.md).
 
 
 ## Reviewkorrekturen und Vehicle-Ready-Markt (27.09.2026)
@@ -302,8 +353,8 @@ Auf Basis `5d7ff77` im bestehenden `feature/frontend-v2` umgesetzt: Freigabe
 jeder Lieferung und Anfahrt erst mit echten Hin- und Rückwegen und passenden
 Endpunkten. Automatische Kandidatensuche höchstens 1.000 Meter, fünf Kandidaten
 je Standort, 25 Paare und 120 Sekunden. Gemeinsame Leases und atomare
-Veröffentlichung; versionierte Nachweise mit Wiederprüfung nach 24 Stunden,
-einer Stunde bei definitiven Fehlern beziehungsweise 60 Sekunden bei Störungen.
+Veröffentlichung; erfolgreiche Relationen bleiben für denselben Fingerprint
+wiederverwendbar. Definitive Fehler und Störungen behalten begrenzte Backoffs.
 
 Wolfsburger LKW auf isolierter Spielstandkopie regulär disponiert; Ankunft und
 Folgeauftrag geprüft. Zehn begrenzte Live-Provideranfragen insgesamt. Backup vorhanden, echter
@@ -312,15 +363,19 @@ Spielstand unverändert. Gezielte Prüfungen siehe
 Vollständige Suite und Gesamtintegration verbleiben ausdrücklich beim Nutzer.
 
 
-## Runtime-Trennung und Alttransport-Reparatur (27.09.2026)
+## Historischer Zwischenstand: Runtime-Trennung (27.09.2026)
 
-Die neue verbindliche Abschlussvoraussetzung ersetzt die fruehere Beschraenkung
-auf gezielte Routingtests: vollstaendiges Quality-Gate mit 100 % app-Statement-
-Coverage sowie komplette Browserregression vor Commit/Push auf feature/frontend-v2.
-Runtime und Vorbereitung laufen getrennt; Spielstand und Flotte erscheinen vor
-Geometrien und Markt. Read-Ziel p95 <= 250 ms, weitere Spielerstarts <= 2 s
+Dieser Zwischenstand verlangte ein vollstaendiges Quality-Gate mit 100 %
+app-Statement-Coverage sowie die komplette Browserregression vor Commit/Push
+auf `feature/frontend-v2`. Runtime und Vorbereitung liefen damals in getrennten
+Prozessen; Spielstand und Flotte erschienen vor Geometrien und Markt. Das
+Read-Ziel lag bei p95 <= 250 ms, weitere Spielerstarts bei <= 2 s
 (einmaliger Kaltstart mit Settlement bei 3,39 s am 28.09.2026 akzeptiert),
 Runtime plus Verkehr <= 250 KiB pro Poll. Keine unveraenderten Geometrien im Polling.
+
+Die Zwei-Prozess-Entscheidung ist aufgehoben. Aktuell besitzt ein
+FastAPI-Lifespan genau einen bedarfsgesteuerten Worker; verbindlich ist
+[ADR 0007](adr/0007-runtime-preparation-and-route-projections.md).
 
 Die beiden bestaetigten optionalen Alt-Anfahrtsplaene werden nur offline auf
 einer gesicherten Kopie repariert. Live-Aktivierung und echte iPad-Abnahme bleiben
@@ -330,18 +385,18 @@ separate Betriebsschritte. Implementierung und tatsaechlicher Abnahmestand:
 
 ## Gemeinsamer Auftragsvorrat (28.09.2026)
 
-Das ausgewählte Fahrzeug erhält genau drei fahrbare Angebote je Streckentyp,
-sofern genügend geprüfter Bestand verfügbar ist. Der gemeinsame Hintergrundvorrat
-hält mindestens zehn Vorlagen je Bedarfsstadt, konkretem Modell und Band; jede
-Vorlage ist einmal je Spieler verwendbar. Die drei sichtbaren gehören zu diesen
-zehn. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen Angebote nutzen.
+Das ausgewählte Fahrzeug erhält bis zu drei fahrbare Angebote je Streckentyp,
+sofern genügend geprüfter Bestand verfügbar ist. Der persistente Vorrat wird
+nur für konkrete eigene idle Fahrzeuge und gespeicherte Ziele aktiver
+Transporte aufgebaut. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen
+Angebote nutzen; gemeinsame Vorlagen bleiben spielerübergreifend verwendbar.
 
 Ungenutzte Vorlagen und Angebote verfallen nicht zeitlich und bleiben bei Abfahrt
 und Rückkehr erhalten. Ein Verbrauch lässt gespeicherte Reserve sofort nachrücken;
-der Worker füllt nach. Bedarf entsteht im Stand und ab 60 Minuten vor gespeicherter
-Ankunft. Fehlende Hin-/Rückwege, veraltete Prüfnachweise oder unbrauchbare
-Katalogbezüge geben keine Angebote frei. Alle 14 Modelle werden in Bedarfsstädten
-berücksichtigt, tatsächlich wartende Fahrzeuge zuerst.
+der Worker füllt nach. Zielbedarf entsteht direkt bei Dispatch. Fehlende Hin-/
+Rückwege oder unbrauchbare Katalogbezüge geben keine Angebote frei. Erfolgreiche
+Relationen werden für denselben Fingerprint dauerhaft wiederverwendet. Unbenutzte
+Katalogmodelle und Städte werden nicht global vorbereitet.
 
 Die Schemaübernahme nach 1.2.0 ist ein expliziter Offline-Schritt mit Backup und
 neuer Ausgabe. Live-Aktivierung ist nicht Teil von Commit/Push. Verbindliche

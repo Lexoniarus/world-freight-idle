@@ -16,7 +16,7 @@
 
 ---
 
-## Umsetzungsstand am 23.09.2026
+## Umsetzungsstand am 30.10.2026
 
 **Verbindliche Priorität: UI First.** Die Oberfläche wird auf dem bestehenden
 Backend fertiggestellt, bevor Spielerunternehmen, eigene Depots und weitere
@@ -38,7 +38,7 @@ dass sämtliche Funktionen bereits implementiert sind.
 | Eigenes Depot / Depotkauf | Offen; aktuell öffentliche Facilities und Start in Berlin Westhafen |
 | Fahrzeuge kaufen, Standort und Kapazität | Implementiert; 14 DB-Modelle mit Spiel-Nutzlast, Kaufpreis und Freigaben |
 | Reale Hersteller-/Modell-/Verbrauchsdaten | 14 Modellprofile von acht Herstellern integriert; konstante Verbrauchssimulation, 10 % Reserve und automatische Tank-/Ladepausen aktiv |
-| Reale Adressen, Straßenroute, Distanz, ETA | WorldCatalogue mit 79 verifizierten und 273 ausdrücklich geschätzten Positionen und Valhalla-Truck-Routing; Nominatim nur offline |
+| Reale Adressen, Straßenroute, Distanz, ETA | WorldCatalogue mit 95 verifizierten und 464 ausdrücklich geschätzten Positionen und Valhalla-Truck-Routing; Nominatim nur offline |
 | Aufträge, parallele Transporte, Offline-Auszahlung | Implementiert und auf konkurrierende Zugriffe getestet |
 | Tracking | Alle aktiven Transporte als Layer, Serverzeit und gespeicherte Route |
 | Primäre Weltkarte mit Kontextpanels | MapLibre/OSM implementiert; Satelliten später |
@@ -1839,6 +1839,11 @@ Genau dieses Gefühl bildet den emotionalen Kern des Projekts.
 
 ## Konkretisierung der aktuellen UI-First-Phase (18.09.2026)
 
+Die folgenden datierten Abschnitte dokumentieren die Entwicklungsschritte.
+Branch-, Prüf- und Veröffentlichungsangaben gelten für den jeweiligen damaligen
+Stand. Für den aktuellen Ist-Stand sind der Abschnitt am Dokumentanfang, die
+aktuellen technischen Verträge und der Qualitätsbericht maßgeblich.
+
 M1 verwendet weiterhin OSM-Raster; Satelliten, Unternehmen und eigene Depots
 folgen später. Neue Profile starten mit 175.000 Euro und einem kostenlosen
 IVECO S-Way 500 XC13 aus dem Referenzkatalog. Dessen Spielwerte werden wie bei
@@ -1868,7 +1873,7 @@ Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.2.0) und
 WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
@@ -1882,10 +1887,12 @@ Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abn
 Stadtmärkte eigener idle Fahrzeuge ersetzen Nutzlastklassen und Viewport-Scope.
 V2 bewahrt gültige fahrbare Angebote und ergänzt Facility-/Distanz-Coverage.
 Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Die tatsächliche
-Anfahrt wird mitgeplant; Dispatch und anschließender Markt-Refill besitzen
-getrennte Transaktionen. Historische Transporte und gespeicherte Konditionen
-bleiben erhalten. Trailer, Versicherungen und weitere Simulationen sind nicht
-Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
+Anfahrt wird mitgeplant. Dispatch verbraucht genau das gewählte Angebot und
+invalidiert den dauerhaften Bedarf in derselben Transaktion. Der Lifespan-Worker
+füllt den verbleibenden Pool später in begrenzten Runden auf. Historische
+Transporte und gespeicherte Konditionen bleiben erhalten. Trailer,
+Versicherungen und weitere Simulationen sind nicht Bestandteil dieser Änderung.
+World 4.2.0 und Vehicle 2.2.0 sind die einzigen
 Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
 den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
 Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
@@ -1917,15 +1924,19 @@ Damit kann die Welt realistisch sichtbar bleiben, ohne unpassende
 Werks-/Terminalpunkte als befahrbare Straßenkoordinaten auszugeben.
 
 
-## Runtime-Trennung und Alttransport-Reparatur (27.09.2026)
+## Historischer Zwischenstand: Runtime-Trennung (27.09.2026)
 
-Die neue verbindliche Abschlussvoraussetzung ersetzt die fruehere Beschraenkung
-auf gezielte Routingtests: vollstaendiges Quality-Gate mit 100 % app-Statement-
-Coverage sowie komplette Browserregression vor Commit/Push auf feature/frontend-v2.
-Runtime und Vorbereitung laufen getrennt; Spielstand und Flotte erscheinen vor
-Geometrien und Markt. Read-Ziel p95 <= 250 ms, weitere Spielerstarts <= 2 s
+Dieser Zwischenstand verlangte ein vollstaendiges Quality-Gate mit 100 %
+app-Statement-Coverage sowie die komplette Browserregression vor Commit/Push
+auf `feature/frontend-v2`. Runtime und Vorbereitung liefen damals in getrennten
+Prozessen; Spielstand und Flotte erschienen vor Geometrien und Markt. Das
+Read-Ziel lag bei p95 <= 250 ms, weitere Spielerstarts bei <= 2 s
 (einmaliger Kaltstart mit Settlement bei 3,39 s am 28.09.2026 akzeptiert),
 Runtime plus Verkehr <= 250 KiB pro Poll. Keine unveraenderten Geometrien im Polling.
+
+Die Zwei-Prozess-Entscheidung ist aufgehoben. Aktuell besitzt ein
+FastAPI-Lifespan genau einen bedarfsgesteuerten Worker; verbindlich ist
+[ADR 0007](adr/0007-runtime-preparation-and-route-projections.md).
 
 Die beiden bestaetigten optionalen Alt-Anfahrtsplaene werden nur offline auf
 einer gesicherten Kopie repariert. Live-Aktivierung und echte iPad-Abnahme bleiben
@@ -1935,18 +1946,26 @@ separate Betriebsschritte. Implementierung und tatsaechlicher Abnahmestand:
 
 ## Gemeinsamer Auftragsvorrat (28.09.2026)
 
-Das ausgewählte Fahrzeug erhält genau drei fahrbare Angebote je Streckentyp,
-sofern genügend geprüfter Bestand verfügbar ist. Der gemeinsame Hintergrundvorrat
-hält mindestens zehn Vorlagen je Bedarfsstadt, konkretem Modell und Band; jede
-Vorlage ist einmal je Spieler verwendbar. Die drei sichtbaren gehören zu diesen
-zehn. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen Angebote nutzen.
+Das ausgewählte Fahrzeug erhält bis zu drei fahrbare Angebote je Streckentyp,
+sofern genügend geprüfter Bestand verfügbar ist. Der persistente Vorrat wird
+nur für konkrete eigene idle Fahrzeuge und gespeicherte Ziele aktiver
+Transporte aufgebaut. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen
+Angebote nutzen; gemeinsame Vorlagen bleiben spielerübergreifend verwendbar.
 
 Ungenutzte Vorlagen und Angebote verfallen nicht zeitlich und bleiben bei Abfahrt
 und Rückkehr erhalten. Ein Verbrauch lässt gespeicherte Reserve sofort nachrücken;
-der Worker füllt nach. Bedarf entsteht im Stand und ab 60 Minuten vor gespeicherter
-Ankunft. Fehlende Hin-/Rückwege, veraltete Prüfnachweise oder unbrauchbare
-Katalogbezüge geben keine Angebote frei. Alle 14 Modelle werden in Bedarfsstädten
-berücksichtigt, tatsächlich wartende Fahrzeuge zuerst.
+der Worker füllt nach. Zielbedarf entsteht direkt bei Dispatch. Fehlende Hin-/
+Rückwege oder unbrauchbare Katalogbezüge geben keine Angebote frei. Erfolgreiche
+Relationen werden für denselben Fingerprint dauerhaft wiederverwendet. Unbenutzte
+Katalogmodelle und Städte werden nicht global vorbereitet.
+
+Account, eigenes Spielerunternehmen und öffentliche Referenzunternehmen bleiben
+getrennte Modelle. Das künftige `PlayerCompany`-Aggregat besitzt Flotte, eigene
+Depots und später Beschäftigungsverhältnisse. Fahrer-/Mitarbeiterverfügbarkeit
+beeinflusst die Dispatch-Freigabe, nicht die Markterzeugung; der aktuelle
+`DispatchEligibilityService` ist dafür der vorbereitete Seam. Arbeitsmarkt,
+Verträge, Schichten, Qualifikationen und Löhne bleiben bis zum Roadmap-Review
+offen und werden in diesem Refactor nicht vorgetäuscht.
 
 Die Schemaübernahme nach 1.2.0 ist ein expliziter Offline-Schritt mit Backup und
 neuer Ausgabe. Live-Aktivierung ist nicht Teil von Commit/Push. Verbindliche

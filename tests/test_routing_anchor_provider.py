@@ -169,7 +169,7 @@ def test_truck_anchor_locator_helpers_cover_unusable_metadata():
 
 
 @pytest.mark.asyncio
-async def test_verbose_candidates_filter_truck_access_and_reject_bad_metadata():
+async def test_candidates_filter_truck_access_and_reject_bad_metadata():
     base = {"correlated_lat": 52.52, "correlated_lon": 13.405}
     payloads = [
         [{"edges": [dict(base, edge={"access": {"truck": False}})]}],

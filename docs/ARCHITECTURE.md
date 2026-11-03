@@ -1,25 +1,62 @@
 # Architektur
 
-Stand: 25.09.2026. Die Anwendung besitzt genau eine relationale Laufzeit.
+Stand: 02.11.2026. Die Anwendung besitzt genau eine relationale Laufzeit.
 UI First, native ES-Module, FastAPI und `python main.py` bleiben Grundlage.
+
+## Geplanter Frontend-Ausbau vom 28.10.2026
+
+[Gesamtkonzept](FRONTEND_CONCEPT.md) und
+[Umsetzungsplan](FRONTEND_IMPLEMENTATION_PLAN.md) ergänzen die folgende
+Ist-Architektur um ein noch nicht implementiertes Zielbild:
+
+- Shell, Design-Tokens, HUD und gemeinsame UI-Komponenten tragen die
+  Gestaltungsänderung. Vorhandene Zustands- und API-Verantwortung bleibt erhalten.
+- Die geplante Fahrzeugbubble erhält eine eigene UI-Verantwortung für
+  Darstellung und Lebenszyklus. Der Kartenrenderer liefert Verankerung und
+  Auswahl; fachliche Freigaben bleiben bei ihren bestehenden Verantwortlichen.
+- Vektordaten und Gelände/Heightmap werden über die Karten-/Providergrenze
+  eingebunden. Gebäude-, Material- und Fahrzeugrenderer verwenden dieselbe
+  Höhenbasis und verändern weder die Routengeometrie noch die Simulation.
+- Asset-Zuordnung, Farbmasken, Animation, Trefferflächen und Gruppierung
+  bleiben explizite Integrationsgrenzen der räumlichen Fahrzeugdarstellung.
+- Eigene Firma, Depot und Mitarbeiter werden als fachliche Erweiterungen
+  umgesetzt, bevor die Oberfläche entsprechende wirksame Aktionen anbietet.
+
+Die getrennten Vorschauen sind keine zusätzliche produktive Laufzeit. Neue
+Rendererabhängigkeiten, Quellen und vorgeschlagene Komponenten sind vor ihrem
+jeweiligen Schnitt im Architekturreview zu entscheiden. Diese Dokumentation
+ändert keinen Frontend- oder Backendcode und meldet keinen neuen Abnahmestand.
 
 ## Schichten und Zuständigkeiten
 
 - `app/domain`: Entities, unveränderliche Werte, historische Snapshots und
   Ports. Keine SQL-, HTTP-, KV- oder Serialisierungslogik.
-- `app/services`: Initialisierung, Markt, Kauf, Disposition, Settlement,
-  Authentifizierung und Profilpflege. Orchestratoren verbinden benannte
+- `app/services/gameplay`: Spielerinitialisierung, Flotte, Disposition,
+  Settlement und die schmale HTTP-nahe Spielfassade.
+- `app/services/market`: Kandidaten, persönlicher Bedarf, wiederverwendbare
+  Vorlagen, Stock-Planung/-Publikation und der Lifespan-Worker.
+- `app/services/routing`: Anchor-Kandidaten, bidirektionale Zertifizierung,
+  Evidenzlesen und Provider-Vorbereitung. Orchestratoren verbinden benannte
   fachliche Schritte und injizierte Ports.
+- Die übrigen `app/services` besitzen querschnittliche Use Cases wie
+  Authentifizierung, Analytics, Präferenzen und Profilpflege.
 - `app/repositories`: SQLite, Verbindungen, Transaktionen, Schema-Validierung
   und kanonisches Snapshot-Mapping. Read-only Referenzdaten bleiben getrennt
   vom beschreibbaren Spielerzustand.
-- `app/providers`: validierte Valhalla-/Geocoding-Antworten, Providerfehler,
-  Rate-Limit und Cache-Port. Nominatim dient Offline-Enrichment und begrenztem Backend-Anchor-Repair;
+- `app/repositories/market_stock_repair`: explizite Offline-Grenze mit
+  query-only Reader, checksummiertem Archiv, Copy-Executor und gemeinsamer
+  Strukturvalidierung. Keine Komponente verändert die aktive Quelldatenbank.
+- `app/providers`: HTTP-/Cache-Adapter für Valhalla und Geocoding. Der
+  zustandslose `ValhallaResponseParser` besitzt ausschließlich die strikte
+  Antwortdecodierung; Provider-I/O, Rate-Limit und Cache bleiben beim Router.
+  Nominatim dient Offline-Enrichment und begrenztem Backend-Anchor-Repair;
   keine allgemeinen Spieler-Geocoding-Anfragen.
 - `app/api/v1`: HTTP-Eingaben, Statuscodes und öffentliche JSON-Projektionen.
   Bestehende `hub_id`-Felder werden hier aus Facility-UIDs projiziert.
-- `app/bootstrap.py` und `app/main.py`: konkrete Verdrahtung und Ressourcenbesitz.
-  Die Zeitquelle wird im Composition Root an GameService übergeben.
+- `app/composition`: konkrete Verdrahtung, getrennt nach Runtime, Spieler,
+  Wartung und Audits. `app/bootstrap.py` bleibt ausschließlich die stabile
+  Importfassade; `app/main.py` besitzt den Prozesslebenszyklus. Die Zeitquelle
+  wird an die zuständigen Services und die `PlayerGameFacade` übergeben.
 
 ```text
 Browser → API → Services → Domain-Ports
@@ -35,6 +72,18 @@ Start- und Shutdownfehler verhindern dessen Freigabe nicht. SQLite-Verbindungen
 gehören dem jeweiligen Adapter und werden auch bei Fehlern geschlossen.
 Domainregeln erhalten Zeitpunkte als Parameter.
 
+`GameRuntime` ist ausschließlich der vom Composition Root besessene Container
+für geteilte Datenbank-, Katalog-, Markt- und Routingservices. Router und
+Anchor-Provider werden einmal in `RoutingPreparationService` injiziert und
+nicht als zweiter überschreibbarer Runtime-Zustand gespiegelt.
+`PlayerGameFacade` ist die schmale öffentliche Spielergrenze und kein Service
+Locator. Infrastruktur und spezialisierte Services bleiben privat;
+`PlayerServiceContext` hält sie nur an der Composition-Kante für andere
+verdrahtete Use Cases. `PlayerContextFactory` baut den Workflow-Graphen genau
+einmal aus injizierten Ports; der produktive Builder besitzt anschließend die
+Erstanlage. Tests verwenden dieselbe Factory mit Doubles unter
+`tests/support`; `FixturePlayerGameFacade` ist ausdrücklich nur eine Testhilfe.
+
 ## Zustand und Atomarität
 
 PlayerState schützt Geld und Fortschritt; OwnedVehicle schützt Status,
@@ -46,8 +95,10 @@ nicht bei späteren Katalogänderungen neu aufgelöst.
 GameUnitOfWork besitzt BEGIN IMMEDIATE. Kauf, Startinitialisierung, Reset,
 Disposition und Settlement speichern zusammengehörige Mutationen atomar.
 Routing läuft außerhalb der Schreibtransaktion. Danach werden Angebot,
-Fahrzeug, Energieausstattung, Startfüllstand, Kosten und Guthaben erneut geprüft. Markterzeugung erfolgt erst nach
-committeter Auszahlung. Details: [RELATIONAL_STATE.md](RELATIONAL_STATE.md).
+Fahrzeug, Energieausstattung, Startfüllstand, Kosten und Guthaben erneut geprüft.
+Dispatch verbraucht das gewählte Angebot und invalidiert den Bedarf atomar;
+erst nach dem Commit darf der Worker den verbliebenen Pool auffüllen. Details:
+[RELATIONAL_STATE.md](RELATIONAL_STATE.md).
 
 Accounts besitzen getrennte Spielzustände; dieselbe lokale Fahrzeugkennung
 mehrerer Spieler ist erlaubt. Rangliste und Mehrspielerkarte verwenden eigene
@@ -57,6 +108,24 @@ TrafficReader liefert unveränderliche SharedTransport-Werte mit Koordinaten.
 Gespeicherte Firmenfarben werden im öffentlichen Read-Modell gelesen.
 Eigentumsmarkierung, deterministischer Farb-Fallback und GeoJSON entstehen
 in der API-Projektion; ein zusätzlicher durchreichender Mehrspieler-Service entfällt.
+Vollständige und kompakte Traffic-Reads sind auf 100 aktive Transporte
+begrenzt. Die Repository-Abfrage priorisiert die neueste Abfahrt und begrenzt
+vor der Snapshot-Projektion, damit Pollingkosten nicht mit der gesamten
+Transporthistorie wachsen. Ein partieller Index auf aktive Transporte deckt
+Filterung und Sortierung ab; ein Query-Plan-Gegentest verbietet einen
+temporären Sortierbaum. Der Composition Root injiziert genau einen
+`SqliteTrafficReader` in vollständige Karten- und kompakte Runtime-Reads.
+Je Repräsentation wird dessen viewer-unabhängiger Snapshot für höchstens zehn
+Sekunden geteilt und spätestens bei der nächsten enthaltenen Ankunft
+verworfen. Dadurch erzeugen parallele Browserpolls innerhalb dieses Fensters
+keine eigenen SQL-Lesevorgänge.
+
+`initialize_runtime_schema` erzeugt Account-, Preference-, Providercache-,
+Routing-, Preparation-, Template-, Stock- und Traffic-Hilfsstrukturen
+explizit und idempotent vor dem Aufbau der Runtime. Jeder konkrete Adapter
+besitzt dafür eine benannte `initialize`-Grenze. Repository-Konstruktoren
+verändern kein Schema; ihre korrekte Funktion hängt nicht von einer
+zufälligen Erzeugungsreihenfolge anderer Adapter ab.
 
 ### Begrenzte Transportabfragen
 
@@ -89,25 +158,66 @@ Market-, Distance-, Scale- und Capability-Profile sind eigene Domainwerte.
 | MarketScopeResolver | Stabile City-UIDs eigener idle Fahrzeuge |
 | TradeNetwork | Globale NHM-Zielindizes und lazy Origin-Relationen |
 | MarketCandidateService | Distanz, Warenprofile und Fahrzeugkompatibilität |
-| MarketCoverageService | Retention anrechnen und Coverage-Auswahl planen |
-| ContractFactory | Candidate mit separat gewähltem Fahrzeugkontext materialisieren |
-| MarketGenerator | Diese drei Schritte orchestrieren |
-| MarketLifecycleService | Retention, Pruning, Markttransaktion und Projektion der Eignung koordinieren |
-| GameService | Spielabläufe koordinieren und Domainregeln delegieren |
+| ContractFactory | Ziehung, Konditionsableitung und Snapshot-Erzeugung getrennt orchestrieren |
+| MarketGenerationServices | Candidate-Service, Contract-Factory und Coverage-Diagnose als reine Composition bündeln |
+| MarketLifecycleService | Vorbereiteten Bestand filtern und fahrzeugbezogen präsentieren |
+| MarketDemandResolver | Konkrete idle Fahrzeuge und gespeicherte Transportziele projizieren |
+| PlayerMarketDemandService | Bedarfsversion, Status und atomare Coverage-Diagnose eines Spielers besitzen |
+| PlayerMarketRouteService | Offer-Bindungen und mengenbasiert gelesene Routenfakten anwenden |
+| MarketRoutePreparationService | Fehlende Relationen begrenzt und ausschließlich im Worker vorbereiten |
+| RoutingEvidenceReader | Persistierte Relationen in einem mengenbasierten Lesesnapshot prüfen und laden |
+| RoutingPreparationService | Provider, Anchor-Auflösung, Leases und atomare Routenpublikation besitzen |
+| PlayerMarketStores | Persönliche Offer-Ablage, gemeinsame Vorlagen und Stock-Policy explizit bündeln |
+| StockPlanningService | Sichtbare Defizite vor Reserven priorisieren und Vielfalt wählen |
+| MarketTemplateService | Wiederverwendbare Vorlagen zu genau einem Angebot materialisieren |
+| StockSnapshotReader | Autoritative Inputs, Bedarf und Readiness zu einem unveränderlichen Snapshot montieren |
+| StockPublicationService | Publikationsplan und gefencten atomaren Commit koordinieren |
+| DispatchEligibilityService | Fahrzeug-/Frachtfreigabe und künftige Mitarbeiterfreigabe kapseln |
+| PlayerInitializationService | Erstanlage und Reset eines Spielers transaktional besitzen |
+| TransportDispatchService | Quote, Revalidierung und atomaren Dispatch besitzen |
+| TransportSettlementService | Fällige Transporte genau einmal abrechnen und Spielerstatus lesen |
+| PlayerGameFacade | HTTP-nahe Spieler-Use-Cases an spezialisierte Services delegieren |
 
 Stateful Services und Repository-Grenzen sind injizierte Klassen. Gemeinsame
 reine Funktionen prüfen Fahrzeugklasse/Scale; Haversine, Band, Gewichtung und
-Tonnage bleiben kleine typisierte Funktionen. Der Generator kennt keine
-Filterdetails, Coverage-Schleifen, SQL oder Transaktionen. Coverage liefert
-einen immutable Plan und Diagnosen, keine materialisierten Angebote.
+Tonnage bleiben kleine typisierte Funktionen. `MarketGenerationServices` ist
+nur eine ehrlich benannte Composition-Grenze mit den Feldern `candidates`,
+`contract_factory` und `coverage`. Auswahl liegt in `StockPlanningService`,
+Materialisierung in `MarketTemplateService`, Diagnostik in
+`VehicleCoverageService`; SQL und Transaktionen bleiben außerhalb davon.
+`PlayerMarketServices.stores` verweist auf `PlayerMarketStores` mit den
+expliziten Grenzen `offers`, `templates` und `policy`.
 
-Routing findet vor der Dispatch-Schreibtransaktion statt. Danach werden alle
-veränderlichen Voraussetzungen einschließlich Abfahrtscheckpoint erneut
-gelesen. Reservierung, Abbuchung, Transportanlage, Offer-Verbrauch und notwendiges
-Pruning committen gemeinsam. Erst anschließend startet eine separate
-Markttransaktion mit erneut gelesener Flotte und Retention. Refill-Fehler rollen
-nur diese zweite Transaktion zurück und protokollieren `market.refill_failed`.
-Der erfolgreiche Transport wird zurückgegeben; ein späterer Refresh füllt auf.
+Die kompatible `SqliteRoutingReadinessStore`-Fassade ist eine reine
+Kompositionsgrenze. Unter `app/repositories/routing` besitzen `schema`,
+`payloads`, `leases`, `attempts`, `offer_routes`, `relations` und
+`connections` jeweils ihre SQL- und Mappingverantwortung. Kein Teiladapter
+eröffnet eine zweite Datenbank oder einen Providerpfad; äußere Transaktionen
+und die bestehenden Tabellen bleiben unverändert.
+
+Der Offline-Legacy-Import trennt ebenfalls Montage von Wertdecodierung.
+`LegacySnapshotReader` montiert Standort-, Fahrzeug-, Offer- und
+Transportsnapshots gegen den injizierten Weltkatalog. Die Module unter
+`app/repositories/legacy_snapshot` decodieren Standorte, Fahrzeuge, Verträge
+und Transporte; `legacy_import_values` prüft die gemeinsam verwendeten
+verschachtelten Werte. Dadurch kennt kein Decoder eine zweite Importquelle
+oder eine fachfremde Datenbankverantwortung.
+
+Das lokale Marktupgrade besitzt ebenfalls explizite Stufen:
+`MarketStockUpgradeInspector` liest und prüft die Quelle,
+`MarketStockUpgradeTransformer` erzeugt das Zielschema und
+`MarketStockUpgradeReconciler` vergleicht fachlich relevante Bestände. Die
+öffentliche Repository-Fassade orchestriert diese Schritte, ohne eine zweite
+Migration oder Marktlaufzeit einzuführen.
+
+Dispatch lädt ausschließlich vorbereitete Routennachweise vor der
+Schreibtransaktion. Danach werden alle veränderlichen Voraussetzungen
+einschließlich Abfahrtscheckpoint erneut gelesen. Reservierung, Abbuchung,
+Transportanlage, Offer-Verbrauch und Bedarfsinvalidierung committen gemeinsam.
+Der Worker füllt den verbliebenen Pool später in eigenen begrenzten Runden
+bedarfsgesteuert auf. Ein Fehler dieser Vorbereitung verändert den bereits
+erfolgreich gestarteten Transport nicht; der persistierte Bedarf bleibt für
+einen späteren Worker-Durchlauf erhalten.
 
 ## Frontend
 
@@ -115,22 +225,39 @@ Die permanente MapLibre-Karte bleibt beim Wechsel der Kontextpanels erhalten.
 Vite bündelt native Module und lokale Schriften. OSM-Raster ist die Basiskarte;
 Satelliten, Spielerunternehmen und Depots bleiben außerhalb dieser Phase.
 
-API-Client, Zustand, Controller, Views, Kartenlayer und Animation sind getrennt.
+API-Client, `GameState`, Controller, Views, Kartenlayer und Animation sind
+getrennt. `LatestRequest` besitzt nur den Lebenszyklus der jeweils neuesten
+Controlleranfrage; es ist kein zweiter Spielzustand.
+`OverlayData` orchestriert nur das Karten-Read-Modell. `overlay-state.js`
+besitzt die reinen Schritte zum Zusammenführen eigener Trafficdaten, zum
+Deduzieren aufgelöster Facilities und zum Synchronisieren der Routencaches.
+Ein eigener aktiver Transport ersetzt dadurch seine öffentliche Projektion,
+statt dass dasselbe Fahrzeug zweimal dargestellt wird.
 Views führen keine Requests aus. Dynamische Texte werden als DOM-Text gesetzt.
-Controller besitzen und beenden Listener, Requests und Timer. LatestRequest
+Controller besitzen und beenden Listener, Requests und Timer. `PanelController`
+besitzt DOM, Requests und Rendering; `PanelViewState` besitzt ausschließlich
+die Mutationen am gemeinsamen Panel-Präsentationsmodell. Die Bildbindung wird
+im Konstruktor injiziert und bis `destroy()` besessen; Views besitzen weder
+Requests noch Ressourcen. LatestRequest
 verwirft überholte Detailantworten. RefreshScheduler pollt nur bei Sichtbarkeit;
 GameState verhindert überlappende Reads. Nach unsicheren Schreibantworten folgt
 nach älteren Reads zwingend ein frischer Read; Mutationen werden nicht wiederholt.
 
 ContractMarketController besitzt die Stadtmarktanfragen. Pan und Zoom lösen
-keine Marktanfragen aus; Flotten-/Spielaktionen und Refresh aktualisieren sie. Standortmarker entstehen aus eigener
-Flotte, Transport-Snapshots und der aktuellen Auftragsscheibe. Spielerfarben
+keine Marktanfragen aus. Ohne ausgewähltes eigenes idle Fahrzeug wird weder
+gelesen noch ein Refill angefordert; der Backendvertrag verlangt deshalb stets
+`vehicle_id`. Flotten-/Spielaktionen und Refresh aktualisieren nur diesen
+Fahrzeugmarkt. Standortmarker entstehen aus eigener Flotte,
+Transport-Snapshots und der aktuellen Auftragsscheibe. Spielerfarben
 und öffentliche Transporte bleiben von privaten Wirtschaftsangaben getrennt.
 World Wrapping, Clustering, Tastatur, mobile Panels und Reduced Motion bleiben.
+Bootstrap gibt den API-Client genau über den erzeugten Anwendungsowner frei;
+vor erfolgreicher Anwendungserzeugung bleibt der Client sein eigener Fallback-
+Owner. Doppelte Lifecycle-Freigabe ist keine vorausgesetzte Architekturregel.
 
 ### Fahrzeugassets
 
-`frontend/vehicle-assets.js` besitzt die einzige unveränderliche Zuordnung
+`frontend/vehicle-asset-manifest.js` besitzt die einzige unveränderliche Zuordnung
 von Katalogmodell zu Karten-, Front- und Seitenbild. `getVehicleAssets()`
 liefert Pfade oder null. Views wählen weiterhin zuerst lokale Grafiken,
 sonst ein vorhandenes Katalogfoto beziehungsweise die generische Illustration.
@@ -186,14 +313,26 @@ Native ES-Module bleiben: Views rendern sichere DOM-Fragmente, Requests laufen
 routenlokale Stadtauswahl; LayerStateController besitzt Presets/Overrides nach
 stabiler `user.id`; AnalyticsController besitzt bedarfsgeladene Statistikreads.
 Separate LatestRequest-Instanzen schützen Marktbestand und Auftragsdetail.
-WorldMap rendert; VehicleGroups, Opportunities, Layerdefinitionen und Kamera
-bleiben eigene Module. Karteninstanz und Bildknoten überleben Navigation/Polls.
+WorldMap orchestriert den Kartenlebenszyklus; MapInteractions besitzt
+Hit-Testing, Hover und seine nativen MapLibre-Listener. Quellen sowie Routen-,
+Standort- und Fahrzeuglayer liegen in getrennten `overlay-*`-, `route-*`-,
+`location-*`- und `vehicle-*`-Modulen. `VehicleIconRegistry` liegt eindeutig in
+`frontend/map/vehicle-icon-registry.js`; Assetmanifest und Atlas-Lebenszyklus
+sind keine gleichnamigen Doppelmodule mehr. VehicleGroups, Opportunities,
+Layerdefinitionen und Kamera bleiben eigene Module. Jeder zustandsbehaftete
+Baustein gibt seine Ressourcen explizit frei. Karteninstanz und Bildknoten
+überleben Navigation und Polls.
+
+Die Styles liegen nach Verantwortung unter `frontend/styles`. `main.js`
+importiert sie in einer festgelegten Kaskadenreihenfolge; kein Komponentenmodul
+besitzt einen zweiten globalen Stilbaum.
 
 Analytics API → AnalyticsService → AnalyticsReader (Port) → SqliteAnalyticsReader.
 Die Session liefert die Nutzer-ID, niemals ein Queryparameter. Vor dem Read
-führt die API ausschließlich bestehende Arrival-Reconciliation samt getrenntem
-Refill aus. Der Reader öffnet einen konsistenten SQLite-Lesestand. Kein Schema-
-Update und keine Analytics-Schreibverantwortung im GameService.
+führt die API ausschließlich bestehende Arrival-Reconciliation samt
+Bedarfsinvalidierung aus. Der Reader öffnet einen konsistenten
+SQLite-Lesestand. Kein Schema-
+Update und keine Analytics-Schreibverantwortung in der `PlayerGameFacade`.
 
 Nutzer, Status und oberer Zeitstempel werden relational gefiltert; all-time
 Totals benötigen die belegte Vergangenheit. Relationale Geldwerte und IDs
@@ -216,7 +355,8 @@ Traffic noch Leaderboard.
 
 `DispatchPlanningService` lädt vorbereitete globale Straßenrelationen. Er lädt
 A → B optional und B → C vor der Schreibtransaktion und komponiert die reine
-Fahrt- und Preisplanung. `GameService` koordiniert Revalidierung und Persistenz.
+Fahrt- und Preisplanung. `TransportDispatchService` koordiniert Revalidierung
+und Persistenz; `PlayerGameFacade` delegiert nur den öffentlichen Anwendungsfall.
 Der vollständige immutable Start-Snapshot muss nach Routing und unmittelbar
 vor Commit mit dem aktuellen Fahrzeugcheckpoint übereinstimmen.
 
@@ -242,15 +382,15 @@ Das Funktionsreview steht in [DISPATCH_APPROACH_REVIEW.md](DISPATCH_APPROACH_REV
 Funktionen berechnen getrennt Beladung, Tarif, Einkaufskosten und Auszahlung.
 `ContractFactory` bekommt immutable Kosten-/Energiekontexte im Candidate;
 sie führt keine Katalogabfragen durch. Der minimale NHM-Faktor wird einmal
-je World-Revision bestimmt. `MarketGenerator` bleibt reine Orchestrierung.
+je World-Revision bestimmt. `MarketGenerationServices` besitzt selbst keine
+Orchestrierungs- oder Generierungsmethode.
 
-Der frühere globale Rebuild über `MarketStartupService` gehört nicht mehr zum
-API-Startpfad. Die API validiert Schema und Referenzen. Der separate Prewarm-
-Einstieg liest vorhandene Profil-IDs über den Store und plant Bedarf ein.
-`MarketPreparationBatchService` und `MarketLifecycleService` veröffentlichen
-anschließend bedarfsgesteuert gegen geprüfte Revisionen (ADR 0007).
-Der ältere explizite Rebuild und seine Regressionstests bleiben vorhanden;
-er wird von keinem Produktionsstart aufgerufen.
+Der frühere globale Rebuild über `MarketStartupService` ist entfernt. Die API
+validiert Schema und Referenzen; der Lifespan-Worker erhält ausschließlich
+durable konkrete Fahrzeugbedarfe. `StockPreparationBatch` und
+`MarketLifecycleService` veröffentlichen bedarfsgesteuert gegen geprüfte
+Revisionen (ADR 0007). Es gibt weder einen Prewarm-Einstieg noch parallele
+Legacy-Batch-/Startup-Strukturen.
 
 `PreferenceService` besitzt Palette/Fallback und Schreibtransaktion;
 `SqlitePreferenceStore` besitzt ausschließlich Account-SQL. Analytics liest
@@ -270,9 +410,10 @@ Beide Referenzkataloge werden beim Serverstart validiert und für die Laufzeit
 als immutable Revision gecacht. `CachedVehicleCatalogue` lädt seinen
 injizierten validierenden Port unter einem Lock einmal erfolgreich; Fehler
 werden nicht gecacht. Ein neuer Katalogstand erfordert einen Serverneustart
-mit erneuter Validierung und globalem Marktneuaufbau. Offline-Werkzeuge lesen
-weiterhin explizit ihren gewählten Katalog. Historische Transporte bleiben
-von neuen Revisionen unabhängig.
+mit erneuter Validierung. Konkrete Fahrzeugmärkte werden bedarfsgesteuert neu
+geprüft; ein globaler Marktneuaufbau findet nicht statt. Offline-Werkzeuge lesen
+weiterhin explizit ihren gewählten Katalog. Historische Transporte bleiben von
+neuen Revisionen unabhängig.
 
 ## Kartenregressionsfix: Darstellungsgrenzen
 
@@ -290,7 +431,9 @@ bestätigte/vorgemerkte Farbe. Views projizieren Zustände ohne Requests.
 `MapFocusController` konsumiert genau einen Fokus pro Navigationswechsel.
 `focusCoordinates` projiziert gespeicherte Routen und aktuelle Journey-Posen;
 `MapCamera` übernimmt nur Geometrie, Padding und Bewegungseinstellungen.
-Flottenfilter sind aus der View in `fleet-selection` ausgelagert.
+`fleet-selection` verbindet jedes eigene Fahrzeug höchstens einmal mit seinem
+aktiven Transport. Stadt-, Modell-, Status- und Namensfilter arbeiten auf
+diesem eindeutigen Read-Modell; die View erzeugt keine Abfahrts-/Zielduplikate.
 Einzelreview und Abnahme: [MAP_REGRESSION_REVIEW.md](MAP_REGRESSION_REVIEW.md).
 
 
@@ -328,21 +471,21 @@ Schreibtransaktionen aus; erst danach wird das Ergebnis gespeichert.
 ## Global Routing Readiness
 
 MarketCandidateService bleibt strukturell routerfrei. Market Preparation liegt
-zwischen Candidate-Erzeugung und Coverage/Materialisierung; MarketGenerator
+zwischen Candidate-Erzeugung und Planung/Materialisierung; `MarketGenerationServices`
 orchestriert keine Providerrequests. Auch partial Markets veröffentlichen
 **ausschließlich route-ready Offers**.
 
 Globale gerichtete Relationen, Anchor-Versuche und Leases verwenden zusätzliche
 Tabellen derselben SqliteGameDatabase. Keine zweite Runtime-Datenbank. Das
-Player-State-Schema 1.1.0 bleibt unverändert; Offer-Referenzen liegen separat in
+Runtime-Schema 1.2.0 umfasst Vorrat und Routingevidenz; Offer-Referenzen liegen in
 `offer_route_references` und werden mit Marktänderungen atomar geschrieben.
 Die Offer-Dokumentversion 1 und Transport-Dokumentversion 2 bleiben erhalten.
 RoutePayload benennt Straßenkilometer und Providerzeit explizit; Mapping zu
 historischen RouteSnapshot-Feldern erfolgt ohne Migration an der Dispatchgrenze.
 
-Der separate Prewarm-Prozess besitzt den Preparation-Worker und registriert Cleanup
-vor dessen Start. Der API-Lifespan startet keinen Worker und baut keine Maerkte auf.
-Shutdown cancelt und awaited die Worker-Task vor dem HTTP-Client.
+Der FastAPI-Lifespan besitzt genau einen Preparation-Worker und registriert
+Cleanup vor dessen Start. Shutdown cancelt und awaited die Worker-Task vor dem
+HTTP-Client. Durable Bedarfswrites wecken ihn; GET-Requests tun das nicht.
 Eine neue Context-Instanz verhindert geerbte HTTP-Traces und Schreibtransaktionen.
 Globale Relations-/Anchor-Leases begrenzen parallele Arbeit; abgelaufene Leases
 sind übernehmbar, verlorene Schreibrechte verhindern Relationsveröffentlichung.
@@ -364,10 +507,10 @@ Cache-Schlüssel bleiben ausschließlich im Routing-Repository; das bisherige
 Schlüsselformat und Schema bleiben lesbar. Bind und Repository-Ersetzung besitzen
 ihre atomare Grenze und beteiligen sich an einer äußeren Markt-UoW.
 
-`MarketPreparationBatchService` erhält State-Port, Candidate-/Coverage-/Scope-
-Services, Preparation und Refresh injiziert. Sein immutable Plan/Ergebnis trennt
-fachlichen Bedarf vom Worker. Der Worker besitzt Scheduling, Trace, Lifecycle
-und Fehlerschutz des gesamten Durchlaufs einschließlich Status und Finish.
+`StockPreparationBatch` erhält Publikation, Planung und Vorlagenservice
+injiziert. Sein immutable Snapshot/Ergebnis trennt fachlichen Bedarf vom Worker.
+Der Worker besitzt Scheduling, Trace, Lifecycle und Fehlerschutz des gesamten
+Durchlaufs einschließlich Status und Finish.
 Datenbankfehler führen zu abbrechbarem 60-Sekunden-Backoff. Nach externen Awaits
 werden Generation und aktuelle Coverage neu gelesen; alte Ergebnisse sind gefenced.
 
@@ -393,12 +536,13 @@ serverseitige Eignungs-IDs; Views berechnen keine neue Kompatibilität.
 
 ## Runtime-/Vorbereitungsgrenze und kompakte Projektionen
 
-ADR 0007 ersetzt den bisherigen Worker im API-Lifespan. `main.py` startet und
-ueberwacht getrennte Rollen; beide verwenden dieselbe relationale SQLite-Datei
-mit WAL/FULL und 500 ms Lock-Wartezeit. Runtime liest publizierte Offers und
-Coverage; nur der Worker baut Kandidaten ausserhalb des Writers. Persistierte
-Bedarfsversionen, globale Worker-Lease und Routingnachweise sichern kurze
-Publikationstransaktionen ab. Zeitaufwendige Providerarbeit ist kein API-Fallback.
+ADR 0007 trennt Runtime-Reads von Vorbereitung, nicht mehr die Prozesse.
+`main.py` startet einen FastAPI-Prozess; dessen Lifespan besitzt den Worker.
+Beide Pfade verwenden dieselbe relationale SQLite-Datei mit WAL/FULL und 500 ms
+Lock-Wartezeit. Runtime liest publizierte Offers und Coverage; nur der Worker
+baut Kandidaten außerhalb des Writers. Persistierte Bedarfsversionen sowie
+Relations-/Anker-Leases sichern kurze Publikationstransaktionen ab. Zeitaufwendige
+Providerarbeit ist kein API-Fallback.
 
 RuntimeReader liefert typisierte kompakte aktive Transporte direkt aus SQL-
 Skalarprojektionen. Historische Geometrien werden einzeln autorisiert geladen.
@@ -411,16 +555,35 @@ Details und manuelles Verantwortungsreview: [Runtime-Review](RUNTIME_ISOLATION_R
 [ADR 0008](adr/0008-shared-market-stock.md) ergänzt die Runtime-Trennung.
 Die Produktionsverdrahtung verwendet `StockPreparationBatch` mit getrennten
 Bedarfs-, Planungs-, Vorlagen- und Publikationsservices. Sie liest kompakte
-Ankunftsfakten ohne Geometrien und plant spätestens ab dem 60-Minuten-Horizont
-auch Zielstädte. Die reine Dreier-Auswahl bleibt in `MarketSelectionService`.
+Ankunftsfakten ohne Geometrien und plant Zielstädte unmittelbar ab Dispatch.
+Die reine Dreier-Auswahl bleibt in `MarketSelectionService`. Sie wählt aus dem
+gespeicherten Vorrat pro Fahrzeug und Distanzband deterministisch zuerst neue
+Routen, dann neue Waren, Zielstädte und Tonnagen. Erst ein tatsächlich
+erschöpfter Kandidatenbestand erlaubt Wiederholungen.
 SQL, Konsistenzgrenzen und Migrationsregeln sind in ADR 0008 benannt.
 
-`StockPublicationService` hält den vollständigen unveränderlichen Bestand für
-den Revisionsvergleich und projiziert davon separat kataloggültige Angebote
-und Vorlagen für Planung/Abdeckung. Veraltete oder frühere Stadtbestände werden
-bewahrt. Normales Polling löst wegen dieser unsichtbaren Bestände keine neue
-Bedarfsversion aus. Nur Zustandsänderungen, Refresh und fällige Wiederprüfung
-fordern weitere Arbeit an. Verbrauch ist Teil der vorhandenen Dispatch-UoW.
+`StockSnapshotReader` hält den vollständigen unveränderlichen Bestand für den
+Revisionsvergleich und projiziert davon separat kataloggültige Angebote und
+Vorlagen für Planung/Abdeckung. `StockPublicationService` erhält diesen
+Snapshot und besitzt nur Publikationsplan und gefencten Commit. Veraltete oder
+frühere Stadtbestände werden bewahrt. Normales Polling löst wegen dieser
+unsichtbaren Bestände keine neue Bedarfsversion aus. Nur Zustandsänderungen und
+ein ausdrücklicher Refresh fordern weitere Arbeit an. Erfolgreiche Relationen
+bleiben für denselben Fingerprint dauerhaft nutzbar; negative Ergebnisse und
+Anker behalten ihre Backoffs. Verbrauch ist Teil der vorhandenen Dispatch-UoW.
+
+Kurzer autoritativer Read, reine Bedarfsprojektion, mengenbasierter
+Readiness-Read und Snapshot-Montage liegen im `StockSnapshotReader`;
+Publikationsplan und gefencter Commit im `StockPublicationService`. Dadurch
+bleiben SQL und Providerzugriffe in ihren vorhandenen Ports; keine Grenze
+eröffnet eine zweite Marktstruktur oder Einzelabfragen je Relation. Analog trennt
+`ContractFactory` die Zufallsziehung von Konditionsableitung und immutablem
+Snapshot. Der nichtdeterministische Pfad behält seine bisherige RNG-Reihenfolge;
+der deterministische Pfad erzeugt weiterhin je Angebot eine neue UUID.
+Ein Preparation-Checkpoint wird zusammen mit der erfolgreichen
+Angebotspublikation gelöscht. Dadurch setzt nur eine unvollständige
+Routenprüfung denselben Trade fort; die nächste erfolgreiche Runde durchläuft
+wieder die Diversitätsauswahl.
 
 Das [manuelle Verantwortungsreview](MARKET_STOCK_REVIEW.md) prüft die konkreten
 Funktionen zusätzlich zu den automatischen Importgrenzen und Manifesttests.

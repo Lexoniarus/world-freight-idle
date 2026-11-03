@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from app.domain.errors import PersistenceError
-from app.domain.read_ports import MovementSegment, SharedTransport
+from app.domain.read_ports import SharedTransport, TrafficReader
 from app.domain.runtime_views import (
     GeometrySpan,
     RuntimeSnapshot,
@@ -23,6 +23,7 @@ from app.repositories.snapshot_mapping import (
 from app.repositories.transport_mapping import (
     load_cost_breakdown,
     load_journey,
+    validate_transport_envelope,
 )
 
 PRIVATE_PATHS = {
@@ -52,9 +53,14 @@ PRIVATE_COLUMNS = ", ".join(
 class SqliteRuntimeReader:
     """Project bounded current data through the canonical relational store."""
 
-    def __init__(self, database: SqliteGameDatabase) -> None:
+    def __init__(
+        self,
+        database: SqliteGameDatabase,
+        traffic: TrafficReader,
+    ) -> None:
         """Share transaction ownership, never a second persistence format."""
         self.database = database
+        self.public_traffic = traffic
 
     def read(self, user_id: str) -> RuntimeSnapshot:
         """Load private active summaries without selecting coordinate JSON."""
@@ -81,23 +87,8 @@ class SqliteRuntimeReader:
             )
 
     def traffic(self, now: float) -> tuple[SharedTransport, ...]:
-        """Read public movement scalars without private economics or roads."""
-        with self.database.read_transaction(), self.database.connect() as db:
-            rows = db.execute(
-                "SELECT t.user_id, t.transport_id, t.vehicle_id, "
-                "t.departed_at, t.arrives_at, u.username, v.model_id, "
-                "v.name AS model_name, p.company_color, "
-                "json_extract(t.transport_snapshot, '$.version') AS version, "
-                "json_extract(t.transport_snapshot, '$.kind') AS kind, "
-                "json_extract(t.transport_snapshot, '$.data.journey') "
-                "AS journey FROM transports t JOIN users u ON u.id=t.user_id "
-                "JOIN owned_vehicles v ON v.user_id=t.user_id "
-                "AND v.vehicle_id=t.vehicle_id LEFT JOIN account_preferences "
-                "p ON p.user_id=t.user_id WHERE t.status='active' "
-                "AND t.arrives_at>? ORDER BY t.departed_at, t.transport_id",
-                (now,),
-            ).fetchall()
-        return tuple(load_runtime_traffic(dict(row)) for row in rows)
+        """Delegate public scalar selection to its canonical shared owner."""
+        return self.public_traffic.list_active_summaries(now)
 
     def visible(
         self, owner_id: str, trip_id: str, viewer_id: str, now: float
@@ -148,20 +139,10 @@ class SqliteRuntimeReader:
         return TransportGeometry(trip.route.coordinates, tuple(spans))
 
 
-def validate_runtime_envelope(row: dict[str, Any]) -> None:
-    """Reject malformed or unsupported historical envelopes at the boundary."""
-    if (
-        type(row["version"]) is not int
-        or row["version"] != 2
-        or row["kind"] != "transport"
-    ):
-        raise ValueError("Unsupported transport envelope.")
-
-
 def load_runtime_transport(row: dict[str, Any]) -> RuntimeTransport:
     """Validate indexed identities against the compact canonical document."""
     try:
-        validate_runtime_envelope(row)
+        validate_transport_envelope(row)
         for key in (
             "vehicle_id",
             "departed_at",
@@ -205,35 +186,3 @@ def load_runtime_transport(row: dict[str, Any]) -> RuntimeTransport:
         )
     except (ValueError, TypeError, KeyError) as exc:
         raise PersistenceError("Transportdaten nicht lesbar.") from exc
-
-
-def load_runtime_traffic(row: dict[str, Any]) -> SharedTransport:
-    """Project typed public intervals without returning private energy."""
-    try:
-        validate_runtime_envelope(row)
-        journey = load_journey(json.loads(row["journey"]))
-        return SharedTransport(
-            user_id=row["user_id"],
-            username=row["username"],
-            id=row["transport_id"],
-            vehicle_id=row["vehicle_id"],
-            model_id=row["model_id"] or "",
-            model_name=row["model_name"],
-            departed_at=row["departed_at"],
-            arrives_at=row["arrives_at"],
-            coordinates=(),
-            distance_km=journey.distance_km,
-            segments=tuple(
-                MovementSegment(
-                    p.phase,
-                    p.starts_at,
-                    p.ends_at,
-                    p.start_km,
-                    p.end_km,
-                )
-                for p in journey.segments
-            ),
-            company_color=row["company_color"],
-        )
-    except (ValueError, TypeError, KeyError) as exc:
-        raise PersistenceError("Verkehrsdaten nicht lesbar.") from exc

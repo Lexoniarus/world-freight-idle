@@ -1,19 +1,19 @@
-import { LatestRequest } from "../state.js";
+import { marketVehicle } from "../market-context.js";
+import { LatestRequest } from "../latest-request.js";
 
 /** Own city-market reads independently of map navigation. */
 export class ContractMarketController {
-  /** @param {{state: import("../state.js").GameState, request: import("../types.js").RequestJson, notify: import("../types.js").Notify, currentUrl: () => URL}} dependencies */
-  constructor({ state, request, notify, currentUrl }) {
+  /** @param {{state: import("../game-state.js").GameState, api: import("../api.js").GameApiClient, notify: import("../types.js").Notify, currentUrl: () => URL}} dependencies */
+  constructor({ state, api, notify, currentUrl }) {
     this.state = state;
-    this.request = request;
+    this.api = api;
     this.notify = notify;
     this.currentUrl = currentUrl;
     this.pending = new LatestRequest();
     this.detailPending = new LatestRequest();
     this.started = false;
     this.disposed = false;
-    this.ordersVisible = () => false;
-    /** @type {{key: string, promise: Promise<void>} | null} */
+    /** @type {{key: string, promise: Promise<boolean>} | null} */
     this.listRead = null;
     /** @type {{id: string, promise: Promise<void>} | null} */
     this.detailRead = null;
@@ -26,7 +26,7 @@ export class ContractMarketController {
     this.started = true;
   }
 
-  /** Load offers required by the current route or visible map layer.
+  /** Load offers only for the dedicated freight-market route.
    * @returns {Promise<void>}
    */
   async refresh() {
@@ -34,7 +34,13 @@ export class ContractMarketController {
     const path = this.currentUrl().pathname;
     const detailId = path.startsWith("/contracts/") ? path.split("/")[2] : "";
     const tasks = [];
-    if (path === "/contracts" || this.ordersVisible()) tasks.push(this.loadList(false));
+    const vehicle =
+      path === "/contracts" ? marketVehicle(this.state.data, this.currentUrl()) : null;
+    if (vehicle) tasks.push(this.loadList(false, vehicle.id));
+    else if (this.listRead) {
+      this.pending.cancel();
+      this.listRead = null;
+    }
     if (detailId) tasks.push(this.loadDetail(detailId));
     else if (this.detailRead) {
       this.detailPending.cancel();
@@ -44,26 +50,28 @@ export class ContractMarketController {
   }
 
   /** Request preparation and read the preserved market on explicit refresh.
-   * @returns {Promise<void>}
+   * @returns {Promise<boolean>}
    */
   async forceRefresh() {
-    if (!this.started || this.disposed || !this.state.data) return;
-    if (this.currentUrl().pathname !== "/contracts") return;
-    await this.loadList(true);
+    if (!this.started || this.disposed || !this.state.data) return false;
+    const url = this.currentUrl();
+    if (url.pathname !== "/contracts") return false;
+    const vehicle = marketVehicle(this.state.data, url);
+    if (!vehicle) return false;
+    return this.loadList(true, vehicle.id);
   }
 
   /** Load and publish the authoritative selection for the current vehicle.
    * @param {boolean} force
-   * @returns {Promise<void>}
+   * @param {string} vehicleId
+   * @returns {Promise<boolean>}
    */
-  async loadList(force) {
-    const url = this.currentUrl();
-    const key = url.pathname === "/contracts" ? (url.searchParams.get("vehicle") ?? "") : "";
-    if (!force && this.listRead?.key === key) return this.listRead.promise;
-    const read = { key, promise: this.readList(force, key) };
+  async loadList(force, vehicleId) {
+    if (!force && this.listRead?.key === vehicleId) return this.listRead.promise;
+    const read = { key: vehicleId, promise: this.readList(force, vehicleId) };
     this.listRead = read;
     try {
-      await read.promise;
+      return await read.promise;
     } finally {
       if (this.listRead === read) this.listRead = null;
     }
@@ -72,26 +80,24 @@ export class ContractMarketController {
   /** Execute one list revision; only explicit replacement aborts it.
    * @param {boolean} force
    * @param {string} vehicleId
-   * @returns {Promise<void>}
+   * @returns {Promise<boolean>}
    */
   async readList(force, vehicleId) {
     const request = this.pending.start();
-    const path =
-      (force ? "/contracts/refresh" : "/contracts") +
-      (vehicleId ? "?vehicle_id=" + encodeURIComponent(vehicleId) : "");
     try {
-      const result = await this.request(path, {
-        method: force ? "POST" : "GET",
-        signal: request.signal,
-      });
+      const result = force
+        ? await this.api.requestFreightRefill(vehicleId, request.signal)
+        : await this.api.loadFreightOffers(vehicleId, request.signal);
       if (request.isCurrent()) {
         this.state.replaceContracts(result.contracts, result.preparation, result.vehicle_coverage);
+        return true;
       }
     } catch (error) {
       if (request.isCurrent() && error.name !== "AbortError") {
         this.notify(error.message);
       }
     }
+    return false;
   }
 
   /** Load one selected offer without accepting stale responses.
@@ -116,9 +122,7 @@ export class ContractMarketController {
   async readDetail(id) {
     const request = this.detailPending.start();
     try {
-      const contract = await this.request("/contracts/" + encodeURIComponent(id), {
-        signal: request.signal,
-      });
+      const contract = await this.api.loadFreightOffer(id, request.signal);
       if (request.isCurrent()) this.state.replaceContractDetail(contract, id);
     } catch (error) {
       if (request.isCurrent() && error.name !== "AbortError") {

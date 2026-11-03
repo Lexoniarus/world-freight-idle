@@ -8,7 +8,7 @@
     "dev": "vite --host 127.0.0.1",
     "test:e2e": "playwright test",
     "lint:js": "eslint frontend",
-    "lint:css": "stylelint frontend/style.css",
+    "lint:css": "stylelint \"frontend/**/*.css\"",
     "format:check": "prettier --check frontend *.config.js jsconfig.json .prettierrc.json",
     "format": "prettier --write frontend *.config.js jsconfig.json .prettierrc.json",
     "typecheck": "tsc --project jsconfig.json",

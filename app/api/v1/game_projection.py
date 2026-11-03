@@ -198,23 +198,6 @@ def project_transport(
     }
 
 
-def project_state(state: GameSnapshot) -> dict[str, Any]:
-    """Expose the complete state for an explicitly requested full read."""
-    vehicles = project_fleet(state)
-    return {
-        "server_time": state.server_time,
-        "time_scale": state.time_scale,
-        "player": project_player(state.player),
-        "vehicles": vehicles,
-        "active_trips": [
-            project_transport(item, state.server_time)
-            for item in state.transports
-        ],
-        "contracts": [project_contract(item) for item in state.contracts],
-        "hubs": [item["hub"] for item in vehicles],
-    }
-
-
 def project_dashboard(state: GameSnapshot) -> dict[str, Any]:
     """Expose startup counters without generating a global market."""
     return {

@@ -6,7 +6,7 @@ import { progressDisplay } from "../views/transports.js";
 
 /** Synchronize global game state with the HUD, panels and map. */
 export class GameSync {
-  /** @param {{state: import("../state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../types.js").GameMap | null, notify: import("../types.js").Notify}} dependencies */
+  /** @param {{state: import("../game-state.js").GameState, panel: import("./panel-controller.js").PanelController, map: import("../types.js").GameMap | null, notify: import("../types.js").Notify}} dependencies */
   constructor({ state, panel, map, notify }) {
     this.state = state;
     this.panel = panel;
@@ -30,7 +30,13 @@ export class GameSync {
    */
   publish({ previous, current, mapOnly = false }) {
     if (this.disposed) return;
-    this.panel.view.state = current;
+    this.panel.presentation.publishGameState(
+      current,
+      this.state.contractDetail,
+      this.state.contractDetailId,
+      this.state.marketLoaded,
+      this.state.marketStale,
+    );
     if (current.trafficAvailable === false && previous?.trafficAvailable !== false)
       this.notify(
         "Gemeinsamer Live-Verkehr ist momentan nicht erreichbar. Der letzte bekannte Kartenstand bleibt sichtbar.",
@@ -42,10 +48,6 @@ export class GameSync {
       this.updateMap();
       return;
     }
-    this.panel.view.detailContract = this.state.contractDetail;
-    this.panel.view.detailId = this.state.contractDetailId;
-    this.panel.view.marketLoaded = this.state.marketLoaded;
-    this.panel.view.marketStale = this.state.marketStale;
     requiredElement("#cash").textContent = money(current.player.cash);
     requiredElement("#reputation").textContent = String(current.player.reputation);
     requiredElement("#fleet-count").textContent = String(current.vehicles.length);
@@ -76,7 +78,7 @@ export class GameSync {
       marketLoaded: this.state.marketLoaded,
       marketStale: this.state.marketStale,
     });
-    if (!this.panel.view.busy && revision !== this.panelRevision) {
+    if (!this.panel.presentation.isBusy() && revision !== this.panelRevision) {
       this.panelRevision = revision;
       this.panel.render();
     }

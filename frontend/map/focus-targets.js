@@ -1,4 +1,4 @@
-import { selectFleetGroups } from "../fleet-selection.js";
+import { selectFleetEntries } from "../fleet-selection.js";
 import { prepareTransportRoute, transportRoutePose } from "./route-plan.js";
 import { cityLocations } from "../city-context.js";
 import { routeGeometry } from "./overlay-data.js";
@@ -47,13 +47,8 @@ export function focusCoordinates(state, url, now, detail, cityUid, cities) {
       const vehicle = state.vehicles.find((item) => item.id === id);
       return vehicle ? vehiclePosition(state, vehicle, now) : [];
     }
-    const groups = selectFleetGroups(state, url, cityUid);
-    const vehicles = new Map(
-      groups
-        .flatMap((group) => [...group.stationed, ...group.inbound, ...group.outbound])
-        .map(({ vehicle }) => [vehicle.id, vehicle]),
-    );
-    return [...vehicles.values()].flatMap((vehicle) => vehiclePosition(state, vehicle, now));
+    const entries = selectFleetEntries(state, url, cityUid);
+    return entries.flatMap(({ vehicle }) => vehiclePosition(state, vehicle, now));
   }
   if (section === "transports")
     return state.transports

@@ -10,7 +10,12 @@ from app.domain.cargo import FacilityNhmProfile, NhmProduct
 from app.domain.errors import WorldCatalogueError
 from app.domain.evidence import SourceReference
 from app.domain.geography import Address, City, Coordinates, Country
-from app.domain.world import Company, DocumentedGood, Facility, WorldSnapshot
+from app.domain.world import (
+    DocumentedGood,
+    Facility,
+    ReferenceCompany,
+    WorldSnapshot,
+)
 from app.repositories.market_profile_reader import read_market_profiles
 from app.repositories.world_geography_reader import read_cities, read_countries
 
@@ -143,13 +148,13 @@ def source_reference(row: sqlite3.Row) -> SourceReference:
 
 def read_companies(
     connection: sqlite3.Connection, countries: dict[str, Country]
-) -> dict[int, Company]:
+) -> dict[int, ReferenceCompany]:
     """Resolve internal foreign keys into immutable company projections."""
     sources: dict[int, list[SourceReference]] = {}
     for row in connection.execute("SELECT * FROM company_sources"):
         sources.setdefault(row["company_id"], []).append(source_reference(row))
     return {
-        row["company_id"]: Company(
+        row["company_id"]: ReferenceCompany(
             validate_uid(row["company_uid"]),
             row["legal_name"],
             row["display_name"],
@@ -257,65 +262,13 @@ def read_cargo(
 def read_facility(
     connection: sqlite3.Connection,
     row: sqlite3.Row,
-    companies: dict[int, Company],
+    companies: dict[int, ReferenceCompany],
     cities: dict[str, City],
     cargo: tuple[FacilityNhmProfile, ...],
     version: str,
 ) -> Facility:
     """Join all endpoint facts into a self-contained immutable reference."""
     uid = validate_uid(row["facility_uid"])
-    sources = tuple(
-        source_reference(source)
-        for source in connection.execute(
-            "SELECT * FROM facility_sources WHERE facility_id=?",
-            (row["facility_id"],),
-        )
-    )
-    if not sources:
-        raise ValueError("Facility without provenance")
-    evidence = []
-    for entry in connection.execute(
-        "SELECT * FROM facility_geocoding_evidence WHERE facility_id=?",
-        (row["facility_id"],),
-    ):
-        if (
-            entry["latitude"] == row["latitude"]
-            and entry["longitude"] == row["longitude"]
-            and entry["precision_type"]
-            in {
-                "official_facility_coordinate",
-                "facility_centroid",
-                "osm_feature",
-                "verified_address_point",
-            }
-            and isinstance(entry["source_url"], str)
-            and (
-                entry["source_url"].startswith(("https://", "http://"))
-                or (
-                    row["geocoding_status"] == "estimated_for_simulation"
-                    and entry["source_url"].startswith(
-                        "internal://simulation-"
-                    )
-                )
-            )
-            and entry["verified_at"]
-        ):
-            evidence.append(
-                SourceReference(
-                    entry["source_url"],
-                    "coordinates",
-                    entry["verified_at"],
-                    entry["precision_type"],
-                    entry["provider"],
-                )
-            )
-    aliases = tuple(
-        alias[0]
-        for alias in connection.execute(
-            "SELECT alias FROM facility_aliases WHERE facility_uid=?",
-            (uid,),
-        )
-    )
     return Facility(
         uid,
         companies.get(row["company_id"]),
@@ -333,12 +286,87 @@ def read_facility(
             else None
         ),
         row["geocoding_status"],
-        sources,
-        tuple(evidence),
+        read_facility_sources(connection, row["facility_id"]),
+        read_coordinate_evidence(connection, row),
         cargo,
         version,
-        aliases,
+        read_facility_aliases(connection, uid),
         read_handled_goods(connection, row["facility_id"]),
+    )
+
+
+def read_facility_sources(
+    connection: sqlite3.Connection,
+    facility_id: int,
+) -> tuple[SourceReference, ...]:
+    """Read mandatory public provenance for one facility."""
+    sources = tuple(
+        source_reference(source)
+        for source in connection.execute(
+            "SELECT * FROM facility_sources WHERE facility_id=?",
+            (facility_id,),
+        )
+    )
+    if not sources:
+        raise ValueError("Facility without provenance")
+    return sources
+
+
+def read_coordinate_evidence(
+    connection: sqlite3.Connection,
+    facility: sqlite3.Row,
+) -> tuple[SourceReference, ...]:
+    """Read only evidence matching the stored facility coordinates."""
+    evidence: list[SourceReference] = []
+    for entry in connection.execute(
+        "SELECT * FROM facility_geocoding_evidence WHERE facility_id=?",
+        (facility["facility_id"],),
+    ):
+        if (
+            entry["latitude"] == facility["latitude"]
+            and entry["longitude"] == facility["longitude"]
+            and entry["precision_type"]
+            in {
+                "official_facility_coordinate",
+                "facility_centroid",
+                "osm_feature",
+                "verified_address_point",
+            }
+            and isinstance(entry["source_url"], str)
+            and (
+                entry["source_url"].startswith(("https://", "http://"))
+                or (
+                    facility["geocoding_status"] == "estimated_for_simulation"
+                    and entry["source_url"].startswith(
+                        "internal://simulation-"
+                    )
+                )
+            )
+            and entry["verified_at"]
+        ):
+            evidence.append(
+                SourceReference(
+                    entry["source_url"],
+                    "coordinates",
+                    entry["verified_at"],
+                    entry["precision_type"],
+                    entry["provider"],
+                )
+            )
+    return tuple(evidence)
+
+
+def read_facility_aliases(
+    connection: sqlite3.Connection,
+    facility_uid: str,
+) -> tuple[str, ...]:
+    """Read external aliases without exposing internal numeric keys."""
+    return tuple(
+        alias[0]
+        for alias in connection.execute(
+            "SELECT alias FROM facility_aliases WHERE facility_uid=?",
+            (facility_uid,),
+        )
     )
 
 

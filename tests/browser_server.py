@@ -1,74 +1,95 @@
 """Isolated browser-test server; never used by the production entry point."""
 
-import asyncio
-import subprocess
-import sys
+import os
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 
-from app.api.v1.dependencies import get_game_service
+from app.api.v1.dependencies import get_player_context
+from app.bootstrap import PlayerServiceContext, build_game_runtime
 from app.config import Settings
 from app.domain.energy import EnergyProfile
-from app.launcher import stop_child
 from app.main import create_app, lifespan
-from app.repositories.market_startup import SqliteMarketStartupStore
-from app.services.game import GameService
-from tests.conftest import (
-    FakeRouter,
-    FakeRoutingAnchorResolver,
-)
+from tests.support.manual_clock import ManualClock
+from tests.support.routing import FakeRouter, FakeRoutingAnchorResolver
 
 temporary = TemporaryDirectory(prefix="world-freight-browser-")
+external_database = os.getenv("WFI_BROWSER_DB_PATH")
 settings = replace(
     Settings.from_env(),
-    db_path=Path(temporary.name) / "test.db",
+    db_path=(
+        Path(external_database)
+        if external_database
+        else Path(temporary.name) / "test.db"
+    ),
     game_time_scale=900,
 )
 app = create_app(settings)
 
 
+browser_clock = ManualClock()
+
+
 @asynccontextmanager
 async def browser_lifespan(application):
-    async with lifespan(application):
-        application.state.game.router = FakeRouter()
-        application.state.game.anchors = FakeRoutingAnchorResolver()
-        application.state.game.readiness.router = application.state.game.router
-        application.state.game.readiness.anchors = (
-            application.state.game.anchors
-        )
-        worker = await asyncio.create_subprocess_exec(
-            sys.executable,
-            "-m",
-            "tests.browser_worker",
-            str(settings.db_path),
-            stdin=asyncio.subprocess.PIPE,
-            creationflags=(
-                subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+    def test_runtime(active_settings, client):
+        router = FakeRouter()
+        anchors = FakeRoutingAnchorResolver()
+        with (
+            patch(
+                "app.composition.runtime.ValhallaTruckRouter",
+                return_value=router,
             ),
-        )
-        try:
+            patch(
+                "app.composition.runtime.build_routing_anchor_resolver",
+                return_value=anchors,
+            ),
+        ):
+            return build_game_runtime(
+                active_settings,
+                client,
+                clock=browser_clock,
+            )
+
+    with patch("app.main.build_game_runtime", side_effect=test_runtime):
+        async with lifespan(application):
             yield
-        finally:
-            await stop_child(worker)
     temporary.cleanup()
 
 
 app.router.lifespan_context = browser_lifespan
 
 
+@app.post("/__tests__/advance-time")
+def advance_browser_time(seconds: float) -> dict:
+    """Advance only the isolated browser server's application clock."""
+    try:
+        now = browser_clock.advance(seconds)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"now": now}
+
+
 @app.post("/__tests__/preparation-scope")
 def pause_previous_test_profiles() -> dict:
     """Keep independent browser cases from accumulating unrelated demand."""
-    runtime = app.state.game
+    runtime = app.state.game_runtime
     jobs = runtime.preparation_jobs
     assert jobs is not None
     now = runtime.clock()
     with runtime.database.transaction():
-        for owner in SqliteMarketStartupStore(runtime.database).player_ids():
+        with runtime.database.connect() as connection:
+            owners = tuple(
+                row[0]
+                for row in connection.execute(
+                    "SELECT user_id FROM player_states ORDER BY user_id"
+                )
+            )
+        for owner in owners:
             jobs.invalidate(owner, now)
             status = jobs.status(owner)
             assert status is not None
@@ -79,12 +100,15 @@ def pause_previous_test_profiles() -> dict:
 @app.post("/__tests__/energy-fixture")
 def prepare_energy_fixture(
     single_stop: bool = False,
-    game: GameService = Depends(get_game_service),
+    context: PlayerServiceContext = Depends(get_player_context),
 ) -> dict:
     """Configure short-range test energy solely inside the isolated server."""
-    vehicle = game.get_vehicle("truck_01")
+    synthetic_game = context.game
+    vehicle = synthetic_game.get_vehicle("truck_01")
     model = next(
-        m for m in game.catalogue.list_models() if m.id == vehicle.model_id
+        m
+        for m in app.state.game_runtime.catalogue.list_models()
+        if m.id == vehicle.model_id
     )
     capacity = 1000 if single_stop else 100
     vehicle.apply_model(
@@ -95,33 +119,32 @@ def prepare_energy_fixture(
     )
     vehicle.refill_energy()
     vehicle.consume_energy(capacity * 0.9)
-    offers = game.state_repository.list_offers()
+    offers = context.state_repository.list_offers()
     if offers:
         vehicle.reposition_within_city(offers[0].origin)
-    with game.unit_of_work.transaction():
-        game.state_repository.save_vehicle(vehicle)
-        assert game.market_lifecycle.preparation is not None
-        game.market_lifecycle.preparation.request(changed=True)
+    with context.unit_of_work.transaction():
+        context.state_repository.save_vehicle(vehicle)
+        context.market.demand.invalidate()
     return {"vehicle_id": vehicle.id}
 
 
 @app.post("/__tests__/approach-fixture")
 def prepare_approach_fixture(
-    game: GameService = Depends(get_game_service),
+    context: PlayerServiceContext = Depends(get_player_context),
 ) -> dict:
     """Place the isolated idle truck away from its saved offer's pickup."""
-    vehicle = game.get_vehicle("truck_01")
-    offer = game.state_repository.list_offers()[0]
+    synthetic_game = context.game
+    vehicle = synthetic_game.get_vehicle("truck_01")
+    offer = context.state_repository.list_offers()[0]
     facility = next(
         item
-        for item in game.world.read().facilities
+        for item in app.state.game_runtime.world.read().facilities
         if item.address.city.city_uid == offer.origin.city.city_uid
         and item.facility_uid != offer.origin.facility_uid
         and item.coordinates is not None
     )
     vehicle.reposition_within_city(facility.location_snapshot())
-    with game.unit_of_work.transaction():
-        game.state_repository.save_vehicle(vehicle)
-        assert game.market_lifecycle.preparation is not None
-        game.market_lifecycle.preparation.request(changed=True)
+    with context.unit_of_work.transaction():
+        context.state_repository.save_vehicle(vehicle)
+        context.market.demand.invalidate()
     return {"vehicle_id": vehicle.id, "offer_id": offer.id}

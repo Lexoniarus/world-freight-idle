@@ -14,8 +14,10 @@ from app.domain.transports import ActiveTransport, RouteSnapshot
 from app.repositories.transport_mapping import load_transport
 
 
-def test_transport_lifecycle_rejects_invalid_and_duplicate_settlement(game):
-    offer = game.state_repository.list_offers()[0]
+def test_transport_lifecycle_rejects_invalid_and_duplicate_settlement(
+    synthetic_game,
+):
+    offer = synthetic_game.state_repository.list_offers()[0]
     route = RouteSnapshot(((13.3, 52.5), (9.9, 53.5)), 300, 100, "fake")
     trip = ActiveTransport(
         "trip",
@@ -103,19 +105,27 @@ def test_route_snapshot_rejects_invalid_measurements_and_geometry():
             replace(route, **changes)
 
 
-def test_transport_settlement_keeps_saved_location_without_catalogue(game):
+def test_transport_settlement_keeps_saved_location_without_catalogue(
+    synthetic_game_context,
+    synthetic_game,
+):
     from unittest.mock import patch
 
     from app.domain.errors import WorldCatalogueError
     from tests.transport_fixtures import add_transport
 
-    trip = add_transport(game, payout=50)
-    with patch.object(game.world, "read", side_effect=WorldCatalogueError()):
-        assert game.reconcile_arrival()
-        assert [project_vehicle(value) for value in game.list_vehicles()][0][
-            "hub"
-        ] == project_location(trip.destination)
-    player = game.state_repository.get_player()
+    trip = add_transport(synthetic_game, payout=50)
+    with patch.object(
+        synthetic_game_context.world, "read", side_effect=WorldCatalogueError()
+    ):
+        assert synthetic_game.reconcile_arrival()
+        assert [
+            project_vehicle(value) for value in synthetic_game.list_vehicles()
+        ][0]["hub"] == project_location(trip.destination)
+    player = synthetic_game.state_repository.get_player()
     assert player is not None and player.cash == 175050
-    assert not game.reconcile_arrival()
-    assert game.state_repository.list_transports()[0].status == "settled"
+    assert not synthetic_game.reconcile_arrival()
+    assert (
+        synthetic_game.state_repository.list_transports()[0].status
+        == "settled"
+    )

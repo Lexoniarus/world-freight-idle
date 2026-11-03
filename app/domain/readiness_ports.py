@@ -20,6 +20,10 @@ class RoutingReadinessStore(Protocol):
 
     def get(self, relation_id: str) -> RoutingRelation | None: ...
 
+    def get_many(
+        self, relation_ids: tuple[str, ...]
+    ) -> dict[str, RoutingRelation]: ...
+
     def payload(self, reference: RouteReference) -> RoutePayload | None: ...
 
     def payload_available(self, reference: RouteReference) -> bool: ...
@@ -42,7 +46,6 @@ class RoutingReadinessStore(Protocol):
         payload: RoutePayload | None,
         owner: str,
         now: float,
-        worker_owner: str | None = None,
     ) -> bool: ...
 
     def connected(
@@ -50,6 +53,11 @@ class RoutingReadinessStore(Protocol):
         forward: RouteReference,
         reverse: RouteReference,
     ) -> bool: ...
+
+    def connected_many(
+        self,
+        pairs: tuple[tuple[RouteReference, RouteReference], ...],
+    ) -> frozenset[tuple[RouteReference, RouteReference]]: ...
 
     def publish_connection(
         self,
@@ -61,7 +69,6 @@ class RoutingReadinessStore(Protocol):
         now: float,
         provider: str,
         provider_revision: str | None,
-        worker_owner: str | None = None,
     ) -> bool: ...
 
     def append_attempt(self, attempt: RoutingAttempt) -> None: ...
@@ -71,6 +78,10 @@ class OfferRouteStore(Protocol):
     """Bind open offers to routing revisions within the market transaction."""
 
     def get(self, offer_id: str) -> RouteReference | None: ...
+
+    def get_many(
+        self, offer_ids: tuple[str, ...]
+    ) -> dict[str, RouteReference]: ...
 
     def replace(
         self, references: tuple[tuple[str, RouteReference], ...]

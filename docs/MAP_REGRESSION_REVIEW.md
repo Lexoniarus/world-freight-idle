@@ -56,8 +56,11 @@ Kein Python-Core-Callable wurde eingeführt oder fachlich geändert.
 | `VehicleGroups.updatePoses` | Gruppen-Präsentation | Badge an aktuelle Representative-Koordinate binden | aktuelle Features, Marker | Positionsupdates auch ohne Neugruppierung |
 | `VehicleGroups.renderVisual` | Gruppen-Präsentation | Count und zugängliche Representative-Metadaten zeigen | explizites erstes stabiles Mitglied | DOM; weder Bildauswahl noch Rotation |
 | `VehicleGroups.destroy` | Gruppen-Präsentation | Marker und Popup entsorgen | eigene Marker/Popup | keine fremden Bild-Leases |
+| `MapInteractions.constructor` | Karteninteraktion | Hit-Testing und Hover-Listener besitzen | MapLibre, Gruppen, typisierte Selection-Callback | bindet ausschließlich eigene native Listener |
+| `MapInteractions.selectFeature` | Karteninteraktion | Kartenhit in semantische Auswahl übersetzen | sichtbare Layer und Clusterquelle | keine Navigation oder Marktanfrage |
+| `MapInteractions.destroy` | Karten-Lifecycle | eigene Listener und Hover-Popup freigeben | MapLibre | idempotenter Aufrufer im WorldMap-Cleanup |
 | `WorldMap.constructor` | Karten-Composition | Kartenkomponenten verdrahten | OverlayData, Registry, Gruppen und Kamera | Initialisierung; Zustandsgrenzen bleiben getrennt |
-| `WorldMap.bindMapEvents` | Karten-Lifecycle | Kartenevents an Darstellungsaktionen binden | MapLibre, bestehende Interaktionsmethoden | Listener; move aktualisiert Darstellung, keine Marktrequests |
+| `WorldMap.bindMapEvents` | Karten-Lifecycle | Render- und Bewegungsereignisse binden | MapLibre und bestehende Projektionen | Interaktionslistener gehören MapInteractions |
 | `WorldMap.update` | Karten-Orchestrierung | neuen Snapshot an Darstellungsbesitzer verteilen | OverlayData und Layeradapter | keine Kamerabewegung |
 | `WorldMap.syncVehicleIcons` | Karten-Orchestrierung | fertige Atlasmetadaten ins Read-Modell übernehmen | Registry, OverlayData | async Disposal-Schutz; keine Navigation |
 | `WorldMap.drawTraffic` | Karten-Orchestrierung | aktuelle Bewegungsfeatures und Auswahl veröffentlichen | Read-Modell, Gruppen, Source-Adapter | kein Pricing, Routing oder Kamerafokus |
@@ -76,8 +79,10 @@ Kein Python-Core-Callable wurde eingeführt oder fachlich geändert.
 | `PreferencesController.publish` | UI-Projektion | eine Farbe an Darstellungseigentümer verteilen | Panel, Map, Document | keine Requests oder Asset-Kompositionslogik |
 | `PreferencesController.destroy` | UI-Lifecycle | Reads, Writes und Listener invalidieren | eigene AbortController | späte Ergebnisse können nicht mehr publizieren |
 | `renderCompanyPreferences` | View | Ladezustand, Retry und Palette darstellen | typisiertes Panel-Read-Modell | nur DOM; keine Requests |
-| `fleetGroups` | Read-Modell | Flotte nach vorhandener Stadt-/Fahrtrichtungssicht gliedern | Snapshot | unverändert aus View verschoben; keine Kamera |
-| `selectFleetGroups` | Read-Modell | sichtbare Flottenfilter gemeinsam auswerten | URL, Snapshot, Stadt | rein; View und Fokus erhalten identische Auswahl |
+| `fleetEntries` | Read-Modell | jedes eigene Fahrzeug höchstens einmal mit seinem aktiven Transport verbinden | Snapshot | rein; Fahrzeug-ID bleibt eindeutig |
+| `matchesFleetCity` | Read-Modell | stationierten Standort oder Endpunkte einer aktiven Fahrt mit einem Stadtfilter vergleichen | Flotteneintrag, Stadt-ID | rein; keine zweite Fahrzeugprojektion |
+| `groupFleetEntries` | Read-Modell | stationierte Fahrzeuge nach Ort und aktive Fahrzeuge einmal unter „Unterwegs“ gliedern | eindeutige Flotteneinträge | rein; keine Kamera |
+| `selectFleetEntries`, `selectFleetSections` | Read-Modell | sichtbare Flottenfilter gemeinsam auswerten und anschließend gruppieren | URL, Snapshot, Stadt | rein; View und Fokus erhalten dieselbe eindeutige Auswahl |
 | `renderFleet` | View | gemeinsam selektierte Flotte darstellen | fleet-selection und UI-Renderer | keine eigene zweite Filterdefinition |
 | `coordinates` | Fokusprojektion | endliche Snapshot-Koordinaten projizieren | Locationwerte | rein; keine Standort-Erfindung |
 | `vehiclePosition` | Fokusprojektion | aktuellen Fahrzeugpunkt bestimmen | gespeicherter Transport, Journey-Interpolation | rein; kein Routenfit im Fahrzeugdetail |

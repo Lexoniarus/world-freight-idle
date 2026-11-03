@@ -24,20 +24,27 @@ function assertBoundaries(name, text) {
     assert.ok(!dependency.includes("static/"), name);
     if (name.startsWith("views/") || name.startsWith("ui/"))
       assert.ok(
-        !["api.js", "state.js", "bootstrap.js", "application.js"].includes(dependency) &&
+        !["api.js", "game-state.js", "bootstrap.js", "application.js"].includes(dependency) &&
           !dependency.startsWith("controllers/") &&
           !dependency.startsWith("map/"),
         name,
       );
     if (name.startsWith("map/"))
       assert.ok(
-        !["api.js", "panels.js"].includes(dependency) &&
+        dependency !== "views/panel.js" &&
           !dependency.startsWith("controllers/") &&
           !dependency.startsWith("views/"),
         name,
       );
-    if (name === "state.js")
+    if (name === "game-state.js")
       assert.ok(dependency !== "api.js" && !/^(views|controllers|map)\//.test(dependency), name);
+  }
+  function memberPath(node) {
+    if (node?.type === "Identifier") return node.name;
+    if (node?.type === "ThisExpression") return "this";
+    if (node?.type !== "MemberExpression" || node.computed) return "";
+    const owner = memberPath(node.object);
+    return owner && node.property.type === "Identifier" ? `${owner}.${node.property.name}` : "";
   }
   function visit(node) {
     if (!node || typeof node !== "object") return;
@@ -62,6 +69,12 @@ function assertBoundaries(name, text) {
       if (callee.type === "MemberExpression" && callee.property.name === "parseFromString")
         assert.ok(["ui/dom.js", "ui/illustrations.js"].includes(name), name);
     }
+    if (
+      node.type === "AssignmentExpression" &&
+      name.startsWith("controllers/") &&
+      name !== "controllers/panel-controller.js"
+    )
+      assert.ok(!memberPath(node.left).includes("panel.view"), name);
     for (const value of Object.values(node)) {
       if (Array.isArray(value)) value.forEach(visit);
       else if (value && typeof value === "object") visit(value);
@@ -79,7 +92,7 @@ test("view boundary rejects controller imports, re-exports and dynamic imports",
   for (const source of [
     'import { GameActions } from "../controllers/game-actions.js";',
     'export * from "../controllers/panel-controller.js";',
-    'export { GameState } from "../state.js";',
+    'export { GameState } from "../game-state.js";',
     'import("../controllers/game-actions.js");',
     "import(`../controllers/game-actions.js`);",
     'globalThis.fetch("/api/v1/fleet");',
@@ -100,4 +113,36 @@ test("the browser entry only imports assets and starts the composition root", ()
     source.body.filter((statement) => !(statement.type === "ImportDeclaration")).length,
     1,
   );
+});
+
+test("public application, map and controller methods declare module contracts", () => {
+  const files = [
+    "application.js",
+    "map/world-map.js",
+    "map/deferred-map.js",
+    ...readdirSync(join(root, "controllers")).map((name) => `controllers/${name}`),
+  ];
+  for (const file of files) {
+    const source = readFileSync(join(root, file), "utf8");
+    const ast = parse(source, {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      comment: true,
+      range: true,
+    });
+    for (const node of ast.body) {
+      const klass = node.declaration;
+      if (klass?.type !== "ClassDeclaration") continue;
+      for (const method of klass.body.body) {
+        const comment = ast.comments.filter((item) => item.range[1] <= method.range[0]).at(-1);
+        assert.ok(
+          comment && !source.slice(comment.range[1], method.range[0]).trim(),
+          `${file}:${method.key.name}`,
+        );
+        const tags = comment.value.match(/@param /g) ?? [];
+        assert.ok(tags.length >= method.value.params.length, `${file}:${method.key.name} params`);
+        if (method.kind !== "constructor") assert.match(comment.value, /@returns /);
+      }
+    }
+  }
 });

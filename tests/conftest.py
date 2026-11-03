@@ -2,59 +2,48 @@ from __future__ import annotations
 
 import random
 import time
-from pathlib import Path
 
 import pytest
 
-from app.bootstrap import GameRuntime, build_market_generator
-from app.domain.transports import RouteSnapshot
-from app.domain.world import Facility
-from app.domain.world_scopes import WorldScope
+from app.bootstrap import (
+    build_market_generation_services,
+    initialize_runtime_schema,
+)
 from app.repositories.game_database import SqliteGameDatabase
-from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
-from app.services.cost_profiles import VehicleCostResolver
-from app.services.dispatch_planning import DispatchPlanningService
-from app.services.game import GameService
-from app.services.market_scope import MarketScopeResolver
-
-
-class FakeRouter:
-    async def route(
-        self,
-        origin_lat: float,
-        origin_lon: float,
-        destination_lat: float,
-        destination_lon: float,
-    ) -> RouteSnapshot:
-        return RouteSnapshot(
-            distance_km=400.0,
-            duration_seconds=14400.0,
-            coordinates=(
-                (origin_lon, origin_lat),
-                (destination_lon, destination_lat),
-            ),
-            provider="fake-router",
-        )
-
-
-class FakeRoutingAnchorResolver:
-    max_snap_distance_m = 1000.0
-
-    async def resolve(self, facility: Facility, *, force: bool = False):
-        from app.domain.routing_anchors import RoutingCandidate
-
-        if facility.coordinates is None:
-            return ()
-        return (
-            RoutingCandidate(
-                facility.coordinates,
-                0.0,
-                "fake-anchor",
-                None,
-            ),
-        )
+from tests.support.catalogue_databases import (
+    create_small_vehicle_catalogue,
+    create_small_world_catalogue,
+)
+from tests.support.catalogues import (
+    REFERENCE_VEHICLE_PATH,
+    REFERENCE_WORLD_PATH,
+    build_synthetic_vehicle_catalogue,
+    build_synthetic_world_catalogue,
+)
+from tests.support.game import create_active_trip
+from tests.support.game_service import (
+    FixtureGameContext,
+    FixturePlayerGameFacade,
+    build_fixture_game,
+)
+from tests.support.legacy_fixtures import legacy_source as legacy_source
+from tests.support.market import make_stock_batch, seed_test_offers
+from tests.support.market_fixtures import (
+    city_market as city_market,
+)
+from tests.support.market_fixtures import (
+    diverse_city_market as diverse_city_market,
+)
+from tests.support.market_fixtures import (
+    diverse_vehicle_game as diverse_vehicle_game,
+)
+from tests.support.market_fixtures import (
+    vehicle_game as vehicle_game,
+)
+from tests.support.persistence_fixtures import relational as relational
+from tests.support.runtime import build_test_runtime
 
 
 @pytest.fixture
@@ -62,78 +51,119 @@ def cache(database) -> SqliteProviderCache:
     return SqliteProviderCache(database)
 
 
-WORLD_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "data"
-    / "world_freight_company_facility_mvp.sqlite3"
-)
-BERLIN_UID = (
-    WorldScope(SqliteWorldCatalogue(WORLD_PATH).read())
-    .facility("berlin_westhafen")
-    .facility_uid
-)
+@pytest.fixture
+def active_trip(synthetic_game):
+    """Persist one active transport for tests that require runtime state."""
+    return create_active_trip(synthetic_game)
 
 
 @pytest.fixture
-def world_catalogue(tmp_path):
+def reference_world_catalogue(tmp_path):
+    """Copy the packaged world only for repository acceptance tests."""
     import shutil
 
     path = tmp_path / "world.sqlite3"
-    shutil.copyfile(WORLD_PATH, path)
+    shutil.copyfile(REFERENCE_WORLD_PATH, path)
     return SqliteWorldCatalogue(path)
 
 
 @pytest.fixture
-def game(database, catalogue, world_catalogue) -> GameService:
-    market = build_market_generator(
-        world_catalogue, random.Random(7), catalogue
-    )
-    router = FakeRouter()
-    anchors = FakeRoutingAnchorResolver()
-    service = GameService(
-        unit_of_work=SqliteGameUnitOfWork(database, "test-owner"),
-        world=world_catalogue,
-        router=router,
-        dispatch_planning=DispatchPlanningService(
-            router,
-            VehicleCostResolver(catalogue),
-            anchors,
-            world_catalogue,
-        ),
-        market=market,
-        market_scope=MarketScopeResolver(world_catalogue),
-        catalogue=catalogue,
-        time_scale=1.0,
-        clock=time.time,
-    )
-    service.ensure_initial_state()
-    service.refresh_market(force=True)
-    return service
+def synthetic_world_catalogue():
+    """Provide the compact world used by domain and service tests."""
+    return build_synthetic_world_catalogue()
 
 
 @pytest.fixture
-def catalogue(tmp_path):
+def small_world_catalogue(tmp_path):
+    """Provide a compact SQL world for repository failure tests."""
+    return create_small_world_catalogue(tmp_path / "small-world.sqlite3")
+
+
+@pytest.fixture
+def synthetic_game_context(
+    database,
+    synthetic_vehicle_catalogue,
+    synthetic_world_catalogue,
+) -> FixtureGameContext:
+    market = build_market_generation_services(
+        synthetic_world_catalogue,
+        random.Random(7),
+        synthetic_vehicle_catalogue,
+    )
+    context = build_fixture_game(
+        database,
+        "test-owner",
+        synthetic_world_catalogue,
+        synthetic_vehicle_catalogue,
+        market,
+        time.time,
+    )
+    context.service.ensure_initial_state()
+    seed_test_offers(context.service)
+    return context
+
+
+@pytest.fixture
+def synthetic_game(
+    synthetic_game_context,
+) -> FixturePlayerGameFacade:
+    """Expose only the production facade to ordinary game tests."""
+    return synthetic_game_context.service
+
+
+@pytest.fixture
+def stock_game(vehicle_game):
+    """Compose one player market with local stock preparation services."""
+    context, preparation = vehicle_game
+    preparation.demand.ensure()
+    return (
+        context.service,
+        preparation,
+        make_stock_batch(context.service, preparation),
+    )
+
+
+@pytest.fixture
+def diverse_stock_game(diverse_vehicle_game):
+    """Compose a locally routed market with multiple valid trades."""
+    context, preparation = diverse_vehicle_game
+    preparation.demand.ensure()
+    return (
+        context.service,
+        preparation,
+        make_stock_batch(context.service, preparation),
+    )
+
+
+@pytest.fixture
+def reference_vehicle_catalogue(tmp_path):
+    """Copy the packaged vehicle catalogue for repository acceptance."""
     import shutil
 
     from app.repositories.vehicle_catalogue import SqliteVehicleCatalogue
 
     path = tmp_path / "catalogue.sqlite3"
-    shutil.copyfile(
-        Path(__file__).resolve().parents[1]
-        / "data"
-        / "world_freight_vehicle_catalog.sqlite3",
-        path,
-    )
+    shutil.copyfile(REFERENCE_VEHICLE_PATH, path)
     return SqliteVehicleCatalogue(path)
+
+
+@pytest.fixture
+def synthetic_vehicle_catalogue():
+    """Provide compact vehicle models to domain and service tests."""
+    return build_synthetic_vehicle_catalogue()
+
+
+@pytest.fixture
+def small_vehicle_catalogue(tmp_path):
+    """Provide a compact SQL vehicle catalogue for repository tests."""
+    return create_small_vehicle_catalogue(tmp_path / "small-vehicles.sqlite3")
 
 
 @pytest.fixture
 def database(tmp_path):
     database = SqliteGameDatabase(tmp_path / "relational.db")
     database.initialize()
-    from app.repositories.preferences import SqlitePreferenceStore
-
-    SqlitePreferenceStore(database)
+    initialize_runtime_schema(database)
     with database.connect() as connection:
         connection.execute(
             "INSERT INTO users VALUES ('test-owner', 'TestOwner', 'test', 0)"
@@ -142,14 +172,5 @@ def database(tmp_path):
 
 
 @pytest.fixture
-def runtime(game, database):
-    return GameRuntime(
-        database,
-        game.world,
-        game.router,
-        game.dispatch_planning.anchors,
-        game.market,
-        game.catalogue,
-        game.market_scope,
-        game.time_scale,
-    )
+def synthetic_runtime(synthetic_game_context, database):
+    return build_test_runtime(synthetic_game_context, database)

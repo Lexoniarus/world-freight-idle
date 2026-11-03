@@ -1,6 +1,6 @@
 import { html } from "./dom.js";
 import { renderVehicleImage } from "./vehicle-image.js";
-import { getVehicleAssets } from "../vehicle-assets.js";
+import { getVehicleAssets } from "../vehicle-asset-manifest.js";
 
 /** Render a server-provided palette and current-livery previews.
  * @param {import("../types.js").PanelView} view

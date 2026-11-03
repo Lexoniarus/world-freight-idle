@@ -13,9 +13,13 @@ from app.api.v1.game_projection import (
     project_transport,
 )
 from app.api.v1.schemas import DispatchRequest, QuoteRequest
-from app.domain.contracts import ContractOffer
-from app.domain.errors import RoutingError
-from app.services.game import GameService
+from app.domain.errors import (
+    CatalogueError,
+    RoutingError,
+    UnresolvedVehicleModel,
+)
+from app.domain.results import MarketPresentation
+from app.services.gameplay.player_game import PlayerGameFacade
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
@@ -24,21 +28,20 @@ ROUTING_FAILURE_DETAIL = "Straßenroute konnte nicht berechnet werden."
 
 @router.get("")
 def list_contracts(
-    vehicle_id: str | None = None,
-    game: GameService = Depends(get_game_service),
+    vehicle_id: str,
+    game: PlayerGameFacade = Depends(get_game_service),
 ) -> dict:
     """Return the active idle-vehicle city markets."""
-    return project_market(game, game.list_contracts(), vehicle_id)
-
-
-def project_market(
-    game: GameService, offers: list[ContractOffer], vehicle_id: str | None
-) -> dict:
-    """Translate authorized offer projections and vehicle coverage to HTTP."""
     try:
-        result = game.market_presentation(offers, vehicle_id)
+        return project_market(game.read_market(vehicle_id))
+    except (CatalogueError, UnresolvedVehicleModel):
+        raise
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+
+
+def project_market(result: MarketPresentation) -> dict:
+    """Translate authorized offer projections and vehicle coverage to HTTP."""
     return {
         "contracts": [project_contract(item) for item in result.contracts],
         "vehicle_coverage": [asdict(item) for item in result.vehicle_coverage],
@@ -51,7 +54,7 @@ def project_market(
 @router.get("/{contract_id}")
 def get_contract(
     contract_id: str,
-    game: GameService = Depends(get_game_service),
+    game: PlayerGameFacade = Depends(get_game_service),
 ) -> dict:
     """Return one contract including real endpoint addresses."""
     try:
@@ -66,7 +69,7 @@ def get_contract(
 async def quote_contract(
     contract_id: str,
     body: QuoteRequest,
-    game: GameService = Depends(get_game_service),
+    game: PlayerGameFacade = Depends(get_game_service),
 ) -> dict:
     """Quote the selected vehicle against prepared global routes."""
     try:
@@ -85,7 +88,7 @@ async def quote_contract(
 async def accept_contract(
     contract_id: str,
     body: DispatchRequest,
-    game: GameService = Depends(get_game_service),
+    game: PlayerGameFacade = Depends(get_game_service),
 ) -> dict:
     """Accept and dispatch one contract with a selected vehicle."""
     try:
@@ -102,8 +105,13 @@ async def accept_contract(
 
 @router.post("/refresh")
 def refresh_contracts(
-    vehicle_id: str | None = None,
-    game: GameService = Depends(get_game_service),
+    vehicle_id: str,
+    game: PlayerGameFacade = Depends(get_game_service),
 ) -> dict:
     """Regenerate only the current active city markets."""
-    return project_market(game, game.refresh_contracts(), vehicle_id)
+    try:
+        return project_market(game.read_market(vehicle_id, refresh=True))
+    except (CatalogueError, UnresolvedVehicleModel):
+        raise
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc

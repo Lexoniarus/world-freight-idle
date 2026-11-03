@@ -1,0 +1,85 @@
+import "./test-dom.mjs";
+import test from "node:test";
+import assert from "node:assert/strict";
+import { PreferencesController } from "./controllers/preferences-controller.js";
+
+function preferencePanel(view) {
+  const panel = {
+    view,
+    acceptsCompanyColor(color) {
+      return view.companyPalette?.includes(color) ?? false;
+    },
+    beginPreferenceLoad() {
+      view.preferenceStatus = "loading";
+    },
+    publishPreferences(palette, color) {
+      view.preferenceStatus = "ready";
+      view.companyPalette = palette;
+      view.user.company_color = color;
+    },
+    failPreferenceLoad() {
+      view.preferenceStatus = "error";
+    },
+    setPreferenceSaveError(failed) {
+      view.preferenceSaveError = failed;
+    },
+    publishCompanyColor(color) {
+      view.user.company_color = color;
+    },
+    render() {},
+  };
+  panel.presentation = panel;
+  return panel;
+}
+
+test("preference queue previews immediately, serializes writes and rolls back failed final save", async () => {
+  const responses = [];
+  const panel = preferencePanel({
+    user: { company_color: "#e45756" },
+    companyPalette: ["#e45756", "#4c78a8", "#54a24b"],
+  });
+  const controller = new PreferencesController({
+    panel,
+    map: null,
+    notify() {},
+    request: (_path, options) =>
+      new Promise((resolve, reject) => responses.push({ resolve, reject, options })),
+  });
+  const first = controller.save("#4c78a8");
+  assert.equal(panel.view.user.company_color, "#4c78a8");
+  await controller.save("#54a24b");
+  assert.equal(panel.view.user.company_color, "#54a24b");
+  assert.equal(responses.length, 1);
+  responses[0].resolve({ company_color: "#4c78a8" });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(responses.length, 2);
+  assert.equal(panel.view.user.company_color, "#54a24b");
+  responses[1].reject(new Error("offline"));
+  await first;
+  assert.equal(panel.view.user.company_color, "#4c78a8");
+  assert.equal(panel.view.preferenceSaveError, true);
+  controller.destroy();
+});
+
+test("late preference reads cannot overwrite a confirmed color change", async () => {
+  const responses = [];
+  const panel = preferencePanel({ user: {}, companyPalette: ["#4c78a8"] });
+  const published = [];
+  const controller = new PreferencesController({
+    request: () => new Promise((resolve) => responses.push(resolve)),
+    panel,
+    map: { setCompanyColor: (color) => published.push(color) },
+    notify() {},
+  });
+
+  const read = controller.refresh();
+  const write = controller.save("#4c78a8");
+  responses[1]({ company_color: "#4c78a8" });
+  await write;
+  responses[0]({ company_color: "#e45756", palette: [] });
+  await read;
+
+  assert.deepEqual(published, ["#4c78a8", "#4c78a8"]);
+  assert.equal(panel.view.user.company_color, "#4c78a8");
+  controller.destroy();
+});

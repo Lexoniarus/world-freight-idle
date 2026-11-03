@@ -1,7 +1,7 @@
 """Explicit performance acceptance on a new private copy, never live storage.
 
 Run: python -m tests.runtime_benchmark SOURCE_DB NEW_OUTPUT_DIRECTORY
-Uses deterministic provider fixtures in a separate preparation process.
+Uses deterministic provider fixtures in the same application process.
 """
 
 import asyncio
@@ -18,7 +18,6 @@ from pathlib import Path
 
 import httpx
 
-from app.launcher import stop_child
 from app.repositories.accounts import AccountRepository
 from app.repositories.database_backup import backup_database
 from app.repositories.game_database import SqliteGameDatabase
@@ -32,6 +31,7 @@ async def main() -> None:
     backup_database(source, target)
     database = SqliteGameDatabase(target)
     database.initialize()
+    AccountRepository.initialize(database)
     accounts = AccountRepository(database)
     with database.connect() as connection:
         owners = [
@@ -55,29 +55,27 @@ async def main() -> None:
         "DB_PATH": str(target),
         "HOST": "127.0.0.1",
         "PORT": "8027",
-        "WFI_MANAGED_CHILD": "1",
+        "WFI_BROWSER_DB_PATH": str(target),
         "LOG_LEVEL": "WARNING",
-        "VALHALLA_URL": "https://routing.test",
     }
     flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-    children = []
+    child = None
     try:
         with (output / "process.log").open("wb") as log:
-            for args in (
-                ("main.py", "--role", "runtime"),
-                ("-m", "tests.browser_worker", str(target)),
-            ):
-                children.append(
-                    await asyncio.create_subprocess_exec(
-                        sys.executable,
-                        *args,
-                        env=env,
-                        stdin=asyncio.subprocess.PIPE,
-                        stdout=log,
-                        stderr=log,
-                        creationflags=flags,
-                    )
-                )
+            child = await asyncio.create_subprocess_exec(
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "tests.browser_server:app",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8027",
+                env=env,
+                stdout=log,
+                stderr=log,
+                creationflags=flags,
+            )
             async with httpx.AsyncClient(
                 base_url="http://127.0.0.1:8027", timeout=10
             ) as client:
@@ -90,6 +88,12 @@ async def main() -> None:
                         await asyncio.sleep(0.1)
                 else:
                     raise RuntimeError("Benchmark runtime did not start")
+                for token in tokens:
+                    response = await client.post(
+                        "/api/v1/contracts/refresh?vehicle_id=truck_01",
+                        headers={"Cookie": "freight_session=" + token},
+                    )
+                    response.raise_for_status()
                 # Exercise cold player state in fresh browser contexts first,
                 # including any due settlement in the repaired profile.
                 credentials = output / "browser-session.json"
@@ -177,7 +181,7 @@ async def main() -> None:
                     "first_runtime_ms": initial,
                     "resources": results,
                     "browser": browser_report,
-                    "provider": "deterministic isolated worker fixtures",
+                    "provider": "deterministic same-process test fixtures",
                     "source_unchanged": sha256(source.read_bytes()).hexdigest()
                     == original,
                 }
@@ -202,8 +206,9 @@ async def main() -> None:
                 )
                 print(json.dumps(report, indent=2))
     finally:
-        for child in reversed(children):
-            await stop_child(child)
+        if child is not None and child.returncode is None:
+            child.terminate()
+            await child.wait()
 
 
 if __name__ == "__main__":

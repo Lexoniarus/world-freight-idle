@@ -1,6 +1,7 @@
 import { collection, pointFeature, unwrapRoute } from "../geometry.js";
-import { prepareTransportRoute, transportRoutePose } from "./route-plan.js";
-import { vehicleIconId } from "./vehicle-assets.js";
+import { transportRoutePose } from "./route-plan.js";
+import { collectResolvedHubs, mergeOwnTraffic, synchronizeRoutePlans } from "./overlay-state.js";
+import { vehicleIconId } from "./vehicle-icon-registry.js";
 
 export const routeGeometry = (route) => (route.type === "Feature" ? route.geometry : route);
 
@@ -21,61 +22,10 @@ export class OverlayData {
   }
 
   update(state) {
-    this.state = { ...state, traffic: state.traffic ?? [] };
-    const publicOwn = new Map(
-      this.state.traffic.filter((trip) => trip.is_own).map((trip) => [trip.id, trip]),
-    );
-    this.state.traffic = [
-      ...this.state.traffic.filter((trip) => !trip.is_own),
-      ...state.transports.map((trip) => {
-        const vehicle = state.vehicles.find((item) => item.id === trip.vehicle_id);
-        const published = publicOwn.get(trip.id);
-        return {
-          ...published,
-          ...trip,
-          model_id: vehicle?.model_id ?? published?.model_id,
-          model_name: vehicle?.name ?? published?.model_name,
-          is_own: true,
-          username: published?.username ?? "",
-          player_color: this.companyColor ?? published?.player_color,
-        };
-      }),
-    ];
-    const snapshots = [
-      ...state.transports.flatMap((trip) => [
-        trip.start,
-        trip.origin_snapshot ?? trip.origin,
-        trip.destination_snapshot ?? trip.destination,
-      ]),
-      ...state.vehicles.map((vehicle) => vehicle.location_snapshot ?? vehicle.hub),
-      ...state.contracts.flatMap((contract) => [contract.origin, contract.destination]),
-    ].filter(
-      (facility) =>
-        facility?.resolution_status === "resolved" &&
-        Number.isFinite(facility.lat) &&
-        Number.isFinite(facility.lon),
-    );
-    this.hubs = [
-      ...new Map(
-        snapshots.map((facility) => [facility.facility_uid ?? facility.id, facility]),
-      ).values(),
-    ];
-
-    const active = new Set(state.transports.map((trip) => trip.id));
-    for (const id of this.routes.keys()) if (!active.has(id)) this.routes.delete(id);
-    for (const trip of state.transports)
-      if (!this.routes.has(trip.id) && routeGeometry(trip.route_geojson).coordinates.length >= 2)
-        this.routes.set(trip.id, prepareTransportRoute(trip));
-
-    const activeTraffic = new Set(this.state.traffic.map((trip) => trip.id));
-    for (const id of this.trafficRoutes.keys())
-      if (!activeTraffic.has(id)) this.trafficRoutes.delete(id);
-    for (const trip of this.state.traffic)
-      if (
-        !this.trafficRoutes.has(trip.id) &&
-        routeGeometry(trip.route_geojson).coordinates.length >= 2
-      )
-        this.trafficRoutes.set(trip.id, this.routes.get(trip.id) ?? prepareTransportRoute(trip));
+    this.state = mergeOwnTraffic(state, this.companyColor);
+    this.hubs = collectResolvedHubs(this.state);
+    synchronizeRoutePlans(this.routes, this.state.transports);
+    synchronizeRoutePlans(this.trafficRoutes, this.state.traffic, this.routes);
   }
 
   /** Suppress facilities only beneath rendered own idle representatives. */

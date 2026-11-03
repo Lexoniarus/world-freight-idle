@@ -3,112 +3,19 @@ from __future__ import annotations
 import pytest
 
 from app.domain.errors import GeocodingError
-from app.domain.geography import Address, City, Coordinates, Country
+from app.domain.geography import Coordinates
 from app.domain.routing_anchors import (
-    LocateResult,
     RoutingAnchor,
-    RoutingAnchorStatus,
-    RoutingCandidate,
     anchor_source_fingerprint,
 )
-from app.domain.world import Facility
-from app.services.routing_anchors import RoutingAnchorResolver
-
-
-class MemoryAnchorStore:
-    def __init__(self) -> None:
-        self.items: dict[tuple[str, str], RoutingAnchor] = {}
-
-    def get(
-        self,
-        facility_uid: str,
-        routing_profile: str,
-    ) -> RoutingAnchor | None:
-        return self.items.get((facility_uid, routing_profile))
-
-    def put(self, anchor: RoutingAnchor) -> None:
-        self.items[(anchor.facility_uid, anchor.routing_profile)] = anchor
-
-    def put_leased(
-        self, anchor: RoutingAnchor, owner: str, now: float
-    ) -> bool:
-        self.put(anchor)
-        return True
-
-
-class FakeLocator:
-    def __init__(self, results: list[LocateResult]) -> None:
-        self.results = results
-        self.calls: list[Coordinates] = []
-
-    async def locate(self, coordinates: Coordinates) -> LocateResult:
-        self.calls.append(coordinates)
-        return self.results.pop(0)
-
-
-class FakeGeocoder:
-    def __init__(
-        self,
-        result: tuple[float, float, str] = (52.5, 13.4, "resolved"),
-        error: Exception | None = None,
-    ) -> None:
-        self.result = result
-        self.error = error
-        self.calls: list[str] = []
-
-    async def geocode(self, address: str) -> tuple[float, float, str]:
-        self.calls.append(address)
-        if self.error is not None:
-            raise self.error
-        return self.result
-
-
-def facility(
-    coordinates: Coordinates | None = Coordinates(52.52, 13.405),
-) -> Facility:
-    country = Country("DE", "Germany")
-    city = City(
-        "8b631e25-6e3b-4d20-b1ea-2f3c4de8e7fb",
-        "Berlin",
-        country,
-    )
-    return Facility(
-        facility_uid="facility-1",
-        company=None,
-        label="Depot",
-        facility_type="depot",
-        address=Address(city, "Teststrasse", "1", "10115"),
-        coordinates=coordinates,
-        geocoding_status="estimated_for_simulation",
-        sources=(),
-        coordinate_evidence=(),
-        nhm_profiles=(),
-        catalogue_version="test",
-    )
-
-
-def located(
-    *,
-    accepted: bool = True,
-    distance: float | None = 12.0,
-    status: RoutingAnchorStatus = "validated",
-    coordinates: Coordinates | None = Coordinates(52.5201, 13.4051),
-) -> LocateResult:
-    return LocateResult(
-        accepted=accepted,
-        coordinates=coordinates if accepted else None,
-        snap_distance_m=distance,
-        provider="Valhalla",
-        provider_revision="graph-1",
-        status=status,
-        candidates=(
-            RoutingCandidate(
-                coordinates, distance or 0, "Valhalla", "graph-1"
-            ),
-        )
-        if accepted and coordinates
-        else (),
-    )
+from app.services.routing.anchors import RoutingAnchorResolver
+from tests.support.routing import (
+    FakeGeocoder,
+    FakeLocator,
+    MemoryAnchorStore,
+    facility,
+    located,
+)
 
 
 def test_routing_anchor_rejects_coordinate_status_mismatches() -> None:
@@ -167,7 +74,7 @@ async def test_candidates_never_publish_before_connection_proof():
 
 
 @pytest.mark.asyncio
-async def test_candidate_bound_uses_original_location_even_after_address_snap():
+async def test_candidate_bound_survives_address_snap():
     item = facility()
     distant = Coordinates(52.54, 13.405)
     locator = FakeLocator(
@@ -234,7 +141,7 @@ async def test_candidate_provider_failures_and_geocoding_absence():
 
 
 @pytest.mark.asyncio
-async def test_certified_access_is_stable_and_legacy_access_is_only_candidate():
+async def test_certified_access_outranks_legacy_candidate_access():
     from dataclasses import replace
 
     item = facility()

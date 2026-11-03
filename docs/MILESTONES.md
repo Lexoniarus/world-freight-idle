@@ -3,6 +3,26 @@
 Nummerierung und Zielumfang folgen GOAL.md, Abschnitt 37.
 Einzelne vorgezogene Funktionen bedeuten nicht, dass ein Meilenstein fertig ist.
 
+## Geplanter Frontend-Ausbau nach dem Designinterview
+
+Stand: 28.10.2026. [Gesamtkonzept](FRONTEND_CONCEPT.md) und
+[Umsetzungsplan](FRONTEND_IMPLEMENTATION_PLAN.md) sind auf
+`refactor/local-market-pool` als Teil des Refactor-Plans dokumentiert.
+Die geplante Reihenfolge lautet:
+
+1. Echter Spielrahmen, Designsystem und HUD mit vorhandenem Spielzustand.
+2. Bestehende Verwaltungsansichten und gemeinsame Komponenten.
+3. Kontextgebundene Lkw-Informationsbubble.
+4. Kartenfundament: Vektoren, 3D-Gebäude, Gelände/Heightmap, danach Materialien.
+5. Räumliche Fahrzeuge: zuerst ein Modell, danach kontrollierter Ausbau.
+6. Eigene Firma, mitwachsende Zentrale, Depots und Mitarbeiter als Spielfunktionen.
+
+Diese sechs Schritte sind geplant, nicht umgesetzt oder abgenommen. Die
+Fragen F01–F11 sind vor dem jeweils betroffenen Schnitt zu entscheiden.
+Insbesondere bleibt die Zuordnung des frühen Mitarbeiterübergangs zu MVP
+oder Folgemeilensteinen offen. Die nachstehenden M0–M8-Abnahmestände werden
+durch das Interview und die getrennten Vorschauen nicht verändert.
+
 ## M0 – Foundation
 
 Vorhanden: Modulstruktur, OOP, PEP 8/Ruff, Tests, Function-Test-Manifest,
@@ -32,7 +52,7 @@ ausgenommen und folgen später als SatelliteTileProvider. Karten-POIs
 sind zunächst Basiskarteninhalt. Spielerunternehmen und eigene Depots brauchen
 weiterhin echte Spielzustände und werden nicht als vorhanden simuliert.
 
-Der aktuelle Hub ist ein öffentlicher Frachtstandort, kein gekauftes Depot.
+Der aktuelle Standort ist ein öffentlicher Frachtstandort, kein gekauftes Depot.
 
 ## M2 – Real Economy Data
 
@@ -49,6 +69,12 @@ fahrzeugbezogene Spiel-Kilometerkosten. Konstanter Verbrauch, 10 % Reserve,
 Geschwindigkeitsgrenze und automatische Energiehalte sind als erste Simulation
 umgesetzt. Geplant bleiben Last-/Wettereinflüsse, Stationssuche, Ladekurven,
 Alter, Wartung, zusätzliche Depots, Leerfahrten und Rückfracht.
+Nach eigenständigem Spielerunternehmen und Depotmodell folgt ein explizites
+Fahrer-/Mitarbeitermodell mit Arbeitsmarkt, Beschäftigungsvertrag,
+Qualifikation, Schicht/Verfügbarkeit und Lohn. Ob dieser Teil noch in den
+MVP-Umfang rückt, wird im nächsten Roadmap-Review entschieden. Der aktuelle
+Refactor bereitet nur die Dispatch-Freigabe als injizierten Seam vor und
+implementiert weder Personal noch einen Arbeitsmarkt vorzeitig.
 
 ## M4 – Multiplayer Economy
 
@@ -81,6 +107,11 @@ PostgreSQL mit Migrationen und verteilte Limiter vor größerer Skalierung.
 Diese Arbeit ist noch offen; lokale Tests sind keine Produktionsfreigabe.
 
 ## Standards-Bereinigung der vorhandenen UI-Basis
+
+Die folgenden datierten Abschnitte sind die Implementierungs- und
+Abnahmechronik. Branch-, Prüf- und Veröffentlichungsangaben gelten für ihren
+jeweiligen damaligen Stand. Die aktuellen Meilensteine stehen oben; aktuelle
+Prüfergebnisse ausschließlich im Qualitätsbericht.
 
 Vor weiterem M1-Backend-Ausbau: Einstieg und Zuständigkeiten aufgeteilt,
 Lifecycle/DI ergänzt, DOM-Ausgabe vereinheitlicht, D3-/Mehrseiten-Altbestand
@@ -137,7 +168,7 @@ Die gemeinsame Asset-Zuordnung und Modellordner ändern keine Spielmechanik.
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.2.0) und
 WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
@@ -151,10 +182,11 @@ Dieser technische Stand ersetzt weder die vollständige MVP- noch reale iPad-Abn
 Stadtmärkte eigener idle Fahrzeuge ersetzen Nutzlastklassen und Viewport-Scope.
 V2 bewahrt gültige fahrbare Angebote und ergänzt Facility-/Distanz-Coverage.
 Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Die tatsächliche
-Anfahrt wird mitgeplant; Dispatch und anschließender Markt-Refill besitzen
-getrennte Transaktionen. Historische Transporte und gespeicherte Konditionen
-bleiben erhalten. Trailer, Versicherungen und weitere Simulationen sind nicht
-Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
+Anfahrt wird mitgeplant. Dispatch verbraucht genau das gewählte Angebot und
+invalidiert den dauerhaften Bedarf in derselben Transaktion. Der Lifespan-Worker
+füllt später bedarfsgesteuert auf. Historische Transporte und gespeicherte
+Konditionen bleiben erhalten. Trailer, Versicherungen und weitere Simulationen
+sind nicht Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
 Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
 den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
 Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
@@ -186,7 +218,8 @@ SRP-Review; die ausgeführten Ergebnisse stehen im aktuellen Qualitätsbericht.
 ## Frontend-v2: Wirtschaft und Darstellung
 
 Ergänzt: Beta(3,1)-Beladung, gespeicherter NHM-Tarif, getrennte Wartung und
-Energieeinkäufe, global atomarer Marktneuaufbau, persistente Firmenfarben,
+Energieeinkäufe, atomare bedarfsgesteuerte Marktveröffentlichung, persistente
+Firmenfarben,
 Asset-Gruppen und Analyticsnamen. Lokale Umsetzung auf dem erhaltenen
 Anfahrtsfix. Aktuelle Gates und Review: [Qualitätsbericht](../QUALITY_REPORT.md).
 
@@ -211,7 +244,7 @@ ein Offer darf mehrere Fahrzeuge versorgen.
 ## Truck Routing Anchors – 26.09.2026
 
 Scope: globale, spielerunabhängige Truck-Routing-Anker zwischen immutable
-WorldCatalogue und Valhalla-Routing. MarketGenerator, Economy v2, Tonnage,
+WorldCatalogue und Valhalla-Routing. Marktkomponenten, Economy v2, Tonnage,
 Firmenfarben, Fahrzeugassets, Gruppierung und Kartenmarker bleiben unverändert.
 
 Abnahme: `python scripts/quality.py`, `npm run test:e2e` und
@@ -241,8 +274,8 @@ Auf Basis `5d7ff77` im bestehenden `feature/frontend-v2` umgesetzt: Freigabe
 jeder Lieferung und Anfahrt erst mit echten Hin- und Rückwegen und passenden
 Endpunkten. Automatische Kandidatensuche höchstens 1.000 Meter, fünf Kandidaten
 je Standort, 25 Paare und 120 Sekunden. Gemeinsame Leases und atomare
-Veröffentlichung; versionierte Nachweise mit Wiederprüfung nach 24 Stunden,
-einer Stunde bei definitiven Fehlern beziehungsweise 60 Sekunden bei Störungen.
+Veröffentlichung; erfolgreiche Relationen bleiben für denselben Fingerprint
+wiederverwendbar. Definitive Fehler und Störungen behalten begrenzte Backoffs.
 
 Wolfsburger LKW auf isolierter Spielstandkopie regulär disponiert; Ankunft und
 Folgeauftrag geprüft. Zehn begrenzte Live-Provideranfragen insgesamt. Backup vorhanden, echter
@@ -251,15 +284,19 @@ Spielstand unverändert. Gezielte Prüfungen siehe
 Vollständige Suite und Gesamtintegration verbleiben ausdrücklich beim Nutzer.
 
 
-## Runtime-Trennung und Alttransport-Reparatur (27.09.2026)
+## Historischer Zwischenstand: Runtime-Trennung (27.09.2026)
 
-Die neue verbindliche Abschlussvoraussetzung ersetzt die fruehere Beschraenkung
-auf gezielte Routingtests: vollstaendiges Quality-Gate mit 100 % app-Statement-
-Coverage sowie komplette Browserregression vor Commit/Push auf feature/frontend-v2.
-Runtime und Vorbereitung laufen getrennt; Spielstand und Flotte erscheinen vor
-Geometrien und Markt. Read-Ziel p95 <= 250 ms, weitere Spielerstarts <= 2 s
+Dieser Zwischenstand verlangte ein vollstaendiges Quality-Gate mit 100 %
+app-Statement-Coverage sowie die komplette Browserregression vor Commit/Push
+auf `feature/frontend-v2`. Runtime und Vorbereitung liefen damals in getrennten
+Prozessen; Spielstand und Flotte erschienen vor Geometrien und Markt. Das
+Read-Ziel lag bei p95 <= 250 ms, weitere Spielerstarts bei <= 2 s
 (einmaliger Kaltstart mit Settlement bei 3,39 s am 28.09.2026 akzeptiert),
 Runtime plus Verkehr <= 250 KiB pro Poll. Keine unveraenderten Geometrien im Polling.
+
+Die Zwei-Prozess-Entscheidung ist aufgehoben. Aktuell besitzt ein
+FastAPI-Lifespan genau einen bedarfsgesteuerten Worker; verbindlich ist
+[ADR 0007](adr/0007-runtime-preparation-and-route-projections.md).
 
 Die beiden bestaetigten optionalen Alt-Anfahrtsplaene werden nur offline auf
 einer gesicherten Kopie repariert. Live-Aktivierung und echte iPad-Abnahme bleiben
@@ -269,18 +306,18 @@ separate Betriebsschritte. Implementierung und tatsaechlicher Abnahmestand:
 
 ## Gemeinsamer Auftragsvorrat (28.09.2026)
 
-Das ausgewählte Fahrzeug erhält genau drei fahrbare Angebote je Streckentyp,
-sofern genügend geprüfter Bestand verfügbar ist. Der gemeinsame Hintergrundvorrat
-hält mindestens zehn Vorlagen je Bedarfsstadt, konkretem Modell und Band; jede
-Vorlage ist einmal je Spieler verwendbar. Die drei sichtbaren gehören zu diesen
-zehn. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen Angebote nutzen.
+Das ausgewählte Fahrzeug erhält bis zu drei fahrbare Angebote je Streckentyp,
+sofern genügend geprüfter Bestand verfügbar ist. Der persistente Vorrat wird
+nur für konkrete eigene idle Fahrzeuge und gespeicherte Ziele aktiver
+Transporte aufgebaut. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen
+Angebote nutzen; gemeinsame Vorlagen bleiben spielerübergreifend verwendbar.
 
 Ungenutzte Vorlagen und Angebote verfallen nicht zeitlich und bleiben bei Abfahrt
 und Rückkehr erhalten. Ein Verbrauch lässt gespeicherte Reserve sofort nachrücken;
-der Worker füllt nach. Bedarf entsteht im Stand und ab 60 Minuten vor gespeicherter
-Ankunft. Fehlende Hin-/Rückwege, veraltete Prüfnachweise oder unbrauchbare
-Katalogbezüge geben keine Angebote frei. Alle 14 Modelle werden in Bedarfsstädten
-berücksichtigt, tatsächlich wartende Fahrzeuge zuerst.
+der Worker füllt nach. Zielbedarf entsteht direkt bei Dispatch. Fehlende Hin-/
+Rückwege oder unbrauchbare Katalogbezüge geben keine Angebote frei. Erfolgreiche
+Relationen werden für denselben Fingerprint dauerhaft wiederverwendet. Unbenutzte
+Katalogmodelle und Städte werden nicht global vorbereitet.
 
 Die Schemaübernahme nach 1.2.0 ist ein expliziter Offline-Schritt mit Backup und
 neuer Ausgabe. Live-Aktivierung ist nicht Teil von Commit/Push. Verbindliche

@@ -7,6 +7,21 @@ Ansichten innerhalb derselben Kartenanwendung. Aufträge, Shop, Flotte,
 Tracking und Rangliste nutzen das vorhandene Backend. Satellitenbilder,
 eigene Depots und Spielerunternehmen folgen nach der Frontend-Abnahme.
 
+## Bestätigtes Frontend-Zielbild vom 28.10.2026
+
+Das [Gesamtkonzept aus dem Interview](FRONTEND_CONCEPT.md) beschreibt den
+Aufstieg vom Einzel-Lkw-Unternehmer zum Transportmogul mit Karte als
+Hauptoberfläche, eigener Firmen-CI und polierter Retro-Comicgestaltung.
+Firma, mitwachsende Zentrale, Mitarbeiter mit festen Porträts und Entwicklung,
+Verwaltung sowie reale Geografie mit Heightmap gehören zum Zielbild.
+
+Der [Umsetzungsplan](FRONTEND_IMPLEMENTATION_PLAN.md) beginnt am vorhandenen
+Spielrahmen und verwendet echte Spielzustände. Eigenständige Firma, Depots
+und Personal bleiben fachliche Ausbauschritte. Diese Dokumentation erklärt
+weder ihre Implementierung noch eine Erweiterung oder Erfüllung der M1-Abnahme.
+Noch zu entscheidende Produkt- und Gestaltungsfragen stehen bei den jeweiligen
+Themen im Gesamtkonzept.
+
 ## Produktidee
 
 World Freight Idle ist ein browserbasiertes Echtzeit-Idle-Transportspiel auf realer Geografie. Der Spieler schaut wenige Male am Tag hinein, nimmt Frachtaufträge an, weist Fahrzeuge zu und verfolgt Fahrzeuge live auf einer Weltkarte. Die Zeit läuft in realer Zeit weiter, auch wenn der Browser geschlossen ist.
@@ -51,7 +66,7 @@ Der MVP muss einen vollständigen Road-Freight-Loop liefern:
 - Echtzeit-Timestamps
 
 **Simuliert:**
-- 273 ausdrücklich geschätzte Facility-Positionen, getrennt von verifizierten Koordinaten
+- 464 ausdrücklich geschätzte Facility-Positionen, getrennt von 95 verifizierten Koordinaten
 - Konkrete Geschäftsbeziehung
 - Tonnage und konkrete Lieferung
 - Auftragsentstehung
@@ -100,6 +115,23 @@ Waren-/Distanzprofile, die Frachtrate einen NHM-Faktor auf 0,18 €/km/t.
 Unterschiedliche Facilities derselben Stadt dürfen handeln. Quote und Dispatch
 verlangen ein geeignetes Fahrzeug. Details: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md).
 
+## Vorbereitete Grenze für Unternehmen, Depots und Mitarbeiter
+
+Account/Anmeldung, öffentliche Referenzunternehmen und das künftige eigene
+Spielerunternehmen sind drei verschiedene Konzepte. Das geplante
+`PlayerCompany`-Aggregat wird Flotte, eigene Depots und Beschäftigungsverhältnisse
+besitzen. Ein Depot bestimmt künftige Stationierung und operative Kapazität;
+öffentliche Facilities bleiben Abhol-/Lieferorte und werden dadurch nicht zu
+Besitz.
+
+Der heutige Frachtmarkt erzeugt Angebot ausschließlich aus Fahrzeugstandort,
+Zielort und technischer Eignung. Künftige Fahrer- oder Mitarbeiterverfügbarkeit
+ändert nicht den Marktpool, sondern die Dispatch-Freigabe. Dafür kapselt
+`DispatchEligibilityService` bereits die Fahrzeugfreigabe hinter einer
+injizierten Servicegrenze. Arbeitsmarkt, Verträge, Schichten, Qualifikationen
+und Löhne sind noch nicht implementiert; ihr genauer MVP-Zeitpunkt wird im
+separaten Roadmap-Review entschieden.
+
 ## Gemeinsamer Live-Verkehr
 
 Aktive Straßentransporte angemeldeter Spieler werden als minimale öffentliche
@@ -114,6 +146,10 @@ aufrufbar; ein Klick identifiziert lediglich den öffentlichen Spielernamen.
 Die gemeinsame Verkehrssicht bleibt read-only und accountübergreifend.
 Der relationale Leser validiert gespeicherte Transport-Snapshots und liefert
 über den TrafficReader-Port ausschließlich öffentliche Trackingwerte.
+Pro Abruf werden höchstens 100 aktive, zuletzt gestartete Transporte projiziert.
+Parallele Clients teilen kurzlebige serverseitige Verkehrssnapshots; die
+relationale Datenbank wird nicht für jeden Browserpoll erneut gelesen. Eine
+Ankunft invalidiert einen noch laufenden Snapshot vorzeitig.
 Fehler des Multiplayer-Verkehrsendpoints bleiben sichtbar;
 der letzte gültige Kartenstand kann weiter dargestellt werden, während die UI
 den Ausfall meldet. Spielerfarben werden zusätzlich als Kartenring sichtbar,
@@ -122,7 +158,12 @@ auch wenn die Einfärbung eines Fahrzeugs auf kleinem Kartenmaßstab dezent ist.
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
+Die nachfolgenden datierten Implementierungsstände sind eine Chronik. Alte
+Branch-, Prüf- und Veröffentlichungsangaben beschreiben nur ihren damaligen
+Stand; aktuelles Verhalten und aktuelle Abnahme stehen in Architektur und
+Qualitätsbericht.
+
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.2.0) und
 WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
@@ -155,10 +196,12 @@ Endfüllstand mit Auszahlung und Settlement atomar gespeichert.
 Stadtmärkte eigener idle Fahrzeuge ersetzen Nutzlastklassen und Viewport-Scope.
 V2 bewahrt gültige fahrbare Angebote und ergänzt Facility-/Distanz-Coverage.
 Explizite Fahrzeugwahl steuert Quote, Betriebskosten und Energie. Die tatsächliche
-Anfahrt wird mitgeplant; Dispatch und anschließender Markt-Refill besitzen
-getrennte Transaktionen. Historische Transporte und gespeicherte Konditionen
-bleiben erhalten. Trailer, Versicherungen und weitere Simulationen sind nicht
-Bestandteil dieser Änderung. World 4.2.0 und Vehicle 2.2.0 sind die einzigen
+Anfahrt wird mitgeplant. Dispatch verbraucht genau das gewählte Angebot und
+invalidiert den dauerhaften Bedarf in derselben Transaktion. Der Lifespan-Worker
+füllt den Pool später bedarfsgesteuert auf. Historische Transporte und
+gespeicherte Konditionen bleiben erhalten. Trailer, Versicherungen und weitere
+Simulationen sind nicht Bestandteil dieser Änderung. World 4.2.0 und Vehicle
+2.2.0 sind die einzigen
 Referenzschemata. Frühere Bestandszahlen in der Fortschrittschronik beschreiben
 den damaligen Katalog; OwnedVehicle-Zahlen sind kein Architekturvertrag.
 Details und Abnahme: [WORLD_CATALOGUE.md](WORLD_CATALOGUE.md),
@@ -236,9 +279,9 @@ echte Hin- und Rückwege mit vier passenden Straßenendpunkten (Toleranz 10 Mete
 Erst dann veröffentlicht sie die gewählten Anker und beide Richtungen atomar.
 Bis zu fünf reale Straßenkandidaten je Standort dürfen höchstens 1.000 Meter
 von der ursprünglichen Facility entfernt liegen. Fehlschläge veröffentlichen
-keinen Auftrag. Die Wiederprüfung erfolgt nach Nachfrage; erfolgreiche
-Nachweise verfallen nach 24 Stunden, definitive Fehler nach einer Stunde und
-vorübergehende Providerfehler nach 60 Sekunden.
+keinen Auftrag. Erfolgreiche Relationsnachweise bleiben für denselben
+Provider-/Welt-/Anker-Fingerprint wiederverwendbar; definitive Fehler und
+vorübergehende Providerfehler behalten ihre begrenzten Wiederholungsfristen.
 Quote und Dispatch laden vorbereitete Routen. Die Fahrzeug-Journey ergänzt
 Geschwindigkeit, Energie und Pausen; Facility-Anzeigekoordinaten bleiben erhalten.
 
@@ -277,15 +320,19 @@ Tonnagenverteilung, Tarif, Anfahrt, Energie und historische Transporte bleiben
 unverändert. Ein Generierungsfahrzeug reserviert weiterhin kein Angebot.
 
 
-## Runtime-Trennung und Alttransport-Reparatur (27.09.2026)
+## Historischer Zwischenstand: Runtime-Trennung (27.09.2026)
 
-Die neue verbindliche Abschlussvoraussetzung ersetzt die fruehere Beschraenkung
-auf gezielte Routingtests: vollstaendiges Quality-Gate mit 100 % app-Statement-
-Coverage sowie komplette Browserregression vor Commit/Push auf feature/frontend-v2.
-Runtime und Vorbereitung laufen getrennt; Spielstand und Flotte erscheinen vor
-Geometrien und Markt. Read-Ziel p95 <= 250 ms, weitere Spielerstarts <= 2 s
+Dieser Zwischenstand verlangte ein vollstaendiges Quality-Gate mit 100 %
+app-Statement-Coverage sowie die komplette Browserregression vor Commit/Push
+auf `feature/frontend-v2`. Runtime und Vorbereitung liefen damals in getrennten
+Prozessen; Spielstand und Flotte erschienen vor Geometrien und Markt. Das
+Read-Ziel lag bei p95 <= 250 ms, weitere Spielerstarts bei <= 2 s
 (einmaliger Kaltstart mit Settlement bei 3,39 s am 28.09.2026 akzeptiert),
 Runtime plus Verkehr <= 250 KiB pro Poll. Keine unveraenderten Geometrien im Polling.
+
+Die Zwei-Prozess-Entscheidung ist aufgehoben. Aktuell besitzt ein
+FastAPI-Lifespan genau einen bedarfsgesteuerten Worker; verbindlich ist
+[ADR 0007](adr/0007-runtime-preparation-and-route-projections.md).
 
 Die beiden bestaetigten optionalen Alt-Anfahrtsplaene werden nur offline auf
 einer gesicherten Kopie repariert. Live-Aktivierung und echte iPad-Abnahme bleiben
@@ -295,18 +342,18 @@ separate Betriebsschritte. Implementierung und tatsaechlicher Abnahmestand:
 
 ## Gemeinsamer Auftragsvorrat (28.09.2026)
 
-Das ausgewählte Fahrzeug erhält genau drei fahrbare Angebote je Streckentyp,
-sofern genügend geprüfter Bestand verfügbar ist. Der gemeinsame Hintergrundvorrat
-hält mindestens zehn Vorlagen je Bedarfsstadt, konkretem Modell und Band; jede
-Vorlage ist einmal je Spieler verwendbar. Die drei sichtbaren gehören zu diesen
-zehn. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen Angebote nutzen.
+Das ausgewählte Fahrzeug erhält bis zu drei fahrbare Angebote je Streckentyp,
+sofern genügend geprüfter Bestand verfügbar ist. Der persistente Vorrat wird
+nur für konkrete eigene idle Fahrzeuge und gespeicherte Ziele aktiver
+Transporte aufgebaut. Kompatible eigene Fahrzeuge dürfen dieselben persönlichen
+Angebote nutzen; gemeinsame Vorlagen bleiben spielerübergreifend verwendbar.
 
 Ungenutzte Vorlagen und Angebote verfallen nicht zeitlich und bleiben bei Abfahrt
 und Rückkehr erhalten. Ein Verbrauch lässt gespeicherte Reserve sofort nachrücken;
-der Worker füllt nach. Bedarf entsteht im Stand und ab 60 Minuten vor gespeicherter
-Ankunft. Fehlende Hin-/Rückwege, veraltete Prüfnachweise oder unbrauchbare
-Katalogbezüge geben keine Angebote frei. Alle 14 Modelle werden in Bedarfsstädten
-berücksichtigt, tatsächlich wartende Fahrzeuge zuerst.
+der Worker füllt nach. Zielbedarf entsteht direkt bei Dispatch. Fehlende Hin-/
+Rückwege oder unbrauchbare Katalogbezüge geben keine Angebote frei. Erfolgreiche
+Relationen werden für denselben Fingerprint dauerhaft wiederverwendet. Unbenutzte
+Katalogmodelle und Städte werden nicht global vorbereitet.
 
 Die Schemaübernahme nach 1.2.0 ist ein expliziter Offline-Schritt mit Backup und
 neuer Ausgabe. Live-Aktivierung ist nicht Teil von Commit/Push. Verbindliche

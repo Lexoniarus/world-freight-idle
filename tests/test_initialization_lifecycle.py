@@ -7,9 +7,6 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from fastapi import FastAPI
 
-from app.api.v1.game_projection import (
-    project_state,
-)
 from app.domain.errors import CatalogueError
 from app.domain.game import PlayerState
 from app.main import lifespan
@@ -18,16 +15,16 @@ from app.main import lifespan
 @pytest.mark.parametrize("failure", ["catalogue", "write"])
 @pytest.mark.parametrize("existing_player", [False, True])
 def test_initialization_direct_failure_is_atomic(
-    game, failure, existing_player
+    synthetic_game_context, synthetic_game, failure, existing_player
 ):
-    repository = game.state_repository
+    repository = synthetic_game.state_repository
     repository.reset()
     if existing_player:
         repository.save_player(PlayerState(123, 4, 4))
     before = repository.get_player()
     failures = {
         "catalogue": patch.object(
-            game.catalogue,
+            synthetic_game_context.catalogue,
             "list_models",
             side_effect=CatalogueError("unavailable"),
         ),
@@ -38,38 +35,39 @@ def test_initialization_direct_failure_is_atomic(
         ),
     }
     with failures[failure], pytest.raises((CatalogueError, RuntimeError)):
-        game.ensure_initial_state()
+        synthetic_game.ensure_initial_state()
     assert repository.get_player() == before
     assert repository.list_vehicles() == ()
-    game.ensure_initial_state()
+    synthetic_game.ensure_initial_state()
     player = repository.get_player()
     vehicles = repository.list_vehicles()
-    game.ensure_initial_state()
+    synthetic_game.ensure_initial_state()
     assert repository.get_player() == player
     assert repository.list_vehicles() == vehicles
     assert player.cash == (123 if existing_player else 175000)
 
 
-def test_initialization_defers_market_generation(game):
-    game.state_repository.reset()
-    with patch.object(type(game.market), "generate") as generate:
-        game.ensure_initial_state()
-    generate.assert_not_called()
-    assert game.state_repository.list_offers() == ()
+def test_initialization_creates_no_market_stock(synthetic_game):
+    synthetic_game.state_repository.reset()
+    assert not hasattr(synthetic_game.market_lifecycle.generation, "generate")
+    synthetic_game.ensure_initial_state()
+    assert synthetic_game.state_repository.list_offers() == ()
 
 
-def test_reset_failure_restores_deleted_state(game):
-    repository = game.state_repository
+def test_reset_failure_restores_deleted_state(
+    synthetic_game_context, synthetic_game
+):
+    repository = synthetic_game.state_repository
     player = repository.get_player()
     vehicles = repository.list_vehicles()
     offers = repository.list_offers()
     with patch.object(
-        type(game.market),
-        "generate",
-        side_effect=RuntimeError("market failed"),
+        synthetic_game_context.catalogue,
+        "list_models",
+        side_effect=CatalogueError("catalogue failed"),
     ):
-        with pytest.raises(RuntimeError):
-            project_state(game.reset())
+        with pytest.raises(CatalogueError):
+            synthetic_game.reset()
     assert repository.get_player() == player
     assert repository.list_vehicles() == vehicles
     assert repository.list_offers() == offers
@@ -94,6 +92,7 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
     clients = [
         SimpleNamespace(aclose=AsyncMock()),
     ]
+    worker = SimpleNamespace(start=AsyncMock(), close=AsyncMock())
     app = FastAPI()
     app.state.settings = SimpleNamespace(request_timeout_seconds=1)
     error = RuntimeError("injected failure")
@@ -133,6 +132,9 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
                 side_effect=error if failure == "preferences" else None,
             )
         )
+        patches.enter_context(
+            patch("app.main.build_preparation_worker", return_value=worker)
+        )
         if failure == "world":
             runtime_factory.return_value.world.read.side_effect = error
         if failure == "catalogue":
@@ -151,3 +153,6 @@ async def test_lifespan_cleans_up_partial_start_and_shutdown(failure):
                         raise error
     expected = [0] if failure == "first-client" else [1]
     assert [client.aclose.await_count for client in clients] == expected
+    reached_worker = failure in {"none", "body", "close-first"}
+    assert worker.start.await_count == int(reached_worker)
+    assert worker.close.await_count == int(reached_worker)

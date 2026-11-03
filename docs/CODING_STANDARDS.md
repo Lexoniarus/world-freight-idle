@@ -14,8 +14,12 @@
 - Strukturierte Events und Trace-ID verwenden; keine Passwörter/Cookies loggen.
 - Neue Core-Funktionen erhalten Verhaltenstests und einen Eintrag im
   Function-Test-Manifest. Fehlerpfade und konkurrierende Geldmutationen testen.
-- Ruff und Formatter laufen im Quality Gate. Lange Testbeschreibungen sind
-  von E501 ausgenommen; Core-Code hat keine solche Ausnahme.
+  Das Manifest belegt strukturelle Zuordnung, eindeutige Testnamen und eine
+  direkte Assertion; die fachliche Relevanz des Tests bleibt Gegenstand des
+  manuellen Funktions- und Verantwortungsreviews.
+- Ruff und Formatter laufen im Quality Gate. Normale Tests und Core-Code
+  halten die 79-Zeichen-Grenze ein. Nur der zentrale Datenindex in
+  `tests/function_test_manifest.py` ist gezielt von E501 ausgenommen.
 - mypy prüft Core und Einstiegspunkt, verlangt annotierte Funktionen und
   prüft auch Funktionskörper. Spielzustände und Use-Case-Ergebnisse sind
   typisierte Domainobjekte. JSON entsteht ausschließlich an technischen
@@ -67,6 +71,9 @@ entbindet öffentliche Komponenten nicht von ihren Parameterverträgen.
 
 ## Transaktionen, Lebenszyklen und Wartungswerkzeuge
 
+- Additive Runtime-Schemata werden über benannte `initialize`-Methoden am
+  Composition Root erzeugt. Repository-Konstruktoren binden ausschließlich
+  Abhängigkeiten und führen kein DDL aus.
 - Öffentliche zustandsändernde Service-Methoden besitzen ihre Transaktionsgrenze
   selbst. Private Schritte dürfen eine bereits aktive Transaktion voraussetzen;
   dies wird im Docstring benannt. Reset und Initialisierung teilen dieselbe
@@ -89,10 +96,11 @@ entbindet öffentliche Komponenten nicht von ihren Parameterverträgen.
 
 WorldCatalogue-Regeln: Domain-Port und unveränderliche Referenzmodelle, SQL
 ausschließlich im Repository, konkrete Verdrahtung im Composition Root.
-Game-Core/MarketGenerator importieren weder SQL noch Katalogadapter oder
-Seed-Daten. UUIDs und vollständige Snapshots sichern historische Aufträge.
-Neue konkrete Core-Callables, einschließlich Pflege/Migration, unterliegen
-Manifest, explizitem Gegentest, Pyright/mypy und 100 % Statement-Coverage.
+Game-Core/`MarketGenerationServices` importieren weder SQL noch
+Katalogadapter oder Seed-Daten. UUIDs und vollständige Snapshots sichern
+historische Aufträge. Neue konkrete Core-Callables, einschließlich
+Pflege/Migration, unterliegen Manifest, fachlich geprüftem Verhaltenstest,
+Pyright/mypy und 100 % Statement-Coverage.
 
 Die Laufzeit besitzt genau einen relationalen Persistenzweg. Domainobjekte
 kennen weder KV-Schlüssel noch SQL oder Persistenzserialisierung. Historische

@@ -20,6 +20,12 @@ export class DeferredMap extends EventTarget {
     this.disposed = false;
     this.frameId = 0;
     this.loaded = () => this.dispatchEvent(new Event("ready"));
+    this.selected = (event) =>
+      this.dispatchEvent(
+        new CustomEvent("object-selected", {
+          detail: /** @type {CustomEvent} */ (event).detail,
+        }),
+      );
   }
 
   /** @returns {boolean} */
@@ -54,6 +60,7 @@ export class DeferredMap extends EventTarget {
       this.renderer = renderer;
       if (!renderer) return;
       renderer.addEventListener("ready", this.loaded);
+      renderer.addEventListener("object-selected", this.selected);
       for (const apply of this.pending.values()) apply(renderer);
       this.pending.clear();
       if (renderer.ready) this.loaded();
@@ -157,6 +164,7 @@ export class DeferredMap extends EventTarget {
     this.cancelFrame(this.frameId);
     this.pending.clear();
     this.renderer?.removeEventListener("ready", this.loaded);
+    this.renderer?.removeEventListener("object-selected", this.selected);
     this.renderer?.destroy();
   }
 }

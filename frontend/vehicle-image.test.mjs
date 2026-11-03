@@ -2,7 +2,7 @@ import "./test-dom.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
-import { getVehicleAssets } from "./vehicle-assets.js";
+import { getVehicleAssets } from "./vehicle-asset-manifest.js";
 import { renderVehicleImage } from "./ui/vehicle-image.js";
 import { InputController } from "./controllers/input-controller.js";
 
@@ -75,7 +75,12 @@ test("panel refresh preserves loaded and failed photo nodes but replaces changed
       active_transports: 0,
     },
   };
-  const controller = new PanelController({ view, now: () => 0 });
+  const controller = new PanelController({
+    view,
+    request: async () => ({}),
+    notify: () => {},
+    now: () => 0,
+  });
   controller.replaceContent();
   const original = document.querySelector("img");
   original.closest("figure").dataset.imageState = "loaded";

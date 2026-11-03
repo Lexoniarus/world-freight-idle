@@ -5,19 +5,23 @@ import { groupVehicles, GROUP_INTERVAL, ZOOM_TIERS } from "./grouping.js";
 /** Render accessible count markers independently of the movement frame loop. */
 export class VehicleGroups {
   /** @param {import("maplibre-gl").Map} map
-   * @param {import("../types.js").Navigate} navigate
+   * @param {(selection: import("../types.js").MapObjectSelection) => void} select
    * @param {() => boolean} reducedMotion
+   * @param {{createMarker?: (options: object) => Marker,
+   * createPopup?: (options: object) => Popup}} [overlays]
    */
-  constructor(map, navigate, reducedMotion) {
+  constructor(map, select, reducedMotion, overlays = {}) {
     this.signature = "";
     this.map = map;
-    this.navigate = navigate;
+    this.select = select;
     this.reducedMotion = reducedMotion;
     this.markers = new Map();
     this.hidden = new Set();
     this.last = -Infinity;
     this.enabled = true;
     this.popup = null;
+    this.createMarker = overlays.createMarker ?? ((options) => new Marker(options));
+    this.createPopup = overlays.createPopup ?? ((options) => new Popup(options));
   }
   update(features, selected, force = false) {
     const time = performance.now();
@@ -65,18 +69,11 @@ export class VehicleGroups {
       if (!entry) {
         const button = document.createElement("button");
         button.className = "vehicle-group " + (group.own ? "own" : "foreign");
-        const marker = new Marker({ element: button });
+        const marker = this.createMarker({ element: button });
         entry = { button, marker, members: group.members };
         button.addEventListener("click", (event) => {
           event.stopPropagation();
-          const current = this.markers.get(key);
-          if (this.map.getZoom() < ZOOM_TIERS.expandLimit)
-            this.map.easeTo({
-              center: current.marker.getLngLat(),
-              zoom: Math.min(ZOOM_TIERS.expandLimit, this.map.getZoom() + 2),
-              duration: this.reducedMotion() ? 0 : 350,
-            });
-          else this.showList(current.members, current.marker.getLngLat());
+          this.activateGroup(key);
         });
         this.markers.set(key, entry);
       }
@@ -97,6 +94,24 @@ export class VehicleGroups {
         this.markers.delete(key);
       }
     return features.filter((feature) => !this.hidden.has(feature.properties.key));
+  }
+  /** Activate one current group without coupling click handling to its effect. */
+  activateGroup(key) {
+    const current = this.markers.get(key);
+    if (!current) return;
+    if (this.map.getZoom() < ZOOM_TIERS.expandLimit) {
+      this.zoomToGroup(current);
+      return;
+    }
+    this.showVehicleList(current.members, current.marker.getLngLat());
+  }
+  /** Move toward the expansion limit while keeping the group centered. */
+  zoomToGroup(group) {
+    this.map.easeTo({
+      center: group.marker.getLngLat(),
+      zoom: Math.min(ZOOM_TIERS.expandLimit, this.map.getZoom() + 2),
+      duration: this.reducedMotion() ? 0 : 350,
+    });
   }
   /** Update current representative coordinates independently of regrouping. */
   updatePoses(features) {
@@ -124,7 +139,7 @@ export class VehicleGroups {
     badge.textContent = count;
     button.replaceChildren(badge);
   }
-  showList(features, coordinate) {
+  showVehicleList(features, coordinate) {
     this.popup?.remove();
     const list = document.createElement("div");
     list.className = "map-object-list";
@@ -137,12 +152,17 @@ export class VehicleGroups {
       control.textContent = `${props.modelName || "Fahrzeug"} · ${props.isOwn ? props.vehicleId : props.username}`;
       if (props.isOwn)
         control.addEventListener("click", () => {
-          this.navigate(props.idle ? "/fleet/" + props.vehicleId : "/transports/" + props.id);
+          this.select({
+            kind: "own-vehicle",
+            idle: Boolean(props.idle),
+            vehicleId: props.vehicleId,
+            transportId: props.id,
+          });
           this.popup?.remove();
         });
       list.append(control);
     }
-    this.popup = new Popup({ maxWidth: "320px" })
+    this.popup = this.createPopup({ maxWidth: "320px" })
       .setLngLat(coordinate)
       .setDOMContent(list)
       .addTo(this.map);

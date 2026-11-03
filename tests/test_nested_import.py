@@ -9,7 +9,7 @@ from dataclasses import asdict
 import pytest
 
 from app.domain.errors import PersistenceError
-from app.repositories.legacy_import_mapping import (
+from app.repositories.legacy_import_values import (
     LegacyFieldError,
     read_documented_cargo,
     read_legacy_good,
@@ -19,8 +19,7 @@ from app.repositories.legacy_import_mapping import (
     read_legacy_sources,
     require_legacy_array,
 )
-from tests.test_game_import import legacy_source as legacy_source
-from tests.test_game_import import update_legacy
+from tests.support.legacy_fixtures import update_legacy
 
 SOURCE = {
     "url": "https://example.test/evidence",
@@ -40,21 +39,38 @@ CARGO = {
 }
 
 
-def test_nested_import_values_preserve_optional_metadata(legacy_source):
+def test_legacy_location_preserves_company_and_sources(legacy_source):
     _, importer, state, _, _ = legacy_source
     original = copy.deepcopy(state["contracts"][0]["origin"])
     original["company"].update(
         website="https://example.test", sources=[SOURCE]
     )
     original.update(sources=[SOURCE], handled_goods=[GOOD], cargo=[CARGO])
-    loaded = importer.reader.location(original)
+    loaded = importer.reader.read_location(original)
     assert loaded.company.website == original["company"]["website"]
     assert asdict(loaded.company.sources[0]) == SOURCE
     assert asdict(loaded.sources[0]) == SOURCE
+
+
+def test_legacy_location_preserves_handling_facts(legacy_source):
+    _, importer, state, _, _ = legacy_source
+    original = copy.deepcopy(state["contracts"][0]["origin"])
+    original.update(handled_goods=[GOOD], cargo=[CARGO])
+    loaded = importer.reader.read_location(original)
     assert asdict(loaded.handled_goods[0]) == GOOD
     assert asdict(loaded.handling_evidence[0]) == CARGO
+
+
+def test_legacy_location_preserves_city_and_coordinates(legacy_source):
+    _, importer, state, _, _ = legacy_source
+    original = copy.deepcopy(state["contracts"][0]["origin"])
+    loaded = importer.reader.read_location(original)
+    assert loaded.city.city_uid == original["city_uid"]
     assert loaded.coordinates.latitude == original["lat"]
     assert loaded.catalogue_version == original["catalogue_version"]
+
+
+def test_nested_import_value_readers_preserve_optional_metadata():
     assert read_legacy_sources([], "sources") == ()
     assert require_legacy_array([], "array") == []
     minimal = {"url": SOURCE["url"], "role": "official", "verified_at": None}
@@ -102,7 +118,7 @@ def test_nested_location_objects_reject_unknown_fields_and_shapes(
             with pytest.raises(
                 LegacyFieldError, match=re.escape(diagnostic)
             ) as failure:
-                importer.reader.location(value)
+                importer.reader.read_location(value)
             assert "SECRET-VALUE" not in str(failure.value)
     for field in (
         "sources",
@@ -112,17 +128,17 @@ def test_nested_location_objects_reject_unknown_fields_and_shapes(
         "aliases",
     ):
         with pytest.raises(LegacyFieldError, match="location." + field):
-            importer.reader.location({**original, field: {}})
+            importer.reader.read_location({**original, field: {}})
     with pytest.raises(LegacyFieldError, match="company.sources"):
-        importer.reader.location(
+        importer.reader.read_location(
             {**original, "company": {**original["company"], "sources": None}}
         )
     with pytest.raises(ValueError, match="city_uid"):
-        importer.reader.location({**original, "city_uid": "conflicting"})
+        importer.reader.read_location({**original, "city_uid": "conflicting"})
     vehicle = copy.deepcopy(state["vehicles"][0])
     vehicle["hub"]["label"] = "conflicting"
     with pytest.raises(ValueError, match="hub"):
-        importer.reader.vehicle(vehicle)
+        importer.reader.read_vehicle(vehicle)
 
 
 def test_nested_cargo_sources_and_arrays_reject_unknown_values(legacy_source):

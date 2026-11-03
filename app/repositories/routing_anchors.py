@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from sqlite3 import Row
+
 from app.domain.geography import Coordinates
 from app.domain.routing_anchors import RoutingAnchor, RoutingAnchorStatus
 from app.repositories.game_database import SqliteGameDatabase
@@ -49,8 +52,13 @@ class SqliteRoutingAnchorRepository:
     """Persist derived anchors outside immutable catalogues."""
 
     def __init__(self, database: SqliteGameDatabase) -> None:
+        """Bind storage after explicit runtime schema initialization."""
         self._database = database
-        with self._database.connect() as connection:
+
+    @staticmethod
+    def initialize(database: SqliteGameDatabase) -> None:
+        """Create global routing-anchor storage at composition startup."""
+        with database.connect() as connection:
             connection.executescript(SCHEMA)
 
     def get(
@@ -76,8 +84,31 @@ class SqliteRoutingAnchorRepository:
                 "WHERE facility_uid=? AND routing_profile=?",
                 (facility_uid, routing_profile),
             ).fetchone()
-        if row is None:
-            return None
+        return self._anchor(row, source) if row is not None else None
+
+    def get_many(
+        self,
+        facility_uids: tuple[str, ...],
+        routing_profile: str,
+    ) -> dict[str, RoutingAnchor]:
+        """Read bounded anchor and source data with one joined query."""
+        if not facility_uids:
+            return {}
+        placeholders = ",".join("?" for _ in facility_uids)
+        with self._database.connect() as connection:
+            rows = connection.execute(
+                "SELECT a.*, s.fingerprint FROM routing_anchors a "
+                "LEFT JOIN routing_anchor_sources s ON "
+                "s.facility_uid=a.facility_uid AND "
+                "s.routing_profile=a.routing_profile WHERE "
+                f"a.routing_profile=? AND a.facility_uid IN ({placeholders})",
+                (routing_profile, *facility_uids),
+            ).fetchall()
+        return {str(row[0]): self._anchor(row, (row[12],)) for row in rows}
+
+    @staticmethod
+    def _anchor(row: Row, source: Sequence[object] | None) -> RoutingAnchor:
+        """Decode one persisted anchor and its source fingerprint."""
         anchor = (
             Coordinates(float(row[2]), float(row[3]))
             if row[2] is not None and row[3] is not None
@@ -105,7 +136,9 @@ class SqliteRoutingAnchorRepository:
             provider=str(row[9]),
             provider_revision=(str(row[10]) if row[10] is not None else None),
             validated_at=float(row[11]),
-            source_fingerprint=source[0] if source else None,
+            source_fingerprint=(
+                str(source[0]) if source and source[0] is not None else None
+            ),
         )
 
     def put(self, anchor: RoutingAnchor) -> None:

@@ -14,8 +14,9 @@ from app.domain.errors import PersistenceError
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.game_state import SqliteGameUnitOfWork
 from app.repositories.transport_repair import repaired_transport, table_digest
-from tests.test_market_preparation import require_value
-from tests.test_runtime_views import active_trip as active_trip
+from tests.support.game_clock import set_game_clock
+from tests.support.game_service import build_fixture_game
+from tests.support.market import require_value
 
 
 def damage_approach(database, trip, *, settled=False):
@@ -129,10 +130,11 @@ def test_repair_rejects_unknown_damage_and_removes_failed_outputs(
 
 
 def test_repair_reconciliation_and_archive_reject_any_unapproved_change(
+    synthetic_game_context,
     active_trip,
     database,
     tmp_path,
-    game,
+    synthetic_game,
 ):
     damage_approach(database, active_trip)
     tool = build_transport_repair(database.path)
@@ -171,14 +173,22 @@ def test_repair_reconciliation_and_archive_reject_any_unapproved_change(
         with pytest.raises(PersistenceError):
             tool._verify_archive(source, repairs, archive)
     # Normal game settlement, never the repair tool, applies the due payout.
-    unit = SqliteGameUnitOfWork(SqliteGameDatabase(target), "test-owner")
-    game.unit_of_work = unit
-    game.state_repository = unit.repository
-    game.market_lifecycle.unit_of_work = unit
-    game.now = lambda: active_trip.arrives_at + 1
-    assert game.reconcile_arrival()
+    repaired_database = SqliteGameDatabase(target)
+    unit = SqliteGameUnitOfWork(repaired_database, "test-owner")
+    repaired_context = build_fixture_game(
+        repaired_database,
+        "test-owner",
+        synthetic_game_context.world,
+        synthetic_game_context.catalogue,
+        synthetic_game_context.market_generation,
+        synthetic_game.now,
+        synthetic_game.time_scale,
+    )
+    repaired_game = repaired_context.service
+    set_game_clock(repaired_game, lambda: active_trip.arrives_at + 1)
+    assert repaired_game.reconcile_arrival()
     paid = unit.repository.get_player()
     assert require_value(paid).cash == 175000 + active_trip.payout_eur
-    assert not game.reconcile_arrival()
+    assert not repaired_game.reconcile_arrival()
     assert unit.repository.get_player() == paid
     assert database.path.read_bytes() == before

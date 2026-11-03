@@ -155,7 +155,7 @@ def world_boundary_violations(source, module):
         "app.repositories.world_state_migration",
     ]
     if module.startswith("app.domain") or module in {
-        "app.services.game",
+        "app.services.gameplay.player_game",
         "app.services.market",
         "app.services.world_maintenance",
         "app.services.world_state_migration",

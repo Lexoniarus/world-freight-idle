@@ -34,7 +34,12 @@ class AccountRepository:
     """Keep credentials and session tokens outside game state."""
 
     def __init__(self, database: SqliteGameDatabase) -> None:
+        """Bind storage after explicit runtime schema initialization."""
         self._database = database
+
+    @staticmethod
+    def initialize(database: SqliteGameDatabase) -> None:
+        """Create account and session storage at composition startup."""
         with database.connect() as connection:
             connection.executescript(_SCHEMA)
 

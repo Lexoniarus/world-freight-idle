@@ -1,6 +1,6 @@
 import { composeVehiclePaint } from "./vehicle-paint.js";
 import { normalizeVehicleColor } from "./vehicle-color.js";
-import { getVehicleAssets, getVehiclePaintDescriptor } from "./vehicle-assets.js";
+import { getVehicleAssets, getVehiclePaintDescriptor } from "./vehicle-asset-manifest.js";
 
 /** Own shared SVG sources and reference-counted colored object URLs. */
 export class VehicleColorAssets {

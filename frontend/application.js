@@ -23,10 +23,12 @@ export class GameApplication {
     preferences,
     focus,
     assets,
+    mapSelection,
   }) {
     this.focus = focus;
     this.preferences = preferences;
     this.assets = assets;
+    this.mapSelection = mapSelection;
     this.city = city;
     this.layers = layers;
     this.analytics = analytics;
@@ -58,6 +60,7 @@ export class GameApplication {
       this.sync,
       this.focus,
       this.contractMarket,
+      this.mapSelection,
       this.input,
       this.sheet,
       this.scheduler,
@@ -125,6 +128,7 @@ export class GameApplication {
         this.panel,
         this.contractMarket,
         this.sync,
+        this.mapSelection,
         this.map,
         this.notifications,
         this.state,

@@ -1,4 +1,361 @@
-# Qualitätsbericht: gemeinsamer Vorrat und schnelle Runtime
+# Qualitätsbericht: lokaler bedarfsgesteuerter Frachtpool
+
+Stand: 03.11.2026. Arbeitsbranch `refactor/local-market-pool`. Dieser Abschnitt
+ist der aktuelle Prüfstand; die folgenden Berichte sind historische Abnahmen
+früherer Architekturen.
+
+## Begrenzte CI und isolierte Browsergrenzen
+
+Der veröffentlichte Stand `f284264` startete durch gleichzeitige `push`- und
+`pull_request`-Trigger zwei identische GitHub-Läufe. Beide Pythonjobs liefen
+bis 32 % und wurden erst am 20-Minuten-Joblimit abgebrochen; ein Browserlauf
+überschritt beim Map-Navigationstest 20 Sekunden, während derselbe Fall im
+zweiten Lauf bestand. Das war keine gültige Merge-Abnahme.
+
+Die Ursache der fehlenden Python-Diagnose war eine verdrängte
+`pytest-timeout`-Konfiguration: `pytest.ini` war aktiv, während das Zeitlimit
+nur in `pyproject.toml` stand. Der Timeout liegt nun in der aktiven Datei; CI
+gibt jeden Testnamen aus. Der gleichzeitig breite Lastfaktortest wurde von
+zwölf statistischen Wiederholungen mit je 20.000 Werten auf deterministische
+Formel-, Grenz- und Ablehnungsverträge reduziert.
+
+GitHub Actions führt pro PR-Revision nur noch einen Lauf aus und beendet
+überholte Revisionen. Die Jobs besitzen getrennte Limits von drei, fünf oder
+zehn Minuten. Playwright verwendet genau einen sichtbaren
+Registrierungsablauf; andere Fälle besitzen API-basierte lokale Sessions.
+Marktvorbereitung ist Test-Opt-in und reine UI-Fälle warten nicht auf den
+Worker. Der Map-Navigationstest prüft nur noch den Erhalt derselben nativen
+MapLibre-Instanz über interne Navigation.
+
+Die vollständige lokale Abnahme bestand mit **664 Python-Tests** in
+115,49 Sekunden bei **100 % App-Statement-Coverage**; der langsamste Fall
+benötigte 3,96 Sekunden. **131 Frontendtests** bestanden. Alle **14
+Playwright-Grenzen** bestanden in 1,2 Minuten; der langsamste Browserfall
+benötigte 8,8 Sekunden. Supabase, Live-Provider und öffentliche Tiles wurden
+nicht aufgerufen. Der nächste PR-Lauf muss den Linux-Gegencheck noch am
+exakten neuen Head bestätigen; lokale Ergebnisse ersetzen ihn nicht.
+
+## Explizite Initialisierung und eindeutige Testverantwortung
+
+Account-, Preference-, Providercache-, Routing-, Preparation-, Template-,
+Stock- und Traffic-Schemata entstehen jetzt ausschließlich über benannte
+Initialisierer am Composition Root. Die zugehörigen Adapterkonstruktoren
+binden nur Abhängigkeiten. Ein direkter Gegentest vergleicht das SQLite-Schema
+vor und nach der Konstruktion und prüft die vollständige Initialisierung
+zweimal auf identischen Tabellenbestand.
+
+Das Function-Test-Manifest enthält 798 eindeutige Callable-Deklarationen.
+Siebzehn zuvor still überschriebene Zuordnungen sind entfernt. Der
+Strukturtest liest das Manifest vor seiner Ausführung als AST und lehnt
+doppelte Quelldeklarationen ab, sodass ein späteres `dict.update` keinen
+früheren Testowner mehr unbemerkt ersetzen kann.
+
+## Begrenzte Reads und abschließende Eigentümertrennung
+
+Öffentliche Traffic-Reads sind auf 100 aktive Transporte begrenzt. Beide
+SQLite-Projektionen wählen die zuletzt gestarteten Fahrten zuerst und lösen
+Gleichstände stabil auf. Damit wächst weder die vollständige noch die kompakte
+öffentliche Antwort unbegrenzt mit der Gesamthistorie. Private Economics,
+Verträge und Kontostände bleiben außerhalb des Read-Modells.
+
+Die Auswahl verwendet nun den partiellen Index `public_active_traffic`; der
+SQLite-Query-Plan enthält keinen temporären Sortierbaum. Ein pro Runtime
+geteilter `SqliteTrafficReader` hält getrennte vollständige und kompakte
+Snapshots höchstens zehn Sekunden und invalidiert sie früher an der nächsten
+enthaltenen Ankunft. Instrumentierte Repositorytests belegen eine SQL-Abfrage
+für mehrere Reads innerhalb des Fensters. Sämtliche additiven Schemata werden
+explizit initialisiert; ein nackter Adapterkonstruktor mutiert die Datenbank
+nicht und kann sich nicht auf die Reihenfolge eines anderen Stores verlassen.
+
+Die doppelte vollständige State-Projektion der `PlayerGameFacade` ist entfernt.
+Der Reset liefert das benannte Dashboard-Modell; Vertragsdetails werden aus
+dem bereits gelesenen Marktbestand gewählt. Marktlebenszyklus,
+Routenaufbereitung, Fahrzeugkatalog und Weltkatalog besitzen getrennte
+Testmodule für Domain, Service, HTTP, Repository und Composition. Die echten
+Katalogdateien bleiben auf je eine explizite Repositoryabnahme beschränkt.
+
+Das erste vollständige Gate nach dem Rückbau machte sieben nur indirekt
+abgedeckte Fehlerzweige sichtbar. Kleine Gegentests für Evidenz-Backoff,
+Worker-Idle-Timeout, verlorene Verbindungsleases und abgelehnte
+Negativ-Evidenzpublikation decken diese Verträge nun direkt ab. Ein weiterer
+Lauf zeigte, dass die erste Traffic-Begrenzung zufällige Benutzer-UUIDs als
+Auswahlreihenfolge verwendete; die produktive Abfrage priorisiert deshalb nun
+fachlich die neueste Abfahrt.
+
+Der frühere breite Multiplayerfall vermischte Repository-Selektion,
+Preference-Join, API-Projektion, Logging und HTTP-Verhalten. Diese Verträge
+liegen jetzt in `test_public_traffic_reader.py`,
+`test_traffic_projection.py` und `test_multiplayer_map.py`. Die gezielte
+Abnahme dieser Owner samt Function-Manifest bestand mit 13 Tests in
+3,35 Sekunden.
+
+Die abschließende lokale Abnahme bestand mit **675 Python-Tests** in
+115,40 Sekunden bei **100 % App-Statement-Coverage**; der langsamste Fall
+benötigte 3,78 Sekunden. **131 Frontendtests** bestanden in 10,29 Sekunden.
+Alle **14 Playwright-Grenzen** bestanden in 1,3 Minuten; der langsamste
+Browserfall benötigte 8,6 Sekunden. Kein Einzelfall überschritt zehn Sekunden.
+Supabase, Live-Provider und öffentliche Tiles wurden nicht aufgerufen.
+
+## P2-/P3-Nachprüfung
+
+Die letzte parallele Test-Composition ist entfernt. `PlayerContextFactory`
+verdrahtet Initialisierung, Markt, Dispatch und Settlement für Produktion und
+Testdoubles; die Erstanlage bleibt eine explizite Verantwortung des
+produktiven Builders. Der direkte Gegentest belegt sowohl die injizierten
+Grenzen als auch die Mutationsfreiheit der Factory.
+
+Ruff erzwingt die 79-Zeichen-Grenze nun auch in normalen Tests. Die einzige
+gezielte E501-Ausnahme ist der deklarative Function-Test-Manifest-Datenindex.
+Preference-Controller und Preference-View besitzen getrennte Testmodule; kein
+generischer `preference-regressions`-Owner bleibt bestehen. Das lokale
+Playwright-Limit ist mit zehn Sekunden dokumentiert, während die bekannte
+20-Sekunden-CI-Toleranz ausdrücklich Scheduling-Spielraum bleibt.
+
+## Abschließende Modul- und Objektgrenzen
+
+Der Composition Root ist nach Runtime, Spieler, Wartung und Audits getrennt;
+`app/bootstrap.py` ist nur noch die stabile Importfassade. Die öffentliche
+`PlayerGameFacade` exponiert keine Repository- oder Service-Locator-Zugriffe.
+`PlayerServiceContext` hält die benötigten Kollaboratoren ausschließlich an
+der Verdrahtungskante, während `FixturePlayerGameFacade` Testzugriffe klar als
+solche benennt.
+
+Legacy-Snapshots besitzen getrennte Decoder für Standorte, Fahrzeuge,
+Verträge und Transporte. Das Marktupgrade trennt Inspektion, Transformation
+und Abgleich. Valhalla-I/O und Cachebesitz verbleiben im Router; die reine
+Antwortvalidierung liegt im `ValhallaResponseParser`. Diese Teilung ändert
+weder Dateiformate noch Datenbankschema, HTTP-Verträge oder Spielverhalten.
+
+Im Frontend besitzt `PanelViewState` alle Mutationen am Panelmodell, während
+`PanelController` DOM, Requests und Rendering orchestriert. MapLibre-Quellen,
+Routen-, Standort- und Fahrzeuglayer sind getrennte Module. Die bisherigen
+globalen Styles liegen nach Auth, Workspace, Controls, Katalog, Markt,
+Kartenfeedback, Fahrzeugmedien und Responsivität unter `frontend/styles`;
+ihre Kaskadenreihenfolge bleibt stabil.
+
+## Aktuelle Testpyramide
+
+Service- und Domaintests verwenden kompakte typisierte In-Memory-Kataloge mit
+sechs Fahrzeugmodellen, sechs Standorten, drei Waren und drei Distanzbändern.
+Die ausgelieferten Binärkataloge werden ausschließlich in expliziten
+Repositoryabnahmen gelesen. Generische `game`-, `runtime`-, `catalogue`- und
+`world_catalogue`-Fixtures wurden durch `synthetic_*`-Namen ersetzt.
+Repositoryfehler verwenden zwei kleine SQL-Kataloge mit zwei Standorten und
+vier Fahrzeugmodellen; die großen Referenzdateien bleiben dabei unverändert.
+
+Der abschließende lokale Abnahmelauf bestand mit **657 Python-Tests** in
+81,41 Sekunden bei 100 % App-Statement-Coverage; der langsamste Pythonfall
+benötigte 2,86 Sekunden. Die **131 Frontendtests** bestanden in 9,45 Sekunden.
+Alle **14** getrennten Playwright-Grenzen bestanden in 1,2 Minuten; der
+langsamste Browserfall benötigte 8,8 Sekunden. Kein Einzelfall überschritt die
+harte Zehn-Sekunden-Grenze. Öffentliche Tiles, echte Provider und Supabase
+waren in allen Läufen ausgeschlossen.
+
+Fahrzeuge werden im Flotten-Read-Modell nach ID genau einmal verbunden und
+gerendert. Aktive Fahrzeuge erscheinen unter `Unterwegs`; Abfahrts- und
+Zielstadt bleiben Filter, erzeugen aber keine zweite Fahrzeugkarte. Die alten
+Frontend-Sammelmodule für Core, Lifecycle, Runtime, Map und Assets wurden durch
+Eigentümertests für State, Controller, Geometrie, Layer, Traffic, Routencache
+und Bildbindungen ersetzt. Python trennt Marktplanung, Vertragsbildung,
+Publikation, Vorbereitung, Gameplay-Use-Cases und Legacy-Import sichtbar nach
+Produktionsverantwortung. API-Gegentests liegen zusätzlich bei Contract, Fleet,
+Transport, System, Preferences, Fehlerabbildung und Web-Routen. Das frühere
+generische Review-Modul ist durch Demand-Recovery, Offer-Route-Atomicity,
+Worker-Recovery und Economy-Audit ersetzt.
+
+`VehicleGroups` besitzt nun die lesbaren Schritte `activateGroup`,
+`zoomToGroup` und `showVehicleList`. MapLibre bleibt in genau einem nativen
+Enter-/Fokus-Komponententest; Gruppierung, Auswahlpayload und Fokus liegen in
+vier kleinen DOM-Tests. Python-, Frontend- und Browserqualität sind in CI drei
+parallele Jobs mit jeweils 20 Minuten hartem Timeout. Ein fehlgeschlagener Job
+wird nicht automatisch wiederholt.
+
+## Aktuelles Verhalten und Review
+
+Der abschließende Zuständigkeitsreview umfasst zusätzlich Modulnamen,
+Objektbesitz, Funktionsschritte, Vererbung und Frontend-Kapselung. Gameplay,
+Markt und Routing liegen in ihren Eigentümerpaketen; der Marktworker liegt bei
+den Marktservices. `GameRuntime` spiegelt Router und Anchor-Resolver nicht mehr
+neben `RoutingPreparationService`. `PlayerGameFacade` bleibt eine delegierende,
+spielergebundene Fassade ohne Welt-/Katalog-/Provider-Service-Locator.
+
+`ValhallaTruckRouter`, `ValhallaTruckAnchorLocator`,
+`RoutingAnchorResolver`, `RoutingConnectionValidator`,
+`RoutingPreparationService` und `AnalyticsService` setzen nun benannte
+Cache-, Request-, Decode-, Candidate-, Fence-, Lease-, Publikations- und
+Zeitprojektionsschritte zusammen. Jeder neue konkrete Core-Callable ist einem
+inhaltlich passenden Gegentest im Function-Test-Manifest zugeordnet. Es wurde
+keine zweite Routing-, Markt- oder Persistenzarchitektur eingeführt.
+
+Im Browser sind `GameState` und `LatestRequest`, Panel-Controller und View,
+Assetmanifest und MapLibre-Icon-Registry sowie Bootstrap- und Anwendungsowner
+eindeutig getrennt. `GameApplication` beziehungsweise `AuthController` geben
+den API-Client frei; Bootstrap greift nur vor erfolgreicher Owner-Erzeugung
+direkt ein. Die distinct Flottenprojektion bleibt unverändert: ein Fahrzeug
+erscheint auch bei Abfahrts- und Zielstadtfilter nur einmal.
+
+`OverlayData.update` delegiert Zustandsnormalisierung, deduplizierte
+Facility-Projektion und Routencache-Synchronisierung an drei benannte reine
+Helfer in `overlay-state.js`. Eigene aktive Transporte ersetzen die
+entsprechende öffentliche Trafficzeile; sie erzeugen keine zweite
+Fahrzeugdarstellung.
+
+Das Persistenzreview trennte anschließend auch die beiden letzten breiten
+Adaptergrenzen. `SqliteRoutingReadinessStore` komponiert fokussierte
+Schema-, Payload-, Lease-, Attempt-, Offer-Route-, Relations- und
+Connection-Adapter. Der Legacy-Import trennt vollständige Snapshot-Montage von
+strikter verschachtelter Wertdecodierung. Beide Änderungen erhalten Schema,
+Dateiformat und öffentliche Repositoryverträge.
+
+Der abschließende Mapper- und Kompositionsreview trennt nun auch die zuvor
+breiten Detailmethoden. `LegacySnapshotReader` besitzt benannte Schritte für
+Standortidentität, Firma, Stadt, Koordinaten und Handling-Evidenz. Der
+Marktreparatur-Reader trennt Schutzmengen, gebundene Angebote, Gruppierung und
+Kontextaufbau; das Marktupgrade prüft Schema, unveränderte Tabellen, Offers,
+Routenbindungen und Integrität separat. Der Weltkatalog liest Facility-Quellen,
+Koordinatenevidenz, Aliase und dokumentierte Güter über eigenständige Mapper.
+
+Die Composition-Namen zeigen ihren Besitz direkt: `GameRuntime` hält
+`market_generation`, `PlayerGameFacade` hält privat `player_market`,
+`PlayerMarketServices` hält `stores`. `MarketGenerationServices` bündelt nur
+`candidates`, `contract_factory` und `coverage`; `PlayerMarketStores` benennt
+`offers`, `templates` und `policy`. `RoutingConnectionValidator` trennt die
+Suche nach Kandidatenpaaren von der Prüfung einer einzelnen Richtung.
+
+Die Python-Suite besitzt keine Sammelmodule mehr für Multiplayer, Markt, Stock
+Preparation oder Runtime Views. Die jeweiligen Szenarien liegen bei Auth,
+Accountisolation, Nebenläufigkeit, Markt-Scope, Berechnung, Kandidaten,
+Diversität, Publikation, Recovery, Runtime-Snapshot und Routengeometrie. Auch
+die letzten breiten Einzelfälle sind nach Sicherheits-, Sichtbarkeits-,
+Projektion-, Sharing- und Verbrauchsvertrag getrennt. Das Function-Test-
+Manifest prüft neben vollständiger Callable-Abdeckung nun eindeutige
+Testnamen und eine direkte Assertion oder erwartete Ablehnung. Diese Prüfung
+ist bewusst als Strukturindex dokumentiert: Die semantische Relevanz und der
+fachliche Gegenfall werden weiterhin im manuellen Review beurteilt.
+
+Die Arbeitscommits wurden ausschließlich mit ihren Eigentümertests, Ruff,
+mypy beziehungsweise ESLint, Prettier und checkJs geprüft. Danach bestanden
+das vollständige Quality-Gate und alle 14 Browsergrenzen. Supabase, reale
+Provider und öffentliche Tiles wurden nicht angesprochen.
+
+Die lokale Runtime besitzt einen Lifespan-Worker. Reads bleiben rein lesend;
+Zustandsänderungen und ausdrücklicher Refresh schreiben Bedarf und wecken ihn.
+Vorbereitet werden nur konkrete idle Fahrzeuge und Zielorte aktiver Transporte.
+Erfolgreiche Relationsnachweise und Vorlagen werden wiederverwendet. Pro Runde
+wird höchstens ein persönliches Angebot publiziert; Auswahl und Konditionen sind
+kontextgebunden deterministisch, Identitäten bleiben neu.
+
+Der nachträgliche Sichtbarkeitsreview fand zwei gekoppelte Ursachen für
+wiederholte Angebote: Die Presentation nahm nur die ersten drei gespeicherten
+Slots, und ein erfolgreicher Worker-Durchlauf ließ seinen Trade-Checkpoint
+stehen. Die Auswahl priorisiert nun pro Fahrzeug/Band Route, Ware, Zielstadt und
+Tonnage. Publikation und Checkpoint-Löschung erfolgen atomar; ungenutzte alte
+Templates dürfen die Diversitätsrangfolge nicht mehr vorwegnehmen. Auf einer
+isolierten Kopie des lokalen Bestands wurde ein vollständiger Neuaufbau ohne
+Netzwerkzugriff und ohne Providerrequest durchgeführt.
+
+Die anschließende Gegenprüfung schloss zwei verbliebene Abnahmelücken. Ein
+öffentlicher Workerfall mit kleinem Drei-Waren-Katalog prüft jetzt die sichtbare
+Folge `0 -> 1 -> 2 -> 3`; ein separater Ein-Trade-Fall dokumentiert den
+zulässigen Wiederholungsfallback. Kein Test patcht dafür die private
+Worker-Auswahl. Volle historische Bestände bleiben im normalen Betrieb
+unverändert, können aber über einen ausdrücklich gestarteten Offline-Service
+read-only inventarisiert und in eine neue reconciled Kopie korrigiert werden.
+Planner und Service trennen fachliche Diversitätsentscheidung und
+Orchestrierung. Query-only Reader, checksummierter Archivschreiber,
+Copy-Executor und Strukturvalidator besitzen getrennte SQL-Verantwortungen.
+Die Korrektur löscht keine Vorlagen oder Routingevidenz und verändert keine
+aktive Quelldatenbank.
+
+Entfernt wurden Prozesssupervisor, getrennte Prewarm-Rolle, globale Worker-Lease,
+Startup-Markt-Rebuild, paralleler Legacy-Batch und globale Katalogversorgung.
+`SqliteMarketTemplateStore` besitzt gemeinsame Vorlagen;
+`SqlitePlayerMarketStockStore` besitzt persönliche
+Bindung/Verwendung/Checkpoints.
+`DispatchEligibilityService` kapselt die Dispatch-Freigabe als späteren
+Mitarbeiter-Seam. Domain und Services importieren weiterhin kein SQL/HTTP;
+Views führen keine Requests aus.
+
+Marktlisten und Refresh benötigen ein konkretes eigenes idle Fahrzeug. Ohne
+gültigen Scope sendet der Browser keine Marktanfrage; der HTTP-Vertrag lehnt
+fehlendes `vehicle_id` mit 422 ab. Das Verantwortungsreview trennt außerdem in
+`ContractFactory` Ziehung, Konditionsableitung und Snapshot-Bau. Der
+`StockSnapshotReader` besitzt autoritativen Read, Bedarfsprojektion, Readiness
+und Snapshot-Montage; der `StockPublicationService` ausschließlich Plan und
+Commit. Die Helper halten nur lokale Zwischenwerte ihrer bestehenden Klasse
+und eröffnen weder neue Daten- noch Providerpfade. `MarketGenerationServices` ist nur
+noch die explizite Composition-Grenze. Spielerbedarf, Routenfakten und
+Stock-Abhängigkeiten liegen getrennt in `PlayerMarketDemandService`,
+`PlayerMarketRouteService`, `MarketRoutePreparationService` und
+`PlayerMarketStores`. Die lokale Test-Runtime besitzt dieselben
+Preparation-/Readiness-Grenzen wie Produktion; gemeinsame Fixtures liegen in
+`tests/support`, ohne Test-zu-Test-Importe. Im Browser besitzt
+`MapInteractions` Hit-Testing, Hover und Listener-Cleanup getrennt vom
+`WorldMap`-Renderer.
+
+`PlayerGameFacade` ist eine delegierende Spielfassade. `PlayerInitializationService`
+besitzt Anlage und Reset, `TransportDispatchService` Quote und Dispatch und
+`TransportSettlementService` Ankunft und Auszahlung. Dadurch liegen Lookup,
+Validierung, Trip-Bau, Preisberechnung und Commit nicht mehr neben fachfremden
+Read-/Reset-Abläufen in einer einzelnen Klasse.
+
+Die abschließende Härtung entfernt auch die letzten optionalen Marktpfade.
+`DispatchPlanningService` lädt nur vorbereitete Evidenz; Providerarbeit liegt
+vollständig in `RoutingPreparationService`, während `RoutingEvidenceReader`
+die mengenbasierten Lesesnapshots besitzt. Tests komponieren vollständige
+Objektgraphen statt Services nachträglich umzuschreiben. Die Paketstruktur
+trennt Gameplay, Markt-Stock und Routing sichtbar. Ein Dispatch entfernt nur
+das gewählte Angebot und invalidiert Bedarf, statt den wiederverwendbaren Pool
+zu leeren.
+
+Der abschließende Dokumentationsabgleich bestätigt README, Product, Goal,
+Target, Milestones, UI Design, Architektur und ADR 0007 gegen diesen Stand.
+Aktuelle Verträge nennen Schema 1.2.0, WorldCatalogue 4.2.0, den einzelnen
+Lifespan-Worker und den asynchronen bedarfsgesteuerten Refill. Frühere
+Branch-/Supervisor-Angaben sind eindeutig als historische, aufgehobene
+Zwischenstände gekennzeichnet.
+
+Der Scheduler wählt ausschließlich fällige `partial`-Jobs. Ein neues Fahrzeug
+wird in begrenzten Einzelrunden bis zu drei sichtbaren und zehn gespeicherten
+Angeboten je Distanzband versorgt; ein `ready`-Job wird nicht erneut ausgewählt.
+
+Der abschließende kombinierte Lauf von `.venv/Scripts/python.exe -X utf8
+ scripts/quality.py` prüft **656 Python-Tests** mit **100,00 %
+app-Statement-Coverage**, **131 Frontend-Verhaltenstests** sowie Ruff,
+Formatierung, mypy, Pyright, ESLint, Stylelint, Prettier, checkJs,
+Produktionsbuild und compileall. Architektur- und
+Funktionsmanifestprüfungen sind Teil dieses Laufs. Der langsamste einzelne
+Python-Test benötigt 2,47 Sekunden; kein Python-Test überschreitet zehn
+Sekunden.
+
+`npm run test:e2e` umfasst **14** klar abgegrenzte Browserfälle gegen einen
+isolierten lokalen Einprozess-Server mit lokaler Datenbank und lokalem
+Routing-Fixture. Die Suite benötigt 1,1 Minuten; der langsamste Browserfall
+7,3 Sekunden. Backendberechnungen liegen in Python-, Controllerdarstellung in
+DOM-Tests. Browserfälle prüfen nur Authentifizierung und Navigation,
+Dispositionsgrenzen, Markt-, Firmen- und Kartenoberflächen. Absichtlich
+abgebrochene Browserrequests können unter Windows den bekannten
+`WinError 10054` im Socket-Cleanup protokollieren; die zugehörigen Fehlerpfade
+bestehen.
+
+Der manuelle Start `python main.py` wurde mit einer neuen temporären lokalen
+SQLite-Datei und lokalen, unerreichbaren Dummy-Provider-URLs geprüft. Startup
+und Lifespan waren erfolgreich, `/api/v1/system/health` antwortete mit HTTP 200,
+und der Application-Shutdown wurde nach Ctrl+C vollständig abgeschlossen. Die
+vollständige Browserabnahme verwendete die vorhandene lokale
+Playwright-Konfiguration.
+
+Beim Browserlauf wurde eine echte Benachrichtigungsrace sichtbar: Ein
+Thread-weckender Callback konnte vor dem äußeren Datenbank-Commit laufen und
+den noch unsichtbaren Job verpassen. Nach-Commit-Callbacks gehören nun der
+lokalen Unit-of-Work-Grenze; Rollbacks verwerfen sie, und der Worker weckt den
+fremden Eventloop threadsicher. Der aktuelle Python-Lauf meldet eine bekannte
+Starlette/httpx-Deprecation. Sie bleibt als Testhygiene sichtbar, und kein Test
+oder Gate wurde dafür ausgenommen.
+
+---
+
+# Historischer Qualitätsbericht: gemeinsamer Vorrat und schnelle Runtime
 
 Stand: 28.09.2026. Branch `feature/frontend-v2`, Basis `d11034f`.
 Die folgenden Abschnitte vor der Trennlinie gelten für den aktuellen Gesamtstand.

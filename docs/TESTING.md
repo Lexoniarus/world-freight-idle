@@ -7,13 +7,93 @@ mypy, Pyright, pytest mit 100 % app-Statement-Coverage, Function-Test-Manifest,
 Architekturtests, Frontend-Verhaltenstests, ESLint, Stylelint, Prettier, checkJs,
 Vite-Produktionsbuild und compileall aus. Node 24, requirements-dev.txt und
 npm ci sind Voraussetzung. Die Offline-CLIs gehören zu Lint und Typprüfung.
+`python scripts/quality.py --python` und `--frontend` führen dieselben Bereiche
+getrennt aus; ohne Option bleibt das gemeinsame lokale Gate verbindlich.
 
 Vor Arbeitscommits müssen die betroffenen Tests samt direkten Aufrufern grün
 sein. Das vollständige Gate und E2E sind vor der abschließenden Integration
 verbindlich. Tests werden nicht übersprungen oder abgeschwächt. Jeder konkrete
 Core-Callable inklusive Konstruktor und verschachtelter Funktion erhält einen
-expliziten Gegentest in tests/function_test_manifest.py. Protokolldeklarationen
-werden strukturell ausgenommen.
+Verhaltenstest und einen Eintrag in `tests/function_test_manifest.py`.
+Protokolldeklarationen werden strukturell ausgenommen. Das Gate weist
+zusätzlich die 20 langsamsten Python-Testphasen aus, damit
+Laufzeitregressionen nicht hinter der grünen Gesamtsumme verschwinden.
+
+Das Function-Test-Manifest ist ein struktureller Vollständigkeitsindex. Es
+prüft, dass jeder Callable im Quelldokument genau einmal deklariert ist, jeder
+referenzierte Top-Level-Testname in der Suite genau einmal vorkommt und selbst
+mindestens eine direkte Assertion oder erwartete Ablehnung enthält. Frühere
+oder spätere Dictionary-Updates dürfen eine Testverantwortung nicht mehr
+stillschweigend überschreiben. Das Manifest beweist nicht automatisch, dass
+die Assertion den zugeordneten Callable semantisch prüft oder dessen
+fachlichen Gegenfall abdeckt. Diese Zuordnung wird im staged Diff und im
+verpflichtenden Verantwortungsreview inhaltlich geprüft. Die Strukturprüfung
+verbietet zudem die aufgelösten Sammelmodule `test_market`,
+`test_multiplayer`, `test_review_regressions`, `test_runtime_views` und
+`test_stock_preparation`.
+
+`test_repository_initialization.py` hält die technische Startgrenze fest:
+Adapterkonstruktion darf die SQLite-Struktur nicht verändern; die explizite
+Runtime-Initialisierung erzeugt alle additiven Tabellen idempotent.
+
+Gemeinsame Fixtures und lokale Provider-Doubles liegen ausschließlich unter
+`tests/support`. Testmodule importieren keine anderen ausführbaren Testmodule;
+damit entstehen weder implizite Collection-Abhängigkeiten noch alternative
+Produktionsarchitekturen. Die Runtime-Fixture verdrahtet dieselben lokalen
+Preparation-, Readiness- und Stock-Grenzen wie der Composition Root.
+Routinghilfen liegen deshalb unter `tests/support/routing_runtime.py` und
+überschreiben keinen parallel gehaltenen Router-/Anchor-Zustand auf
+`GameRuntime`.
+
+Jeder einzelne Python-Fall und jeder lokale Playwright-Fall besitzt ein hartes
+Zeitlimit von zehn Sekunden. Die aktive `pytest.ini` konfiguriert
+`pytest-timeout`; es existiert keine zweite verdrängte Pytest-Konfiguration.
+Playwright wendet lokal dieselbe Grenze pro Browserfall an. CI gibt Pythonfälle
+mit Namen aus, damit ein Timeout einen eindeutigen Owner nennt. Ein Timeout
+wird untersucht und nicht durch Wiederholung oder ein höheres Falllimit
+verdeckt.
+
+GitHub Actions startet pro PR-Revision genau einen Lauf. Branch-Push und
+`pull_request` dürfen denselben Commit nicht doppelt prüfen; `push` ist deshalb
+auf `main` begrenzt. Concurrency beendet einen überholten Lauf derselben PR.
+Python-, Frontend- und Browserjobs bleiben parallel, besitzen aber eigene
+enge Joblimits. Ihre summierten Compute-Minuten sind nicht mit der
+Wandlaufzeit zu verwechseln.
+
+Dateigröße allein ist kein Grund für mechanisches Aufteilen. Ein größeres
+Testmodul darf bestehen bleiben, wenn sein Name genau einen Produktionsowner
+bezeichnet, seine Fälle unabhängig gesammelt werden und jeder Fall die
+Zehn-Sekunden-Grenze einhält. Aufgeteilt wird bei gemischten Verantwortungen,
+impliziten Ablaufketten oder gemeinsamem veränderlichem Zustand. Damit bleiben
+beispielsweise Welt- und Fahrzeugkatalogabnahmen als je eine klar benannte
+Artefaktgrenze lesbar, ohne wieder von Service- oder Domaintests importiert zu
+werden.
+
+## Synthetische Standarddaten
+
+Domain-, Service- und Gameplaytests verwenden ausdrücklich benannte
+`synthetic_*`-Fixtures. `InMemoryWorldCatalogue` enthält sechs kleine
+Standorte, stabile UUIDs, mehrere Waren und alle drei Distanzbänder;
+`InMemoryVehicleCatalogue` enthält die sechs für Gameplayfälle benötigten
+Modelle. Kein solcher Test kopiert oder öffnet einen produktiven Binärkatalog.
+
+`reference_world_catalogue` und `reference_vehicle_catalogue` sind allein den
+expliziten Repository-/Katalogabnahmen vorbehalten. Dort werden Version,
+Referenzmengen, FKs, stabile Identitäten, Evidenz, Marktprofile, 14
+Fahrzeugmodelle, Energieprofile, Fähigkeiten, Bilder und unveränderte Dateien
+geprüft. Repository- und Fehlerfälle mutieren ausschließlich zwei kleine
+temporäre SQLite-Kataloge, deren Schema und Daten als lesbares SQL in
+`tests/support/catalogue_databases.py` liegen. Diese Trennung ist fachlich:
+synthetische Szenarien prüfen Verhalten; Binärkataloge prüfen das ausgelieferte
+Referenzartefakt.
+
+`PlayerContextFactory` ist der einzige Owner für die gemeinsame Verdrahtung
+von Initialisierung, Markt, Dispatch und Settlement. Produktion und Tests
+injizieren dort ihre jeweiligen Adapter; nur der produktive Builder führt
+anschließend die Erstanlage aus. Gewöhnliche Spielerfälle greifen nur auf die
+öffentliche `PlayerGameFacade` zu. Wo ein Test ausdrücklich einen
+spezialisierten Use Case prüft, liefert `FixturePlayerGameFacade` benannte
+Testzugriffe. Produktionscode exponiert diese Infrastruktur nicht.
 
 ## Verhalten und Grenzen
 
@@ -30,6 +110,24 @@ werden strukturell ausgenommen.
   Authentifizierung, Sessionablauf, CSRF, Traces und private Datentrennung.
 - Frontend: DOM-Text statt HTML, Cleanup, verspätete Antworten, unsichere
   Schreibantworten, Fokus, Karten-Wrapping, Fahrzeugbilder und Panel-Lebenszyklen.
+
+Python-Integrationsfälle tragen ebenfalls ihren fachlichen Owner im Modulnamen.
+Authentifizierung, Accountisolation, Nebenläufigkeit und Leaderboard sind
+getrennt. Markt-Scope, Berechnung, Kandidaten, Diversität und Materialisierung
+sowie Stock-Publikation, Template-Sharing, Zielbedarf, Recovery,
+Katalogänderung und Dispatch-Atomizität werden unabhängig gesammelt.
+Runtime-Snapshots und Route-Geometry-HTTP besitzen keine gemeinsame
+Sammeldatei. Ein Test darf mehrere Schritte eines atomaren Vertrags zeigen,
+aber keine fachfremde zweite Abnahme verstecken.
+
+Öffentlicher Verkehr besitzt drei getrennte Testowner:
+`test_public_traffic_reader.py` prüft Schema, partiellen Query-Index,
+Begrenzung, Privacy und den geteilten Snapshot; `test_traffic_projection.py`
+prüft reine JSON-Projektion, Eigentumsmarkierung, Farb-Fallback und Logging;
+`test_multiplayer_map.py` behält genau die authentifizierte HTTP-Verdrahtung.
+Der Query-Plan-Test verlangt den Index `public_active_traffic` und verbietet
+einen temporären Sortierbaum. Ein instrumentierter Reader belegt, dass mehrere
+Clientreads innerhalb des Cachefensters nur eine Repository-Abfrage auslösen.
 
 Architekturtests prüfen direkte und indirekte Imports einschließlich relativer
 Imports, Re-Exports und statisch erkennbarer dynamischer Imports. Domain und
@@ -55,16 +153,39 @@ nur für den ausdrücklich freigegebenen kontolosen Demostand vorgesehen.
 
 `npm run test:e2e` startet den FastAPI-Kern mit separater temporärer Datenbank,
 Mock-Routing und lokalen Tiles auf Port 8011. Öffentliche OSM-Tiles werden nicht
-automatisiert vorgeladen. Der Lauf umfasst Registrierung, Anmeldung, Kauf,
-parallele Transporte, Offline-Ankunft, Rangliste, Mehrspielerkarte, Bildstabilität,
-Deep Links, Fehlerfälle und Tastaturbedienung.
+automatisiert vorgeladen. Die 14 Fälle liegen in Auth/Navigation, Dispatch,
+Market, Company, Map und Asset-Abnahme. Backendberechnungen bleiben in Python,
+Controllerzustände in Node-/DOM-Tests; Playwright prüft nur Browsergrenzen.
+
+Transportzeit wird im isolierten Browserserver über eine injizierte Testuhr
+fortgeschaltet. Tests warten weder auf reale Fahrtzeiten noch passiv auf den
+nächsten Poll, sondern lösen die vorhandene Runtime-Synchronisierung aus. Die
+Uhr und ihr Testendpunkt existieren ausschließlich in `tests.browser_server`;
+Produktionsstart und Produktionszeitquelle bleiben unverändert. Browserfälle
+sollen eine einzelne Verantwortung prüfen und im Regelfall unter zehn Sekunden
+bleiben; Überschreitungen werden im Qualitätslauf ausgewiesen und nicht durch
+höhere Timeouts verdeckt.
 
 Desktop 1440 × 900, Mobilansicht 390 × 844 und Reduced Motion werden geprüft.
 PLAYWRIGHT_CHANNEL wählt den Browser; PYTHON_EXECUTABLE den Interpreter.
-CI installiert Chromium. Lokale Screenshots werden zusätzlich visuell geprüft.
+WFI_BROWSER_PORT erlaubt ausschließlich lokalen parallelen oder wiederholten
+Testläufen einen freien isolierten Port; CI verwendet weiterhin 8011. CI
+installiert Chromium. Lokale Screenshots werden zusätzlich visuell geprüft.
 Automatisierte Mobilansicht ist keine reale iPad-Abnahme. Provider-Mocks beweisen
 keine öffentliche Dienstverfügbarkeit. Tatsächlich ausgeführte Ergebnisse stehen
 in QUALITY_REPORT.md; historische Läufe sind keine aktuelle Freigabe.
+
+Playwright prüft die sichtbare Registrierung genau einmal. Weitere Fälle
+erzeugen ihre Sitzung über die lokale Test-API und starten Marktvorbereitung
+nur, wenn Routing, Dispatch oder Markt selbst die geprüfte Browsergrenze ist.
+Präsentationsfälle warten weder auf den Marktworker noch unnötig auf MapLibre.
+
+Aktuelle lokale Abnahme vom 03.11.2026: 664 Python-Tests mit 100 %
+App-Statement-Coverage, 131 Frontend-Verhaltenstests und 14 Playwright-Fälle.
+Der langsamste Pythonfall lief 3,96 Sekunden, der langsamste Browserfall
+8,8 Sekunden; die vollständige Browserregression lief in 1,2 Minuten. Alle
+Tests blieben unter der harten Zehn-Sekunden-Grenze;
+Supabase, Live-Provider und öffentliche Tiles blieben aus.
 
 ## Regressionen des Persistenzreviews
 
@@ -123,23 +244,51 @@ Routing erneut; ein veränderter Energiecheckpoint verhindert Teilabrechnungen.
   endliche Werte, positive Preise, Unit-Weights und Load-Factor-Grenzen.
 - City-UID-Scope, Same-City-Relationen, fehlender Standort-Snapshot, explizite
   Modellauflösung, lazy Origin-Indizes und Generierung ohne Router.
-- Exakte Distanzgrenzen, Facility-/Band-Coverage, geplante Angebote mitzählen,
-  Vielfalt und Wiederholungen, Tonnage und gespeicherte Konditionen.
+- Exakte Distanzgrenzen, materialisierte Fahrzeug-/Band-Coverage,
+  deterministische Vielfalt und dokumentierter Wiederholungsfallback, Tonnage
+  und gespeicherte Konditionen.
+- Die sichtbare Dreierauswahl überspringt frühe Duplikate, wenn der gespeicherte
+  Pool eine andere Route, Ware, Zielstadt oder Tonnage enthält. Erfolgreiche
+  Publikation entfernt den Checkpoint; nur halbfertige Routen behalten ihn.
 - Maximalwert für Candidate-Gewicht und getrennte gewichtete Fahrzeugwahl.
 - Retention nach Flottenänderung, V1-Verwerfen, Ankunft, historische Snapshots.
 - Same-City-Reposition, konkurrierender Dispatch und vollständiger Rollback.
-- Refill erst nach Dispatch-Commit; separate SQLite-Verbindung beobachtet den
-  gestarteten Transport, Refill-Schreibfehler rollt ausschließlich neue Offers
-  zurück. Späterer Refresh führt keinen zweiten Dispatch aus.
+- Dispatch committen Transport und Offer-Verbrauch atomar. Erst der danach
+  geschriebene Bedarf weckt den Worker; ein späterer Refresh führt weder
+  synchrone Generierung noch einen zweiten Dispatch aus.
 - Pflichtfahrzeug HTTP 422, serverseitige eligible_vehicle_ids, Auswahlwechsel,
-  entfernte Angebote und verspätete Antworten. Browser-Pan/Zoom ohne Marktread.
+  entfernte Angebote und verspätete Antworten. Ohne eigenes idle Fahrzeug
+  entstehen weder Listen- noch Refresh-Requests; Browser-Pan/Zoom bleibt ohne
+  Marktread.
+
+Zusätzliche Kosten-/Read-Gegenproben vom 27.10.2026:
+
+- Wiederholte Markt- und Runtime-GETs schreiben keinen Bedarf, bauen keine
+  Candidates und laden keine Routenpayloads.
+- Nur fachliche Zustandsänderungen oder ein ausdrücklicher Refresh wecken den
+  Lifespan-Worker; abgeschlossene Jobs werden nicht zeitgesteuert neu geöffnet.
+- Erfolgreiche Relationen bleiben über Zeit- und Prozessgrenzen für denselben
+  Fingerprint verwendbar. Eine fehlende Payload scheitert erst beim exakten
+  Quote-/Dispatch-Load und erzeugt keinen stillen Providerfallback.
+- Gleicher Kontext und Kandidatenbestand ergeben dieselbe gewichtete Auswahl,
+  Fahrzeugwahl und Tonnage; Angebots-IDs bleiben verschieden. Ungültige oder
+  doppelte Gewichtsmengen werden abgelehnt.
+- Eigene Gegentests decken Ziehung, Konditionsableitung und Snapshot-Bau sowie
+  autoritativen Read, Bedarfsprojektion, Readiness-Snapshot, Publikationsplan
+  und gefencten Commit ab. Alle Helper stehen im Function-Test-Manifest.
+- Zielstadtbedarf entsteht direkt bei Dispatch. Globale Katalogmodelle oder
+  Städte ohne eigenes konkretes Fahrzeug werden nicht vorbereitet.
+- Exakte Stadt-/Modell-Templatequeries bleiben set-basiert; gemeinsame Vorlagen
+  und persönliche Bindungen besitzen getrennte Repository-Verantwortung.
+- Der Browser lädt `/contracts` nur im Fahrzeugmarkt. Der periodische Scheduler
+  pollt Runtime und gegebenenfalls Ranglistendetails, niemals den Markt.
 
 Das manuelle Review jeder geänderten Core-Funktion steht im Qualitätsbericht
 und im zugehörigen [SRP-Review](MARKET_V2_REVIEW.md). Die dortigen Befunde sind
 zusätzlich zum expliziten Function-Test-Manifest erforderlich.
 
 
-## Frontend v2 – Regressionen
+## Frontend-Komponentengrenzen
 
 `tests/test_analytics.py` prüft Authentifizierung, Nutzertrennung, alle Zeiträume
 und Scopes, UTC-Grenzen, leere/negative/V1-Historie, beschädigte Hüllen, laufende
@@ -149,16 +298,25 @@ im Reader. Große Koordinatenarrays bleiben in SQLite; Python erhält nur Skalar
 Zusätzlich erzwingt PRAGMA query_only die rein lesende Aggregation.
 Neue Core-Callables stehen im Function-Test-Manifest.
 
-`frontend/frontend-v2.test.mjs` ergänzt UUID-Stadtauswahl, bekannte inaktive
-Städte, Deep Links/Legacy-Auflösung, verspätete Antworten, accountgebundene
-Layer-Presets/Overrides, Gruppierung ohne Koordinatenänderungen, serverseitige
-Eligibility, getrennte Listen-/Detailzustände, Assetrollen und Charttabellen.
+Eigentümermodule prüfen diese Grenzen getrennt: `city-context-controller`,
+`layer-state-controller`, `contract-market-controller`, `analytics-controller`,
+`contract-view`, `market-context`, `map-grouping`, `map-selection`, `game-state`,
+`charts` und `dom`. Damit liegen UUID-Stadtauswahl, Deep Links,
+accountgebundene Layer-Presets, Gruppierung, serverseitige Eligibility,
+Listen-/Detailzustände und zugängliche Charttabellen jeweils beim zuständigen
+Produktionsmodul.
+
+API-Lifetime, Panelzustand, Spielaktionen, Polling, Animation, Overlays,
+Mobile Sheet, Benachrichtigungen, Router, Kartenwahl und Application-Disposal
+besitzen ebenfalls gleichnamige Testmodule. Flache Sammelabnahmen über alle
+Views wurden durch direkte `contract-view`-, `shop-view`-, `transport-view`-
+und `fleet-selection`-Verträge ersetzt.
 Vorhandene Quote-/Dispatch-/Cleanup-/Bildstabilitätsprüfungen bleiben erhalten.
 
-Playwright prüft den kompletten Dispositionsablauf sowie mobile Sheets,
-Browserhistorie, Kamera-/Canvas-Kontinuität und keine Marktrequests bei Pan/Zoom.
-Frontend-v2-Prüfungen ergänzen Unternehmens-Scopes, Auswahl-/Layerkontinuität,
-Gruppenbedienung und Desktop 1440×900, Tablet 1024×768, Mobile 390×844.
+Playwright prüft einen Dispositions-/Settlement-Ablauf sowie mobile Sheets,
+Kamera-/Canvas-Kontinuität und keine Marktrequests bei Pan/Zoom. Kleine DOM-
+Tests besitzen Layer-, Gruppen-, Auswahl- und Requestzustände. Desktop
+1440×900 und Mobile 390×844 bleiben Browser-Smokes.
 Automatisierte OSM-Tiles werden durch lokale Testbilder ersetzt; reale
 Kartenlesbarkeit wird separat manuell geprüft, ohne automatisierte Tile-Downloads.
 
@@ -181,10 +339,9 @@ explizite Gegenfälle. Markt-Lifecycle-Tests sichern weiterhin Refill-Isolation.
 `frontend/approach.test.mjs` nutzt bewusst gegensätzliche Geometrie-/Straßenlängen:
 B muss exakt am Kilometer-/Zeitwechsel erreicht werden, auch mit Energiehalten
 auf beiden Seiten. Eigene und öffentliche Fahrzeuge teilen diese Grenzen;
-Alttransporte behalten ihre Einzelfahrt. Browserfälle prüfen Start A, automatische
-Abholung, getrennte Kilometer, Reload in beiden Phasen und Reduced Motion auf
-Desktop/Mobil. Die bestehenden Auswahl-, Quote-, Pan-/Zoom- und Offline-Tests
-bleiben Teil des vollständigen Regressionslaufs.
+Alttransporte behalten ihre Einzelfahrt. Ein Browser-Journey prüft den sichtbaren
+Quote-/Dispatch-/Settlement-Übergang; exakte Phasen- und Routengrenzen bleiben
+bei den zuständigen Python- und DOM-Tests.
 
 ## Frontend-v2: Wirtschaft, Start und Assets
 
@@ -207,19 +364,19 @@ Quality-Gate einschließlich Build abschließen, danach `npm run test:e2e`.
 
 ## Karten-, Paint- und Fokusregressionen
 
-`map-regressions.test.mjs` prüft Überschneidung statt Mittelpunkt-Radius,
-Status-/Eigentümerpartitionen, Pose-Aktualisierung, Maskenmathematik,
-Fokusverbrauch und schnelle/fehlgeschlagene Farbwechsel.
-`tests/browser/map-regressions.spec.js` verwendet echte MapLibre-Layer
+`map-grouping.test.mjs`, `vehicle-groups.test.mjs`, `map-layers.test.mjs`,
+`map-focus.test.mjs` und `vehicle-paint.test.mjs` prüfen getrennt
+Überschneidungen, Status-/Eigentümerpartitionen, Marker-Lifecycle,
+Layerausrichtung, Fokusverbrauch und sichere Maskenmathematik.
+`tests/browser/maplibre-vehicle-groups.spec.js` verwendet echte MapLibre-Layer
 mit den Produktionsmodulen in einer ausschließlich im Test abgefangenen
-Modulumgebung. Richtungen werden an gerenderten Pixeln und Screenshots
-geprüft; alle 42 Rollen erhalten Alpha-/Bauteil-/Farb-Gegenproben.
-Die normalen Browserfälle ergänzen sichtbare Palette, Retry, Navigation
-sowie einen und mehrere tatsächliche Energieeinkäufe. Keine OSM-Downloads.
+Modulumgebung. Genau ein Komponententest prüft native Enter-/Fokussemantik mit
+zwei synthetischen Fahrzeugen. Masken, Richtungen, Gruppierung und alle 42
+Assetrollen werden schneller auf Datei-/DOM-Ebene geprüft. Keine OSM-Downloads.
 
 Vollständiges Quality-Gate und E2E nacheinander ausführen; ein Vite-Build
 darf dem laufenden Browserregressionsserver nicht seine Assets entfernen.
-Lokale Renderer-Belege: `artifacts/map-regressions/`, Lackierungs-Proofs:
+Lokale Renderer-Belege: `artifacts/maplibre-vehicle-groups/`, Lackierungs-Proofs:
 `artifacts/masks/`, normale UI-Belege im konfigurierten Temp-Verzeichnis.
 
 
@@ -253,17 +410,20 @@ Tatsächliche gezielte und vollständige Befehle sowie Ergebnisse stehen im aktu
 historischen Abschnitten gelten nicht als Abnahme dieser Implementierung.
 
 
-## Gezielte Review- und Vehicle-Ready-Regressionen
+## Eigentümerbezogene Recovery- und Vehicle-Ready-Regressionen
 
-`test_review_regressions.py` prüft negative/stale Generationen, eigenständigen
-und äußeren Bind-Rollback, Scheduler-/Status-/Finish-Fehler, verschwundene Jobs,
-Cancellation, Generationwechsel und die typisierte deterministische Auditmatrix.
+`test_market_demand_recovery.py`, `test_offer_route_atomicity.py`,
+`test_market_worker_recovery.py` und `test_economy_audit.py` prüfen getrennt
+negative/stale Generationen, Bind-Rollback, Scheduler-/Status-/Finish-Fehler,
+verschwundene Jobs, Cancellation, Generationwechsel und die typisierte
+deterministische Auditmatrix.
 `test_vehicle_market.py` prüft kleinere/größere Fahrzeuge, geteilte Offers,
 Delivery plus individuelle Approaches, stale Eligibility, erschöpfte Pools,
 Abfahrt während Await, API-Besitz/idle-Prüfung und priorisierte Approaches ohne
 Delivery-Batch-Starvation. Stadt-Coverage allein beendet den Worker nicht.
-Die expliziten Manifest-Gegentests bleiben verbindlich; kein Coverage-Limit
-wird gesenkt. Gezielte Coverage ersetzt keinen Nachweis der gesamten Core-Suite.
+Die expliziten Verhaltenstests und Manifestzuordnungen bleiben verbindlich;
+kein Coverage-Limit wird gesenkt. Gezielte Coverage ersetzt keinen Nachweis
+der gesamten Core-Suite.
 Frontend-Cleanup versucht alle Freigaben und meldet danach AggregateError;
 Destroy ist idempotent. Browsertests erwarten passende Offers auch in partial
 Markets, statt globales `ready` vorauszusetzen. Provider bleiben gemockt.
@@ -282,11 +442,15 @@ Kein Build während Playwright. Keine echten Provider-Bulk-Aufrufe.
 ## Gezielte Abnahme: befahrbare Standortverbindungen
 
 Für den Fix auf `5d7ff77` wird auf Nutzerwunsch keine vollständige Suite
-aufgerufen. Der gezielte Lauf umfasst `test_connected_routing`,
-`test_routing_anchors`, `test_anchor_repair_history`,
+aufgerufen. Der frühere Sammeltest `test_connected_routing` ist inzwischen in
+`test_routing_candidate_recovery`, `test_routing_connection_validation` und
+`test_routing_preparation_fencing` getrennt. Der historische gezielte Lauf
+umfasste außerdem `test_routing_anchors`, `test_anchor_repair_history`,
 `test_routing_anchor_provider`, `test_routing_readiness_store`,
 `test_dispatch_routing_anchors`, `test_dispatch_approach`,
-`test_market_preparation`, `test_review_regressions`, `test_vehicle_market`,
+`test_route_readiness`, `test_market_preparation_worker`,
+`test_market_demand_recovery`, `test_offer_route_atomicity`,
+`test_market_worker_recovery`, `test_economy_audit`, `test_vehicle_market`,
 `test_routing_audit`, `test_function_contract` und `test_architecture`.
 Coverage wird für die acht betroffenen Routing-/Dispatchmodule ausgewiesen,
 nicht als Gesamt-Core-Abnahme. Ruff/Format, mypy und Pyright prüfen die
@@ -303,25 +467,30 @@ Restabnahme: [Verbindungsprüfung](CONNECTED_ROUTING_REVIEW.md).
 
 Die vorherigen Hinweise auf ausschliesslich gezielte Tests sind historische
 Abnahmen. Fuer den Runtime-Umbau sind `python scripts/quality.py`, 100 % app-
-Statement-Coverage und `npm run test:e2e` vor Commit/Push vorgeschrieben.
+Statement-Coverage und `npm run test:e2e` vor Integration/Push vorgeschrieben.
 Keine abgesenkten Coverage-Schwellen, keine uebersprungenen Pflichtpruefungen.
 Neue Gegentests, Browserisolation und reproduzierbare Leistungsmessung stehen
-im [Runtime-Review](RUNTIME_ISOLATION_REVIEW.md). Der Browserserver startet seinen
-Fixture-Worker als eigenen Prozess. Testprofile frueherer unabhaengiger Faelle
+im [Runtime-Review](RUNTIME_ISOLATION_REVIEW.md). Der Browserserver startet den
+Lifespan-Worker mit injizierten Fake-Providern im gleichen isolierten Prozess.
+Testprofile früherer unabhängiger Fälle
 werden im Scheduler gefencet; mehrere Profile desselben Falls bleiben aktiv.
 Provider werden gemockt, Playwright prueft Desktop, Mobil und Tablet. Das ist
 keine echte iPad-Abnahme. Live-Reparaturen sind kein Teil der Testsuite.
 
 ## Gemeinsame Vorlagen und stabile Dreier-Auswahl
 
-`test_market_stock.py` prüft drei sichtbare Angebote, zehn vorbereitete
-Alternativen, 14 Modellkontexte, gespeicherte abweichende Kapazität, zwei
-unabhängige Spieler, einmalige Verwendung, parallele Dispatches, finanziellen
-Rollback und sofortiges Nachrücken. Abfahrt, Zeitablauf, Route-TTL, Providerfehler,
-Lease-/Flottenänderungen und Katalogänderungen dürfen keinen Bestand löschen
-oder ungeprüfte Angebote veröffentlichen. Teilweise Verbindungsvorbereitung
-wird nach neuem Repository-Kontext aus dem gespeicherten Checkpoint fortgesetzt.
-Ankünfte aktivieren Bedarf am 60-Minuten-Rand ohne vorzeitiges Settlement.
+`test_stock_planning.py`, `test_stock_publication.py`,
+`test_stock_preparation.py` und `test_market_contract_factory.py` trennen
+Zielplanung, atomare Veröffentlichung, schrittweise Vorbereitung und
+deterministische Vertragsbildung. Gemeinsam sichern sie drei sichtbare
+Angebote, konkrete Reserven, zwei unabhängige Spieler, einmalige Verwendung,
+parallele Dispatches, finanziellen Rollback und sofortiges Nachrücken ab.
+Abfahrt, Zeitablauf, Providerfehler, Relations-/Flottenänderungen und
+Katalogänderungen dürfen keinen Bestand löschen oder ungeprüfte Angebote
+veröffentlichen. Teilweise Verbindungsvorbereitung wird nach neuem
+Repository-Kontext aus dem gespeicherten Checkpoint fortgesetzt. Aktive
+Transporte aktivieren ihr Ziel direkt ab Dispatch ohne vorzeitiges Settlement.
+Unbenutzte Katalogmodelle erzeugen keinen Vorbereitungslauf.
 
 `test_market_stock_upgrade.py` prüft vollständigen Quellen-/Zielabgleich,
 unveränderte Quelle/Historie, gültige Altangebote ohne Ablauf und Ausschluss
@@ -329,6 +498,25 @@ abgelaufener Angebote. Fehlende Guards, fremde Versionen, kollidierende Tabellen
 Abgleichabweichungen und Integritätsfehler verhindern eine Ausgabe. CLI-Tests
 verlangen neue getrennte Backup-/Ausgabepfade und bestätigen rein lesenden Check.
 Alle neuen konkreten Core-Callables sind dem Function-Manifest zugeordnet.
+
+Die sichtbare Marktvielfalt wird nicht über private Worker-Helfer behauptet.
+Ein kleiner synthetischer Workerfall mit drei Waren und mehreren fertigen
+Handelsbeziehungen prüft über `StockPreparationBatch.process()` den sichtbaren
+Übergang `0 -> 1 -> 2 -> 3` und drei strukturell verschiedene Angebote. Ein
+getrennter Selektionsgegenfall erlaubt Wiederholung nur bei genau einer
+verfügbaren Handelsbeziehung. `test_market_stock_repair.py` verwendet ebenfalls
+nur kleine temporäre SQLite-Dateien. Der Reader lädt ausschließlich query-only
+Kontexte, der Archivschreiber besitzt kanonische SHA-256-Datensätze, und der
+Executor besitzt Ausgabereservierung, Mutation und Reconciliation. Die Tests
+prüfen minimale Planung, geschützte Daten, bytegleiche Quelle,
+Backup-/Archivpflicht, vollständige Reconciliation, Rollback und Idempotenz.
+Die reale Spielerdatenbank wird von der Testsuite nicht geöffnet.
+
+HTTP-Gegentests liegen nicht in einem Sammelmodul. Contracts, Fleet,
+Transports, System, Preferences, öffentliche Fehlerabbildung und Web-Routen
+besitzen eigene Module. `tests/support/http_application.py` stellt lediglich
+die gemeinsame lokale App-/FakeGame-Verdrahtung bereit und enthält keine
+Produktregeln.
 
 Frontend-Verhaltenstests prüfen die serverseitige Fahrzeugabfrage, Zusammenfassung
 gleicher Reads und Ausschluss verspäteter Antworten nach Auswahlwechseln.
@@ -343,6 +531,10 @@ und Fixture-Provider. Reproduzierbar: `python -m tests.runtime_benchmark
 UPGRADED_COPY.db NEW_RESULTS_DIR`; keine parallelen Builds oder Gesamtsuiten.
 Logs und Screenshots bleiben privat. Ein Browser-Plugin ist in dieser Sitzung
 nicht verfügbar; deshalb wird das vorhandene Playwright-Testsystem verwendet.
+Lokale Browserfälle behalten ein hartes Limit von zehn Sekunden. Der langsamere
+gehostete CI-Runner erhält 20 Sekunden Scheduling-Spielraum je Fall; der gesamte
+Browserjob bleibt unabhängig davon auf 20 Minuten begrenzt und wird nicht
+automatisch wiederholt.
 
 Akzeptierte Leistungsabweichung vom 28.09.2026: Der Nutzer hat den einmaligen
 prozesskalten Start mit fälligem Settlement bei 3,39 Sekunden akzeptiert.

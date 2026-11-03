@@ -18,10 +18,10 @@ from tests.transport_fixtures import add_transport
 
 
 @pytest.fixture
-def old_market_source(game, database, tmp_path):
-    add_transport(game)
+def old_market_source(synthetic_game, database, tmp_path):
+    add_transport(synthetic_game)
     path = tmp_path / "old-market.db"
-    now = game.now()
+    now = synthetic_game.now()
     with (
         closing(sqlite3.connect(path)) as target,
         database.connect() as source,
@@ -48,14 +48,18 @@ def old_market_source(game, database, tmp_path):
                     raw["data"]["expires_at"] = values["expires_at"]
                     values["offer_snapshot"] = json.dumps(raw)
                 target.execute(
-                    f"INSERT INTO {table} VALUES ({','.join('?' for _ in values)})",
+                    f"INSERT INTO {table} VALUES "
+                    f"({','.join('?' for _ in values)})",
                     tuple(values.values()),
                 )
         target.execute(
-            "CREATE TABLE offer_route_references (user_id TEXT, contract_id TEXT, relation_id TEXT, revision TEXT)"
+            "CREATE TABLE offer_route_references ("
+            "user_id TEXT, contract_id TEXT, relation_id TEXT, revision TEXT)"
         )
         target.execute(
-            "INSERT INTO offer_route_references SELECT user_id,contract_id,'route','revision' FROM contract_offers"
+            "INSERT INTO offer_route_references "
+            "SELECT user_id,contract_id,'route','revision' "
+            "FROM contract_offers"
         )
         target.execute("CREATE TABLE annotations (value TEXT)")
         target.execute("INSERT INTO annotations VALUES ('preserve verbatim')")
@@ -116,7 +120,9 @@ def test_market_upgrade_rejects_unknown_schema_and_rolls_back_bad_output(
     upgrade = MarketStockUpgradeRepository(source, now)
     target = tmp_path / "failed.db"
     with patch.object(
-        upgrade, "_compare", side_effect=PersistenceError("mismatch")
+        type(upgrade.reconciler),
+        "validate",
+        side_effect=PersistenceError("mismatch"),
     ):
         with pytest.raises(PersistenceError, match="mismatch"):
             upgrade.upgrade_to(target)
@@ -134,8 +140,24 @@ def test_market_upgrade_rejects_unknown_schema_and_rolls_back_bad_output(
     assert not target.exists()
 
 
-def test_market_upgrade_reconciliation_detects_unapproved_changes(
-    old_market_source, tmp_path
+@pytest.mark.parametrize(
+    ("sql", "expected"),
+    (
+        ("DELETE FROM annotations", "Übernahmeabgleich"),
+        ("DELETE FROM contract_offers", "Auftragsabgleich"),
+        (
+            "DELETE FROM offer_route_references",
+            "Routenbindungsabgleich",
+        ),
+        ("UPDATE game_schema SET version='other'", "Übernahmeschema"),
+        ("CREATE TABLE unexpected (id INTEGER)", "Übernahmeschema"),
+    ),
+)
+def test_market_upgrade_reconciliation_rejects_unapproved_change(
+    old_market_source,
+    tmp_path,
+    sql,
+    expected,
 ):
     source, now = old_market_source
     upgrade = MarketStockUpgradeRepository(source, now)
@@ -146,20 +168,13 @@ def test_market_upgrade_reconciliation_detects_unapproved_changes(
     ):
         original.row_factory = output.row_factory = sqlite3.Row
         original.backup(output)
-        upgrade._apply(output)
-        upgrade._compare(original, output)
-        for sql, expected in (
-            ("DELETE FROM annotations", "Übernahmeabgleich"),
-            ("DELETE FROM contract_offers", "Auftragsabgleich"),
-            ("DELETE FROM offer_route_references", "Routenbindungsabgleich"),
-            ("UPDATE game_schema SET version='other'", "Übernahmeschema"),
-            ("CREATE TABLE unexpected (id INTEGER)", "Übernahmeschema"),
-        ):
-            output.execute("BEGIN")
-            output.execute(sql)
-            with pytest.raises(PersistenceError, match=expected):
-                upgrade._compare(original, output)
-            output.rollback()
+        upgrade.transformer.apply(output)
+        upgrade.reconciler.validate(original, output)
+        output.execute("BEGIN")
+        output.execute(sql)
+        with pytest.raises(PersistenceError, match=expected):
+            upgrade.reconciler.validate(original, output)
+        output.rollback()
 
 
 def test_market_upgrade_rejects_stock_collision_and_failed_integrity(
@@ -182,14 +197,38 @@ def test_market_upgrade_rejects_stock_collision_and_failed_integrity(
     ):
         original.row_factory = output.row_factory = sqlite3.Row
         original.backup(output)
-        upgrade._apply(output)
+        upgrade.transformer.apply(output)
         with pytest.raises(PersistenceError, match="inkonsistent"):
-            upgrade._compare(original, output)
+            upgrade.reconciler.validate(original, output)
         original.execute("CREATE TABLE market_templates (unexpected TEXT)")
         original.commit()
     with pytest.raises(PersistenceError, match="Vorratstabellen"):
         upgrade.upgrade_to(tmp_path / "rejected.db")
     assert not (tmp_path / "rejected.db").exists()
+
+
+def test_market_upgrade_supports_schema_without_offer_route_references(
+    old_market_source,
+    tmp_path,
+):
+    source, now = old_market_source
+    with closing(sqlite3.connect(source)) as database:
+        database.execute("DROP TABLE offer_route_references")
+        database.commit()
+    upgrade = MarketStockUpgradeRepository(source, now)
+    target = tmp_path / "without-route-references.db"
+    with (
+        closing(sqlite3.connect(source)) as original,
+        closing(sqlite3.connect(target)) as output,
+    ):
+        original.row_factory = output.row_factory = sqlite3.Row
+        original.backup(output)
+        upgrade.transformer.apply(output)
+        upgrade.reconciler.validate(original, output)
+        assert upgrade.reconciler.expected_route_references(original) is None
+        assert not output.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='offer_route_references'"
+        ).fetchone()
 
 
 def test_market_upgrade_cli_requires_backup_and_preserves_source(

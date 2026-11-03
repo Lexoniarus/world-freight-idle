@@ -1,0 +1,119 @@
+.vehicle-photo {
+  margin: 16px 0;
+}
+
+.vehicle-photo-frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: #102333;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.vehicle-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+}
+
+.vehicle-photo-fallback {
+  height: 100%;
+  display: grid;
+  place-items: center;
+}
+
+.vehicle-photo[data-image-state="loaded"] img {
+  opacity: 1;
+}
+
+.vehicle-photo[data-image-state="loaded"] .vehicle-photo-fallback {
+  visibility: hidden;
+}
+
+.vehicle-photo figcaption {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.vehicle-photo figcaption > span {
+  display: block;
+}
+
+.vehicle-photo figcaption a {
+  color: var(--gold);
+  text-decoration: underline;
+}
+
+.vehicle-photo figcaption .vehicle-image-error {
+  display: none;
+}
+
+.vehicle-photo[data-image-state="failed"] .vehicle-image-error {
+  display: block;
+}
+
+.vehicle-game-asset .vehicle-photo-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.vehicle-game-asset .vehicle-asset-view {
+  min-width: 0;
+}
+
+.vehicle-game-asset .vehicle-photo-frame {
+  aspect-ratio: auto;
+  height: 150px;
+  min-height: 0;
+  padding: 7px;
+  background: transparent;
+  border: 0;
+}
+
+.vehicle-game-asset .vehicle-photo-frame img {
+  position: static;
+  inset: auto;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  object-fit: contain;
+  opacity: 1;
+}
+
+.vehicle-game-asset .vehicle-view-label {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 9px;
+  text-align: center;
+}
+
+.vehicle-game-asset figcaption {
+  margin-top: 7px;
+}
+
+.energy-meter {
+  margin: 0.8rem 0;
+  font-size: 0.8rem;
+}
+
+.energy-meter > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.energy-meter meter {
+  display: block;
+  width: 100%;
+  height: 0.75rem;
+}

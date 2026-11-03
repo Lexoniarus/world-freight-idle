@@ -3,10 +3,11 @@
 from fastapi import Depends, HTTPException, Request
 
 from app.bootstrap import (
+    PlayerServiceContext,
     build_fleet_service,
     build_leaderboard_reader,
     build_map_service,
-    build_player_service,
+    build_player_context,
     build_runtime_reader,
     build_runtime_view,
     build_traffic_reader,
@@ -17,8 +18,8 @@ from app.domain.ports import VehicleCatalogue
 from app.domain.read_ports import LeaderboardReader, TrafficReader
 from app.domain.runtime_views import RuntimeReader
 from app.services.auth import SESSION_COOKIE, AuthService
-from app.services.fleet import FleetService
-from app.services.game import GameService
+from app.services.gameplay.fleet import FleetService
+from app.services.gameplay.player_game import PlayerGameFacade
 from app.services.map_locations import MapLocationService
 from app.services.runtime_views import RuntimeViewService
 
@@ -53,40 +54,51 @@ def get_current_user(
     return dict(user)
 
 
-def get_game_service(
+def get_player_context(
     request: Request,
     user: dict = Depends(get_current_user),
-) -> GameService:
-    """Build a request-scoped game service for the authenticated owner."""
+) -> PlayerServiceContext:
+    """Build one request-scoped player composition for private endpoints."""
     try:
-        return build_player_service(request.app.state.game, user["id"])
+        return build_player_context(
+            request.app.state.game_runtime,
+            user["id"],
+        )
     except CatalogueError as exc:
         raise HTTPException(503, str(exc)) from exc
 
 
+def get_game_service(
+    context: PlayerServiceContext = Depends(get_player_context),
+) -> PlayerGameFacade:
+    """Expose only the public player facade to HTTP handlers."""
+    return context.game
+
+
 def get_fleet_service(
     request: Request,
-    game: GameService = Depends(get_game_service),
+    context: PlayerServiceContext = Depends(get_player_context),
 ) -> FleetService:
     """Resolve the authenticated fleet service through the composition root."""
-    return build_fleet_service(game, request.app.state.settings)
+    return build_fleet_service(request.app.state.game_runtime, context)
 
 
 def get_map_service(
-    game: GameService = Depends(get_game_service),
+    request: Request,
+    _context: PlayerServiceContext = Depends(get_player_context),
 ) -> MapLocationService:
     """Resolve the authenticated catalogue map service."""
-    return build_map_service(game)
+    return build_map_service(request.app.state.game_runtime)
 
 
 def get_traffic_reader(request: Request) -> TrafficReader:
     """Resolve the shared read-only multiplayer traffic projection."""
-    return build_traffic_reader(request.app.state.game)
+    return build_traffic_reader(request.app.state.game_runtime)
 
 
 def get_runtime_reader(request: Request) -> RuntimeReader:
     """Resolve independent scalar and geometry read resources."""
-    return build_runtime_reader(request.app.state.game)
+    return build_runtime_reader(request.app.state.game_runtime)
 
 
 def get_runtime_view(
@@ -94,7 +106,7 @@ def get_runtime_view(
     user: dict = Depends(get_current_user),
 ) -> RuntimeViewService:
     """Bind summary reads to the authenticated owner only."""
-    return build_runtime_view(request.app.state.game, user["id"])
+    return build_runtime_view(request.app.state.game_runtime, user["id"])
 
 
 def get_vehicle_catalogue(request: Request) -> VehicleCatalogue:
@@ -104,4 +116,4 @@ def get_vehicle_catalogue(request: Request) -> VehicleCatalogue:
 
 def get_leaderboard_reader(request: Request) -> LeaderboardReader:
     """Resolve the public projection separately from account operations."""
-    return build_leaderboard_reader(request.app.state.game)
+    return build_leaderboard_reader(request.app.state.game_runtime)

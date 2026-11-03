@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.bootstrap import build_market_startup, build_preferences
+from app.bootstrap import build_preferences
 from app.domain.analytics_labels import vehicle_labels
 from app.domain.company_colors import COMPANY_COLORS, player_color
 from app.domain.economics import (
@@ -19,7 +19,7 @@ from app.domain.energy import EnergyKind, EnergyProfile, EnergyUnit
 from app.domain.journeys import plan_journey, unmetered_journey
 from app.domain.tariffs import FreightTariff, freight_tariff
 from app.repositories.transport_mapping import load_cost_breakdown
-from app.services.cost_profiles import VehicleCostResolver
+from app.services.gameplay.vehicle_costs import VehicleCostResolver
 
 
 def metered(kind: EnergyKind = "diesel", level=100, distance=1000):
@@ -98,11 +98,10 @@ def test_cost_values_reject_invalid_or_inconsistent_components():
 
 
 def test_tariff_uses_concrete_nhm_and_explicit_maintenance(
-    catalogue, world_catalogue
+    synthetic_vehicle_catalogue,
 ):
-    models = catalogue.list_models()
-    assert len(models) == 14
-    resolver = VehicleCostResolver(catalogue)
+    models = synthetic_vehicle_catalogue.list_models()
+    resolver = VehicleCostResolver(synthetic_vehicle_catalogue)
     for model in models:
         costs = resolver.resolve(model.id)
         assert (
@@ -130,26 +129,28 @@ def test_tariff_uses_concrete_nhm_and_explicit_maintenance(
 
 
 async def test_dispatch_stores_costs_and_preserves_tariff_for_vehicle_choice(
-    game,
+    synthetic_game,
 ):
-    offer = game.list_contracts()[0]
-    vehicle = game.get_vehicle("truck_01")
-    quote = await game.quote_contract(offer.id, vehicle.id)
+    offer = synthetic_game.list_contracts()[0]
+    vehicle = synthetic_game.get_vehicle("truck_01")
+    quote = await synthetic_game.quote_contract(offer.id, vehicle.id)
     tariff = offer.market_context.tariff
     with patch.object(
         VehicleCostResolver,
         "resolve",
         return_value=VehicleCostProfile(2),
     ):
-        expensive = await game.quote_contract(offer.id, vehicle.id)
+        expensive = await synthetic_game.quote_contract(offer.id, vehicle.id)
     assert expensive.economics.payout_eur == quote.economics.payout_eur
     assert (
         expensive.economics.operating_cost_eur
         > quote.economics.operating_cost_eur
     )
-    assert game.get_contract(offer.id).market_context.tariff == tariff
-    trip = await game.dispatch(offer.id, vehicle.id)
-    saved = game.state_repository.list_transports()[0]
+    assert (
+        synthetic_game.get_contract(offer.id).market_context.tariff == tariff
+    )
+    trip = await synthetic_game.dispatch(offer.id, vehicle.id)
+    saved = synthetic_game.state_repository.list_transports()[0]
     assert (
         saved.cost_breakdown
         == quote.economics.cost_breakdown
@@ -160,7 +161,7 @@ async def test_dispatch_stores_costs_and_preserves_tariff_for_vehicle_choice(
     route = quote.dispatch_route
     assert route is not None
     with pytest.raises(ValueError, match="Tarif"):
-        game.dispatch_planning.quote(
+        synthetic_game.transport_dispatch.planning.quote(
             replace(
                 offer,
                 market_context=replace(offer.market_context, tariff=None),
@@ -171,42 +172,10 @@ async def test_dispatch_stores_costs_and_preserves_tariff_for_vehicle_choice(
         )
 
 
-def test_startup_rebuild_is_global_atomic_and_does_not_route(
-    runtime, game, database
-):
-    startup = build_market_startup(runtime)
-    original = game.state_repository.list_offers()
-    with database.connect() as connection:
-        connection.execute(
-            "INSERT INTO users VALUES ('z-owner', 'Second', 'hash', 0)"
-        )
-        connection.execute(
-            "INSERT INTO player_states VALUES ('z-owner', 1000, 0, 0)"
-        )
-    real_factory = startup.lifecycle
-
-    def fail_second(owner):
-        if owner == "z-owner":
-            raise ValueError("second owner failure")
-        return real_factory(owner)
-
-    with patch.object(startup, "lifecycle", side_effect=fail_second):
-        with pytest.raises(ValueError, match="second owner"):
-            startup.rebuild()
-    assert game.state_repository.list_offers() == original
-    with patch.object(
-        runtime.router, "route", side_effect=AssertionError("No routing")
-    ):
-        startup.rebuild()
-    assert game.state_repository.list_offers() != original
-    assert not real_factory("z-owner").unit_of_work.repository.list_vehicles()
-    assert not real_factory("z-owner").unit_of_work.repository.list_offers()
-
-
 def test_preferences_are_account_scoped_persistent_and_palette_validated(
-    runtime, database
+    synthetic_runtime, database
 ):
-    service = build_preferences(runtime)
+    service = build_preferences(synthetic_runtime)
     assert len(COMPANY_COLORS) == 10
     assert service.read("test-owner").company_color == player_color(
         "test-owner"
@@ -220,7 +189,7 @@ def test_preferences_are_account_scoped_persistent_and_palette_validated(
         == COMPANY_COLORS[0]
     )
     assert (
-        build_preferences(runtime).read("test-owner").company_color
+        build_preferences(synthetic_runtime).read("test-owner").company_color
         == COMPANY_COLORS[0]
     )
     assert service.read("second").company_color == player_color("second")
@@ -243,7 +212,7 @@ def test_analytics_labels_keep_identity_and_disambiguate_current_names():
 
 
 def test_economy_audit_uses_actual_distribution_and_separates_cashflow(
-    catalogue, world_catalogue
+    synthetic_vehicle_catalogue, synthetic_world_catalogue
 ):
     from app.domain.economy_audit import audit_economy_case
     from app.domain.market import MarketVehicle
@@ -251,10 +220,18 @@ def test_economy_audit_uses_actual_distribution_and_separates_cashflow(
     from app.domain.market_compatibility import vehicle_suitability
     from app.domain.market_profiles import vehicle_scale_for_segment
 
-    profiles = world_catalogue.read().market_profiles
+    profiles = synthetic_world_catalogue.read().market_profiles
     reference = min(p.freight_rate_factor_game for p in profiles)
     covered = set()
-    for model in catalogue.list_models():
+    base_model = synthetic_vehicle_catalogue.list_models()[0]
+    segments = (
+        "light_commercial_van",
+        "light_distribution_truck",
+        "medium_distribution_truck",
+        "heavy_long_haul_tractor",
+    )
+    for index, segment in enumerate(segments):
+        model = replace(base_model, id=f"audit-{index}", segment=segment)
         vehicle = MarketVehicle(
             "audit",
             model.id,
@@ -296,30 +273,35 @@ def test_analytics_labels_expand_colliding_short_identities():
     assert labels["same0000-a"] == "Truck · same0000-a"
 
 
-async def test_vehicle_switch_preserves_offer_and_checks_actual_capacity(game):
-    offer = game.list_contracts()[0]
-    vehicle = game.get_vehicle("truck_01")
+async def test_vehicle_switch_preserves_offer_and_checks_actual_capacity(
+    synthetic_game_context,
+    synthetic_game,
+):
+    offer = synthetic_game.list_contracts()[0]
+    vehicle = synthetic_game.get_vehicle("truck_01")
     original = offer
-    quote = await game.quote_contract(offer.id, vehicle.id)
+    quote = await synthetic_game.quote_contract(offer.id, vehicle.id)
     vehicle._capacity_tons = offer.tons + 1
-    game.state_repository.save_vehicle(vehicle)
-    larger = await game.quote_contract(offer.id, vehicle.id)
+    synthetic_game.state_repository.save_vehicle(vehicle)
+    larger = await synthetic_game.quote_contract(offer.id, vehicle.id)
     assert larger.economics.payout_eur == quote.economics.payout_eur
-    assert game.get_contract(offer.id) == original
+    assert synthetic_game.get_contract(offer.id) == original
     vehicle._capacity_tons = offer.tons / 2
-    game.state_repository.save_vehicle(vehicle)
+    synthetic_game.state_repository.save_vehicle(vehicle)
     with pytest.raises(ValueError, match="Kapazität|kapazität"):
-        await game.quote_contract(offer.id, vehicle.id)
+        await synthetic_game.quote_contract(offer.id, vehicle.id)
     vehicle._capacity_tons = original.tons + 1
     with patch.object(
-        type(game.market.candidates), "eligible_ids", return_value=()
+        type(synthetic_game_context.market_generation.candidates),
+        "eligible_ids",
+        return_value=(),
     ):
         with pytest.raises(ValueError, match="Transportklasse"):
-            game._validate_dispatch(vehicle, offer)
+            synthetic_game.transport_dispatch.validate_dispatch(vehicle, offer)
 
 
 def test_vehicle_reference_cache_retries_failure_then_reuses_revision(
-    catalogue,
+    synthetic_vehicle_catalogue,
 ):
     from concurrent.futures import ThreadPoolExecutor
     from unittest.mock import Mock
@@ -329,7 +311,7 @@ def test_vehicle_reference_cache_retries_failure_then_reuses_revision(
         CachedVehicleCatalogue,
     )
 
-    models = catalogue.list_models()
+    models = synthetic_vehicle_catalogue.list_models()
     source = Mock()
     source.list_models.side_effect = [CatalogueError("not ready"), models]
     cached = CachedVehicleCatalogue(source)

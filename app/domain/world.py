@@ -12,7 +12,7 @@ from app.domain.market_profiles import NhmMarketProfile
 
 
 @dataclass(frozen=True, slots=True)
-class Company:
+class ReferenceCompany:
     """A reference company, never a player-owned business."""
 
     company_uid: str
@@ -24,7 +24,7 @@ class Company:
 
 
 @dataclass(frozen=True, slots=True)
-class CompanyIdentity:
+class ReferenceCompanyIdentity:
     """Compact immutable company identity for runtime projections."""
 
     company_uid: str
@@ -49,7 +49,7 @@ class FacilityLocationSnapshot:
     """Compact immutable routing and display projection."""
 
     facility_uid: str
-    company: CompanyIdentity | None
+    company: ReferenceCompanyIdentity | None
     label: str
     facility_type: str
     city: City
@@ -73,7 +73,7 @@ class Facility:
     """Public freight endpoint with immutable evidence and stable identity."""
 
     facility_uid: str
-    company: Company | None
+    company: ReferenceCompany | None
     label: str
     facility_type: str
     address: Address
@@ -133,7 +133,7 @@ class Facility:
     def location_snapshot(self) -> FacilityLocationSnapshot:
         """Project typed routing and display facts needed at runtime."""
         company = (
-            CompanyIdentity(
+            ReferenceCompanyIdentity(
                 company_uid=self.company.company_uid,
                 legal_name=self.company.legal_name,
                 display_name=self.company.display_name,
@@ -210,7 +210,7 @@ class WorldSnapshot:
     """One consistent catalogue read, with no live database handles."""
 
     version: str
-    companies: tuple[Company, ...]
+    companies: tuple[ReferenceCompany, ...]
     facilities: tuple[Facility, ...]
     countries: tuple[Country, ...]
     cities: tuple[City, ...]

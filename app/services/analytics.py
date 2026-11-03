@@ -1,7 +1,7 @@
 """Aggregate private historical facts without changing game state."""
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from app.domain.analytics import (
     AnalyticsDay,
@@ -91,6 +91,60 @@ def breakdown(
     )
 
 
+def select_scope_rows(
+    rows: tuple[AnalyticsTransport, ...],
+    scope: str,
+    scope_id: str | None,
+) -> list[AnalyticsTransport]:
+    """Select historical rows for one validated analytics scope."""
+    return [
+        row
+        for row in rows
+        if scope == "company" or dimension_value(row, scope) == scope_id
+    ]
+
+
+def analytics_start_date(
+    rows: list[AnalyticsTransport],
+    today: date,
+    days: str,
+) -> date:
+    """Resolve the inclusive UTC start date for one analytics period."""
+    if days == "all":
+        return (
+            datetime.fromtimestamp(rows[0].arrives_at, UTC).date()
+            if rows
+            else today
+        )
+    return today - timedelta(days=int(days) - 1)
+
+
+def select_period_rows(
+    rows: list[AnalyticsTransport],
+    start: date,
+) -> list[AnalyticsTransport]:
+    """Select rows at or after one inclusive UTC day boundary."""
+    boundary = datetime.combine(start, datetime.min.time(), UTC).timestamp()
+    return [row for row in rows if row.arrives_at >= boundary]
+
+
+def build_daily_series(
+    rows: list[AnalyticsTransport],
+    start: date,
+    today: date,
+) -> tuple[AnalyticsDay, ...]:
+    """Build a gap-free UTC series for already selected rows."""
+    by_day: dict[str, list[AnalyticsTransport]] = {}
+    for row in rows:
+        day = datetime.fromtimestamp(row.arrives_at, UTC).date().isoformat()
+        by_day.setdefault(day, []).append(row)
+    series: list[AnalyticsDay] = []
+    for offset in range((today - start).days + 1):
+        day = (start + timedelta(days=offset)).isoformat()
+        series.append(AnalyticsDay(day, summarize(by_day.get(day, []))))
+    return tuple(series)
+
+
 class AnalyticsService:
     """Compose current status, scoped history, UTC series and breakdowns."""
 
@@ -113,38 +167,11 @@ class AnalyticsService:
             tuple(row.vehicle_id for row in data.history)
             + tuple(row.vehicle_id for row in data.ongoing),
         )
-        rows = [
-            row
-            for row in data.history
-            if scope == "company" or dimension_value(row, scope) == scope_id
-        ]
+        rows = select_scope_rows(data.history, scope, scope_id)
         today = datetime.fromtimestamp(now, UTC).date()
-        start = (
-            datetime.fromtimestamp(rows[0].arrives_at, UTC).date()
-            if days == "all" and rows
-            else today
-            if days == "all"
-            else today - timedelta(days=int(days) - 1)
-        )
-        selected = [
-            row
-            for row in rows
-            if row.arrives_at
-            >= datetime.combine(start, datetime.min.time(), UTC).timestamp()
-        ]
-        by_day: dict[str, list[AnalyticsTransport]] = {}
-        for row in selected:
-            day = (
-                datetime.fromtimestamp(row.arrives_at, UTC).date().isoformat()
-            )
-            by_day.setdefault(day, []).append(row)
-        series = []
-        if rows:
-            for offset in range((today - start).days + 1):
-                day = (start + timedelta(days=offset)).isoformat()
-                series.append(
-                    AnalyticsDay(day, summarize(by_day.get(day, [])))
-                )
+        start = analytics_start_date(rows, today, days)
+        selected = select_period_rows(rows, start)
+        series = build_daily_series(selected, start, today) if rows else ()
         LOGGER.info(
             "Company analytics read",
             extra={
@@ -162,7 +189,7 @@ class AnalyticsService:
             data.status,
             summarize(rows),
             summarize(selected),
-            tuple(series),
+            series,
             tuple(
                 (
                     key,

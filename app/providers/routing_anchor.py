@@ -55,24 +55,7 @@ class ValhallaTruckAnchorLocator:
             },
         )
         try:
-            async with self.limiter.request():
-                response = await self.client.post(
-                    f"{self.base_url}/locate",
-                    json={
-                        "locations": [
-                            {
-                                "lat": coordinates.latitude,
-                                "lon": coordinates.longitude,
-                            }
-                        ],
-                        "costing": "truck",
-                        "verbose": True,
-                    },
-                    headers={
-                        "X-Client-Id": self.client_id,
-                        "X-Trace-Id": get_trace_id(),
-                    },
-                )
+            response = await self._request(coordinates)
             self.limiter.defer(response.headers.get("Retry-After"))
         except httpx.HTTPError as exc:
             LOGGER.warning(
@@ -114,7 +97,36 @@ class ValhallaTruckAnchorLocator:
                 "no_truck_edge" if no_edge else "invalid_response",
                 revision,
             )
+        return self._decode_locate(response, coordinates, revision)
 
+    async def _request(self, coordinates: Coordinates) -> httpx.Response:
+        """Submit one rate-limited truck-locate request."""
+        async with self.limiter.request():
+            return await self.client.post(
+                f"{self.base_url}/locate",
+                json={
+                    "locations": [
+                        {
+                            "lat": coordinates.latitude,
+                            "lon": coordinates.longitude,
+                        }
+                    ],
+                    "costing": "truck",
+                    "verbose": True,
+                },
+                headers={
+                    "X-Client-Id": self.client_id,
+                    "X-Trace-Id": get_trace_id(),
+                },
+            )
+
+    def _decode_locate(
+        self,
+        response: httpx.Response,
+        coordinates: Coordinates,
+        revision: str | None,
+    ) -> LocateResult:
+        """Decode accepted access candidates from one successful response."""
         try:
             payload = response.json()
             correlated = self._correlated_location(payload)

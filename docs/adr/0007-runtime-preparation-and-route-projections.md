@@ -1,7 +1,33 @@
 # ADR 0007: Runtime, Vorbereitung und Routengeometrien trennen
 
-Status: umgesetzt auf `feature/frontend-v2`; vollständige Abnahme im
+Status: angenommen und am 27.10.2026 für die lokale Runtime geändert;
+vollständige historische Abnahme im
 [Runtime-Review](../RUNTIME_ISOLATION_REVIEW.md).
+
+## Änderung vom 27.10.2026
+
+Die frühere Zwei-Prozess-Entscheidung wird für die lokale Produktlaufzeit
+aufgehoben. `python main.py` startet einen Uvicorn-Prozess; der FastAPI-Lifespan
+besitzt genau einen `MarketPreparationWorker` und beendet ihn vor den übrigen
+Ressourcen. Es gibt keine `runtime`-/`prewarm`-Rollen, keinen Supervisor und
+keine globale Worker-Lease mehr. Paar- und Anker-Leases bleiben erhalten, weil
+sie die konkrete Providerpublikation absichern.
+
+Marktbedarf wird nur durch fachliche Änderungen oder einen ausdrücklichen
+Refresh geschrieben. Der persistierte Write weckt den Worker über ein lokales
+Event; 60 Sekunden sind lediglich ein Sicherheitsintervall für fällige
+Backoffs. GET-Listen, Runtime-Polls und Kartennavigation lesen ausschließlich
+bereits veröffentlichten Zustand. Der Worker plant nur konkrete idle Fahrzeuge
+und gespeicherte Zielorte aktiver Transporte. Ein globaler Katalog-Preload und
+opportunistische Arbeit für unbenutzte Städte/Modelle finden nicht statt.
+
+Erfolgreich geprüfte Straßenrelationen werden für denselben Welt-, Provider-
+und Anker-Fingerprint dauerhaft wiederverwendet. Listen laden keine Geometrie.
+Erst Quote/Dispatch laden die exakt gebundene Payload und scheitern explizit,
+wenn sie fehlt oder beschädigt ist. Negative Ergebnisse und Facility-Anker
+behalten ihre begrenzten Wiederholungsfristen. Die nachfolgende ursprüngliche
+Entscheidung bleibt als Begründung der Read-/Worker-Trennung historisch erhalten;
+bei Prozess- und TTL-Aussagen gilt diese Änderung.
 
 ## Problem
 
@@ -11,14 +37,14 @@ auf Arbeit für andere Spieler. Wiederkehrende Frontend-Abfragen luden dieselben
 historischen Geometrien mehrfach. Ein ungültiger optionaler Anfahrtsplan in
 Alttransporten verhinderte außerdem das Laden eines betroffenen Spielstands.
 
-## Entscheidung
+## Historische Entscheidung vom 27.09.2026 (aufgehoben)
 
-`python main.py` überwacht zwei Prozesse. `--role runtime` startet ausschließlich
-HTTP, `--role prewarm` ausschließlich die nachfragegesteuerte Vorbereitung.
-Ein ausgefallener Worker startet mit 1 bis maximal 30 Sekunden Backoff erneut;
-die API bleibt erreichbar. EOF der Supervisor-Pipe fordert geordneten Shutdown
-an, anschließend gelten begrenzte Terminate-/Kill-Fristen. Docker benutzt
-weiterhin den Standardeinstieg.
+In diesem historischen Stand überwachte `python main.py` zwei Prozesse.
+`--role runtime` startete ausschließlich HTTP, `--role prewarm` ausschließlich
+die nachfragegesteuerte Vorbereitung. Ein ausgefallener Worker startete mit 1
+bis maximal 30 Sekunden Backoff erneut; die API blieb erreichbar. EOF der
+Supervisor-Pipe forderte geordneten Shutdown an. Diese Prozessentscheidung ist
+durch die Änderung vom 27.10.2026 aufgehoben.
 
 Beide Prozesse benutzen dieselbe relationale SQLite-Datenbank. Nach erfolgreicher
 Schema-Prüfung gilt WAL, jede Verbindung verwendet `synchronous=FULL` und

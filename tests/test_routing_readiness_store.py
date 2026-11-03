@@ -8,35 +8,13 @@ from app.domain.routing_readiness import (
     RoutePayload,
     RouteReference,
     RoutingAttempt,
-    RoutingRelation,
     relation_identity,
 )
-from app.repositories.game_database import SqliteGameDatabase
-from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.routing_readiness import (
     SqliteOfferRouteStore,
     SqliteRoutingReadinessStore,
 )
-
-
-def routing_store(tmp_path):
-    database = SqliteGameDatabase(tmp_path / "game.db")
-    database.initialize()
-    SqliteProviderCache(database)
-    return database, SqliteRoutingReadinessStore(database)
-
-
-def ready_relation():
-    return RoutingRelation(
-        RouteReference(relation_identity("A", "B"), "revision"),
-        "A",
-        "B",
-        "fingerprint",
-        "ready",
-        None,
-        None,
-        10,
-    )
+from tests.support.readiness import ready_relation, routing_store
 
 
 def test_readiness_domain_rejects_incoherent_records():
@@ -86,6 +64,8 @@ def test_global_lease_fences_expired_and_competing_writers(tmp_path):
     with pytest.raises(ValueError):
         store.renew(key, "a", 10, 9)
     assert store.acquire(key, "a", 10, 20)
+    assert store.holds(key, "a", 11)
+    assert not store.holds(key, "a", 20)
     assert not other.acquire(key, "b", 11, 21)
     assert not other.renew(key, "b", 11, 30)
     assert store.renew(key, "a", 11, 30)
@@ -139,6 +119,9 @@ def test_attempt_history_and_offer_reference_atomicity(tmp_path):
     with database.transaction():
         refs.replace((("offer", reference),))
     assert refs.get("offer") == reference
+    assert refs.get_many(()) == {}
+    assert refs.get_many(("missing", "offer", "offer")) == {"offer": reference}
+    assert foreign.get_many(("offer",)) == {}
     assert foreign.get("offer") is None
     with pytest.raises(RuntimeError), database.transaction():
         refs.replace(())

@@ -2,6 +2,7 @@
 
 import math
 import sqlite3
+from contextlib import closing
 from dataclasses import replace
 
 import pytest
@@ -34,9 +35,11 @@ def test_energy_profile_validates_measurements_and_consumption():
             replace(profile, **changes)
 
 
-def test_catalogue_energy_values_match_all_fourteen_models(catalogue):
-    models = catalogue.list_models()
-    assert len(models) == 14
+def test_synthetic_catalogue_energy_values_cover_supported_powertrains(
+    synthetic_vehicle_catalogue,
+):
+    models = synthetic_vehicle_catalogue.list_models()
+    assert len(models) == 6
     for model in models:
         assert model.energy.capacity > 0
         assert model.top_speed_kmh > 0
@@ -69,8 +72,10 @@ def test_catalogue_energy_values_match_all_fourteen_models(catalogue):
         ("powertrain", "unknown"),
     ],
 )
-def test_catalogue_rejects_incomplete_energy(catalogue, column, value):
-    with sqlite3.connect(catalogue.path) as db:
+def test_catalogue_rejects_incomplete_energy(
+    small_vehicle_catalogue, column, value
+):
+    with closing(sqlite3.connect(small_vehicle_catalogue.path)) as db, db:
         db.execute("PRAGMA ignore_check_constraints=ON")
         db.execute(
             f"UPDATE vehicle_models SET {column}=? "
@@ -78,23 +83,24 @@ def test_catalogue_rejects_incomplete_energy(catalogue, column, value):
             (value,),
         )
     with pytest.raises(CatalogueError):
-        catalogue.list_models()
+        small_vehicle_catalogue.list_models()
 
 
-def test_catalogue_requires_non_diesel_stop_time(catalogue):
-    with sqlite3.connect(catalogue.path) as db:
+def test_catalogue_requires_non_diesel_stop_time(small_vehicle_catalogue):
+    with closing(sqlite3.connect(small_vehicle_catalogue.path)) as db, db:
         db.execute(
             "UPDATE vehicle_balance SET energy_stop_minutes_game=NULL "
             "WHERE vehicle_id='mercedes_eactros_600'"
         )
     with pytest.raises(CatalogueError):
-        catalogue.list_models()
+        small_vehicle_catalogue.list_models()
 
 
 def test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction(
-    game,
+    synthetic_game_context,
+    synthetic_game,
 ):
-    vehicle = game.state_repository.list_vehicles()[0]
+    vehicle = synthetic_game.state_repository.list_vehicles()[0]
     from typing import Any
 
     from app.domain.game import OwnedVehicle
@@ -123,13 +129,15 @@ def test_owned_energy_is_encapsulated_and_model_changes_preserve_fraction(
         with pytest.raises(ValueError):
             vehicle.consume_energy(amount)
     model = next(
-        m for m in game.catalogue.list_models() if m.energy.kind == "electric"
+        m
+        for m in synthetic_game_context.catalogue.list_models()
+        if m.energy.kind == "electric"
     )
     vehicle.apply_model(model)
     assert vehicle.energy == model.energy
     assert vehicle.energy_level == model.energy.capacity / 2
-    game.state_repository.save_vehicle(vehicle)
-    loaded = game.state_repository.list_vehicles()[0]
+    synthetic_game.state_repository.save_vehicle(vehicle)
+    loaded = synthetic_game.state_repository.list_vehicles()[0]
     assert loaded == vehicle
     vehicle.refill_energy()
     assert vehicle.energy_level == model.energy.capacity

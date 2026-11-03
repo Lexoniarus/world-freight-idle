@@ -1,15 +1,16 @@
 import { matchVehicleImages } from "../ui/preserve-vehicle-images.js";
-import { LatestRequest } from "../state.js";
+import { LatestRequest } from "../latest-request.js";
 import { eligibleVehicles } from "../geometry.js";
-import { renderPanel } from "../panels.js";
+import { renderPanel } from "../views/panel.js";
 import { panelTitle } from "../navigation.js";
 import { requiredElement } from "../ui/dom.js";
+import { PanelViewState } from "./panel-view-state.js";
 
 /** Own panel selection, auxiliary reads and focus-preserving presentation. */
 export class PanelController {
-  /** @param {{view: import('../types.js').PanelView, request: import('../types.js').RequestJson, notify: import('../types.js').Notify, now: import('../types.js').Clock}} options */
-  constructor({ view, request, notify, now }) {
-    this.view = view;
+  /** @param {{view: import('../types.js').PanelView, request: import('../types.js').RequestJson, notify: import('../types.js').Notify, now: import('../types.js').Clock, images?: import('../vehicle-image-bindings.js').VehicleImageController | null}} options */
+  constructor({ view, request, notify, now, images = null }) {
+    this.presentation = new PanelViewState(view);
     this.request = request;
     this.notify = notify;
     this.now = now;
@@ -20,8 +21,28 @@ export class PanelController {
     this.contentFocus = null;
     this.returnFocus = null;
     this.disposed = false;
-    /** @type {import("../vehicle-image-bindings.js").VehicleImageController | null} */
-    this.images = null;
+    this.images = images;
+  }
+  /** Expose a read model to renderers and controller decisions.
+   * @returns {import('../types.js').PanelView}
+   */
+  get view() {
+    return this.presentation.value;
+  }
+  /** Report whether the panel surface is currently visible.
+   * @returns {boolean}
+   */
+  isOpen() {
+    return !this.panel.hidden;
+  }
+  /** Toggle between contextual and management panel presentation.
+   * @returns {void}
+   */
+  toggleMode() {
+    this.panel.dataset.mode = this.panel.dataset.mode === "management" ? "context" : "management";
+    document
+      .querySelector("#game")
+      ?.classList.toggle("management-open", this.panel.dataset.mode === "management");
   }
   /** Reset only panel-specific selection when the route changes.
    * @param {URL} url
@@ -33,13 +54,7 @@ export class PanelController {
     const scroll = this.content.scrollTop;
     this.returnFocus = document.activeElement?.closest(".nav-item") || this.returnFocus;
     this.pending.cancel();
-    Object.assign(this.view, {
-      url,
-      quote: null,
-      selectedVehicle: url.searchParams.get("vehicle") ?? "",
-      rankings: null,
-      panelError: false,
-    });
+    this.presentation.selectRoute(url);
     if (!sameView) this.contentFocus = null;
     if (!sameView || !this.panel.dataset.mode)
       this.panel.dataset.mode = url.pathname === "/company" ? "management" : "context";
@@ -72,13 +87,11 @@ export class PanelController {
     try {
       const result = await this.request(endpoint, { signal: request.signal });
       if (!request.isCurrent()) return;
-      if (endpoint === "/leaderboard") this.view.rankings = result.players;
-      else this.view.catalogue = result;
-      this.view.panelError = false;
+      this.presentation.publishDetails(endpoint, result);
     } catch (error) {
       if (!request.isCurrent() || error.name === "AbortError") return;
       this.notify(error.message);
-      this.view.panelError = true;
+      this.presentation.failDetails();
     }
     this.render();
   }
@@ -117,10 +130,9 @@ export class PanelController {
         : this.view.state?.contracts.find((item) => item.id === contractId);
     const vehicles = contract ? eligibleVehicles(this.view.state.vehicles, contract) : [];
     if (contractId && !vehicles.some((vehicle) => vehicle.id === this.view.selectedVehicle)) {
-      this.view.selectedVehicle = this.view.url.searchParams.get("vehicle")
-        ? ""
-        : vehicles[0]?.id || "";
-      this.view.quote = null;
+      this.presentation.replaceVehicleSelection(
+        this.view.url.searchParams.get("vehicle") ? "" : vehicles[0]?.id || "",
+      );
     }
   }
   /** Mark exactly the active navigation destination.

@@ -1,31 +1,16 @@
 import { releaseAll } from "../lifecycle.js";
 import * as maplibregl from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-import { nearestLongitude, unwrapRoute } from "../geometry.js";
+import { unwrapRoute } from "../geometry.js";
 import { OverlayData, previewFeatures, routeGeometry } from "./overlay-data.js";
-import { addOverlayLayers } from "./layers.js";
+import { addOverlayLayers } from "./overlay-layers.js";
 import { MapCamera } from "./camera.js";
 import { VehicleAnimator } from "./vehicle-animator.js";
-import { VehicleIconRegistry } from "./vehicle-assets.js";
+import { VehicleIconRegistry } from "./vehicle-icon-registry.js";
 import { selectedLocations } from "./selection.js";
 import { Opportunities } from "./opportunities.js";
 import { VehicleGroups } from "./vehicle-groups.js";
-
-const OWN_VEHICLE_LAYERS = ["vehicles", "vehicles-idle", "vehicles-fallback"];
-const MULTIPLAYER_VEHICLE_LAYERS = [
-  "multiplayer-vehicles",
-  "multiplayer-vehicles-idle",
-  "multiplayer-vehicles-fallback",
-];
-const HIT_LAYERS = [
-  ...OWN_VEHICLE_LAYERS,
-  ...MULTIPLAYER_VEHICLE_LAYERS,
-  "orders",
-  "parked",
-  "hub-points",
-  "hub-clusters",
-];
-const FACILITY_HOVER_LAYERS = new Set(["orders", "parked", "hub-points"]);
+import { MapInteractions, MULTIPLAYER_VEHICLE_LAYERS, OWN_VEHICLE_LAYERS } from "./interactions.js";
 
 export class WorldMap extends EventTarget {
   /** @param {string | HTMLElement} container
@@ -33,10 +18,9 @@ export class WorldMap extends EventTarget {
    */
   constructor(
     container,
-    { navigate, notify, now, loadAsset, assets, provider, viewport, reducedMotion, isHidden },
+    { notify, now, loadAsset, assets, provider, viewport, reducedMotion, isHidden },
   ) {
     super();
-    this.navigate = navigate;
     this.notify = notify;
     this.now = now;
     this.reducedMotion = reducedMotion;
@@ -54,11 +38,6 @@ export class WorldMap extends EventTarget {
     this.ready = false;
     this.disposed = false;
     this.preview = null;
-    this.hoverPopup = new maplibregl.Popup({
-      closeButton: false,
-      closeOnClick: false,
-      offset: 14,
-    });
     maplibregl.setWorkerUrl(workerUrl);
     this.map = new maplibregl.Map({
       container,
@@ -84,8 +63,20 @@ export class WorldMap extends EventTarget {
       reducedMotion,
     });
     this.map.touchZoomRotate.disableRotation();
-    this.groups = new VehicleGroups(this.map, navigate, reducedMotion);
-    this.opportunities = new Opportunities(this.map, navigate);
+    this.groups = new VehicleGroups(
+      this.map,
+      (selection) => this.emitSelection(selection),
+      reducedMotion,
+    );
+    this.opportunities = new Opportunities(this.map, (selection) => this.emitSelection(selection));
+    this.interactions = new MapInteractions({
+      map: this.map,
+      notify,
+      reducedMotion,
+      isReady: () => this.ready && !this.disposed,
+      groups: this.groups,
+      emitSelection: (selection) => this.emitSelection(selection),
+    });
     this.map.addControl(new maplibregl.AttributionControl({ compact: false }), "bottom-left");
     this.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
     this.bindMapEvents();
@@ -118,19 +109,6 @@ export class WorldMap extends EventTarget {
           this.marketVehicleId,
         );
       }
-    });
-    this.map.on("click", (event) => {
-      void this.selectFeature(event).catch(() => {
-        if (!this.disposed) this.notify("Kartenobjekt konnte nicht ausgewählt werden.", "map");
-      });
-    });
-    this.map.on("mousemove", (event) => {
-      if (!this.ready) return;
-      const feature = this.map.queryRenderedFeatures(event.point, {
-        layers: HIT_LAYERS,
-      })[0];
-      this.map.getCanvas().style.cursor = feature ? "pointer" : "";
-      this.updateFacilityHover(feature, event.lngLat);
     });
   }
 
@@ -201,28 +179,6 @@ export class WorldMap extends EventTarget {
     this.overlays.companyColor = color;
     this.groups.last = -Infinity;
     this.update(this.overlays.state);
-  }
-
-  /** Project facility hover information into the owned popup.
-   * @param {import("maplibre-gl").MapGeoJSONFeature | undefined} feature
-   * @param {import("maplibre-gl").LngLat} lngLat
-   * @returns {void}
-   */
-  updateFacilityHover(feature, lngLat) {
-    if (!feature || !FACILITY_HOVER_LAYERS.has(feature.layer.id)) {
-      this.hoverPopup.remove();
-      return;
-    }
-    const content = document.createElement("div");
-    const title = document.createElement("strong");
-    title.textContent = feature.properties.label || "Frachtstandort";
-    const detail = document.createElement("div");
-    const city = feature.properties.city || "";
-    const trucks = Number(feature.properties.idleTruckCount || 0);
-    const orders = feature.properties.orderCount;
-    detail.textContent = `${city} · ${trucks} Lkw · ${orders == null ? "Auftragszahl unbekannt" : orders + " Aufträge"}`;
-    content.append(title, detail);
-    this.hoverPopup.setLngLat(lngLat).setDOMContent(content).addTo(this.map);
   }
 
   /** Load current vehicle variants and ignore obsolete completions.
@@ -319,57 +275,12 @@ export class WorldMap extends EventTarget {
     /** @type {import("maplibre-gl").GeoJSONSource} */ (this.map.getSource(name))?.setData(data);
   }
 
-  /** Translate a map hit into navigation or group interaction.
-   * @param {import("maplibre-gl").MapMouseEvent} event
-   * @returns {Promise<void>}
+  /** Publish a semantic selection without coupling the renderer to routing.
+   * @param {import('../types.js').MapObjectSelection} selection
+   * @returns {void}
    */
-  async selectFeature(event) {
-    if (!this.ready || this.disposed) return;
-    const hits = this.map.queryRenderedFeatures(event.point, { layers: HIT_LAYERS });
-    const vehicleHits = [
-      ...new Map(
-        hits
-          .filter((item) =>
-            [...OWN_VEHICLE_LAYERS, ...MULTIPLAYER_VEHICLE_LAYERS].includes(item.layer.id),
-          )
-          .map((item) => [item.properties.key, item]),
-      ).values(),
-    ];
-    if (vehicleHits.length > 1) {
-      this.groups.showList(vehicleHits, event.lngLat);
-      return;
-    }
-    const feature = hits[0];
-    if (!feature) return;
-    if (feature.properties.cluster) {
-      const zoom = await /** @type {import("maplibre-gl").GeoJSONSource} */ (
-        this.map.getSource("hubs")
-      ).getClusterExpansionZoom(feature.properties.cluster_id);
-      if (this.disposed) return;
-      const [lon, lat] = /** @type {import("geojson").Point} */ (feature.geometry).coordinates;
-      this.map.easeTo({
-        center: [nearestLongitude(lon, event.lngLat.lng), lat],
-        zoom,
-        duration: this.reducedMotion() ? 0 : 500,
-      });
-    } else if (OWN_VEHICLE_LAYERS.includes(feature.layer.id)) {
-      this.navigate(
-        feature.properties.idle
-          ? "/fleet/" + encodeURIComponent(feature.properties.vehicleId)
-          : "/transports/" + encodeURIComponent(feature.properties.id),
-      );
-    } else if (MULTIPLAYER_VEHICLE_LAYERS.includes(feature.layer.id)) {
-      this.notify(
-        `${feature.properties.username || "Ein anderer Spieler"} · ${feature.properties.modelName || "Fahrzeug"}`,
-        "map",
-      );
-    } else {
-      this.navigate(
-        (feature.layer.id === "parked" ? "/fleet" : "/contracts") +
-          "?city=" +
-          encodeURIComponent(feature.properties.cityUid ?? ""),
-      );
-    }
+  emitSelection(selection) {
+    this.dispatchEvent(new CustomEvent("object-selected", { detail: selection }));
   }
 
   /** Display or clear the current quote geometry.
@@ -494,11 +405,9 @@ export class WorldMap extends EventTarget {
     this.disposed = true;
     releaseAll([
       () => this.animator.destroy(),
+      () => this.interactions.destroy(),
       () => this.groups.destroy(),
       () => this.opportunities.destroy(),
-      () => {
-        this.hoverPopup.remove();
-      },
       () => this.vehicleIcons.destroy(),
       () => this.map.remove(),
     ]);

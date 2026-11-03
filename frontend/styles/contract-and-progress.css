@@ -1,0 +1,326 @@
+.back-link {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+  color: #a8bdcc;
+  margin-bottom: 26px;
+}
+
+.cargo-heading {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 26px;
+  color: var(--gold);
+}
+
+.cargo-heading > span {
+  color: #e4ecf2;
+  font-size: 16px;
+}
+
+.cargo-heading small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 7px;
+}
+
+.itinerary {
+  margin: 0 0 16px 8px;
+  padding-left: 23px;
+  border-left: 1px dashed #7892a6;
+}
+
+.itinerary > div {
+  position: relative;
+}
+
+.itinerary > div + div {
+  margin-top: 28px;
+}
+
+.itinerary i {
+  position: absolute;
+  left: -30px;
+  top: 3px;
+  width: 13px;
+  height: 13px;
+  border: 3px solid var(--gold);
+  border-radius: 50%;
+  background: var(--panel);
+}
+
+.itinerary > div:last-child i {
+  border-color: var(--green);
+}
+
+.itinerary span {
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  color: var(--muted);
+}
+
+.itinerary h2 {
+  margin: 6px 0;
+}
+
+.itinerary p {
+  font-size: 11px;
+  color: #c1cdd7;
+  line-height: 1.7;
+}
+
+.itinerary small {
+  display: block;
+  font-size: 10px;
+  color: #8fa9bc;
+  margin-top: 5px;
+}
+
+.footnote {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin: 18px 0;
+}
+
+.metrics {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--line);
+  margin: 20px 0;
+}
+
+.metric {
+  padding: 16px;
+  background: #192e40;
+}
+
+.metric span {
+  display: block;
+  font-size: 10px;
+  color: #a6bdce;
+  margin-bottom: 7px;
+}
+
+.metric strong {
+  font:
+    600 23px Barlow,
+    sans-serif;
+}
+
+.metric.wide {
+  grid-column: 1 / -1;
+}
+
+.metric.profit {
+  background: #193c38;
+}
+
+.metric.profit strong {
+  color: var(--green);
+}
+
+.quote-placeholder {
+  border: 1px dashed #597186;
+  border-radius: 10px;
+  padding: 20px 16px;
+  margin: 20px 0;
+  text-align: center;
+}
+
+.quote-placeholder p {
+  font-size: 12px;
+  margin-bottom: 15px;
+  color: var(--muted);
+}
+
+.dispatch-form {
+  margin-top: 25px;
+  border-top: 1px solid var(--line);
+  padding-top: 22px;
+}
+
+label {
+  font-size: 12px;
+}
+
+.dispatch-form label {
+  display: block;
+  margin-bottom: 12px;
+}
+
+input:not([type="checkbox"]),
+select {
+  background: #0d1e2d;
+  color: #eaf0f5;
+  border: 1px solid #41576a;
+  border-radius: 8px;
+  width: 100%;
+  padding: 13px 14px;
+  min-height: 47px;
+  font-size: 13px;
+}
+
+select {
+  padding-right: 5px;
+}
+
+.dispatch-form .button {
+  width: 100%;
+  margin-top: 15px;
+}
+
+.inline-notice {
+  font-size: 12px;
+  color: #e8c795;
+  background: #423d31;
+  border: 1px solid #62553c;
+  border-radius: 8px;
+  padding: 14px;
+  line-height: 1.7;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 35px 8px;
+  color: var(--muted);
+}
+
+.empty-state > svg {
+  color: #7595aa;
+  margin-bottom: 15px;
+}
+
+.empty-state h3 {
+  color: #eaf0f5;
+  margin-bottom: 12px;
+}
+
+.empty-state p {
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.empty-state + .button {
+  width: 100%;
+}
+
+.dispatch-banner .truck-art {
+  height: 150px;
+}
+
+.panel-content > h2 + p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 10px 0 20px;
+}
+
+.trip-progress {
+  margin: 18px 0;
+}
+
+.trip-progress > div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #a9c1d2;
+  margin-bottom: 10px;
+}
+
+.trip-progress b {
+  color: var(--gold);
+}
+
+progress {
+  display: block;
+  width: 100%;
+  height: 5px;
+  border: none;
+  background: #385267;
+  border-radius: 9px;
+  overflow: hidden;
+  accent-color: var(--gold);
+}
+
+progress::-webkit-progress-bar {
+  background: #385267;
+}
+
+progress::-webkit-progress-value {
+  background: var(--gold);
+  border-radius: 9px;
+}
+
+progress::-moz-progress-bar {
+  background: var(--gold);
+}
+
+.ranking-hero {
+  text-align: center;
+  padding: 8px 0 24px;
+}
+
+.ranking-hero > svg {
+  color: var(--gold);
+  margin-bottom: 15px;
+}
+
+.ranking-hero p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+  margin-top: 14px;
+}
+
+.rankings {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.rankings li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.rankings li.you {
+  background: #29433f;
+  border-radius: 8px;
+}
+
+.rankings li > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.rankings .rank {
+  color: var(--gold);
+  font:
+    600 24px Barlow,
+    sans-serif;
+}
+
+.rankings b {
+  margin-left: auto;
+  text-align: right;
+}
+
+.rankings small {
+  display: block;
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-top: 4px;
+}

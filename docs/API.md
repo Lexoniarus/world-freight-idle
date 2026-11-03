@@ -123,6 +123,11 @@ Authentifizierte, accountübergreifende Kartenprojektion aktiver Transporte:
 öffentlicher Spielername, Fahrzeugdarstellung, Route, Zeiten und Spielerfarbe.
 Private Guthaben, Verträge, Kosten und Auszahlungen werden nicht veröffentlicht.
 Ein fremder Transport kann nicht über private Detailendpoints geöffnet werden.
+Die Antwort ist auf 100 aktive Transporte begrenzt und priorisiert die zuletzt
+gestarteten Fahrten. Gleichstände werden stabil aufgelöst. Die Auswahl ist
+viewer-unabhängig und wird serverseitig für höchstens zehn Sekunden gemeinsam
+verwendet; eine enthaltene Ankunft beendet den Snapshot früher. Eigentumsflag
+und JSON-Projektion bleiben requestbezogen, ohne dafür erneut SQL auszuführen.
 
 ## System
 

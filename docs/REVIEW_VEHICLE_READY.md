@@ -1,5 +1,10 @@
 # Reviewkorrekturen und Vehicle-Ready: Einzelreview
 
+> Historischer Review des damaligen Implementierungsstands. Die dort
+> inventarisierten Generator-, Coverage- und `prepare_publication`-Callables
+> existieren im lokalen Stock-Worker seit 28.10.2026 nicht mehr. Aktuelle
+> Besitzer und Gegenproben: [MARKET_STOCK_REVIEW.md](MARKET_STOCK_REVIEW.md).
+
 Stand: 27.09.2026; Basis `e49e5fa`. Direkter bestehender Arbeitsbranch.
 Status: implementiert / gezielte Prüfungen bestanden / Gesamtabnahme offen.
 
@@ -23,7 +28,7 @@ Die Liste ist gegen den Basiscommit per AST abgeglichen. Jede Zeile wurde auf Zw
 |---|---|---|---|
 | `project_analytics` | Preserve field names, flattened metrics and historical nulls. | `asdict` | Service-Aufruf und HTTP-Projektion; kein SQL/Provider |
 
-### `app/api/v1/company.py`
+### `app/api/v1/company_analytics.py`
 
 | Funktion | Einziger Zweck | Unmittelbare Abhängigkeiten | Seiteneffekte / Grenze |
 |---|---|---|---|
@@ -124,7 +129,7 @@ Die Liste ist gegen den Basiscommit per AST abgeglichen. Jede Zeile wurde auf Zw
 | `MarketCoverageService.plan` | Compose independent city plans and compact coverage diagnostics. | `CoveragePlan`, `diagnostics.append`, `selected.extend`, `self._plan_city`, `tuple` | Lokaler Plan und injizierter RNG; keine Materialisierung |
 | `MarketCoverageService._plan_city` | Apply facility coverage first and then fill available bands. | `CityCoverage`, `CoverageDiagnostic`, `coverage.add_candidate`, `coverage.record`, `len`, `selected.append`, `self._select`, `sorted`, `sum`, `tuple` | Lokaler Plan und injizierter RNG; keine Materialisierung |
 
-### `app/services/market_lifecycle.py`
+### `app/services/market/lifecycle.py`
 
 | Funktion | Einziger Zweck | Unmittelbare Abhängigkeiten | Seiteneffekte / Grenze |
 |---|---|---|---|
@@ -173,7 +178,7 @@ Die Liste ist gegen den Basiscommit per AST abgeglichen. Jede Zeile wurde auf Zw
 | `RoutingReadinessService._validate` | Resolve truck endpoints and validate one provider route. | `RoutePayload`, `RouteReference`, `RoutingAttempt`, `RoutingRelation`, `WorldScope`, `any`, `get_trace_id`, `relation_identity`, `scope.facility`, `self._failure`, `self._validate`, `self.anchors.resolve`, `self.clock`, `self.fingerprint`, `self.router.route`, `self.store.append_attempt`, `self.store.publish`, `self.store.renew`, `self.world.read`, `uuid.uuid4` | Provider über Ports, gefencete Persistenz |
 | `RoutingReadinessService._failure` | Persist diagnostic failure and its bounded retry schedule. | `RouteReference`, `RoutingAttempt`, `RoutingRelation`, `get_trace_id`, `relation_identity`, `self.clock`, `self.fingerprint`, `self.store.append_attempt`, `self.store.publish`, `uuid.uuid4` | Diagnostik/Status über Repository-Port |
 
-### `app/services/vehicle_coverage.py`
+### `app/services/market/vehicle_coverage.py`
 
 | Funktion | Einziger Zweck | Unmittelbare Abhängigkeiten | Seiteneffekte / Grenze |
 |---|---|---|---|

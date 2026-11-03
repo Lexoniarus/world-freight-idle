@@ -39,8 +39,12 @@ def test_player_state_domain_rules():
         player.complete_delivery(-1)
 
 
-def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
-    berlin = WorldScope(world_catalogue.read()).facility("berlin_westhafen")
+def test_owned_vehicle_domain_rules(
+    synthetic_world_catalogue, synthetic_vehicle_catalogue
+):
+    berlin = WorldScope(synthetic_world_catalogue.read()).facility(
+        "berlin_westhafen"
+    )
     location = berlin.location_snapshot()
     vehicle = OwnedVehicle(
         id="truck_01",
@@ -75,7 +79,7 @@ def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
 
     destination = next(
         facility
-        for facility in world_catalogue.read().facilities
+        for facility in synthetic_world_catalogue.read().facilities
         if facility.facility_uid != berlin.facility_uid
     ).location_snapshot()
     vehicle.arrive(destination)
@@ -84,7 +88,9 @@ def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
     assert vehicle.status == "idle"
 
     model = next(
-        item for item in catalogue.list_models() if item.id == "man_tgx_520"
+        item
+        for item in synthetic_vehicle_catalogue.list_models()
+        if item.id == "man_tgx_520"
     )
     identity = vehicle.id
     vehicle.apply_model(model)
@@ -109,8 +115,8 @@ def test_owned_vehicle_domain_rules(world_catalogue, catalogue):
     assert "location_snapshot" not in project_vehicle(legacy)
 
 
-def test_contract_offer_domain_rules(game):
-    offer = game.state_repository.list_offers()[0]
+def test_contract_offer_domain_rules(synthetic_game):
+    offer = synthetic_game.state_repository.list_offers()[0]
 
     assert offer.is_available(offer.created_at, offer.market_model)
     assert offer.expires_at is None
@@ -188,10 +194,10 @@ def test_domain_value_validators_reject_invalid_values():
 
 
 def test_entity_construction_and_mutation_are_guarded(
-    world_catalogue, catalogue
+    synthetic_world_catalogue, synthetic_vehicle_catalogue
 ):
     location = (
-        WorldScope(world_catalogue.read())
+        WorldScope(synthetic_world_catalogue.read())
         .facility("berlin_westhafen")
         .location_snapshot()
     )
@@ -260,7 +266,7 @@ def test_entity_construction_and_mutation_are_guarded(
     with pytest.raises(ValueError):
         vehicle.validate_dispatch("truck", location.facility_uid, float("nan"))
     original = project_vehicle(vehicle)
-    model = catalogue.list_models()[0]
+    model = synthetic_vehicle_catalogue.list_models()[0]
     for changes in ({"capacity_tons": 0}, {"operating_cost_eur_per_km": -1}):
         with pytest.raises(ValueError):
             vehicle.apply_model(replace(model, **changes))

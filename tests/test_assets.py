@@ -8,16 +8,20 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.main import create_app
-from tests.test_api import make_settings, make_static_files
+from tests.support.api import create_minimal_static_files
+from tests.support.application_settings import (
+    build_synthetic_application_settings,
+)
 
 
 def test_vehicle_asset_directory_is_served(tmp_path):
     """Serve repository vehicle sprites outside the Vite build output."""
-    make_static_files(tmp_path)
+    create_minimal_static_files(tmp_path)
     assets = tmp_path / "assets"
     assets.mkdir()
     (assets / "probe.svg").write_text("<svg></svg>", encoding="utf-8")
-    with TestClient(create_app(make_settings(tmp_path))) as client:
+    settings = build_synthetic_application_settings(tmp_path)
+    with TestClient(create_app(settings)) as client:
         response = client.get("/assets/probe.svg")
         assert response.status_code == 200
         assert response.text == "<svg></svg>"
@@ -29,7 +33,10 @@ def test_all_selected_vehicle_assets_are_served_unchanged(tmp_path):
     inventory = json.loads(
         (root / "assets/inventory.json").read_text(encoding="utf-8")
     )["files"]
-    settings = replace(make_settings(tmp_path), base_dir=root)
+    settings = replace(
+        build_synthetic_application_settings(tmp_path),
+        base_dir=root,
+    )
     with TestClient(create_app(settings)) as client:
         for entry in inventory:
             if entry["usage"] == "reference":

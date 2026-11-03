@@ -5,6 +5,8 @@ from typing import Literal, Protocol, TypedDict
 
 from app.domain.routes import RouteLeg
 
+MAX_PUBLIC_TRAFFIC_TRANSPORTS = 100
+
 
 class RankingEntry(TypedDict):
     """Public progress without private economic or authentication data."""
@@ -53,5 +55,9 @@ class TrafficReader(Protocol):
     """Expose public live traffic without private contract snapshots."""
 
     def list_active_transports(
+        self, active_at: float
+    ) -> tuple[SharedTransport, ...]: ...
+
+    def list_active_summaries(
         self, active_at: float
     ) -> tuple[SharedTransport, ...]: ...

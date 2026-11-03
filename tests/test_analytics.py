@@ -14,7 +14,11 @@ from app.domain.errors import PersistenceError
 from app.main import create_app
 from app.repositories.analytics import SqliteAnalyticsReader
 from app.services.analytics import AnalyticsService, summarize, validate_scope
-from tests.test_api import make_settings, make_static_files
+from tests.support.api import create_minimal_static_files
+from tests.support.application_settings import (
+    build_synthetic_application_settings,
+)
+from tests.support.game_clock import set_game_clock
 
 NOW = datetime(2026, 9, 25, 12, tzinfo=UTC).timestamp()
 
@@ -69,8 +73,10 @@ def insert_trip(
         )
 
 
-def test_analytics_scalars_do_not_hydrate_routes(game, database, monkeypatch):
-    vehicle = game.state_repository.list_vehicles()[0]
+def test_analytics_scalars_do_not_hydrate_routes(
+    synthetic_game, database, monkeypatch
+):
+    vehicle = synthetic_game.state_repository.list_vehicles()[0]
     insert_trip(database, vehicle.id)
     insert_trip(database, vehicle.id, "t2", NOW - 86400, v2=False)
     insert_trip(database, vehicle.id, "active", NOW + 86400, status="active")
@@ -161,15 +167,19 @@ def test_analytics_scope_validation(days, scope, scope_id):
         ),
     ],
 )
-def test_analytics_rejects_corrupt_scalar_fields(game, database, change):
+def test_analytics_rejects_corrupt_scalar_fields(
+    synthetic_game, database, change
+):
     insert_trip(
-        database, game.state_repository.list_vehicles()[0].id, change=change
+        database,
+        synthetic_game.state_repository.list_vehicles()[0].id,
+        change=change,
     )
     with pytest.raises(PersistenceError):
         SqliteAnalyticsReader(database, "test-owner").read(NOW)
 
 
-def test_analytics_empty_and_utc_boundary(game, database):
+def test_analytics_empty_and_utc_boundary(synthetic_game, database):
     reader = SqliteAnalyticsReader(database, "test-owner")
     data = project_analytics(
         AnalyticsService(reader).analyze(NOW, "all", "company", None)
@@ -177,7 +187,7 @@ def test_analytics_empty_and_utc_boundary(game, database):
     assert data["daily"] == []
     assert data["totals"]["completed_transports"] == 0
     start = datetime(2026, 9, 19, tzinfo=UTC).timestamp()
-    vehicle = game.state_repository.list_vehicles()[0]
+    vehicle = synthetic_game.state_repository.list_vehicles()[0]
     insert_trip(database, vehicle.id, "before", start - 1)
     insert_trip(database, vehicle.id, "boundary", start)
     data = project_analytics(
@@ -191,20 +201,26 @@ def test_analytics_empty_and_utc_boundary(game, database):
 
 @pytest.mark.asyncio
 async def test_analytics_offline_arrival_is_idempotent(
-    tmp_path, game, runtime
+    tmp_path, synthetic_game, synthetic_runtime
 ):
     choice = next(
         item
-        for item in game.contract_choices(game.list_contracts())
+        for item in synthetic_game.contract_choices(
+            synthetic_game.list_contracts()
+        )
         if item.eligible_vehicle_ids
     )
-    trip = await game.dispatch(choice.offer.id, choice.eligible_vehicle_ids[0])
-    game.now = lambda: trip.arrives_at + 1
-    make_static_files(tmp_path)
-    application = create_app(make_settings(tmp_path))
+    trip = await synthetic_game.dispatch(
+        choice.offer.id, choice.eligible_vehicle_ids[0]
+    )
+    set_game_clock(synthetic_game, lambda: trip.arrives_at + 1)
+    create_minimal_static_files(tmp_path)
+    application = create_app(build_synthetic_application_settings(tmp_path))
     with TestClient(application) as client:
-        application.state.game = runtime
-        application.dependency_overrides[get_game_service] = lambda: game
+        application.state.game_runtime = synthetic_runtime
+        application.dependency_overrides[get_game_service] = lambda: (
+            synthetic_game
+        )
         application.dependency_overrides[get_current_user] = lambda: {
             "id": "test-owner"
         }
@@ -218,11 +234,11 @@ async def test_analytics_offline_arrival_is_idempotent(
 
 
 def test_analytics_is_read_only_and_account_scoped(
-    game, database, monkeypatch
+    synthetic_game, database, monkeypatch
 ):
     from contextlib import contextmanager
 
-    vehicle = game.state_repository.list_vehicles()[0]
+    vehicle = synthetic_game.state_repository.list_vehicles()[0]
     insert_trip(database, vehicle.id)
     with database.connect() as db:
         db.execute("INSERT INTO users VALUES ('second', 'Second', 'test', 0)")
@@ -232,14 +248,18 @@ def test_analytics_is_read_only_and_account_scoped(
         ][1:]
         names = ",".join(columns)
         db.execute(
-            f"INSERT INTO owned_vehicles SELECT 'second', {names} FROM owned_vehicles WHERE user_id='test-owner'"
+            "INSERT INTO owned_vehicles "
+            f"SELECT 'second', {names} FROM owned_vehicles "
+            "WHERE user_id='test-owner'"
         )
         columns = [
             row[1] for row in db.execute("PRAGMA table_info(transports)")
         ][1:]
         names = ",".join(columns)
         db.execute(
-            f"INSERT INTO transports SELECT 'second', {names} FROM transports WHERE user_id='test-owner'"
+            "INSERT INTO transports "
+            f"SELECT 'second', {names} FROM transports "
+            "WHERE user_id='test-owner'"
         )
     connect = database.connect
 
@@ -268,9 +288,11 @@ def test_analytics_is_read_only_and_account_scoped(
     assert second["coverage"]["recorded_transports"] == 1
 
 
-def test_analytics_and_exact_api_require_session(tmp_path, game, runtime):
-    make_static_files(tmp_path)
-    application = create_app(make_settings(tmp_path))
+def test_analytics_and_exact_api_require_session(
+    tmp_path, synthetic_game, synthetic_runtime
+):
+    create_minimal_static_files(tmp_path)
+    application = create_app(build_synthetic_application_settings(tmp_path))
     with TestClient(application) as client:
         for path in (
             "company/analytics",
@@ -278,8 +300,10 @@ def test_analytics_and_exact_api_require_session(tmp_path, game, runtime):
             "map/cities/unknown",
         ):
             assert client.get("/api/v1/" + path).status_code == 401
-        application.state.game = runtime
-        application.dependency_overrides[get_game_service] = lambda: game
+        application.state.game_runtime = synthetic_runtime
+        application.dependency_overrides[get_game_service] = lambda: (
+            synthetic_game
+        )
         application.dependency_overrides[get_current_user] = lambda: {
             "id": "test-owner",
             "username": "TestOwner",
@@ -302,9 +326,9 @@ def test_analytics_and_exact_api_require_session(tmp_path, game, runtime):
         assert client.get("/api/v1/map/facilities/unknown").status_code == 404
         assert (
             project_analytics(
-                build_analytics_service(runtime, "test-owner").analyze(
-                    NOW, "30", "company", None
-                )
+                build_analytics_service(
+                    synthetic_runtime, "test-owner"
+                ).analyze(NOW, "30", "company", None)
             )["status"]["vehicles"]
             == 1
         )

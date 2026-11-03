@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.v1 import (
     auth,
-    company,
+    company_analytics,
     contracts,
     dashboard,
     fleet,
@@ -24,7 +24,7 @@ def build_v1_router() -> APIRouter:
         dependencies=[Depends(require_same_origin)],
     )
     router.include_router(auth.router)
-    router.include_router(company.router)
+    router.include_router(company_analytics.router)
     router.include_router(leaderboard.router)
     router.include_router(map.router)
     router.include_router(dashboard.router)

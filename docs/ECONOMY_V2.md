@@ -112,9 +112,10 @@ Beide Referenzkataloge werden beim Serverstart validiert und für die Laufzeit
 als immutable Revision gecacht. `CachedVehicleCatalogue` lädt seinen
 injizierten validierenden Port unter einem Lock einmal erfolgreich; Fehler
 werden nicht gecacht. Ein neuer Katalogstand erfordert einen Serverneustart
-mit erneuter Validierung und globalem Marktneuaufbau. Offline-Werkzeuge lesen
-weiterhin explizit ihren gewählten Katalog. Historische Transporte bleiben
-von neuen Revisionen unabhängig.
+mit erneuter Validierung. Konkrete Fahrzeugmärkte werden bedarfsgesteuert neu
+geprüft; ein globaler Marktneuaufbau findet nicht statt. Offline-Werkzeuge lesen
+weiterhin explizit ihren gewählten Katalog. Historische Transporte bleiben von
+neuen Revisionen unabhängig.
 
 
 Der Audit wird durch `EconomyAuditService` mit injizierten Katalogports und RNG

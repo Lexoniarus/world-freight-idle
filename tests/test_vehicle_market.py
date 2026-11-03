@@ -1,50 +1,75 @@
 """Vehicle-ready coverage shares offers and never substitutes city totals."""
 
 from dataclasses import replace
-from unittest.mock import patch
+from itertools import cycle, islice
+from unittest.mock import Mock, patch
 
 import pytest
 
 from app.domain.contracts import ContractOffer
-from app.services.market_scope import MarketScopeResolver
-from app.services.vehicle_coverage import vehicle_candidates, vehicle_offers
-from tests.test_market import city_market as city_market
-from tests.test_market_preparation import bind_preparation, make_batch
+from app.domain.market import MarketCandidate
+from app.services.market.vehicle_coverage import (
+    vehicle_candidates,
+    vehicle_offers,
+)
+from tests.support.market import make_stock_batch
 
 
-def test_vehicle_coverage_fills_small_vehicle_after_city_is_full(city_market):
+def select_three_per_distance_band(
+    candidates: tuple[MarketCandidate, ...],
+) -> tuple[MarketCandidate, ...]:
+    """Repeat valid relations only when a band has fewer than three."""
+    selected = []
+    for band in ("short", "medium", "long"):
+        choices = tuple(
+            candidate
+            for candidate in candidates
+            if candidate.distance_profile.distance_band == band
+        )
+        selected.extend(islice(cycle(choices), 3))
+    return tuple(selected)
+
+
+def test_vehicle_coverage_reports_only_materialized_vehicle_stock(city_market):
     market, owned, fleet, _, _ = city_market
     city = owned.location.city.city_uid
     large = fleet[0]
     small = replace(large, vehicle_id="small", capacity_tons=1)
-    original, _ = market.generate(1, (city,), fleet)
-    assert len(original) == 9
-    assert not any(offer.tons <= 1 for offer in original)
     fleet = (large, small)
     candidates = market.candidates.build((city,), fleet)
-    offers, _ = market.generate(2, (city,), fleet, original)
+    pool = vehicle_candidates(candidates, small)
+    selected = select_three_per_distance_band(pool)
+    offers = tuple(
+        ContractOffer.from_snapshot(
+            market.contract_factory.build(candidate, 2, f"small:{index}")
+        )
+        for index, candidate in enumerate(selected)
+    )
     usable = vehicle_offers(offers, small, candidates)
     assert len(usable) == 9
     assert all(offer.tons <= 1 for offer in usable)
-    assert len(offers) == 18
-    assert market.generate(3, (city,), fleet, offers)[0] == offers
-    diagnostic = market.vehicle_coverage.diagnose(
+    diagnostic = market.coverage.diagnose(
         small, candidates, candidates, offers
     )
     assert diagnostic.distance_counts == (3, 3, 3)
     assert diagnostic.unmet_bands == ()
     assert diagnostic.unmet_facilities == ()
-    assert len(vehicle_offers(offers, large, candidates)) == 18
+    assert len(vehicle_offers(offers, large, candidates)) == 9
 
 
-def test_shared_planned_offers_cover_identical_vehicles_once(city_market):
+def test_shared_materialized_offers_cover_identical_vehicles_once(city_market):
     market, owned, fleet, _, _ = city_market
     other = replace(fleet[0], vehicle_id="other")
     fleet = (*fleet, other)
     city = owned.location.city.city_uid
-    offers, _ = market.generate(1, (city,), fleet)
     candidates = market.candidates.build((city,), fleet)
-    assert len(offers) == 9
+    selected = select_three_per_distance_band(candidates)
+    offers = tuple(
+        ContractOffer.from_snapshot(
+            market.contract_factory.build(candidate, 1, f"shared:{index}")
+        )
+        for index, candidate in enumerate(selected)
+    )
     assert all(len(vehicle_offers(offers, v, candidates)) == 9 for v in fleet)
     assert (
         vehicle_candidates(candidates, replace(other, vehicle_id="absent"))
@@ -53,39 +78,29 @@ def test_shared_planned_offers_cover_identical_vehicles_once(city_market):
     short = tuple(
         c for c in candidates if c.distance_profile.distance_band == "short"
     )
-    partial, _ = market.generate(2, (city,), fleet, (), short)
-    diagnostic = market.vehicle_coverage.diagnose(
-        other, candidates, short, partial
+    partial = tuple(
+        ContractOffer.from_snapshot(
+            market.contract_factory.build(candidate, 2, f"short:{index}")
+        )
+        for index, candidate in enumerate(short[:3])
     )
+    diagnostic = market.coverage.diagnose(other, candidates, short, partial)
     assert diagnostic.distance_counts == (3, 0, 0)
     assert diagnostic.unmet_bands == ("medium", "long")
-
-
-@pytest.fixture
-def vehicle_game(game, city_market, database):
-    market, owned, _, world, _ = city_market
-    with database.transaction(), database.connect() as connection:
-        connection.execute("DELETE FROM contract_offers")
-        connection.execute("DELETE FROM owned_vehicles")
-        game.state_repository.save_vehicle(owned)
-    game.world = world
-    game.market = market
-    game.market_scope = MarketScopeResolver(world)
-    game.market_lifecycle.generator = market
-    game.market_lifecycle.scope = game.market_scope
-    preparation = bind_preparation(game, database)
-    return game, preparation
 
 
 @pytest.mark.asyncio
 async def test_vehicle_readiness_requires_approach_and_excludes_stale(
     vehicle_game,
 ):
-    game, preparation = vehicle_game
-    fleet = game.market.candidates.resolve_fleet(
+    context, preparation = vehicle_game
+    game = context.service
+    fleet = context.market_generation.candidates.resolve_fleet(
         game.state_repository.list_vehicles()
     )
-    candidates = game.market.candidates.build((fleet[0].city_uid,), fleet)
+    candidates = context.market_generation.candidates.build(
+        (fleet[0].city_uid,), fleet
+    )
     at_pickup = next(
         c
         for c in candidates
@@ -96,34 +111,49 @@ async def test_vehicle_readiness_requires_approach_and_excludes_stale(
         for c in candidates
         if c.trade.origin.facility_uid != fleet[0].facility_uid
     )
-    readiness = preparation.readiness
+    readiness = preparation.routes.readiness
+    routing = preparation.route_preparation.preparation
     for candidate in (at_pickup, remote):
-        await readiness.prepare(
+        await routing.prepare(
             candidate.trade.origin.facility_uid,
             candidate.trade.destination.facility_uid,
         )
-    ready = preparation.ready_candidates((at_pickup, remote))
+    ready = preparation.routes.ready_candidates((at_pickup, remote))
     assert len(ready) == 1 and ready[0].trade == at_pickup.trade
-    approach = await readiness.prepare(
+    approach = await routing.prepare(
         fleet[0].facility_uid, remote.trade.origin.facility_uid
     )
     assert approach is not None
-    assert len(preparation.ready_candidates((at_pickup, remote))) == 2
-    offers = game.refresh_market()
+    ready = preparation.routes.ready_candidates((at_pickup, remote))
+    assert len(ready) == 2
+    offers = tuple(
+        ContractOffer.from_snapshot(
+            context.market_generation.contract_factory.build(item, 1)
+        )
+        for item in ready
+    )
+    game.state_repository.replace_offers(offers)
+    preparation.routes.bind(offers)
+    offers = game.list_contracts()
     assert game.contract_choices(offers, fleet[0].vehicle_id)
     with patch.object(
         readiness.store,
-        "payload_available",
-        wraps=readiness.store.payload_available,
+        "payload",
+        wraps=readiness.store.payload,
     ) as payload:
         payload.side_effect = lambda ref: (
-            False if ref == approach.reference else payload._mock_wraps(ref)
+            None if ref == approach.reference else payload._mock_wraps(ref)
         )
         scoped = game.contract_choices(offers, fleet[0].vehicle_id)
-        assert all(
-            item.offer.origin.facility_uid == fleet[0].facility_uid
+        assert any(
+            item.offer.origin.facility_uid != fleet[0].facility_uid
             for item in scoped
         )
+        with pytest.raises(ValueError, match="vorbereitet"):
+            readiness.load(
+                fleet[0].facility_uid,
+                remote.trade.origin.facility_uid,
+            )
     readiness.provider_identity = "changed"
     assert game.contract_choices(offers, fleet[0].vehicle_id) == ()
     with pytest.raises(ValueError, match="vorbereitet"):
@@ -135,97 +165,24 @@ async def test_vehicle_readiness_requires_approach_and_excludes_stale(
         game.contract_choices(offers, "foreign")
 
 
-@pytest.mark.asyncio
-async def test_worker_completes_vehicle_gaps_and_exhausts_failed_approaches(
-    vehicle_game,
-):
-    game, preparation = vehicle_game
-    batch = make_batch(game, preparation)
-    first = await batch.process()
-    for _ in range(10):
-        first = await batch.process()
-        if first.status == "ready":
-            break
-    assert first.status == "ready"
-    vehicle = game.get_vehicle("truck")
-    original = game.list_contracts()
-    assert len(original) == 9
-    # Keep the large offers but shrink this owned vehicle's capacity.
-    vehicle._capacity_tons = 1
-    game.state_repository.save_vehicle(vehicle)
-    result = await batch.process()
-    for _ in range(10):
-        result = await batch.process()
-        if result.status == "ready":
-            break
-    assert result.status == "ready"
-    assert all(
-        item.offer.tons <= 1
-        for item in game.contract_choices(game.list_contracts(), "truck")
-    )
-    # Simulate a deterministic failure for every remaining approach.
-    readiness = preparation.readiness
-    existing = readiness.current
-
-    def failed(origin, destination):
-        relation = existing(origin, destination)
-        if origin == vehicle.facility_uid and destination == "origin-b":
-            assert relation is not None
-            return replace(
-                relation,
-                status="deterministic_failure",
-                failure_category="no_path",
-            )
-        return relation
-
-    with patch.object(readiness, "current", side_effect=failed):
-        result = await batch.process()
-        for _ in range(3):
-            result = await batch.process()
-        assert result.status == "exhausted"
-        diagnostic = game.vehicle_coverage()[0]
-        assert diagnostic.unmet_facilities == ("origin-b",)
-        assert all(
-            item.offer.origin.facility_uid == vehicle.facility_uid
-            for item in game.contract_choices(game.list_contracts(), "truck")
-        )
-
-
-@pytest.mark.asyncio
-async def test_departure_during_preparation_cannot_publish_stale_vehicle_coverage(
-    vehicle_game,
-):
-    game, preparation = vehicle_game
-    batch = make_batch(game, preparation)
-
-    async def departure(*args, **kwargs):
-        vehicle = game.get_vehicle("truck")
-        vehicle.start_trip()
-        game.state_repository.save_vehicle(vehicle)
-        return True, None
-
-    with patch.object(preparation, "prepare_batch", side_effect=departure):
-        result = await batch.process()
-    assert result.status == "partial"
-    assert game.list_contracts() == []
-    assert game.vehicle_coverage() == ()
-    with pytest.raises(ValueError, match="Fahrzeug"):
-        game.contract_choices([], "truck")
-
-
 def test_two_vehicle_projection_uses_authoritative_sets(vehicle_game):
-    game, _ = vehicle_game
+    context, _ = vehicle_game
+    game = context.service
     # Verify projection independently of materialization and HTTP formatting.
     owned = game.get_vehicle("truck")
-    from app.services.fleet import build_owned_vehicle
+    from app.services.gameplay.fleet import build_owned_vehicle
 
-    model = game.market.candidates.catalogue.list_models()[0]
+    model = context.market_generation.candidates.catalogue.list_models()[0]
     other = build_owned_vehicle(model, "second", owned.location)
     game.state_repository.save_vehicle(other)
-    fleet = game.market.candidates.resolve_fleet((owned, other))
-    pool = game.market.candidates.build((fleet[0].city_uid,), fleet)
+    fleet = context.market_generation.candidates.resolve_fleet((owned, other))
+    pool = context.market_generation.candidates.build(
+        (fleet[0].city_uid,), fleet
+    )
     offers = tuple(
-        ContractOffer.from_snapshot(game.market.factory.build(pool[0], 1))
+        ContractOffer.from_snapshot(
+            context.market_generation.contract_factory.build(pool[0], 1)
+        )
         for _ in range(3)
     )
     sets = {
@@ -235,12 +192,14 @@ def test_two_vehicle_projection_uses_authoritative_sets(vehicle_game):
     }
     with (
         patch.object(
-            game.market_lifecycle.preparation, "retained", return_value=True
+            type(game.market_lifecycle.routes),
+            "matches_snapshot",
+            lambda self, offer, snapshot: True,
         ),
         patch.object(
-            game.market_lifecycle.preparation,
-            "eligible",
-            side_effect=lambda o, f, s: sets[o.id],
+            type(game.market_lifecycle.routes),
+            "eligible_from_snapshot",
+            lambda self, offer, fleet, structural, snapshot: sets[offer.id],
         ),
     ):
         assert [
@@ -259,13 +218,28 @@ async def test_vehicle_projection_api_enforces_owned_idle_selection(
 
     from app.api.v1.contracts import list_contracts, refresh_contracts
 
-    game, preparation = vehicle_game
-    batch = make_batch(game, preparation)
-    for _ in range(10):
+    context, preparation = vehicle_game
+    game = context.service
+    batch = make_stock_batch(game, preparation)
+    preparation.demand.ensure()
+    for _ in range(100):
         result = await batch.process()
         if result.status == "ready":
             break
-    response = list_contracts(vehicle_id="truck", game=game)
+    with (
+        patch.object(
+            preparation.routes.references,
+            "get_many",
+            wraps=preparation.routes.references.get_many,
+        ) as get_many,
+        patch.object(
+            preparation.routes.references,
+            "get",
+            side_effect=AssertionError("Market reads must be set-based"),
+        ),
+    ):
+        response = list_contracts(vehicle_id="truck", game=game)
+    get_many.assert_called_once()
     assert response["contracts"]
     assert all(
         "truck" in o["eligible_vehicle_ids"] for o in response["contracts"]
@@ -284,6 +258,23 @@ async def test_vehicle_projection_api_enforces_owned_idle_selection(
     with pytest.raises(HTTPException) as failure:
         list_contracts(vehicle_id="truck", game=game)
     assert failure.value.status_code == 400
+
+
+def test_market_refresh_maps_only_client_errors_to_http():
+    from fastapi import HTTPException
+
+    from app.api.v1.contracts import refresh_contracts
+    from app.domain.errors import CatalogueError
+
+    game = Mock()
+    game.read_market.side_effect = ValueError("invalid scope")
+    with pytest.raises(HTTPException) as failure:
+        refresh_contracts(vehicle_id="truck", game=game)
+    assert failure.value.status_code == 400
+
+    game.read_market.side_effect = CatalogueError("catalogue unavailable")
+    with pytest.raises(CatalogueError, match="catalogue unavailable"):
+        refresh_contracts(vehicle_id="truck", game=game)
 
 
 def test_approaches_precede_delivery_batches_without_starvation(city_market):

@@ -1,0 +1,457 @@
+"""Legacy snapshot parsing, validation and historical evidence."""
+
+import copy
+import json
+import sqlite3
+from contextlib import closing
+from dataclasses import replace
+from unittest.mock import patch
+
+import pytest
+
+from app.bootstrap import (
+    build_player_context,
+)
+from app.domain.contracts import HistoricalContractSnapshot
+from app.domain.errors import PersistenceError
+from app.repositories.database_backup import backup_database
+from app.repositories.game_database import SqliteGameDatabase
+from app.repositories.game_state import SqliteGameStateRepository
+from app.repositories.legacy_game_import import (
+    LegacyGameImporter,
+    read_legacy_json,
+)
+from app.repositories.legacy_import_values import read_legacy_profile
+from app.services.auth import PasswordHasher
+from tests.support.legacy_fixtures import (
+    legacy_transport_projection,
+    legacy_vehicle_projection,
+    update_legacy,
+)
+from tests.support.runtime import build_test_runtime
+
+
+def without_city_uids(value):
+    if isinstance(value, dict):
+        return {
+            k: without_city_uids(v)
+            for k, v in value.items()
+            if k != "city_uid"
+        }
+    if isinstance(value, list):
+        return [without_city_uids(v) for v in value]
+    return value
+
+
+def test_offline_import_preserves_profiles_history_and_settles_once(
+    synthetic_game_context, legacy_source, tmp_path, synthetic_game
+):
+    path, importer, state, now, password_hash = legacy_source
+    original = path.read_bytes()
+    report = importer.inspect(now)
+    assert (
+        report.accounts,
+        report.vehicles,
+        report.offers,
+        report.transports,
+    ) == (3, 3, 3, 3)
+    assert {e.contract_id for e in report.excluded_offers} == {"expired"}
+    backup = tmp_path / "backup.db"
+    target = tmp_path / "target.db"
+    backup_database(path, backup)
+    importer = LegacyGameImporter(
+        backup,
+        importer.reader.world,
+        importer.market_model,
+        tuple(importer.reader.models.values()),
+    )
+    assert importer.import_to(target, now) == report
+    database = SqliteGameDatabase(target)
+    database.initialize()
+    with database.connect() as connection:
+        rows = connection.execute(
+            "SELECT id,username,password_hash,created_at "
+            "FROM users ORDER BY id"
+        ).fetchall()
+        assert [tuple(r) for r in rows] == [
+            (uid, "User_" + uid, password_hash, 100) for uid in ("a", "b", "c")
+        ]
+        assert PasswordHasher().verify_password(
+            "fixture-password-42", rows[0]["password_hash"]
+        )
+        assert not PasswordHasher().verify_password(
+            "wrong", rows[0]["password_hash"]
+        )
+        tables = {
+            r[0]
+            for r in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        assert not {"sessions", "route_cache", "kv"} & tables
+    for uid in ("a", "b", "c"):
+        repository = SqliteGameStateRepository(database, uid)
+        player = repository.get_player()
+        assert player is not None
+        assert player.cash == 123456
+        assert player.completed == 37
+        trip = repository.list_transports()[0]
+        assert trip.status == "active" and trip.is_due(now)
+        assert without_city_uids(
+            legacy_transport_projection(trip)
+        ) == without_city_uids(state["active_trips"][0])
+        assert without_city_uids(
+            legacy_vehicle_projection(repository.list_vehicles()[0])
+        ) == without_city_uids(state["vehicles"][0])
+    runtime = build_test_runtime(synthetic_game_context, database)
+    context = build_player_context(runtime, "a")
+    assert context.game.reconcile_arrival()
+    assert not context.game.reconcile_arrival()
+    settled_player = context.state_repository.get_player()
+    other_player = SqliteGameStateRepository(database, "b").get_player()
+    assert settled_player is not None and other_player is not None
+    assert settled_player.cash == 124443
+    assert settled_player.completed == 38
+    assert other_player.cash == 123456
+    assert path.read_bytes() == original
+    before = target.read_bytes()
+    with pytest.raises(FileExistsError):
+        importer.import_to(target, now)
+    assert target.read_bytes() == before
+    with pytest.raises(FileExistsError):
+        importer.import_to(backup, now)
+
+
+def test_offline_import_rejects_corruption_and_unknown_state(
+    legacy_source, tmp_path
+):
+    path, importer, state, now, _ = legacy_source
+    for values in (
+        {**state["player"], "cash": -1},
+        {**state["player"], "cash": True},
+        {**state["player"], "unknown": 1},
+    ):
+        update_legacy(path, "user:a:player", values)
+        with pytest.raises(PersistenceError):
+            importer.import_to(tmp_path / "invalid.db", now)
+        assert not (tmp_path / "invalid.db").exists()
+    update_legacy(path, "user:a:player", state["player"])
+    for key, value in (
+        ("vehicles", state["vehicles"] * 2),
+        ("vehicles", [{**state["vehicles"][0], "id": "missing"}]),
+        ("vehicles", [{**state["vehicles"][0], "capacity_tons": 0.01}]),
+        (
+            "vehicles",
+            [
+                {
+                    **state["vehicles"][0],
+                    "facility_uid": state["contracts"][0][
+                        "destination_facility_uid"
+                    ],
+                    "hub_id": state["contracts"][0]["destination_hub_id"],
+                    "location_snapshot": state["contracts"][0]["destination"],
+                }
+            ],
+        ),
+        ("vehicles", [{**state["vehicles"][0], "status": "idle"}]),
+        ("active_trips", []),
+        ("active_trips", state["active_trips"] * 2),
+        ("contracts", [{**state["contracts"][0], "tons": float("nan")}]),
+    ):
+        update_legacy(path, "user:a:" + key, value)
+        with pytest.raises(PersistenceError):
+            importer.inspect(now)
+        update_legacy(path, "user:a:" + key, state[key])
+    with closing(sqlite3.connect(path)) as connection:
+        connection.execute("INSERT INTO kv VALUES ('unassigned','{}')")
+        connection.commit()
+    with pytest.raises(PersistenceError):
+        importer.inspect(now)
+    with pytest.raises(ValueError):
+        read_legacy_json([("key", 1), ("key", 2)])
+    assert read_legacy_json([("key", 1)]) == {"key": 1}
+
+
+def test_import_rejects_unknown_tables_and_failed_integrity(legacy_source):
+    from unittest.mock import MagicMock
+
+    path, importer, _, now, _ = legacy_source
+    with closing(sqlite3.connect(path)) as connection, connection:
+        connection.execute("CREATE TABLE unknown(value TEXT)")
+    with pytest.raises(PersistenceError):
+        importer.inspect(now)
+    with closing(sqlite3.connect(path)) as connection, connection:
+        connection.execute("DROP TABLE unknown")
+    original = path.read_bytes()
+    with closing(sqlite3.connect(path)) as real:
+        connection = MagicMock(wraps=real)
+
+        def execute(sql, *args):
+            if sql == "PRAGMA integrity_check":
+                result = MagicMock()
+                result.fetchall.return_value = [("damaged index",)]
+                return result
+            return real.execute(sql, *args)
+
+        connection.execute.side_effect = execute
+        with patch(
+            "app.repositories.legacy_game_import.sqlite3.connect",
+            return_value=connection,
+        ):
+            with pytest.raises(PersistenceError):
+                importer.inspect(now)
+        connection.close.assert_called_once()
+    assert path.read_bytes() == original
+
+
+def test_legacy_snapshot_readers_reject_unknown_fields(legacy_source):
+    _, importer, state, _, _ = legacy_source
+    reader = importer.reader
+    for loader, value in (
+        (reader.read_location, state["contracts"][0]["origin"]),
+        (reader.read_offer, state["contracts"][0]),
+        (reader.read_vehicle, state["vehicles"][0]),
+        (reader.read_transport, state["active_trips"][0]),
+    ):
+        with pytest.raises(ValueError):
+            loader({**value, "unknown_field": 1})
+
+
+def test_legacy_offer_rejects_conflicting_cargo_and_endpoints(legacy_source):
+    _, importer, state, _, _ = legacy_source
+    reader = importer.reader
+    original = state["contracts"][0]
+    for key, value in (
+        ("cargo_code", "unknown"),
+        ("cargo", "Changed"),
+        ("origin_hub_id", "unknown"),
+        ("origin_facility_uid", "unknown"),
+        ("cargo_evidence", {}),
+    ):
+        with pytest.raises((ValueError, KeyError)):
+            reader.read_offer({**original, key: value})
+
+
+def test_legacy_location_rejects_conflicting_identity_and_coordinates(
+    legacy_source,
+):
+    _, importer, state, _, _ = legacy_source
+    reader = importer.reader
+    original = state["contracts"][0]
+    for key, value in (
+        ("id", "other"),
+        ("company_uid", "other"),
+        ("lat", None),
+        ("lon", 200),
+    ):
+        with pytest.raises(ValueError):
+            reader.read_location({**original["origin"], key: value})
+
+
+def test_legacy_vehicle_rejects_conflicting_location(legacy_source):
+    _, importer, state, _, _ = legacy_source
+    reader = importer.reader
+    with pytest.raises(ValueError):
+        reader.read_vehicle({**state["vehicles"][0], "facility_uid": "other"})
+
+
+def test_legacy_transport_rejects_conflicting_saved_facts(legacy_source):
+    _, importer, state, _, _ = legacy_source
+    reader = importer.reader
+    for key, value in (
+        ("profit_eur", 0),
+        ("origin_snapshot", {}),
+        ("route_geojson", {"type": "Point"}),
+    ):
+        with pytest.raises(ValueError):
+            reader.read_transport({**state["active_trips"][0], key: value})
+
+
+def test_legacy_profile_rejects_invalid_confidence(legacy_source):
+    _, _, state, _, _ = legacy_source
+    original = state["contracts"][0]
+    with pytest.raises(ValueError):
+        read_legacy_profile(
+            {**original["origin_cargo_evidence"], "confidence": 2}
+        )
+
+
+def test_legacy_transport_accepts_geojson_feature_wrapper(legacy_source):
+    _, importer, state, _, _ = legacy_source
+    reader = importer.reader
+    feature = copy.deepcopy(state["active_trips"][0])
+    feature["route_geojson"] = {
+        "type": "Feature",
+        "geometry": feature["route_geojson"],
+    }
+    assert reader.read_transport(feature) == reader.read_transport(
+        state["active_trips"][0]
+    )
+
+
+def test_historical_terms_preserve_non_nhm_evidence_and_reject_invalid_values(
+    synthetic_game,
+):
+    from dataclasses import asdict
+
+    from app.domain.cargo import DocumentedCargo
+    from app.repositories.snapshot_mapping import (
+        load_documented_cargo,
+        load_historical_contract,
+    )
+
+    offer = synthetic_game.state_repository.list_offers()[0]
+    saved = HistoricalContractSnapshot.from_offer(offer)
+    assert load_historical_contract(asdict(saved)) == saved
+    goods = DocumentedCargo("10", "Metals", "output", True, "official", None)
+    old = replace(
+        saved,
+        cargo=goods,
+        origin_cargo_evidence=None,
+        destination_cargo_evidence=None,
+        market_model=None,
+        cargo_system=None,
+        trade_match_type=None,
+    )
+    assert load_historical_contract(asdict(old)) == old
+    assert load_documented_cargo(asdict(goods)) == goods
+    for changes in ({"role": "unknown"}, {"standard": 1}, {"code": ""}):
+        with pytest.raises(ValueError):
+            replace(goods, **changes)
+    for changes in (
+        {"id": ""},
+        {"tons": float("inf")},
+        {"expires_at": saved.created_at},
+        {"destination": saved.origin},
+        {"origin_cargo_evidence": None},
+        {"cargo": replace(saved.cargo, code="other")},
+    ):
+        with pytest.raises(ValueError):
+            replace(saved, **changes)
+    with pytest.raises(ValueError):
+        replace(old, origin_cargo_evidence=saved.origin_cargo_evidence)
+    with pytest.raises(KeyError):
+        load_historical_contract({})
+    with pytest.raises(TypeError):
+        load_documented_cargo({"source": None})
+
+
+def test_old_reference_documents_and_retired_offers_are_explicitly_handled(
+    legacy_source,
+):
+    from dataclasses import asdict
+
+    from app.repositories.legacy_import_values import read_documented_cargo
+    from app.repositories.snapshot_mapping import load_location
+
+    _, importer, state, _, _ = legacy_source
+    reader = importer.reader
+    goods = {
+        "code": "10",
+        "name": "Metals",
+        "role": "output",
+        "standard": True,
+        "evidence_type": "official",
+        "source": {
+            "url": "https://example.test/fact",
+            "role": "official",
+            "verified_at": "2026-09-18",
+        },
+    }
+    offer = copy.deepcopy(state["contracts"][0])
+    for key in (
+        "market_model",
+        "cargo_system",
+        "origin_cargo_evidence",
+        "destination_cargo_evidence",
+        "trade_match_type",
+    ):
+        offer.pop(key)
+    offer.update(cargo="Metals", cargo_code="10", cargo_evidence=goods)
+    path, _, _, now, _ = legacy_source
+    update_legacy(path, "user:a:contracts", [offer])
+    report = importer.inspect(now)
+    assert any(
+        item.user_id == "a" and item.reason == "obsolete_goods_model"
+        for item in report.excluded_offers
+    )
+    offer["origin"]["cargo"] = [
+        goods,
+        state["contracts"][0]["origin_cargo_evidence"],
+    ]
+    offer["origin"].pop("location_verified")
+    old = reader.read_historical_contract(offer)
+    assert old.market_model is None and old.cargo.name == "Metals"
+    assert load_location(asdict(old.origin)) == old.origin
+    assert len(old.origin.handling_evidence) == 2
+    compact = copy.deepcopy(offer["origin"])
+    compact.pop("company")
+    partial = reader.read_location(compact)
+    assert partial.company.company_uid == compact["company_uid"]
+    assert partial.company.legal_name is None
+    assert load_location(asdict(partial)) == partial
+    no_company = {**compact, "company_uid": None, "lat": None, "lon": None}
+    assert reader.read_location(no_company).company is None
+    vehicle = {**state["vehicles"][0]}
+    vehicle.pop("location_snapshot")
+    assert reader.read_vehicle(vehicle).location is not None
+    with pytest.raises(ValueError):
+        reader.read_location({**compact, "snapshot_version": 99})
+    with pytest.raises(ValueError):
+        reader.read_historical_contract({**offer, "cargo_code": "wrong"})
+    with pytest.raises(ValueError):
+        read_documented_cargo({**goods, "role": "bad"})
+    for changed in (
+        {**offer, "tons": -1},
+        {**offer, "expires_at": offer["created_at"]},
+        {**offer, "destination": offer["origin"]},
+        {**offer, "origin_hub_id": "other"},
+    ):
+        with pytest.raises(ValueError):
+            reader.validate_obsolete_offer(changed)
+
+
+def test_global_demo_exclusion_requires_explicit_choice(
+    legacy_source, tmp_path
+):
+    path, importer, state, now, _ = legacy_source
+    demo = copy.deepcopy(state)
+    demo["active_trips"] = []
+    demo["vehicles"][0]["status"] = "idle"
+    demo["contracts"] = []
+    with closing(sqlite3.connect(path)) as connection:
+        connection.executemany(
+            "INSERT INTO kv VALUES (?,?)",
+            [(key, json.dumps(value)) for key, value in demo.items()],
+        )
+        connection.execute("INSERT INTO kv VALUES ('world_state_version','1')")
+        connection.execute(
+            "INSERT INTO kv VALUES ('user:a:world_state_version','1')"
+        )
+        connection.commit()
+    with pytest.raises(PersistenceError):
+        importer.inspect(now)
+    explicit = LegacyGameImporter(
+        path,
+        importer.reader.world,
+        importer.market_model,
+        tuple(importer.reader.models.values()),
+        exclude_global_demo=True,
+    )
+    assert explicit.inspect(now).accounts == 3
+    obsolete = copy.deepcopy(state["contracts"][0])
+    obsolete.pop("market_model")
+    update_legacy(path, "contracts", [obsolete])
+    assert explicit.inspect(now).accounts == 3
+    explicit.import_to(tmp_path / "selected.db", now)
+    update_legacy(path, "active_trips", state["active_trips"])
+    with pytest.raises(PersistenceError):
+        explicit.inspect(now)
+    update_legacy(path, "active_trips", [])
+    update_legacy(path, "world_state_version", 2)
+    with pytest.raises(PersistenceError):
+        explicit.inspect(now)
+    update_legacy(path, "world_state_version", 1)
+    update_legacy(path, "user:a:world_state_version", 2)
+    with pytest.raises(PersistenceError):
+        explicit.inspect(now)

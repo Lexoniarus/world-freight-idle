@@ -6,36 +6,31 @@ vor dem Import der Anwendungsabhängigkeiten aus. Er installiert nichts und
 überschreibt keine ausdrücklich aktivierte Umgebung. So verwendet auch der
 normale Windows-Python-Aufruf die installierten Projektpakete. Der Elternprozess
 wartet auf den gestarteten Interpreter und dessen Ctrl+C-Aufräumen.
-Kindprozesse erhalten den absoluten Pfad zum Einstiegspunkt; Aufrufe aus einem
-anderen Arbeitsordner sind damit möglich. Relative Konfigurationspfade wie
-`DB_PATH` bleiben relativ zum aufrufenden Arbeitsordner.
-Beide Rollen erben dieselbe Konsole. Sie öffnen kein zusätzliches Fenster;
-Startmeldungen und Fehler bleiben sichtbar. `CREATE_NO_WINDOW` wird bewusst
-nicht verwendet: Es macht geerbte Windows-Konsolenausgaben ungültig.
+Der bei Bedarf gestartete Projektinterpreter erhält den absoluten Pfad zum
+Einstiegspunkt; Aufrufe aus einem anderen Arbeitsordner sind damit möglich.
+Relative Konfigurationspfade wie `DB_PATH` bleiben relativ zum aufrufenden
+Arbeitsordner. Es wird kein zweiter Runtime-/Prewarm-Prozess erzeugt.
 
 ```powershell
 python main.py
-# Alternativ in getrennten Prozessdiensten mit identischer Konfiguration:
-python main.py --role runtime
-python main.py --role prewarm
 ```
 
-Der Standard startet und überwacht beide Rollen. Ein beendeter API-Prozess
-beendet auch den Worker. Worker-Ausfälle lassen HTTP weiterlaufen und werden
-mit begrenztem Backoff neu gestartet. Für kontrolliertes Beenden Ctrl+C bzw.
-den Dienstmanager benutzen. Standalone-Rollen müssen beide vom Dienstmanager
-beendet werden. Die Datenbank muss auf einem lokalen Dateisystem liegen, das
-SQLite-WAL korrekt unterstützt. Kein Kopieren einer aktiven `.db` ohne WAL:
+Der FastAPI-Lifespan besitzt genau einen Marktworker. Er wird nach erfolgreicher
+Runtime-Initialisierung gestartet und vor HTTP-Client/Adapterressourcen beendet.
+Für kontrolliertes Beenden Ctrl+C beziehungsweise den Dienstmanager benutzen.
+Die Datenbank muss auf einem lokalen Dateisystem liegen, das SQLite-WAL korrekt
+unterstützt. Kein Kopieren einer aktiven `.db` ohne WAL:
 Backups immer über die vorhandene SQLite-Backup-Funktion erstellen.
 
-Mehrere gestartete Worker teilen eine globale Lease (180 Sekunden, Erneuerung
-während Arbeit alle 30 Sekunden); nur deren Besitzer führt Providerarbeit aus.
-Ein verwaister Besitzer kann nach Ablauf ersetzt werden. Bedarf und fertige
-Teilergebnisse bleiben gespeichert. Die API wartet weder beim Start noch beim
-Refresh auf vollständige Märkte. `partial` ist ein bedienbarer Zustand.
+Dauerhafte Bedarfswrites wecken den Worker über ein lokales Event. Er fragt die
+Datenbank nicht sekündlich ab; 60 Sekunden sind nur das Sicherheitsintervall für
+fällige Backoffs. Bedarf und fertige Teilergebnisse bleiben gespeichert. Die API
+wartet weder beim Start noch beim Refresh auf vollständige Märkte. `partial` ist
+ein bedienbarer Zustand. GET, Runtime-Polling und Kartennavigation erzeugen
+keinen Bedarf und rufen keinen Provider auf.
 
 `market.preparation_failed` / `market.preparation_scheduler_failed` signalisieren
-einen erneut eingeplanten Lauf. `process.prewarm_restart` nennt den Backoff.
+einen erneut eingeplanten Lauf.
 Bei gesperrten finanziellen Aktionen entscheidet der Spieler nach erneutem
 Lesen des Kontostands über einen weiteren Auftrag; keine automatische Wiederholung.
 
@@ -128,3 +123,45 @@ Bedarfsversion. Die Reserve wächst nur in Bedarfsstädten; unbenutzte Angebote
 bleiben nach Abfahrt bestehen. Fehlende Angebote trotz Reserve können auf
 fehlende Anfahrt/Rückwege, abgelaufene Routingnachweise oder nicht mehr passende
 Katalogdaten hinweisen. Sie werden nicht durch ungeprüfte Angebote ersetzt.
+
+## Historisch einseitigen Marktbestand prüfen
+
+Ein bereits voller alter Bestand wird im normalen Betrieb nicht gelöscht, nur
+weil spätere Versionen die sichtbare Vielfalt besser priorisieren. Deshalb ist
+die Korrektur ein ausdrücklicher Offline-Schritt. Zunächst ausschließlich
+prüfen:
+
+```powershell
+python scripts/repair_market_diversity.py --source data/game.db --check
+```
+
+Der Bericht enthält nur geprüfte und betroffene Kontextanzahlen, geplante
+Angebotsentfernungen und die Anzahl neu einzureihender Spieler. Benutzer-IDs,
+Angebote und Pfade werden nicht ausgegeben. Eine Korrektur wird nur geplant,
+wenn ein Stadt-/Modell-/Distanzband bereits voll ist und unbenutzte vorbereitete
+Vorlagen die sichtbare Routen-, Waren- oder Zielvielfalt tatsächlich erhöhen.
+Ein Markt mit nur einer gültigen Handelsbeziehung bleibt unverändert.
+
+Für einen Spieltest werden vier voneinander verschiedene neue Pfade verlangt:
+
+```powershell
+python scripts/repair_market_diversity.py --source data/game.db --backup data/backups/before-market-diversity.db --output data/market-diversity-test.db --archive data/repair-archive/market-diversity-originals.jsonl
+$env:DB_PATH = "data/market-diversity-test.db"
+python main.py
+```
+
+Die Quelle bleibt bytegleich. Entfernt werden ausschließlich unangenommene,
+nicht durch Transporte oder Verwendung geschützte persönliche Angebote. Geld,
+Fahrzeuge, Transporte, globale Vorlagen, verwendete Vorlagen und globale
+Routingnachweise bleiben erhalten. Nur Fortschritt und Coverage betroffener
+Spieler werden zurückgesetzt und als `partial` neu eingereiht. Das private
+JSONL-Archiv enthält alle entfernten beziehungsweise zurückgesetzten Zeilen
+mit SHA-256-Prüfsummen. Die neue Kopie wird tabellenweise reconciled sowie mit
+SQLite-Integrität und Fremdschlüsseln geprüft. Bei einem Fehler werden Ausgabe
+und Archiv entfernt; das zuvor erstellte Backup bleibt erhalten.
+
+Die Aktivierung folgt anschließend unverändert dem Abschnitt
+„Gesonderte Live-Aktivierung“: Writer stoppen, frisches Backup, Bericht prüfen,
+Kopie separat starten und erst danach den aktiven Pfad umstellen. Das Kommando
+wird weder beim Serverstart noch durch Tests, Commit oder Push automatisch auf
+eine Spielerdatenbank angewendet.

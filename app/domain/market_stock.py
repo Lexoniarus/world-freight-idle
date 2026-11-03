@@ -17,17 +17,12 @@ class StockPolicy:
 
     visible_per_band: int = 3
     reserve_per_band: int = 10
-    arrival_horizon_seconds: int = 3600
 
     def __post_init__(self) -> None:
         """Reject policies that cannot retain the visible selection."""
         require_integer(self.visible_per_band, "Visible stock")
         require_integer(self.reserve_per_band, "Reserve stock")
-        require_integer(self.arrival_horizon_seconds, "Arrival horizon")
-        if not (
-            0 < self.visible_per_band <= self.reserve_per_band
-            and self.arrival_horizon_seconds > 0
-        ):
+        if not 0 < self.visible_per_band <= self.reserve_per_band:
             raise ValueError("Invalid market stock policy.")
 
 
@@ -48,7 +43,6 @@ class MarketDemand:
     vehicle: MarketVehicle
     available_at: float
     transport_id: str | None = None
-    catalogue_only: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,24 +66,32 @@ class PreparedTemplate:
             raise ValueError("Template context differs from its offer.")
 
 
-class MarketStockStore(Protocol):
-    """Persist global templates and a bound account's durable stock state."""
+class MarketTemplateStore(Protocol):
+    """Persist player-independent reusable freight templates."""
 
     def templates(
         self, cities: tuple[str, ...]
     ) -> tuple[PreparedTemplate, ...]: ...
 
+    def scoped_templates(
+        self, scopes: tuple[tuple[str, str], ...]
+    ) -> tuple[PreparedTemplate, ...]: ...
+
+    def add(self, template: PreparedTemplate) -> None: ...
+
+
+class PlayerMarketStockStore(Protocol):
+    """Persist one account's issuance, consumption and refill progress."""
+
     def used(self) -> frozenset[str]: ...
 
     def bindings(self) -> dict[str, str]: ...
-
-    def add(self, template: PreparedTemplate) -> None: ...
 
     def issue(self, template_id: str, offer: ContractOffer) -> None: ...
 
     def consume(self, offer_id: str, now: float) -> None: ...
 
-    def arrivals(self, until: float) -> tuple[MarketArrival, ...]: ...
+    def arrivals(self) -> tuple[MarketArrival, ...]: ...
 
     def cursor(self) -> str: ...
 

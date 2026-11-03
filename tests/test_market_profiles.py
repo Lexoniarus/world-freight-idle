@@ -2,6 +2,7 @@
 
 import math
 import sqlite3
+from contextlib import closing
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
@@ -19,8 +20,10 @@ from app.domain.market_profiles import (
 )
 
 
-def test_market_profiles_require_complete_immutable_values(world_catalogue):
-    world = world_catalogue.read()
+def test_market_profiles_require_complete_immutable_values(
+    synthetic_world_catalogue,
+):
+    world = synthetic_world_catalogue.read()
     profiles = {p.nhm_row_id: p for p in world.market_profiles}
     assert profiles
     for facility in world.facilities:
@@ -85,7 +88,8 @@ def test_market_profile_small_values_reject_invalid_weights():
         "DROP TABLE nhm_market_profiles",
         "DROP TABLE nhm_distance_load_profiles",
         "DROP TABLE nhm_vehicle_scale_profiles",
-        "DELETE FROM nhm_market_profiles WHERE nhm_row_id=(SELECT nhm_row_id FROM facility_nhm_profiles LIMIT 1)",
+        "DELETE FROM nhm_market_profiles WHERE nhm_row_id="
+        "(SELECT nhm_row_id FROM facility_nhm_profiles LIMIT 1)",
         "DELETE FROM nhm_distance_load_profiles WHERE distance_band='short'",
         "DELETE FROM nhm_vehicle_scale_profiles WHERE vehicle_scale='van'",
         "UPDATE nhm_market_profiles SET transport_class='invalid'",
@@ -94,19 +98,20 @@ def test_market_profile_small_values_reject_invalid_weights():
         "UPDATE nhm_market_profiles SET value_confidence=2",
         "UPDATE nhm_distance_load_profiles SET selection_weight=-1",
         "UPDATE nhm_distance_load_profiles SET load_factor_min=0",
-        "UPDATE nhm_distance_load_profiles SET load_factor_min=1,load_factor_max=0.2",
+        "UPDATE nhm_distance_load_profiles "
+        "SET load_factor_min=1,load_factor_max=0.2",
         "UPDATE nhm_vehicle_scale_profiles SET suitability_game=2",
         "UPDATE nhm_market_profiles SET value_source_id=-1",
     ],
 )
 def test_world_market_profile_corruption_is_rejected(
-    world_catalogue, mutation
+    small_world_catalogue, mutation
 ):
-    with sqlite3.connect(world_catalogue.path) as db:
+    with closing(sqlite3.connect(small_world_catalogue.path)) as db, db:
         db.execute("PRAGMA ignore_check_constraints=ON")
         db.execute(mutation)
     with pytest.raises(WorldCatalogueError):
-        world_catalogue.read()
+        small_world_catalogue.read()
 
 
 @pytest.mark.parametrize(
@@ -114,23 +119,28 @@ def test_world_market_profile_corruption_is_rejected(
     [
         "UPDATE catalog_metadata SET value='2.1.0' WHERE key='schema_version'",
         "DROP TABLE vehicle_transport_capabilities",
-        "UPDATE vehicle_transport_capabilities SET transport_class='invalid' WHERE transport_class='general'",
+        "UPDATE vehicle_transport_capabilities "
+        "SET transport_class='invalid' WHERE transport_class='general'",
         "UPDATE vehicle_transport_capabilities SET suitability_game=-1",
         "UPDATE vehicle_transport_capabilities SET suitability_game=2",
         "DELETE FROM vehicle_transport_capabilities",
         "UPDATE vehicle_models SET segment='unknown'",
     ],
 )
-def test_vehicle_market_profile_corruption_is_rejected(catalogue, mutation):
-    with sqlite3.connect(catalogue.path) as db:
+def test_vehicle_market_profile_corruption_is_rejected(
+    small_vehicle_catalogue, mutation
+):
+    with closing(sqlite3.connect(small_vehicle_catalogue.path)) as db, db:
         db.execute("PRAGMA ignore_check_constraints=ON")
         db.execute(mutation)
     with pytest.raises(CatalogueError):
-        catalogue.list_models()
+        small_vehicle_catalogue.list_models()
 
 
-def test_vehicle_model_capabilities_are_explicit_and_unique(catalogue):
-    for model in catalogue.list_models():
+def test_vehicle_model_capabilities_are_explicit_and_unique(
+    synthetic_vehicle_catalogue,
+):
+    for model in synthetic_vehicle_catalogue.list_models():
         assert model.segment in SEGMENT_SCALES
         assert model.transport_capabilities
         for changes in (

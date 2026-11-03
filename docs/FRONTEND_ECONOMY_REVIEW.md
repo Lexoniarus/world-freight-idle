@@ -1,5 +1,12 @@
 # Frontend-v2: Einzelreview der Verantwortungen
 
+> Historischer Funktionsbestand vom 23.–28.09.2026. Seit dem lokalen Refactor
+> vom 27./28.10.2026 sind `MarketStartupService`, `MarketGenerator.generate`,
+> `MarketCoverageService` und die genannten Startup-Repositories entfernt.
+> Der aktuelle Verantwortungsnachtrag steht in
+> [MARKET_STOCK_REVIEW.md](MARKET_STOCK_REVIEW.md); historische Tabellen werden
+> als damaliger Prüfnachweis nicht rückwirkend umgeschrieben.
+
 Vergleichsbasis: erhaltener lokaler Commit `548336f`. Review vom 25.09.2026.
 Jede unten aufgeführte Funktion wurde im Quelltext auf Zweck, Schicht,
 Abhängigkeiten und Seiteneffekte geprüft. Grüne Tests und Funktionslänge
@@ -73,13 +80,13 @@ Verträge, keine konkreten Callables des Manifest-Gates.
 | `app/repositories/transport_mapping.py` · `load_cost_breakdown` | Repository-Mapping | optionale gespeicherte Kosten decodieren | Snapshotdict, Kostenwerte | rein; keine aktuelle Preisquelle |
 | `app/services/analytics.py` · `breakdown` | Analytics | Skalarhistorie nach unveränderten IDs aggregieren | Zeilen, Dimension, optionale Labels | rein; Label verändert Gruppierung nicht |
 | `app/services/analytics.py` · `AnalyticsService.analyze` | Service | Statistik-Lese-Use-Case orchestrieren | Reader-Port, Aggregatoren, Label-Funktion | Read und strukturiertes Log; keine Mutationen |
-| `app/services/contract_factory.py` · `ContractFactory.build` | Service | einen Candidate zu einem Offer materialisieren | injizierter RNG, immutable Candidate, reine Mengen-/Tariffunktionen | RNG-Verbrauch; kein SQL/Routing, kein Gewinn-Retry |
-| `app/services/cost_profiles.py` · `VehicleCostResolver.resolve` | Service | explizites Kostenprofil zum Modell auflösen | VehicleCatalogue-Port | Referenzread; keine Rückrechnung |
+| `app/services/market/contract_factory.py` · `ContractFactory.build` | Service | einen Candidate zu einem Offer materialisieren | injizierter RNG, immutable Candidate, reine Mengen-/Tariffunktionen | RNG-Verbrauch; kein SQL/Routing, kein Gewinn-Retry |
+| `app/services/gameplay/vehicle_costs.py` · `VehicleCostResolver.resolve` | Service | explizites Kostenprofil zum Modell auflösen | VehicleCatalogue-Port | Referenzread; keine Rückrechnung |
 | `app/services/dispatch_planning.py` · `DispatchPlanningService.quote` | Service | revalidierten Route-/Fahrzeugkontext zur Quote komponieren | Kostenresolver, Journey/Kosten/Pricing-Domain | Referenzread; keine Schreibtransaktion oder Offeränderung |
 | `app/services/game.py` · `GameService._build_trip` | Service | geprüfte Quote als Transport einfrieren | Quote, Offer, Abfahrtszeit | UUID-Erzeugung; keine neue Preis-/Routingregel |
-| `app/services/market_candidates.py` · `MarketCandidateService.__init__` | Service | Referenzports und Indexzustand besitzen | World-/Vehicle-Ports | lokaler Cachezustand |
-| `app/services/market_candidates.py` · `MarketCandidateService.reference` | Service | revisionsabhängige Marktindizes aktualisieren | World-Port, TradeNetwork | Read und Cache; minimaler NHM-Faktor nur je Revision |
-| `app/services/market_candidates.py` · `MarketCandidateService._candidate` | Service | Kompatibilität, Distanz und Candidategewicht kombinieren | Trade, aufgelöste Flotte, reine Regeln | rein bezogen auf Cache; kein konkretes Fahrzeug reserviert |
+| `app/services/market/candidates.py` · `MarketCandidateService.__init__` | Service | Referenzports und Indexzustand besitzen | World-/Vehicle-Ports | lokaler Cachezustand |
+| `app/services/market/candidates.py` · `MarketCandidateService.reference` | Service | revisionsabhängige Marktindizes aktualisieren | World-Port, TradeNetwork | Read und Cache; minimaler NHM-Faktor nur je Revision |
+| `app/services/market/candidates.py` · `MarketCandidateService._candidate` | Service | Kompatibilität, Distanz und Candidategewicht kombinieren | Trade, aufgelöste Flotte, reine Regeln | rein bezogen auf Cache; kein konkretes Fahrzeug reserviert |
 | `app/services/market_startup.py` · `MarketStartupService.rebuild` | Service | alle offenen Märkte atomar neu aufbauen | Startup-Port, Referenzports, Lifecycle-Factory | eine äußere UoW und Logs; kein Routing/Settlement/SQL |
 | `app/services/preferences.py` · `PreferenceService.read` | Service | wirksame Accountfarbe auflösen | Preference-Port, deterministischer Fallback | Read; keine Speicherung des Fallbacks |
 | `app/services/preferences.py` · `PreferenceService.update` | Service | erlaubte Firmenfarbe atomar ändern | Palette und Preference-Port | eine UoW und Log; Account kommt aus API-Sitzung |
@@ -136,7 +143,7 @@ Requests und Ressourcenbesitz liegen in Controllers/Registries.
 | `frontend/ui/filters.js` · `cityFilter` | passende Stadtauswahl rendern | serverbasierter aktiver Kontext; keine Eignungsregeln |
 | `frontend/ui/preserve-vehicle-images.js` · `matchVehicleImages` | wiederverwendbare Bildknoten finden | DOM-Vergleich; keine URLs laden/freigeben |
 | `frontend/ui/vehicle-image.js` · `renderVehicleImage` | Modellasset und Rollenmetadaten rendern | Assetregister/DOM; kein Fetch |
-| `frontend/views/company.js` · `renderCompany` | Unternehmensansicht zusammenstellen | Read-Modell/Subrenderer; DOM |
+| `frontend/views/company-dashboard.js` · `renderCompanyDashboard` | Unternehmensansicht zusammenstellen | Read-Modell/Subrenderer; DOM |
 | `frontend/views/contracts.js` · `renderContracts` | aktive Stadtangebote/Leermeldung darstellen | View; DOM, keine zweite Kompatibilitätsregel |
 | `frontend/views/contracts.js` · `renderQuote` | serverseitige Quote und Ergebnis darstellen | Quote/Kostenrenderer; DOM, keine Preisberechnung |
 | `frontend/views/shop.js` · `renderOffer` | Katalogangebot mit Wartung statt Aggregatkosten darstellen | Katalogprojektion; reine Einheitenformatierung |

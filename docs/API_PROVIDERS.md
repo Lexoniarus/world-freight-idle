@@ -123,8 +123,9 @@ verhindern doppelte Relationsarbeit, aggregieren aber keine Provider-Rate.
 Graphwechsel werden über tatsächlich gelieferte `x-graph-revision`-Header,
 sonst `x-valhalla-version`, beobachtet. Fehlende Header erfinden keine Revision
 und invalidieren keine Route fortlaufend. Ein nicht angekündigter Graphwechsel
-ist ohne Provider-Metadaten nicht sofort erkennbar. Erfolgreiche Nachweise gelten
-deshalb höchstens 24 Stunden. Definitive Fehler werden nach einer Stunde,
-temporäre Störungen und ausgeschöpftes Reparaturbudget nach 60 Sekunden wieder
-vorbereitbar. Der Worker reagiert auf Nachfrage; Details und Abnahme:
+ist ohne Provider-Metadaten nicht sofort erkennbar. Erfolgreiche Relationen
+bleiben für denselben beobachteten Welt-, Provider- und Anker-Fingerprint
+wiederverwendbar. Definitive Fehler werden nach einer Stunde, temporäre
+Störungen und ausgeschöpftes Reparaturbudget nach 60 Sekunden wieder
+vorbereitbar. Der Worker reagiert nur auf konkreten Bedarf; Details und Abnahme:
 [Verbindungsprüfung](CONNECTED_ROUTING_REVIEW.md).

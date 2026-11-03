@@ -11,6 +11,7 @@ from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
 def test_routing_anchor_repository_roundtrip(tmp_path):
     database = SqliteGameDatabase(tmp_path / "anchors.db")
     database.initialize()
+    SqliteRoutingAnchorRepository.initialize(database)
     repository = SqliteRoutingAnchorRepository(database)
     anchor = RoutingAnchor(
         facility_uid="facility-1",
@@ -36,6 +37,7 @@ def test_routing_anchor_repository_roundtrips_failure_without_coordinates(
 ):
     database = SqliteGameDatabase(tmp_path / "anchors.db")
     database.initialize()
+    SqliteRoutingAnchorRepository.initialize(database)
     repository = SqliteRoutingAnchorRepository(database)
     failure = RoutingAnchor(
         facility_uid="facility-2",
@@ -58,6 +60,7 @@ def test_routing_anchor_repository_roundtrips_failure_without_coordinates(
 def test_routing_anchor_repository_rejects_unknown_persisted_status(tmp_path):
     database = SqliteGameDatabase(tmp_path / "anchors.db")
     database.initialize()
+    SqliteRoutingAnchorRepository.initialize(database)
     repository = SqliteRoutingAnchorRepository(database)
     with database.connect() as connection:
         connection.execute(

@@ -1,6 +1,6 @@
 """Historical game snapshots remain usable without current reference data."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -12,46 +12,51 @@ from app.api.v1.game_projection import (
 from app.domain.energy import EnergyProfile
 from app.domain.errors import WorldCatalogueError
 from app.domain.game import OwnedVehicle
-from tests.test_game import first_berlin_contract
+from tests.support.game import first_berlin_contract
+from tests.support.game_clock import set_game_clock
 
 
 async def test_snapshot_routing_and_settlement_survive_catalogue_failure(
-    monkeypatch, game
+    synthetic_game_context, monkeypatch, synthetic_game
 ):
-    contract = first_berlin_contract(game)
-    original = game.router.route
-    game.router.route = AsyncMock(side_effect=original)
-    quote = project_quote(
-        await game.quote_contract(contract["id"], "truck_01")
+    contract = first_berlin_contract(synthetic_game)
+    readiness = synthetic_game.player_market.routes.readiness
+    with patch.object(readiness, "load", wraps=readiness.load) as loaded:
+        quote = project_quote(
+            await synthetic_game.quote_contract(contract["id"], "truck_01")
+        )
+    assert loaded.call_count == 2
+    trip = project_transport(
+        await synthetic_game.dispatch(contract["id"], "truck_01")
     )
-    assert game.router.route.await_count == 2
-    game.router.route.assert_any_await(
-        contract["origin"]["lat"],
-        contract["origin"]["lon"],
-        contract["destination"]["lat"],
-        contract["destination"]["lon"],
-    )
-    trip = project_transport(await game.dispatch(contract["id"], "truck_01"))
     with patch.object(
-        game.world, "read", side_effect=WorldCatalogueError("offline")
+        synthetic_game_context.world,
+        "read",
+        side_effect=WorldCatalogueError("offline"),
     ):
-        cash = game._get_player().cash
-        monkeypatch.setattr(game, "now", lambda: trip["arrives_at"] + 1)
-        assert game.reconcile_arrival()
-        assert game._get_player().cash == cash + trip["payout_eur"]
-        assert not game.reconcile_arrival()
+        cash = synthetic_game.player_state().cash
+        set_game_clock(synthetic_game, lambda: trip["arrives_at"] + 1)
+        assert synthetic_game.reconcile_arrival()
+        assert synthetic_game.player_state().cash == cash + trip["payout_eur"]
+        assert not synthetic_game.reconcile_arrival()
         assert (
-            project_vehicle(game.get_vehicle("truck_01"))["hub"]
+            project_vehicle(synthetic_game.get_vehicle("truck_01"))["hub"]
             == trip["destination_snapshot"]
         )
-        for force in (False, True):
+        for read_contracts in (
+            synthetic_game.list_contracts,
+            synthetic_game.refresh_contracts,
+        ):
             with pytest.raises(WorldCatalogueError):
-                game.refresh_market(force=force)
-        assert game.dashboard().vehicles
+                read_contracts()
+        assert synthetic_game.dashboard().vehicles
     assert quote["origin"] == contract["origin"]
 
 
-def test_api_projection_never_invents_missing_vehicle_locations(game):
+def test_api_projection_never_invents_missing_vehicle_locations(
+    synthetic_game_context,
+    synthetic_game,
+):
     vehicle = OwnedVehicle(
         "unknown",
         "Unknown",
@@ -64,10 +69,12 @@ def test_api_projection_never_invents_missing_vehicle_locations(game):
         top_speed_kmh=90,
     )
     with patch.object(
-        game.world, "read", side_effect=AssertionError("lookup")
+        synthetic_game_context.world,
+        "read",
+        side_effect=AssertionError("lookup"),
     ):
         assert project_vehicle(vehicle)["hub"] is None
-        known = game.state_repository.list_vehicles()[0]
+        known = synthetic_game.state_repository.list_vehicles()[0]
         assert (
             project_vehicle(known)["hub"]["facility_uid"] == known.facility_uid
         )

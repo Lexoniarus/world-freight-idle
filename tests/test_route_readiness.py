@@ -1,0 +1,373 @@
+"""Shared routing evidence and readiness without runtime provider fallbacks."""
+
+import asyncio
+from dataclasses import replace
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
+from app.domain.errors import RoutingError
+from app.repositories.routing_readiness import SqliteRoutingReadinessStore
+from app.services.routing.preparation import RoutingPreparationService
+from tests.support.market import (
+    build_prepared_game,
+    make_stock_batch,
+    require_value,
+)
+from tests.support.routing import (
+    FakeRouter,
+    RoutingTestHarness,
+)
+
+
+@pytest.mark.asyncio
+async def test_partial_market_never_publishes_unchecked_offers(
+    synthetic_game_context, database
+):
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
+    batch = make_stock_batch(synthetic_game, preparation)
+    preparation.demand.ensure()
+    assert synthetic_game.list_contracts() == []
+    owned = synthetic_game.state_repository.list_vehicles()
+    fleet = synthetic_game_context.market_generation.candidates.resolve_fleet(
+        owned
+    )
+    pool = synthetic_game_context.market_generation.candidates.build(
+        synthetic_game_context.market_scope.resolve(owned), fleet
+    )
+    candidate = pool[0]
+    origin = candidate.trade.origin.facility_uid
+    destination = candidate.trade.destination.facility_uid
+    readiness = RoutingTestHarness(
+        preparation.routes.readiness,
+        preparation.route_preparation.preparation,
+    )
+    assert readiness.ready(origin, destination) is None
+    with pytest.raises(ValueError, match="vorbereitet"):
+        readiness.load(origin, destination)
+    result = require_value(await readiness.prepare(origin, destination))
+    # Delivery alone cannot publish an offer for an unprepared approach.
+    if owned[0].facility_uid != origin:
+        assert synthetic_game.list_contracts() == []
+        await readiness.prepare(owned[0].facility_uid, origin)
+    assert result.status == "ready"
+    original_router = readiness.router
+    readiness.router = AsyncMock()
+    assert await readiness.prepare(origin, destination) == result
+    readiness.router.route.assert_not_called()
+    readiness.router = original_router
+    for _ in range(30):
+        await batch.process()
+        if synthetic_game.list_contracts():
+            break
+    offers = synthetic_game.list_contracts()
+    assert offers
+    assert all(preparation.routes.retained_current(o) for o in offers)
+    assert all(
+        readiness.ready(o.origin.facility_uid, o.destination.facility_uid)
+        for o in offers
+    )
+    offer = next(
+        o for o in offers if o.destination.facility_uid == destination
+    )
+    vehicle = owned[0]
+    readiness.router = AsyncMock()
+    choices = synthetic_game.contract_choices((offer,))
+    assert vehicle.id in choices[0].eligible_vehicle_ids
+    quote = await synthetic_game.quote_contract(offer.id, vehicle.id)
+    assert (
+        require_value(quote.dispatch_route).delivery
+        == readiness.load(origin, destination).to_snapshot()
+    )
+    trip = await synthetic_game.dispatch(offer.id, vehicle.id)
+    assert trip.origin == offer.origin
+    assert preparation.routes.references.get(offer.id) is None
+    readiness.router.route.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_missing_payload_is_detected_only_when_geometry_is_loaded(
+    synthetic_game_context, database
+):
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
+    owned = synthetic_game.state_repository.list_vehicles()
+    fleet = synthetic_game_context.market_generation.candidates.resolve_fleet(
+        owned
+    )
+    pool = synthetic_game_context.market_generation.candidates.build(
+        synthetic_game_context.market_scope.resolve(owned), fleet
+    )
+    candidate = next(
+        item
+        for item in pool
+        if item.trade.origin.facility_uid != owned[0].facility_uid
+    )
+    origin = candidate.trade.origin.facility_uid
+    destination = candidate.trade.destination.facility_uid
+    readiness = RoutingTestHarness(
+        preparation.routes.readiness,
+        preparation.route_preparation.preparation,
+    )
+    await readiness.prepare(origin, destination)
+    approach = require_value(
+        await readiness.prepare(owned[0].facility_uid, origin)
+    )
+    with database.connect() as conn:
+        conn.execute(
+            "DELETE FROM route_cache WHERE cache_key IN "
+            "(SELECT cache_key FROM routing_relations WHERE relation_id=?)",
+            (approach.reference.relation_id,),
+        )
+    assert readiness.ready(origin, destination) is not None
+    publication = preparation.routes.ready_candidates((candidate,))
+    assert len(publication) == 1
+    assert publication[0].trade == candidate.trade
+    with pytest.raises(ValueError, match="vorbereitet"):
+        readiness.load(owned[0].facility_uid, origin)
+
+
+@pytest.mark.asyncio
+async def test_global_negative_cache_timeout_and_stale_payload(
+    synthetic_game_context, database
+):
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
+    readiness = RoutingTestHarness(
+        preparation.routes.readiness,
+        preparation.route_preparation.preparation,
+    )
+    offer = synthetic_game.state_repository.list_offers()[0]
+    pair = (offer.origin.facility_uid, offer.destination.facility_uid)
+    error = RoutingError("No path")
+    error.category = "no_path"
+    readiness.router = AsyncMock()
+    readiness.router.route.side_effect = error
+    failure = require_value(await readiness.prepare(*pair))
+    assert failure.status == "deterministic_failure"
+    assert await readiness.prepare(*pair) == failure
+    assert readiness.router.route.await_count == 1
+    readiness.provider_identity = "changed-provider"
+    error.category = "provider_unavailable"
+    transient = require_value(await readiness.prepare(*pair))
+    assert transient.retry_at is not None
+    assert await readiness.prepare(*pair) == transient
+    readiness.provider_identity = "recovered-provider"
+    readiness.router = FakeRouter()
+    ready = require_value(await readiness.prepare(*pair))
+    with database.connect() as conn:
+        conn.execute("DELETE FROM route_cache")
+    assert readiness.ready(*pair) == ready.reference
+    assert readiness.store.payload(ready.reference) is None
+    with pytest.raises(ValueError, match="vorbereitet"):
+        readiness.load(*pair)
+    readiness.timeout = 0.001
+
+    async def slow_route(*args):
+        await asyncio.sleep(1)
+
+    readiness.router = AsyncMock()
+    readiness.router.route.side_effect = slow_route
+    readiness.provider_identity = "timeout-provider"
+    timeout = require_value(await readiness.prepare(*pair))
+    assert timeout.status == "transient_failure"
+    with pytest.raises(ValueError):
+        RoutingPreparationService(
+            preparation.routes.readiness,
+            readiness.store,
+            readiness.anchors,
+            readiness.router,
+            synthetic_game_context.world,
+            synthetic_game.now,
+            0,
+        )
+
+
+@pytest.mark.asyncio
+async def test_players_share_one_provider_calculation(
+    synthetic_game_context, database
+):
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
+    readiness = RoutingTestHarness(
+        preparation.routes.readiness,
+        preparation.route_preparation.preparation,
+    )
+    offer = synthetic_game.state_repository.list_offers()[0]
+    pair = offer.origin.facility_uid, offer.destination.facility_uid
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    router = FakeRouter()
+
+    async def route(*args):
+        entered.set()
+        await release.wait()
+        return await router.route(*args)
+
+    readiness.router = AsyncMock()
+    readiness.router.route.side_effect = route
+    first = asyncio.create_task(readiness.prepare(*pair))
+    await entered.wait()
+    assert await readiness.prepare(*pair) is None
+    release.set()
+    assert require_value(await first).status == "ready"
+    assert readiness.router.route.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_route_publication_rechecks_inputs_after_provider_await(
+    synthetic_game_context, database
+):
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
+    readiness = RoutingTestHarness(
+        preparation.routes.readiness,
+        preparation.route_preparation.preparation,
+    )
+    offer = synthetic_game.state_repository.list_offers()[0]
+    pair = offer.origin.facility_uid, offer.destination.facility_uid
+    original = readiness.world.read()
+    changed = replace(original, facilities=original.facilities[:-1])
+    with patch.object(
+        readiness.world,
+        "read",
+        side_effect=[original, original, changed, changed],
+    ):
+        assert await readiness.prepare(*pair) is None
+    router = FakeRouter()
+
+    async def changes_during_success(*args):
+        readiness.provider_identity = "changed-during-success"
+        return await router.route(*args)
+
+    readiness.router = AsyncMock()
+    readiness.router.route.side_effect = changes_during_success
+    assert await readiness.prepare(*pair) is None
+
+    async def changes_during_failure(*args):
+        readiness.provider_identity = "changed-during-failure"
+        raise RoutingError("outage during revision change")
+
+    readiness.router.route.side_effect = changes_during_failure
+    assert await readiness.prepare(*pair) is None
+    assert readiness.current(*pair) is None
+
+
+@pytest.mark.asyncio
+async def test_observed_global_graph_revision_invalidates_shared_routes(
+    synthetic_game_context, database
+):
+    from functools import partial
+
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
+    readiness = RoutingTestHarness(
+        preparation.routes.readiness,
+        preparation.route_preparation.preparation,
+    )
+    store = SqliteRoutingReadinessStore(database)
+    readiness.provider_identity = "test"
+    readiness.provider_revision = partial(store.provider_revision, "test")
+    assert store.provider_revision("test") is None
+    offer = synthetic_game.state_repository.list_offers()[0]
+    pair = offer.origin.facility_uid, offer.destination.facility_uid
+    first = require_value(await readiness.prepare(*pair))
+    store.observe_provider_revision("test", "graph-2")
+    assert require_value(readiness.current(*pair)).status == "stale"
+    assert readiness.ready(*pair) is None
+    second = require_value(await readiness.prepare(*pair))
+    assert first.reference != second.reference
+    assert store.provider_revision("test") == "graph-2"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_rejects_retired_and_changed_prepared_routes(
+    synthetic_game_context, database
+):
+    prepared_context, preparation = build_prepared_game(
+        synthetic_game_context, database
+    )
+    synthetic_game = prepared_context.service
+    owned = synthetic_game.state_repository.list_vehicles()
+    fleet = synthetic_game_context.market_generation.candidates.resolve_fleet(
+        owned
+    )
+    candidates = synthetic_game_context.market_generation.candidates.build(
+        synthetic_game_context.market_scope.resolve(owned), fleet
+    )
+    candidate = next(
+        item
+        for item in candidates
+        if item.trade.origin.facility_uid != owned[0].facility_uid
+    )
+    origin = candidate.trade.origin.facility_uid
+    destination = candidate.trade.destination.facility_uid
+    await preparation.route_preparation.preparation.prepare(
+        origin, destination
+    )
+    await preparation.route_preparation.preparation.prepare(
+        owned[0].facility_uid, origin
+    )
+    batch = make_stock_batch(synthetic_game, preparation)
+    preparation.demand.ensure()
+    for _ in range(30):
+        await batch.process()
+        if synthetic_game.list_contracts():
+            break
+    offer = synthetic_game.list_contracts()[0]
+    vehicle = owned[0]
+    assert vehicle.location is not None
+    planner = synthetic_game.transport_dispatch.planning
+    route = await planner.route(vehicle.location, offer)
+    with (
+        patch.object(
+            type(preparation.routes),
+            "matches_snapshot",
+            return_value=False,
+        ),
+        patch.object(
+            type(preparation.routes),
+            "retained_current",
+            return_value=False,
+        ),
+    ):
+        assert synthetic_game.contract_choices((offer,)) == ()
+        with pytest.raises(ValueError, match="vorbereitet"):
+            await planner.route(vehicle.location, offer)
+        with pytest.raises(ValueError, match="geändert"):
+            planner.quote(offer, route, vehicle, 1)
+    changed_delivery = replace(
+        route.delivery, distance_km=route.delivery.distance_km + 1
+    )
+    with pytest.raises(ValueError, match="Lieferroute"):
+        planner.quote(
+            offer, replace(route, delivery=changed_delivery), vehicle, 1
+        )
+    assert route.approach is not None
+    changed_approach = replace(
+        route.approach, distance_km=route.approach.distance_km + 1
+    )
+    with pytest.raises(ValueError, match="Anfahrtsroute"):
+        planner.quote(
+            offer, replace(route, approach=changed_approach), vehicle, 1
+        )
+    with pytest.raises(ValueError, match="NHM-Tarif"):
+        planner.quote(
+            replace(offer, market_model="nhm_v1", market_context=None),
+            route,
+            vehicle,
+            1,
+        )

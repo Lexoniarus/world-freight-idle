@@ -27,8 +27,8 @@ Semantik kommt aus dem Katalog; zusätzliche Waren werden nicht erfunden.
 
 ## Stadtmarkt
 
-Eigene idle OwnedVehicles und angekündigte Ankünfte ab 60 Minuten vor Ankunft
-aktivieren eindeutige Bedarfsstädte anhand city_uid.
+Eigene idle OwnedVehicles und die gespeicherten Zielorte aller aktiven
+Transporte ab Dispatch aktivieren eindeutige Bedarfsstädte anhand city_uid.
 Der gespeicherte Standort-Snapshot hat Vorrang; fehlt er, wird die gespeicherte
 Facility-ID exakt aufgelöst. Alle geeigneten Facilities dieser Städte sind
 Origins, Ziele bleiben katalogweit verfügbar. Pan/Zoom haben keinen Einfluss.
@@ -51,19 +51,22 @@ Frachtrate ist STANDARD_RATE (0,18) × freight_rate_factor_game.
 ## Coverage und Retention
 
 Die aktuelle Vorratsregel ersetzt die frühere zeitlich begrenzte Stadtdeckung.
-Der Worker hält mindestens zehn vorbereitete Vorlagen je Bedarfsstadt, konkretem
-Modell und verfügbarem Distanzband vor. Alle 14 Modelle werden berücksichtigt;
-fehlende sichtbare Angebote echter Fahrzeuge und bevorstehende Ankünfte haben
-Vorrang. Für das ausgewählte Fahrzeug liefert die API höchstens drei passende,
-fahrbare Angebote je Band. Die Auswahl bleibt ohne Zustandsänderung stabil.
+Der Worker plant ausschließlich konkrete eigene Fahrzeuge: zuerst fehlende
+sichtbare Angebote idle Fahrzeuge, danach deren gespeicherte Zielorte, dann die
+jeweiligen Reserven. Unbenutzte Städte und Katalogmodelle werden nicht global
+vorbereitet. Für das ausgewählte Fahrzeug liefert die API höchstens drei
+passende, fahrbare Angebote je Band. Die Auswahl bleibt ohne Zustandsänderung
+stabil.
 
 Vorlagen sind gemeinsam, persönliche Angebote und einmalige Verwendung sind
 spielergebunden. Neue persönliche Mengen basieren auf der gespeicherten
-Fahrzeugkapazität. Aufträge verfallen nicht zeitlich (`expires_at = null`) und
-bleiben nach Abfahrt gespeichert. Refresh würfelt sie nicht neu. Abgelaufene
-Routennachweise oder unbrauchbare Katalogbezüge verhindern die Freigabe, ohne
-historische Konditionen zu verändern. Nicht erzeugbare Bänder bleiben eine
-Diagnose, keine synthetische Handelsbeziehung. [ADR 0008](adr/0008-shared-market-stock.md).
+Fahrzeugkapazität. Kandidat, Fahrzeug und Beladung sind kontextgebunden
+deterministisch; IDs bleiben neu. Aufträge verfallen nicht zeitlich
+(`expires_at = null`) und bleiben nach Abfahrt gespeichert. Refresh würfelt sie
+nicht neu. Erfolgreiche Relationsnachweise werden wiederverwendet; unbrauchbare
+Katalogbezüge verhindern die Freigabe, ohne historische Konditionen zu ändern.
+Nicht erzeugbare Bänder bleiben eine Diagnose, keine synthetische
+Handelsbeziehung. [ADR 0008](adr/0008-shared-market-stock.md).
 
 ## Bestand und Historie
 
@@ -125,6 +128,7 @@ Beide Referenzkataloge werden beim Serverstart validiert und für die Laufzeit
 als immutable Revision gecacht. `CachedVehicleCatalogue` lädt seinen
 injizierten validierenden Port unter einem Lock einmal erfolgreich; Fehler
 werden nicht gecacht. Ein neuer Katalogstand erfordert einen Serverneustart
-mit erneuter Validierung und globalem Marktneuaufbau. Offline-Werkzeuge lesen
-weiterhin explizit ihren gewählten Katalog. Historische Transporte bleiben
-von neuen Revisionen unabhängig.
+mit erneuter Validierung. Betroffene konkrete Fahrzeugmärkte werden danach
+bedarfsgesteuert geprüft; es gibt keinen globalen Marktneuaufbau.
+Offline-Werkzeuge lesen weiterhin explizit ihren gewählten Katalog. Historische
+Transporte bleiben von neuen Revisionen unabhängig.

@@ -17,6 +17,14 @@ export class ManagementInput {
   start() {
     const options = { signal: this.lifetime.signal };
     this.page.addEventListener("change", (event) => this.change(event), options);
+    this.page.addEventListener(
+      "input",
+      (event) => {
+        const target = event.target;
+        if (target instanceof HTMLInputElement && target.type === "search") this.change(event);
+      },
+      options,
+    );
     this.page.addEventListener("click", (event) => this.click(event), options);
   }
   /** Translate management input changes into controller actions.
@@ -60,13 +68,7 @@ export class ManagementInput {
       void this.market.refresh();
     }
     if (action === "refresh-analytics") void this.analytics.refresh();
-    if (action === "panel-mode") {
-      const panel = this.panel.panel;
-      panel.dataset.mode = panel.dataset.mode === "management" ? "context" : "management";
-      document
-        .querySelector("#game")
-        ?.classList.toggle("management-open", panel.dataset.mode === "management");
-    }
+    if (action === "panel-mode") this.panel.toggleMode();
     if (action === "more-navigation") {
       const nav = this.page.querySelector("#navigation");
       nav.classList.toggle("expanded");

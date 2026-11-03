@@ -15,23 +15,24 @@ aktuellen Abschnitt des Qualitätsberichts; Zwischenläufe sind keine Gesamtabna
 | `MarketTemplateService.materialize` | Berechnet nur den begrenzten Fehlbestand und verwendet unbenutzte gemeinsame Vorlagen bevorzugt. Die injizierte Factory erzeugt private IDs und Konditionen passend zur tatsächlichen Fahrzeugkapazität. |
 | `MarketSelectionService.select` | Reine Begrenzung auf drei je Fahrzeug/Band aus serverseitig bestätigter Eignung; stabile Reihenfolge, keine Requests oder Neuberechnung der Frachtfähigkeit. |
 | `StockPreparationBatch.process`, `_select`, `_ready`, `_runnable`, `_waiting`, `_result` | Orchestrierung einer Runde, nicht Implementierung eines Providers. Höchstens eine neue Relation; Negativevidenz/Backoff wird respektiert. Nach Await werden aktuelle Eingaben gelesen und Defizite neu berechnet. |
-| `StockPublicationService.read` | Kurze konsistente Spieler-/Ankunftslesung, danach Kandidaten/Readiness außerhalb des Writers. Vollständiger Bestand und davon getrennte nutzbare Projektion. |
-| `unchanged`, `publish` | Veröffentlichung besitzt ihre UoW. Lease, Bedarf, Flotte, Angebote, Ankünfte, gemeinsamer Bestand, Verbrauch, Weltrevision und Straßenbelege werden erneut abgeglichen; Templates, private Offers, Bindungen und Coverage committen gemeinsam. |
+| `StockSnapshotReader.read`, `read_inputs`, `resolve_demand`, `read_readiness`, `assemble` | Kurze konsistente Spieler-/Ankunftslesung, danach Kandidaten/Readiness außerhalb des Writers. Vollständiger Bestand und davon getrennte nutzbare Projektion. |
+| `StockPublicationService.unchanged`, `publish` | Veröffentlichung besitzt ihre UoW. Lease, Bedarf, Flotte, Angebote, Ankünfte, gemeinsamer Bestand, Verbrauch, Weltrevision und Straßenbelege werden erneut abgeglichen; Templates, private Offers, Bindungen und Coverage committen gemeinsam. |
 | `SqliteMarketStockStore.initialize`, `templates`, `used`, `bindings` | SQL und Dokumentmapping bleiben im Repository. Additive Infrastruktur derselben Datenbank; Stadt-/Modellindex, eindeutige Spieler-/Vorlagenidentität. |
 | `add`, `issue`, `consume` | Immutable Vorlage, atomare persönliche Zuordnung und einmaliger Verbrauch. Membership-Prüfungen verwenden den eindeutigen SQL-Schlüssel statt vollständiger Ledger-Scans bei jeder Disposition. |
 | `arrivals`, `cursor`, `pending`, `checkpoint` | Kompakte Ziel-/Zeitprojektion ohne Python-Geometrieobjekte; persistierte Rotation und Wiederaufnahme. Keine Veränderung des Transportlebenszyklus. |
 | `MarketStockUpgradeRepository` einschließlich `_validate`, `_counts`, `_apply`, `_compare` | Explizites, ausschließlich offline verwendetes Verfahren. Neue Ausgabe, exakter Quellenabgleich, unveränderte Historie; unbekannte Schäden und Schemakollisionen werden abgewiesen. CLI besitzt Backup-/Pfadorchestrierung, das Repository besitzt SQL. |
-| `GameService._commit_dispatch` | Verbrauch wurde in die bestehende finanzielle Transaktion aufgenommen; nachgelagerter Refill beeinflusst keinen erfolgreich abgeschlossenen Dispatch. |
-| `MarketLifecycleService.published`, `prune_in_transaction`, `present` | Runtime liest vorbereitete Bestände, bewahrt ungenutzte Angebote und setzt Bedarf. Auswahlservice wird im Composition Root injiziert. Verborgene frühere Stadtbestände lösen keine ständige Neugenerierung aus. |
+| `TransportDispatchService.commit_dispatch` | Verbrauch und Bedarfsinvalidierung wurden in die bestehende finanzielle Transaktion aufgenommen; nachgelagerte Worker-Runden beeinflussen keinen erfolgreich abgeschlossenen Dispatch. |
+| `MarketLifecycleService.published`, `read_market`, `present` | Runtime liest vorbereitete Bestände und bewahrt ungenutzte Angebote. Dispatch konsumiert nur das gewählte Offer und invalidiert Bedarf in derselben Transaktion; der Worker füllt später auf. |
 | `ContractMarketController` | Fahrzeugauswahl wird an dieselbe Markt-API weitergegeben. Gleichartige Requests werden zusammengefasst; Auswahlwechsel und Accountwechsel sperren verspätete Ergebnisse. Views bleiben ohne eigene Requests. |
 | `DeferredMap`, `WorldMap`, `MapFocusController` | Renderer-Modul und WebGL starten nach der ersten Runtime-Darstellung. Der Adapter besitzt Frames, Erstellung, Listener und Cleanup; er behält den neuesten Zustand je Darstellungseigenschaft. Controller nutzen einen typisierten Kartenport statt nativer Renderer-Interna. Verzögerung, Fehler und Abmeldung sind gegengeprüft. |
 | `VehicleImageController` | Ein eigener IntersectionObserver startet Farbkompositionen nur für sichtbare beziehungsweise unmittelbar benachbarte Bilder. Bereits gecachte Bilder übernehmen ihre Lease vor Freigabe der vorherigen DOM-Bindung; dadurch bleibt die Blob-URL beim Panelwechsel gültig. Entfernte Bindungen und verspätete Observer-/Ladeergebnisse werden verworfen; Observer und Bild-Leases werden beim Beenden freigegeben. |
 | `DispatchRoutePlan.total_coordinates`, `matches_route` | Vergleich vollständig validierter unveränderlicher Straßenfakten ohne erneute Erzeugung eines Gesamtsnapshots pro Statuswechsel. Distanz, Dauer, Provider und jedes Koordinatenpaar müssen exakt übereinstimmen; abweichende Endpunkte werden nicht verschmolzen. |
 
 Schema-/SQL-Ports sind weder in der Domain noch im Vorlagen-/Auswahlservice
-importiert. Die Produktionsverdrahtung erfolgt in `bootstrap.py`. Die frühere
-Market-Generator-/Batch-Zusammensetzung bleibt für isolierte Referenz- und
-Regressionstests vorhanden; Produktion verwendet den Vorratsworker. Der
+importiert. Die Produktionsverdrahtung erfolgt in `bootstrap.py`. Tests bauen
+vollständige Spieler- und Workergraphen über eigene Builder auf; nachträgliches
+Umschreiben halb konfigurierter Services ist entfernt. Produktion verwendet den
+Vorratsworker. Der
 immutable Katalogcache gilt weiterhin je Prozesslebensdauer, Katalogaustausch
 erfordert einen Neustart. Gespeicherte historische Transporte werden nie aus
 dem aktuellen Katalog rekonstruiert.
@@ -73,3 +74,81 @@ Code, Tests und Dokumentation dürfen nach vollständiger lokaler Abnahme auf
 den beauftragten Branch gepusht werden. Ein Live-Schemawechsel bleibt ein
 gesonderter Betriebsschritt mit gestoppten Schreibern und frischem Backup,
 siehe [Betriebsanleitung](RUNTIME_OPERATIONS.md).
+
+## Nachtrag 27.10.2026: lokale bedarfsgesteuerte Runtime
+
+Die damalige Zwei-Prozess- und globale Vorratsarchitektur ist historisch. Das
+aktuelle Review bestätigt folgende Verantwortungen:
+
+| Baustein | Aktuelle einzelne Verantwortung |
+| --- | --- |
+| `MarketDemandResolver` | Nur konkrete idle Fahrzeuge und gespeicherte Ziele aktiver Transporte projizieren |
+| `StockPlanningService` | Sichtbare Defizite vor Reserven ordnen; Vielfalt und deterministische Auswahl ohne I/O |
+| `MarketTemplateService` | Genau eine passende Vorlage/Offer-Einheit materialisieren |
+| `ContractFactory.build`, `_draw_offer`, `_derive_terms`, `_build_snapshot` | Ziehung, wirtschaftliche Ableitung und immutable Persistenzabbildung bleiben getrennt; stabile Kontexte ändern keine Konditionen, Angebots-IDs bleiben neu |
+| `SqliteMarketTemplateStore` | Gemeinsame unveränderliche Vorlagen mit exakten set-basierten Scope-Reads persistieren |
+| `SqlitePlayerMarketStockStore` | Persönliche Bindungen, Verbrauch, Ankünfte, Cursor und Checkpoints persistieren |
+| `StockPublicationService._read_inputs`, `_resolve_demand`, `_read_readiness`, `_assemble_snapshot` | Kurzen autoritativen Read von reiner Projektion und mengenbasiertem Readiness-Read trennen; keine Relation öffnet einen eigenen Spieler-Read |
+| `StockPublicationService._build_publication_plan`, `_commit_publication` | Coverage und Bindungen vor der Schreibtransaktion berechnen; erst nach vollständigem Fence atomar veröffentlichen |
+| `StockPreparationBatch` | Eine konkrete Relation/Runde orchestrieren; keine Worker- oder Provider-Lifecycle-Verantwortung |
+| `MarketPreparationWorker` | Durable Jobs ereignisgesteuert planen, Trace/Backoff und Task-Lifecycle besitzen |
+| `DispatchEligibilityService` | Fahrzeug-/Frachtfreigabe kapseln und später Mitarbeiterverfügbarkeit aufnehmen |
+| `ContractMarketController` | Ohne gültiges eigenes idle Fahrzeug keine Liste und keinen Refresh laden; fahrzeuggebundene Requests besitzen/abbrechen, nie pollen |
+
+Legacy-Preparation-Batch, Startup-Rebuild, Prozesssupervisor und globale
+Worker-Lease wurden entfernt, statt als parallele Strukturen weiterzulaufen.
+Neue/geänderte konkrete Python-Callables besitzen Manifestzuordnungen und
+fachlich geprüfte Verhaltenstests. Die
+historischen Tabellen oben bleiben als Review des damaligen Stands erhalten.
+Die neuen Helper sind keine zweite Fachschicht: Sie halten ausschließlich
+Zwischenwerte ihrer jeweiligen bestehenden Klasse. Gegenproben prüfen jede
+Grenze einzeln; SQL bleibt in Repositories, HTTP im API-/Frontend-Adapter und
+Routing im injizierten Readiness-Service.
+
+## Nachtrag 28.10.2026: eindeutige Besitzer und entfernte Doppelpfade
+
+`MarketCoverageService`, `MarketGenerator.generate`,
+`MarketPreparationService.prepare_publication`, `preparable_candidates` und
+`GameService.refresh_market` waren nach Einführung des lokalen Stock-Workers
+nur noch Kompatibilitäts- beziehungsweise Testpfade. Sie sind entfernt. Der
+produktive Ablauf besitzt nun genau diese Kette:
+
+1. `MarketLifecycleService.published` liest vorhandene persönliche Angebote
+   und schreibt nur bei ausdrücklichem Refresh eine neue Bedarfsversion.
+2. `PlayerMarketDemandService` besitzt Bedarfsversion, Status und Diagnose;
+   `PlayerMarketRouteService` besitzt Offer-Bindungen und gelesene
+   Routenfakten. `MarketRoutePreparationService` besitzt als einziger
+   Marktbaustein die begrenzte Providerbereitung im Worker.
+3. `PlayerMarketStores` benennt persönlichen Bestand, gemeinsame
+   Vorlagen und Policy, ohne eine weitere Ablaufklasse einzuführen.
+4. `MarketPreparationWorker` plant ausschließlich fällige `partial`-Jobs.
+5. `StockPreparationBatch` wählt einen konkreten Fehlbestand und höchstens eine
+   neue Relation pro Runde.
+6. `StockSnapshotReader` liest und montiert einen unveränderlichen Snapshot;
+   `StockPublicationService` plant und veröffentlicht ihn mit Fence.
+7. `SqliteMarketTemplateStore` und `SqlitePlayerMarketStockStore` besitzen
+   getrennte globale beziehungsweise spielerbezogene SQL-Verantwortung.
+
+`MarketGenerationServices` ist eine reine, ehrlich benannte Composition-Struktur für
+Candidate-Service, Factory und Coverage-Diagnose. Sie besitzt keine
+Generierungsmethode. `VehicleLocationResolver` besitzt Standortauflösung;
+`DispatchEligibilityService` prüft nur Eignung und bleibt der vorbereitete Seam
+für eine spätere Mitarbeiter-/Fahrerfreigabe. Das Mitarbeitermodell selbst wird
+nicht vorweggenommen.
+
+`GameService` ist nur noch die stabile Spielfassade. Erstanlage und Reset
+gehören `PlayerInitializationService`, Quote und Dispatch dem
+`TransportDispatchService`, Ankunft und Auszahlung dem
+`TransportSettlementService`. Der Dispatch-Service besitzt klar benannte
+Schritte für Lookup, Validierung, Trip-Bau, Preisberechnung und Commit; die
+Fassade dupliziert diese Regeln nicht. Sämtliche neuen konkreten Callables sind
+im Function-Test-Manifest einzeln gegengeprüft.
+
+Im Frontend übersetzt `MapSelectionController` typisierte Kartenobjektauswahl
+in Navigation. `MapInteractions` besitzt MapLibre-Hit-Testing, Hover-Popup und
+Listener-Cleanup; `WorldMap` komponiert und rendert. Beide kennen keine
+URL-Ziele. `PanelView` verwendet konkrete
+Zustandsslices; die Firmenansicht heißt `company-dashboard.js`, während
+`ReferenceCompany` die Katalogfirma eindeutig von der künftigen Spielerfirma
+trennt. Diese Vorbereitung schafft Erweiterungspunkte für Firma, Depot und
+Mitarbeiter, ohne zweite Zustandsbesitzer anzulegen.

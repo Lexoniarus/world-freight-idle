@@ -1,8 +1,25 @@
 # Frontend v2 – Map-First-Logistik-Tycoon
 
-Stand: 25.09.2026. Dieser implementierte Stand hat Vorrang vor der unten
-archivierten langfristigen Designvision. Keine neuen Depots, Satelliten,
-Fahrzeugmodelle, Assets oder Spielregeln gehören zu diesem Ausbau.
+## Bestätigte Zielrichtung vom 28.10.2026
+
+Das [Frontend-Gesamtkonzept](FRONTEND_CONCEPT.md) hält das Designinterview
+einschließlich getroffener Entscheidungen und offener Fragen fest. Es ist
+der Gestaltungsmaßstab für den nächsten Ausbau des gesamten Frontends.
+Der [schrittweise Umsetzungsplan](FRONTEND_IMPLEMENTATION_PLAN.md) ordnet
+Spielrahmen, Verwaltung, Lkw-Bubble, Kartenfundament mit Heightmap,
+räumliche Fahrzeuge sowie Firma/Personal den vorhandenen Modulen zu.
+
+Diese Zielrichtung ist noch nicht implementiert. Die folgenden Abschnitte
+beschreiben den bisherigen Frontend-v2-Stand; Graphit-/Marinegestaltung und
+Panelmaße sind keine erneute Festlegung gegen das neue Zielbild. Die unten
+archivierte ältere Designvision bleibt historisch. Funktionale Datenregeln
+und Abnahmestände gelten bis zu einem ausdrücklich umgesetzten Schnitt weiter.
+
+## Bisheriger Implementierungsstand
+
+Stand der folgenden Frontend-v2-Beschreibung: 25.09.2026. Neue Depots,
+Satelliten, Fahrzeugmodelle, Assets oder Spielregeln waren nicht Teil dieses
+damaligen Ausbaus. Die neue Dokumentation startet noch keinen weiteren Ausbau.
 
 > Map first, management second. Die reale Welt bleibt das zentrale Spielbrett.
 
@@ -65,11 +82,14 @@ Cargo, konkrete Facility/Adresse und Wirtschaft sind getrennt. Warenwert ist
 kein Transporterlös. Exakte Straßenstrecke und Ergebnis erscheinen erst nach
 Quote. Visuelle Fahrzeugrows ergänzen eine tastaturbedienbare Auswahlliste.
 
-Die Flotte gruppiert nach Stadt und stationierten, ausgehenden oder ankommenden
-Fahrzeugen. Lokale Fahrten zählen innerhalb der Stadtgruppe einmal. Modell,
-Status und Name sind filterbar. Front ist dominant bei idle Fahrzeugen und im
-Shop, Side bei aktiven Transporten. Details kombinieren Front/Side. Vorhandene
-Map-/Front-/Side-Dateien, Fallbacks, Spielerfarben und stabile Bildknoten bleiben.
+Die Flotte stellt jede Fahrzeug-ID genau einmal dar. Stationierte Fahrzeuge
+gruppieren nach ihrem tatsächlichen Standort; aktive Fahrzeuge stehen einmal
+unter „Unterwegs“ und zeigen Abfahrt sowie Ziel. Stadtfilter dürfen eine Fahrt
+über Abfahrt oder Ziel finden, erzeugen aber keinen zweiten Fahrzeugeintrag.
+Modell, Status und Name sind filterbar. Front ist dominant bei idle Fahrzeugen
+und im Shop, Side bei aktiven Transporten. Details kombinieren Front/Side.
+Vorhandene Map-/Front-/Side-Dateien, Fallbacks, Spielerfarben und stabile
+Bildknoten bleiben.
 
 ## Layer und Kartenlesbarkeit
 
@@ -129,7 +149,7 @@ UTC, nicht der Zeitpunkt des späteren Logins. Details: [API](API.md),
 > M1 nutzt MapLibre GL JS mit OSM-Standardkarte: reale Straßen, Orte,
 > Gebäude und POIs, freies Pan/Zoom und horizontales World Wrapping.
 > Die unten beschriebene Satellitenvision ist ein späterer Ausbau und
-> keine M1-Voraussetzung. Ein BasemapProvider trennt Renderer und Quelle;
+> keine M1-Voraussetzung. Ein RasterBasemapProvider trennt Renderer und Quelle;
 > später kann ein SatelliteTileProvider ergänzt werden.
 > Implementiert: dunkelblauer/goldgelber Tycoon-HUD, lokale Barlow-/Inter-
 > Schriften, Kontextpanels, mobile Sheets, eigene Routen-/Fahrzeug-/
@@ -836,7 +856,8 @@ erscheint die zugehörige Draufsicht mit Spielerfarbe und Fahrtrichtung.
 Für Modelle ohne lokale Grafik folgen verifizierte Katalogfotos mit Urheber,
 Quelle, Lizenz und Modellfamilienhinweis; ohne Foto beziehungsweise bei dessen
 Ladefehler bleibt die bestehende Ersatzillustration. Die Pfade liegen gemeinsam
-in `frontend/vehicle-assets.js`; Darstellung und Ladeverhalten bleiben getrennt.
+in `frontend/vehicle-asset-manifest.js`; Darstellung und Ladeverhalten bleiben
+getrennt.
 Siehe [Asset-Manifest](../assets/MANIFEST.md).
 Ein Fahrzeugwechsel verwirft die alte Quote. Transportstart erfordert eine
 aktuelle Kalkulation für genau das gewählte Fahrzeug. Kamera, Panelposition,
@@ -871,8 +892,8 @@ bleiben getrennt. Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATAL
 
 ## Aktuelle technische Grundlage
 
-Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.1.0) und
-WorldCatalogue 4.0.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
+Typisierte Entities, relationale SQLite-Spielpersistenz (Schema 1.2.0) und
+WorldCatalogue 4.2.0 bilden die einzige Laufzeit. Historische Snapshots bleiben
 bei Katalogupdates erhalten. Details beschreiben [Architektur](ARCHITECTURE.md),
 [Domainmodell](DOMAIN_MODEL.md) und [Persistenz](RELATIONAL_STATE.md).
 Die abgeschlossene Umbauchronik liegt im [Archiv](archive/REFACTOR_EXECUTION.md).

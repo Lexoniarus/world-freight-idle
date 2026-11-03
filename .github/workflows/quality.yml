@@ -1,9 +1,19 @@
 name: Quality
-on: [push, pull_request]
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 jobs:
   branch-policy:
+    timeout-minutes: 3
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +31,28 @@ jobs:
             exit 0
           fi
           sh .githooks/check-branch-name "$WORK_BRANCH"
-  quality:
+  python-quality:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: pip install -r requirements-dev.txt
+      - run: npm ci
+      - run: python scripts/quality.py --python
+        env:
+          PYTEST_ADDOPTS: -vv
+          PYTHONUNBUFFERED: '1'
+
+  frontend-quality:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,9 +62,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: python scripts/quality.py --frontend
+
+  browser-regression:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
       - run: pip install -r requirements-dev.txt
       - run: npm ci
-      - run: make quality
+      - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
         env:

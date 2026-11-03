@@ -56,3 +56,12 @@ def test_nhm_profile_projection_retains_fields_without_mutating_products():
     source = SourceReference("https://source.test", "official", "2026-09-20")
     documented = replace(profile, evidence_type="official", source=source)
     assert project_nhm_profile(documented)["source"]["url"] == source.url
+
+
+def test_nhm_cargo_profiles_follow_parent_hierarchy():
+    parent = NhmProduct(1, "87", "Fahrzeuge", (1, 10))
+    child = NhmProduct(2, "870850", "Triebachsen", (2, 3, 1, 10))
+    unrelated = NhmProduct(4, "4011", "Luftreifen", (4, 5, 10))
+    assert child.is_compatible_with(parent)
+    assert parent.is_compatible_with(child)
+    assert not child.is_compatible_with(unrelated)

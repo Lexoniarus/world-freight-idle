@@ -1,0 +1,178 @@
+/* Remote catalogue photographs retain attribution and a local fallback. */
+
+/* Normalized local front/side assets for fleet and shop cards. */
+
+/* Frontend v2: the world is the workspace; management opens on demand. */
+
+@media (width <= 1100px) {
+  .hud {
+    gap: 12px;
+  }
+
+  .city-context-button {
+    padding-inline: 8px;
+  }
+
+  .city-context-button strong {
+    font-size: 18px;
+  }
+
+  .player-chip > span:last-child {
+    display: none;
+  }
+}
+
+@media (width <= 759px) {
+  .hud {
+    height: 91px;
+    gap: 4px 14px;
+  }
+
+  .city-context-button {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    align-items: baseline;
+  }
+
+  .city-context-button > span {
+    font-size: 9px;
+  }
+
+  .city-context-button strong {
+    font-size: 16px;
+  }
+
+  .context-panel,
+  .context-panel[data-mode="management"] {
+    top: auto;
+    width: 100%;
+  }
+
+  .context-panel[data-sheet="full"] {
+    height: calc(100dvh - 70px);
+    max-height: calc(100dvh - 70px);
+  }
+
+  .sheet-full.panel-open #world-map {
+    pointer-events: none;
+  }
+
+  .nav-rail {
+    top: auto;
+  }
+
+  .nav-rail .nav-item:nth-child(4),
+  .nav-rail .nav-item:nth-child(7),
+  .nav-rail .logout {
+    display: none;
+  }
+
+  .nav-rail .more-navigation {
+    display: flex;
+  }
+
+  .nav-rail.expanded {
+    z-index: 50;
+    height: auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .nav-rail.expanded .nav-item {
+    display: flex;
+  }
+
+  .nav-item {
+    min-width: 0;
+  }
+
+  .nav-item span {
+    font-size: 9px;
+  }
+
+  .management-open .map-tools {
+    right: 12px;
+  }
+
+  .company-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .vehicle-row {
+    grid-template-columns: 84px minmax(0, 1fr);
+    padding: 12px;
+    gap: 10px;
+  }
+}
+
+.asset-shop .vehicle-photo-grid {
+  grid-template-columns: 1.4fr 1fr;
+}
+
+.performance-bars {
+  list-style: none;
+  padding: 0;
+}
+
+.performance-bars li {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) minmax(60px, 2fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-block: 12px;
+  font-size: 12px;
+}
+
+.performance-bars meter {
+  width: 100%;
+}
+
+.performance-bars .negative {
+  color: var(--danger);
+}
+
+.performance-bars .positive {
+  color: var(--success);
+}
+
+.filter-details {
+  margin-block: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.filter-details summary {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+#fleet-state {
+  font-size: 9px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+@media (width <= 759px) {
+  .hud-stat.fleet-stat {
+    flex-wrap: wrap;
+    gap: 1px 4px;
+  }
+
+  #fleet-state {
+    flex-basis: 100%;
+    font-size: 8px;
+  }
+
+  .market-heading h2 {
+    font-size: 26px;
+  }
+
+  .distance-summary {
+    margin-block: 12px;
+    padding-block: 10px;
+  }
+}
