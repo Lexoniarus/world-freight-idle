@@ -94,6 +94,32 @@ def collect_test_functions(
     return functions
 
 
+def collect_manifest_declarations(path: Path) -> dict[str, list[int]]:
+    """Index declarations before dictionary updates can overwrite them."""
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    declarations: dict[str, list[int]] = {}
+    for node in ast.walk(tree):
+        keys: list[ast.expr | None] = []
+        if isinstance(node, ast.Dict):
+            keys = node.keys
+        elif (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Subscript)
+            and isinstance(node.targets[0].value, ast.Name)
+            and node.targets[0].value.id == "FUNCTION_TESTS"
+        ):
+            keys = [node.targets[0].slice]
+        for key in keys:
+            if (
+                isinstance(key, ast.Constant)
+                and isinstance(key.value, str)
+                and key.value.startswith("app.")
+            ):
+                declarations.setdefault(key.value, []).append(key.lineno)
+    return declarations
+
+
 def has_direct_test_assertion(test: TestFunction) -> bool:
     """Return whether a test contains an assertion or expected rejection."""
     for node in ast.walk(test):
@@ -159,6 +185,17 @@ def test_manifest_test_names_are_unique_and_owner_modules_are_scoped(
     }
     present = {path.name for path in (root / "tests").glob("test_*.py")}
     assert retired_collectors.isdisjoint(present)
+
+
+def test_manifest_declares_each_callable_once():
+    path = Path(__file__).with_name("function_test_manifest.py")
+    declarations = collect_manifest_declarations(path)
+    duplicates = {
+        name: lines for name, lines in declarations.items() if len(lines) > 1
+    }
+
+    assert not duplicates, f"Duplicate callable declarations: {duplicates}"
+    assert set(declarations) == set(FUNCTION_TESTS)
 
 
 def test_callable_scanner_includes_constructors_and_nested_implementations(

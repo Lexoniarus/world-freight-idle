@@ -2,7 +2,6 @@ FUNCTION_TESTS = {
     "app.composition.player.PlayerContextFactory.create": "test_player_context_factory_reuses_boundaries_without_state_changes",
     "app.composition.player.build_player_context": "test_player_service_isolation_and_atomic_purchases",
     "app.composition.audits.build_routing_audit": "test_audit_report_is_local_and_prewarm_counts_every_request",
-    "app.domain.market_preparation.required_relations": "test_route_preparation_bounds_provider_work_and_reports_retry",
     "app.providers.valhalla_metadata.graph_revision": "test_graph_revision_prefers_graph_metadata_without_inventing_versions",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.provider_revision": "test_observed_global_graph_revision_invalidates_shared_routes",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.observe_provider_revision": "test_observed_global_graph_revision_invalidates_shared_routes",
@@ -71,7 +70,6 @@ FUNCTION_TESTS = {
     "app.domain.routes.DispatchRoutePlan.matches_route": "test_dispatch_route_matches_all_saved_facts_without_revalidation",
     "app.domain.routes.DispatchRoutePlan.legs": "test_dispatch_route_invariants_and_historical_mapping",
     "app.domain.dispatch_journey.plan_dispatch_journey": "test_dispatch_journey_preserves_leg_speeds_energy_and_boundary",
-    "app.services.gameplay.dispatch_planning.DispatchPlanningService.route": "test_planner_routes_from_checkpoint_by_facility_identity",
     "app.services.gameplay.dispatch_planning.DispatchPlanningService._load_prepared_route": "test_planner_routes_from_checkpoint_by_facility_identity",
     "app.services.gameplay.dispatch_planning.DispatchPlanningService.quote": "test_changed_departure_and_missing_evidence_never_dispatch",
     "app.repositories.transport_mapping.load_route": "test_dispatch_route_invariants_and_historical_mapping",
@@ -146,7 +144,6 @@ FUNCTION_TESTS = {
     "app.logging_config.JsonFormatter.format": "test_json_formatter_includes_structured_fields",
     "app.logging_config.configure_logging": "test_configure_logging_replaces_root_handler",
     "app.main.create_app": "test_dashboard_and_system_api_expose_supported_resources",
-    "app.main.lifespan": "test_dashboard_and_system_api_expose_supported_resources",
     "app.providers.geocoding.NominatimGeocoder._respect_rate_limit": "test_respect_rate_limit_sleeps_remaining_time",
     "app.providers.geocoding.NominatimGeocoder.geocode": "test_geocode_calls_nominatim_and_caches",
     "app.providers.routing.ValhallaTruckRouter._build_cache_key": "test_build_cache_key_is_stable",
@@ -159,7 +156,6 @@ FUNCTION_TESTS = {
     "app.services.gameplay.dispatch.TransportDispatchService.validate_dispatch": "test_validate_dispatch_checks_location_capacity_mode_and_status",
     "app.services.gameplay.player_game.PlayerGameFacade.dashboard": "test_dashboard_returns_product_projection",
     "app.services.gameplay.player_game.PlayerGameFacade.dispatch": "test_dispatch_builds_persisted_trip_and_debits_cost",
-    "app.services.gameplay.player_game.PlayerGameFacade.ensure_initial_state": "test_ensure_initial_state_is_idempotent",
     "app.services.gameplay.player_game.PlayerGameFacade.get_contract": "test_list_and_get_contracts_return_real_addresses",
     "app.services.gameplay.player_game.PlayerGameFacade.get_transport": "test_list_and_get_transports",
     "app.services.gameplay.player_game.PlayerGameFacade.get_vehicle": "test_list_get_and_expand_vehicles",
@@ -234,7 +230,6 @@ FUNCTION_TESTS.update(
         "app.services.auth.PasswordHasher.hash_password": "test_password_hashes_are_salted_and_verified",
         "app.services.auth.PasswordHasher.verify_password": "test_password_hashes_are_salted_and_verified",
         "app.services.gameplay.fleet.FleetService.purchase": "test_player_service_isolation_and_atomic_purchases",
-        "app.services.gameplay.dispatch.TransportDispatchService.commit_dispatch": "test_simultaneous_dispatch_revalidates_after_routing",
         "app.services.gameplay.settlement.TransportSettlementService.complete_trip": "test_settlement_rejects_transport_without_owned_vehicle",
         "app.web.leaderboard_page": "test_product_pages_are_distinct_routes",
         "app.web.login_page": "test_product_pages_are_distinct_routes",
@@ -665,9 +660,6 @@ FUNCTION_TESTS.update(
         "app.services.market.candidates.MarketCandidateService.__init__": "test_reference_cache_and_empty_origin_relations",
         "app.services.market.candidates.MarketCandidateService.reference": "test_reference_cache_and_empty_origin_relations",
         "app.services.market.candidates.MarketCandidateService.resolve_fleet": "test_model_resolution_is_explicit_and_saved_capacity_wins",
-        "app.services.market.candidates.MarketCandidateService.build": (
-            "test_candidate_build_is_immutable_and_requires_city_scope"
-        ),
         "app.services.market.candidates.MarketCandidateService._candidate": (
             "test_vehicle_suitability_uses_scale_and_capability"
         ),
@@ -740,48 +732,6 @@ FUNCTION_TESTS.update(
     }
 )
 
-FUNCTION_TESTS.update(
-    {
-        "app.domain.routing_anchors.RoutingAnchor.__post_init__": (
-            "test_certified_access_outranks_legacy_candidate_access"
-        ),
-        "app.providers.routing_anchor.ValhallaTruckAnchorLocator.__init__": (
-            "test_candidates_never_publish_before_connection_proof"
-        ),
-        "app.providers.routing_anchor.ValhallaTruckAnchorLocator.locate": (
-            "test_routing_anchor_provider_temporarily_offline"
-        ),
-        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._correlated_location": (
-            "test_candidates_never_publish_before_connection_proof"
-        ),
-        "app.providers.routing_anchor.ValhallaTruckAnchorLocator._revision": (
-            "test_candidates_never_publish_before_connection_proof"
-        ),
-        "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.__init__": (
-            "test_repository_constructors_do_not_mutate_schema"
-        ),
-        "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.initialize": (
-            "test_runtime_repository_schema_initialization_is_explicit_and_idempotent"
-        ),
-        "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.get": (
-            "test_routing_anchor_repository_roundtrip"
-        ),
-        "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.put": (
-            "test_routing_anchor_repository_roundtrip"
-        ),
-        "app.services.routing.anchors.RoutingAnchorResolver.__init__": (
-            "test_candidates_never_publish_before_connection_proof"
-        ),
-        "app.services.routing.anchors.RoutingAnchorResolver.resolve": (
-            "test_address_and_missing_coordinate_fallbacks_are_bounded"
-        ),
-    }
-)
-
-FUNCTION_TESTS["app.composition.runtime.build_routing_anchor_resolver"] = (
-    "test_candidates_never_publish_before_connection_proof"
-)
-
 # routing-anchor-standards-2026-09-26
 FUNCTION_TESTS.update(
     {
@@ -808,6 +758,9 @@ FUNCTION_TESTS.update(
         ),
         "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.__init__": (
             "test_repository_constructors_do_not_mutate_schema"
+        ),
+        "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.initialize": (
+            "test_runtime_repository_schema_initialization_is_explicit_and_idempotent"
         ),
         "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.get": (
             "test_routing_anchor_repository_rejects_unknown_persisted_status"
@@ -869,8 +822,6 @@ FUNCTION_TESTS.update(
         "app.services.market.vehicle_coverage.vehicle_offers": "test_vehicle_coverage_reports_only_materialized_vehicle_stock",
     }
 )
-
-FUNCTION_TESTS.update({})
 
 FUNCTION_TESTS[
     "app.services.gameplay.player_game.PlayerGameFacade.market_presentation"
