@@ -1,12 +1,8 @@
 """Production-shaped local runtime composition for tests."""
 
-from app.bootstrap import GameRuntime
+from app.bootstrap import GameRuntime, initialize_runtime_schema
 from app.repositories.cached_world_catalogue import CachedWorldCatalogue
 from app.repositories.market_preparation import SqlitePreparationStore
-from app.repositories.market_stock import SqlitePlayerMarketStockStore
-from app.repositories.market_templates import SqliteMarketTemplateStore
-from app.repositories.preferences import SqlitePreferenceStore
-from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.relational_traffic import SqliteTrafficReader
 from app.repositories.routing_anchors import SqliteRoutingAnchorRepository
 from app.repositories.routing_readiness import SqliteRoutingReadinessStore
@@ -24,12 +20,8 @@ def build_test_runtime(
     database,
 ) -> GameRuntime:
     """Compose a complete local runtime without external providers."""
-    SqliteMarketTemplateStore.initialize(database)
-    SqlitePlayerMarketStockStore.initialize(database)
-    SqlitePreferenceStore.initialize(database)
-    SqliteTrafficReader.initialize(database)
+    initialize_runtime_schema(database)
     public_traffic = SqliteTrafficReader(database)
-    SqliteProviderCache(database)
     readiness_store = SqliteRoutingReadinessStore(database)
     preparation_jobs = SqlitePreparationStore(database)
     world = CachedWorldCatalogue(context.world)

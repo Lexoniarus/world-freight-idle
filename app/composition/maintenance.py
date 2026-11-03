@@ -63,6 +63,7 @@ def build_profile_maintenance_service(
     """Wire local maintenance independently of the HTTP application."""
     database = SqliteGameDatabase(settings.db_path)
     database.initialize()
+    AccountRepository.initialize(database)
     accounts = AccountRepository(database)
 
     def player_unit_of_work_factory(user_id: str) -> SqliteGameUnitOfWork:

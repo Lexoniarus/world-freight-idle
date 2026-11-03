@@ -32,6 +32,7 @@ from app.composition.runtime import (
     build_routing_anchor_resolver,
     build_vehicle_catalogue,
     build_world_catalogue,
+    initialize_runtime_schema,
 )
 
 __all__ = [
@@ -63,4 +64,5 @@ __all__ = [
     "build_transport_repair",
     "build_vehicle_catalogue",
     "build_world_catalogue",
+    "initialize_runtime_schema",
 ]

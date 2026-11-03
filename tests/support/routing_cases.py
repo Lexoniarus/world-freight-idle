@@ -24,6 +24,8 @@ def build_routing_test_case(
     """Compose one isolated routing read/preparation integration boundary."""
     database = SqliteGameDatabase(directory / "game.db")
     database.initialize()
+    SqliteProviderCache.initialize(database)
+    SqliteRoutingReadinessStore.initialize(database)
     cache = SqliteProviderCache(database)
     store = SqliteRoutingReadinessStore(database)
     anchors = SqliteRoutingAnchorRepository(database)

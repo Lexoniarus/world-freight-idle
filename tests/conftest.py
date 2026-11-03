@@ -5,7 +5,10 @@ import time
 
 import pytest
 
-from app.bootstrap import build_market_generation_services
+from app.bootstrap import (
+    build_market_generation_services,
+    initialize_runtime_schema,
+)
 from app.repositories.game_database import SqliteGameDatabase
 from app.repositories.provider_cache import SqliteProviderCache
 from app.repositories.world_catalogue import SqliteWorldCatalogue
@@ -160,11 +163,7 @@ def small_vehicle_catalogue(tmp_path):
 def database(tmp_path):
     database = SqliteGameDatabase(tmp_path / "relational.db")
     database.initialize()
-    from app.repositories.preferences import SqlitePreferenceStore
-    from app.repositories.relational_traffic import SqliteTrafficReader
-
-    SqlitePreferenceStore.initialize(database)
-    SqliteTrafficReader.initialize(database)
+    initialize_runtime_schema(database)
     with database.connect() as connection:
         connection.execute(
             "INSERT INTO users VALUES ('test-owner', 'TestOwner', 'test', 0)"

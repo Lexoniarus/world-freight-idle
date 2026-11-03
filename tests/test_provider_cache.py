@@ -38,8 +38,8 @@ def test_provider_cache_replaces_invalid_documents(
     assert (found["lat"], found["lon"]) == (53, 14)
 
 
-def test_provider_cache_rejects_unavailable_storage(tmp_path):
+def test_provider_cache_initialization_rejects_unavailable_storage(tmp_path):
     database = SqliteGameDatabase(tmp_path / "missing" / "game.db")
 
     with pytest.raises(PersistenceError):
-        SqliteProviderCache(database)
+        SqliteProviderCache.initialize(database)

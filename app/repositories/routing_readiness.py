@@ -35,7 +35,7 @@ class SqliteRoutingReadinessStore:
     """Compose routing read, lease, proof and attempt repositories."""
 
     def __init__(self, database: SqliteGameDatabase) -> None:
-        """Initialize additive schema and focused repository owners."""
+        """Compose focused owners after explicit schema initialization."""
         self.database = database
         self.anchors = SqliteRoutingAnchorRepository(database)
         self.relations = SqliteRoutingRelationRepository(database)
@@ -46,6 +46,11 @@ class SqliteRoutingReadinessStore:
             self.anchors,
         )
         self.attempts = SqliteRoutingAttemptRepository(database)
+
+    @staticmethod
+    def initialize(database: SqliteGameDatabase) -> None:
+        """Create routing evidence and anchor storage once at startup."""
+        SqliteRoutingAnchorRepository.initialize(database)
         with database.connect() as connection:
             connection.executescript(SCHEMA)
 

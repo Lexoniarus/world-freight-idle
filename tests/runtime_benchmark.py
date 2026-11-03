@@ -31,6 +31,7 @@ async def main() -> None:
     backup_database(source, target)
     database = SqliteGameDatabase(target)
     database.initialize()
+    AccountRepository.initialize(database)
     accounts = AccountRepository(database)
     with database.connect() as connection:
         owners = [

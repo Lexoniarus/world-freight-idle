@@ -18,7 +18,8 @@ def routing_store(
     """Create an isolated routing-readiness store."""
     database = SqliteGameDatabase(directory / "game.db")
     database.initialize()
-    SqliteProviderCache(database)
+    SqliteProviderCache.initialize(database)
+    SqliteRoutingReadinessStore.initialize(database)
     return database, SqliteRoutingReadinessStore(database)
 
 

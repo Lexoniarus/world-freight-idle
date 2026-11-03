@@ -23,14 +23,16 @@ FUNCTION_TESTS = {
     "app.providers.request_limiter.ProviderRequestLimiter.request": "test_limiter_serializes_and_releases_cancelled_waiters",
     "app.providers.request_limiter.retry_after_seconds": "test_retry_after_and_invalid_provider_limits",
     "app.providers.routing_anchor.ValhallaTruckAnchorLocator._access_candidates": "test_locate_candidates_are_bounded_and_exclude_nontruck_edges",
-    "app.repositories.market_preparation.SqlitePreparationStore.__init__": "test_preparation_store_generation_and_reference_rollback",
+    "app.repositories.market_preparation.SqlitePreparationStore.__init__": "test_repository_constructors_do_not_mutate_schema",
+    "app.repositories.market_preparation.SqlitePreparationStore.initialize": "test_runtime_repository_schema_initialization_is_explicit_and_idempotent",
     "app.repositories.market_preparation.SqlitePreparationStore.finish": "test_preparation_store_generation_and_reference_rollback",
     "app.repositories.market_preparation.SqlitePreparationStore.next_player": "test_preparation_store_generation_and_reference_rollback",
     "app.repositories.market_preparation.SqlitePreparationStore.request": "test_preparation_store_generation_and_reference_rollback",
     "app.repositories.market_preparation.SqlitePreparationStore.status": "test_preparation_store_generation_and_reference_rollback",
     "app.repositories.routing_audit.SqliteRoutingAudit.__init__": "test_audit_inventory_is_structural_and_report_preserves_history",
     "app.repositories.routing_audit.SqliteRoutingAudit.report": "test_audit_inventory_is_structural_and_report_preserves_history",
-    "app.repositories.routing_readiness.SqliteRoutingReadinessStore.__init__": "test_global_lease_fences_expired_and_competing_writers",
+    "app.repositories.routing_readiness.SqliteRoutingReadinessStore.__init__": "test_repository_constructors_do_not_mutate_schema",
+    "app.repositories.routing_readiness.SqliteRoutingReadinessStore.initialize": "test_runtime_repository_schema_initialization_is_explicit_and_idempotent",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.acquire": "test_global_lease_fences_expired_and_competing_writers",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.append_attempt": "test_attempt_history_and_offer_reference_atomicity",
     "app.repositories.routing_readiness.SqliteRoutingReadinessStore.get": "test_global_lease_fences_expired_and_competing_writers",
@@ -139,6 +141,7 @@ FUNCTION_TESTS = {
     "app.api.v1.transports.get_transport": "test_transport_api_lists_and_gets_active_transports",
     "app.api.v1.transports.list_transports": "test_transport_api_lists_and_gets_active_transports",
     "app.composition.runtime.build_game_runtime": "test_build_game_runtime_wires_real_provider_adapters",
+    "app.composition.runtime.initialize_runtime_schema": "test_runtime_repository_schema_initialization_is_explicit_and_idempotent",
     "app.config.Settings.from_env": "test_settings_from_env",
     "app.logging_config.JsonFormatter.format": "test_json_formatter_includes_structured_fields",
     "app.logging_config.configure_logging": "test_configure_logging_replaces_root_handler",
@@ -260,7 +263,8 @@ FUNCTION_TESTS.update(
         "app.providers.routing.ValhallaTruckRouter.__init__": "test_route_calls_valhalla_and_caches",
         "app.providers.validation.parse_coordinates": "test_coordinate_validation_rejects_invalid_values",
         "app.providers.validation.validate_route": "test_route_metrics_must_be_finite_and_positive",
-        "app.repositories.accounts.AccountRepository.__init__": "test_auth_sessions_expire_revoke_and_throttle",
+        "app.repositories.accounts.AccountRepository.__init__": "test_repository_constructors_do_not_mutate_schema",
+        "app.repositories.accounts.AccountRepository.initialize": "test_runtime_repository_schema_initialization_is_explicit_and_idempotent",
         "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue.__init__": "test_catalogue_projects_all_offers_without_writing",
         "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue._read_model": "test_catalogue_failures_are_explicit",
         "app.repositories.vehicle_catalogue.SqliteVehicleCatalogue.list_models": "test_catalogue_projects_all_offers_without_writing",
@@ -413,7 +417,8 @@ FUNCTION_TESTS.update(
         "app.repositories.relational_traffic.SqliteTrafficReader._query": "test_public_traffic_query_uses_active_ordering_index",
         "app.repositories.relational_traffic.project_traffic_row": "test_public_traffic_limits_latest_rows_and_preserves_privacy",
         "app.repositories.relational_traffic.project_traffic_summary_row": "test_runtime_projection_rejects_corrupt_scalars_without_reading_history",
-        "app.repositories.provider_cache.SqliteProviderCache.__init__": "test_provider_cache_rejects_unavailable_storage",
+        "app.repositories.provider_cache.SqliteProviderCache.__init__": "test_repository_constructors_do_not_mutate_schema",
+        "app.repositories.provider_cache.SqliteProviderCache.initialize": "test_provider_cache_initialization_rejects_unavailable_storage",
         "app.repositories.provider_cache.SqliteProviderCache.get_route": "test_provider_cache_replaces_invalid_documents",
         "app.repositories.provider_cache.SqliteProviderCache.put_route": "test_provider_cache_replaces_invalid_documents",
         "app.repositories.provider_cache.SqliteProviderCache.get_geocode": "test_provider_cache_replaces_invalid_documents",
@@ -753,7 +758,10 @@ FUNCTION_TESTS.update(
             "test_candidates_never_publish_before_connection_proof"
         ),
         "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.__init__": (
-            "test_routing_anchor_repository_roundtrip"
+            "test_repository_constructors_do_not_mutate_schema"
+        ),
+        "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.initialize": (
+            "test_runtime_repository_schema_initialization_is_explicit_and_idempotent"
         ),
         "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.get": (
             "test_routing_anchor_repository_roundtrip"
@@ -799,7 +807,7 @@ FUNCTION_TESTS.update(
             "test_truck_anchor_locator_uses_real_locate_edge_shape"
         ),
         "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.__init__": (
-            "test_routing_anchor_repository_roundtrip"
+            "test_repository_constructors_do_not_mutate_schema"
         ),
         "app.repositories.routing_anchors.SqliteRoutingAnchorRepository.get": (
             "test_routing_anchor_repository_rejects_unknown_persisted_status"

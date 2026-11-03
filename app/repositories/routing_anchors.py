@@ -52,8 +52,13 @@ class SqliteRoutingAnchorRepository:
     """Persist derived anchors outside immutable catalogues."""
 
     def __init__(self, database: SqliteGameDatabase) -> None:
+        """Bind storage after explicit runtime schema initialization."""
         self._database = database
-        with self._database.connect() as connection:
+
+    @staticmethod
+    def initialize(database: SqliteGameDatabase) -> None:
+        """Create global routing-anchor storage at composition startup."""
+        with database.connect() as connection:
             connection.executescript(SCHEMA)
 
     def get(

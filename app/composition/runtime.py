@@ -16,6 +16,7 @@ from app.providers.geocoding import NominatimGeocoder
 from app.providers.request_limiter import ProviderRequestLimiter
 from app.providers.routing import ValhallaTruckRouter
 from app.providers.routing_anchor import ValhallaTruckAnchorLocator
+from app.repositories.accounts import AccountRepository
 from app.repositories.cached_vehicle_catalogue import CachedVehicleCatalogue
 from app.repositories.cached_world_catalogue import CachedWorldCatalogue
 from app.repositories.game_database import SqliteGameDatabase
@@ -54,6 +55,18 @@ class GameRuntime:
     public_traffic: SqliteTrafficReader
     time_scale: float
     clock: Callable[[], float] = time.time
+
+
+def initialize_runtime_schema(database: SqliteGameDatabase) -> None:
+    """Create every additive runtime table before adapter construction."""
+    AccountRepository.initialize(database)
+    SqlitePreferenceStore.initialize(database)
+    SqliteProviderCache.initialize(database)
+    SqliteRoutingReadinessStore.initialize(database)
+    SqlitePreparationStore.initialize(database)
+    SqliteMarketTemplateStore.initialize(database)
+    SqlitePlayerMarketStockStore.initialize(database)
+    SqliteTrafficReader.initialize(database)
 
 
 def build_routing_anchor_resolver(
@@ -103,14 +116,11 @@ def build_game_runtime(
     """Initialize only relational storage and shared application resources."""
     database = SqliteGameDatabase(settings.db_path)
     database.initialize()
-    SqlitePreferenceStore.initialize(database)
-    SqliteTrafficReader.initialize(database)
+    initialize_runtime_schema(database)
     public_traffic = SqliteTrafficReader(database)
     cache = SqliteProviderCache(database)
     evidence = SqliteRoutingReadinessStore(database)
     jobs = SqlitePreparationStore(database)
-    SqliteMarketTemplateStore.initialize(database)
-    SqlitePlayerMarketStockStore.initialize(database)
     limiter = ProviderRequestLimiter(
         settings.valhalla_concurrency, settings.valhalla_minimum_interval
     )

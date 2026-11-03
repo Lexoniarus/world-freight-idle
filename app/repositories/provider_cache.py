@@ -25,7 +25,12 @@ class SqliteProviderCache:
     """Persist external provider documents without game-state KV access."""
 
     def __init__(self, database: SqliteGameDatabase) -> None:
+        """Bind storage after explicit runtime schema initialization."""
         self._database = database
+
+    @staticmethod
+    def initialize(database: SqliteGameDatabase) -> None:
+        """Create provider cache storage at composition startup."""
         with database.connect() as connection:
             connection.executescript(SCHEMA)
 

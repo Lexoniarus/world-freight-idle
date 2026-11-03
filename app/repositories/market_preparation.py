@@ -14,9 +14,13 @@ class SqlitePreparationStore:
     """Persist player demand without owning provider work or its leases."""
 
     def __init__(self, database: SqliteGameDatabase) -> None:
-        """Initialize additive infrastructure before opening game work."""
+        """Bind storage after explicit runtime schema initialization."""
         self.database = database
         self._notify: Callable[[], None] | None = None
+
+    @staticmethod
+    def initialize(database: SqliteGameDatabase) -> None:
+        """Create durable market-demand storage at composition startup."""
         with database.connect() as conn:
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS market_preparations ("
