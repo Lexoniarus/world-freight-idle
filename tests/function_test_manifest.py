@@ -692,7 +692,7 @@ FUNCTION_TESTS.update(
 )
 
 FUNCTION_TESTS["app.domain.market_calculations.biased_load_factor"] = (
-    "test_load_distribution_rejects_invalid_inputs_and_preserves_endpoints"
+    "test_biased_load_factor_rejects_invalid_inputs"
 )
 
 FUNCTION_TESTS.update(

@@ -6,6 +6,7 @@ import pytest
 
 from app.domain.geography import Coordinates
 from app.domain.market_calculations import (
+    biased_load_factor,
     distance_band,
     great_circle_km,
     shipment_tons,
@@ -36,3 +37,30 @@ def test_distance_and_tonnage_are_deterministic_and_bounded():
     for capacity, load in ((0, 1), (1, 0), (1, 1.1), (math.inf, 0.5)):
         with pytest.raises(ValueError):
             shipment_tons(capacity, load)
+
+
+def test_biased_load_factor_maps_known_draws_monotonically():
+    values = [
+        biased_load_factor(0.2, 0.8, draw)
+        for draw in (0, 0.001, 0.125, 0.512, 1)
+    ]
+    assert values == sorted(values)
+    assert values[0] == 0.2
+    assert values[2] == pytest.approx(0.5)
+    assert values[3] == pytest.approx(0.68)
+    assert values[-1] == pytest.approx(0.8)
+    assert biased_load_factor(0.7, 0.7, 0.4) == 0.7
+
+
+def test_biased_load_factor_rejects_invalid_inputs():
+    for values in (
+        (0, 1, 0.5),
+        (0.8, 0.7, 0.5),
+        (0.5, 1.1, 0.5),
+        (0.5, 1, -0.1),
+        (0.5, 1, 1.1),
+        (math.nan, 1, 0.5),
+        (0.5, math.inf, 0.5),
+    ):
+        with pytest.raises(ValueError):
+            biased_load_factor(*values)
