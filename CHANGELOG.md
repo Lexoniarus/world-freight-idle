@@ -1,5 +1,27 @@
 # Changelog
 
+## Begrenzte CI und isolierte Browsergrenzen – 03.11.2026
+
+- GitHub Actions prüft eine PR-Revision nur noch über das
+  `pull_request`-Ereignis; `push` bleibt auf `main` begrenzt. Eine
+  Concurrency-Gruppe beendet überholte Läufe, statt denselben Commit doppelt
+  zu berechnen.
+- Der Zehn-Sekunden-Timeout liegt jetzt in der tatsächlich aktiven
+  `pytest.ini`. Die zuvor ignorierte zweite Pytest-Konfiguration wurde
+  entfernt; CI nennt jeden laufenden Pythonfall und beendet keinen
+  Pythonjob erst nach zwanzig Minuten ohne Eigentümerhinweis.
+- Der statistische Lastfaktortest mit zwölf mal 20.000 Stichproben ist durch
+  kleine deterministische Formel-, Grenz- und Gegenfälle beim zuständigen
+  Marktberechnungsmodul ersetzt.
+- Playwright durchläuft die sichtbare Registrierung genau einmal. Andere
+  Browserfälle erzeugen eine lokale Testsession direkt und starten den
+  Marktworker nur für Routing-, Dispatch- und Markt-Journeys. Reine
+  Präsentationsfälle warten nicht mehr auf Markt- oder Kartenaufbereitung.
+- Die lokale Endabnahme bestand mit 664 Python-Tests bei 100 %
+  App-Statement-Coverage, 131 Frontendtests und 14 Playwright-Grenzen. Der
+  langsamste Pythonfall benötigte 3,96 Sekunden, der langsamste Browserfall
+  8,8 Sekunden; die Browserregression lief in 1,2 Minuten.
+
 ## Explizite Runtime-Schemata und eindeutige Testowner – 03.11.2026
 
 - `initialize_runtime_schema` erzeugt alle additiven Account-, Preference-,

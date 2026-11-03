@@ -4,6 +4,37 @@ Stand: 03.11.2026. Arbeitsbranch `refactor/local-market-pool`. Dieser Abschnitt
 ist der aktuelle Prüfstand; die folgenden Berichte sind historische Abnahmen
 früherer Architekturen.
 
+## Begrenzte CI und isolierte Browsergrenzen
+
+Der veröffentlichte Stand `f284264` startete durch gleichzeitige `push`- und
+`pull_request`-Trigger zwei identische GitHub-Läufe. Beide Pythonjobs liefen
+bis 32 % und wurden erst am 20-Minuten-Joblimit abgebrochen; ein Browserlauf
+überschritt beim Map-Navigationstest 20 Sekunden, während derselbe Fall im
+zweiten Lauf bestand. Das war keine gültige Merge-Abnahme.
+
+Die Ursache der fehlenden Python-Diagnose war eine verdrängte
+`pytest-timeout`-Konfiguration: `pytest.ini` war aktiv, während das Zeitlimit
+nur in `pyproject.toml` stand. Der Timeout liegt nun in der aktiven Datei; CI
+gibt jeden Testnamen aus. Der gleichzeitig breite Lastfaktortest wurde von
+zwölf statistischen Wiederholungen mit je 20.000 Werten auf deterministische
+Formel-, Grenz- und Ablehnungsverträge reduziert.
+
+GitHub Actions führt pro PR-Revision nur noch einen Lauf aus und beendet
+überholte Revisionen. Die Jobs besitzen getrennte Limits von drei, fünf oder
+zehn Minuten. Playwright verwendet genau einen sichtbaren
+Registrierungsablauf; andere Fälle besitzen API-basierte lokale Sessions.
+Marktvorbereitung ist Test-Opt-in und reine UI-Fälle warten nicht auf den
+Worker. Der Map-Navigationstest prüft nur noch den Erhalt derselben nativen
+MapLibre-Instanz über interne Navigation.
+
+Die vollständige lokale Abnahme bestand mit **664 Python-Tests** in
+115,49 Sekunden bei **100 % App-Statement-Coverage**; der langsamste Fall
+benötigte 3,96 Sekunden. **131 Frontendtests** bestanden. Alle **14
+Playwright-Grenzen** bestanden in 1,2 Minuten; der langsamste Browserfall
+benötigte 8,8 Sekunden. Supabase, Live-Provider und öffentliche Tiles wurden
+nicht aufgerufen. Der nächste PR-Lauf muss den Linux-Gegencheck noch am
+exakten neuen Head bestätigen; lokale Ergebnisse ersetzen ihn nicht.
+
 ## Explizite Initialisierung und eindeutige Testverantwortung
 
 Account-, Preference-, Providercache-, Routing-, Preparation-, Template-,

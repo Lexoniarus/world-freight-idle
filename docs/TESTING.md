@@ -46,10 +46,19 @@ Routinghilfen liegen deshalb unter `tests/support/routing_runtime.py` und
 `GameRuntime`.
 
 Jeder einzelne Python-Fall und jeder lokale Playwright-Fall besitzt ein hartes
-Zeitlimit von zehn Sekunden. `pytest-timeout` bricht hängende Python-Fälle ab;
-Playwright wendet lokal dieselbe Grenze pro Browserfall an. Der unten
-dokumentierte CI-Spielraum verändert dieses lokale Abnahmekriterium nicht. Ein
-Timeout wird untersucht und nicht durch Wiederholung verdeckt.
+Zeitlimit von zehn Sekunden. Die aktive `pytest.ini` konfiguriert
+`pytest-timeout`; es existiert keine zweite verdrängte Pytest-Konfiguration.
+Playwright wendet lokal dieselbe Grenze pro Browserfall an. CI gibt Pythonfälle
+mit Namen aus, damit ein Timeout einen eindeutigen Owner nennt. Ein Timeout
+wird untersucht und nicht durch Wiederholung oder ein höheres Falllimit
+verdeckt.
+
+GitHub Actions startet pro PR-Revision genau einen Lauf. Branch-Push und
+`pull_request` dürfen denselben Commit nicht doppelt prüfen; `push` ist deshalb
+auf `main` begrenzt. Concurrency beendet einen überholten Lauf derselben PR.
+Python-, Frontend- und Browserjobs bleiben parallel, besitzen aber eigene
+enge Joblimits. Ihre summierten Compute-Minuten sind nicht mit der
+Wandlaufzeit zu verwechseln.
 
 Dateigröße allein ist kein Grund für mechanisches Aufteilen. Ein größeres
 Testmodul darf bestehen bleiben, wenn sein Name genau einen Produktionsowner
@@ -159,15 +168,23 @@ höhere Timeouts verdeckt.
 
 Desktop 1440 × 900, Mobilansicht 390 × 844 und Reduced Motion werden geprüft.
 PLAYWRIGHT_CHANNEL wählt den Browser; PYTHON_EXECUTABLE den Interpreter.
-CI installiert Chromium. Lokale Screenshots werden zusätzlich visuell geprüft.
+WFI_BROWSER_PORT erlaubt ausschließlich lokalen parallelen oder wiederholten
+Testläufen einen freien isolierten Port; CI verwendet weiterhin 8011. CI
+installiert Chromium. Lokale Screenshots werden zusätzlich visuell geprüft.
 Automatisierte Mobilansicht ist keine reale iPad-Abnahme. Provider-Mocks beweisen
 keine öffentliche Dienstverfügbarkeit. Tatsächlich ausgeführte Ergebnisse stehen
 in QUALITY_REPORT.md; historische Läufe sind keine aktuelle Freigabe.
 
-Aktuelle lokale Abnahme vom 02.11.2026: 666 Python-Tests mit 100 %
+Playwright prüft die sichtbare Registrierung genau einmal. Weitere Fälle
+erzeugen ihre Sitzung über die lokale Test-API und starten Marktvorbereitung
+nur, wenn Routing, Dispatch oder Markt selbst die geprüfte Browsergrenze ist.
+Präsentationsfälle warten weder auf den Marktworker noch unnötig auf MapLibre.
+
+Aktuelle lokale Abnahme vom 03.11.2026: 664 Python-Tests mit 100 %
 App-Statement-Coverage, 131 Frontend-Verhaltenstests und 14 Playwright-Fälle.
-Der langsamste Pythonfall lief 2,68 Sekunden, der langsamste Browserfall
-8,4 Sekunden. Alle Tests blieben unter der harten Zehn-Sekunden-Grenze;
+Der langsamste Pythonfall lief 3,96 Sekunden, der langsamste Browserfall
+8,8 Sekunden; die vollständige Browserregression lief in 1,2 Minuten. Alle
+Tests blieben unter der harten Zehn-Sekunden-Grenze;
 Supabase, Live-Provider und öffentliche Tiles blieben aus.
 
 ## Regressionen des Persistenzreviews
