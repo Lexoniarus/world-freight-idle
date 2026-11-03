@@ -113,13 +113,15 @@ class MarketPreparationWorker:
         """Wait for a wake signal or the bounded scheduler safety timer."""
         if self._wake.is_set():
             return
+        waiter = asyncio.create_task(self._wake.wait())
         try:
-            await asyncio.wait_for(
-                self._wake.wait(),
+            await asyncio.wait(
+                (waiter,),
                 timeout=self.timing.idle_wait_seconds,
             )
-        except TimeoutError:
-            pass
+        finally:
+            waiter.cancel()
+            await asyncio.gather(waiter, return_exceptions=True)
 
     async def _drain_due_jobs(self) -> None:
         """Yield fairly while processing every currently due job."""

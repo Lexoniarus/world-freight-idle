@@ -54,7 +54,7 @@ async def test_worker_fills_ready_market(synthetic_game_context, database):
 
 
 @pytest.mark.asyncio
-async def test_worker_owns_one_task_and_closes_idempotently():
+async def test_worker_rejects_duplicate_start_and_closes_after_wake():
     jobs = Mock()
     jobs.next_player.return_value = None
     worker = MarketPreparationWorker(
