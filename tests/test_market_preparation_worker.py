@@ -61,7 +61,6 @@ async def test_worker_owns_one_task_and_closes_idempotently():
         jobs,
         Mock(),
         lambda: 0,
-        timing=PreparationWorkerTiming(idle_wait_seconds=0.01),
     )
     await worker.start()
     assert worker.running
