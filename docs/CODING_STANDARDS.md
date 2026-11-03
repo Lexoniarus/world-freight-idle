@@ -71,6 +71,9 @@ entbindet öffentliche Komponenten nicht von ihren Parameterverträgen.
 
 ## Transaktionen, Lebenszyklen und Wartungswerkzeuge
 
+- Additive Runtime-Schemata werden über benannte `initialize`-Methoden am
+  Composition Root erzeugt. Repository-Konstruktoren binden ausschließlich
+  Abhängigkeiten und führen kein DDL aus.
 - Öffentliche zustandsändernde Service-Methoden besitzen ihre Transaktionsgrenze
   selbst. Private Schritte dürfen eine bereits aktive Transaktion voraussetzen;
   dies wird im Docstring benannt. Reset und Initialisierung teilen dieselbe

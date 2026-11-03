@@ -120,11 +120,12 @@ Sekunden geteilt und spätestens bei der nächsten enthaltenen Ankunft
 verworfen. Dadurch erzeugen parallele Browserpolls innerhalb dieses Fensters
 keine eigenen SQL-Lesevorgänge.
 
-`SqlitePreferenceStore.initialize` und `SqliteTrafficReader.initialize`
-erzeugen ihre Hilfsstruktur explizit und idempotent vor dem Aufbau der
-Runtime. Repository-Konstruktoren verändern kein Schema; ihre korrekte
-Funktion hängt nicht von einer zufälligen Erzeugungsreihenfolge anderer
-Adapter ab.
+`initialize_runtime_schema` erzeugt Account-, Preference-, Providercache-,
+Routing-, Preparation-, Template-, Stock- und Traffic-Hilfsstrukturen
+explizit und idempotent vor dem Aufbau der Runtime. Jeder konkrete Adapter
+besitzt dafür eine benannte `initialize`-Grenze. Repository-Konstruktoren
+verändern kein Schema; ihre korrekte Funktion hängt nicht von einer
+zufälligen Erzeugungsreihenfolge anderer Adapter ab.
 
 ### Begrenzte Transportabfragen
 

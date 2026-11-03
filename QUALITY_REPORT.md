@@ -1,8 +1,23 @@
 # Qualitätsbericht: lokaler bedarfsgesteuerter Frachtpool
 
-Stand: 02.11.2026. Arbeitsbranch `refactor/local-market-pool`. Dieser Abschnitt
+Stand: 03.11.2026. Arbeitsbranch `refactor/local-market-pool`. Dieser Abschnitt
 ist der aktuelle Prüfstand; die folgenden Berichte sind historische Abnahmen
 früherer Architekturen.
+
+## Explizite Initialisierung und eindeutige Testverantwortung
+
+Account-, Preference-, Providercache-, Routing-, Preparation-, Template-,
+Stock- und Traffic-Schemata entstehen jetzt ausschließlich über benannte
+Initialisierer am Composition Root. Die zugehörigen Adapterkonstruktoren
+binden nur Abhängigkeiten. Ein direkter Gegentest vergleicht das SQLite-Schema
+vor und nach der Konstruktion und prüft die vollständige Initialisierung
+zweimal auf identischen Tabellenbestand.
+
+Das Function-Test-Manifest enthält 798 eindeutige Callable-Deklarationen.
+Siebzehn zuvor still überschriebene Zuordnungen sind entfernt. Der
+Strukturtest liest das Manifest vor seiner Ausführung als AST und lehnt
+doppelte Quelldeklarationen ab, sodass ein späteres `dict.update` keinen
+früheren Testowner mehr unbemerkt ersetzen kann.
 
 ## Begrenzte Reads und abschließende Eigentümertrennung
 
@@ -17,10 +32,9 @@ SQLite-Query-Plan enthält keinen temporären Sortierbaum. Ein pro Runtime
 geteilter `SqliteTrafficReader` hält getrennte vollständige und kompakte
 Snapshots höchstens zehn Sekunden und invalidiert sie früher an der nächsten
 enthaltenen Ankunft. Instrumentierte Repositorytests belegen eine SQL-Abfrage
-für mehrere Reads innerhalb des Fensters. Preference-Schema und Index werden
+für mehrere Reads innerhalb des Fensters. Sämtliche additiven Schemata werden
 explizit initialisiert; ein nackter Adapterkonstruktor mutiert die Datenbank
-nicht mehr und kann sich nicht auf die Reihenfolge eines anderen Stores
-verlassen.
+nicht und kann sich nicht auf die Reihenfolge eines anderen Stores verlassen.
 
 Die doppelte vollständige State-Projektion der `PlayerGameFacade` ist entfernt.
 Der Reset liefert das benannte Dashboard-Modell; Vertragsdetails werden aus
@@ -44,11 +58,11 @@ liegen jetzt in `test_public_traffic_reader.py`,
 Abnahme dieser Owner samt Function-Manifest bestand mit 13 Tests in
 3,35 Sekunden.
 
-Die abschließende lokale Abnahme bestand mit **672 Python-Tests** in
-75,38 Sekunden bei **100 % App-Statement-Coverage**; der langsamste Fall
-benötigte 2,68 Sekunden. **131 Frontendtests** bestanden in 10,10 Sekunden.
-Alle **14 Playwright-Grenzen** bestanden in 1,1 Minuten; der langsamste
-Browserfall benötigte 7,4 Sekunden. Kein Einzelfall überschritt zehn Sekunden.
+Die abschließende lokale Abnahme bestand mit **675 Python-Tests** in
+115,40 Sekunden bei **100 % App-Statement-Coverage**; der langsamste Fall
+benötigte 3,78 Sekunden. **131 Frontendtests** bestanden in 10,29 Sekunden.
+Alle **14 Playwright-Grenzen** bestanden in 1,3 Minuten; der langsamste
+Browserfall benötigte 8,6 Sekunden. Kein Einzelfall überschritt zehn Sekunden.
 Supabase, Live-Provider und öffentliche Tiles wurden nicht aufgerufen.
 
 ## P2-/P3-Nachprüfung

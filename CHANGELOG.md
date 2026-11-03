@@ -1,5 +1,23 @@
 # Changelog
 
+## Explizite Runtime-Schemata und eindeutige Testowner – 03.11.2026
+
+- `initialize_runtime_schema` erzeugt alle additiven Account-, Preference-,
+  Providercache-, Routing-, Preparation-, Template-, Stock- und
+  Traffic-Strukturen vor der Adapterkonstruktion. Repository-Konstruktoren
+  binden nur noch ihre Datenbank und führen kein DDL aus.
+- Produktion, Offline-Profilpflege und synthetische Test-Composition rufen die
+  benötigten Initialisierer ausdrücklich auf. Ein Architektur-Gegentest
+  belegt sowohl die Mutationsfreiheit der Konstruktoren als auch die
+  Idempotenz der vollständigen Runtime-Initialisierung.
+- Das Function-Test-Manifest besitzt 798 eindeutige Callable-Zuordnungen.
+  Siebzehn historische Überschreibungen wurden entfernt; ein AST-basierter
+  Strukturtest verbietet neue doppelte Quelldeklarationen.
+- Die lokale Endabnahme bestand mit 675 Python-Tests bei 100 %
+  App-Statement-Coverage, 131 Frontendtests und 14 Playwright-Grenzen. Der
+  langsamste Pythonfall benötigte 3,78 Sekunden, der langsamste Browserfall
+  8,6 Sekunden; Supabase, Live-Provider und öffentliche Tiles blieben aus.
+
 ## Begrenzte Traffic-Reads und fokussierte Eigentümertests – 02.11.2026
 
 - Die beiden öffentlichen Traffic-Reader liefern höchstens 100 aktive

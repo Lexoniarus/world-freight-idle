@@ -20,15 +20,21 @@ zusätzlich die 20 langsamsten Python-Testphasen aus, damit
 Laufzeitregressionen nicht hinter der grünen Gesamtsumme verschwinden.
 
 Das Function-Test-Manifest ist ein struktureller Vollständigkeitsindex. Es
-prüft, dass jeder referenzierte Top-Level-Testname in der Suite genau einmal
-vorkommt und selbst mindestens eine direkte Assertion oder erwartete
-Ablehnung enthält. Es beweist nicht automatisch, dass diese Assertion den
-zugeordneten Callable semantisch prüft oder dessen fachlichen Gegenfall
-abdeckt. Diese Zuordnung wird im staged Diff und im verpflichtenden
-Verantwortungsreview inhaltlich geprüft. Die Strukturprüfung verbietet zudem
-die aufgelösten Sammelmodule `test_market`, `test_multiplayer`,
-`test_review_regressions`, `test_runtime_views` und
+prüft, dass jeder Callable im Quelldokument genau einmal deklariert ist, jeder
+referenzierte Top-Level-Testname in der Suite genau einmal vorkommt und selbst
+mindestens eine direkte Assertion oder erwartete Ablehnung enthält. Frühere
+oder spätere Dictionary-Updates dürfen eine Testverantwortung nicht mehr
+stillschweigend überschreiben. Das Manifest beweist nicht automatisch, dass
+die Assertion den zugeordneten Callable semantisch prüft oder dessen
+fachlichen Gegenfall abdeckt. Diese Zuordnung wird im staged Diff und im
+verpflichtenden Verantwortungsreview inhaltlich geprüft. Die Strukturprüfung
+verbietet zudem die aufgelösten Sammelmodule `test_market`,
+`test_multiplayer`, `test_review_regressions`, `test_runtime_views` und
 `test_stock_preparation`.
+
+`test_repository_initialization.py` hält die technische Startgrenze fest:
+Adapterkonstruktion darf die SQLite-Struktur nicht verändern; die explizite
+Runtime-Initialisierung erzeugt alle additiven Tabellen idempotent.
 
 Gemeinsame Fixtures und lokale Provider-Doubles liegen ausschließlich unter
 `tests/support`. Testmodule importieren keine anderen ausführbaren Testmodule;

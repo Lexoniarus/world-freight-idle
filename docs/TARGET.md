@@ -208,7 +208,8 @@ Mengenregeln und Kompatibilität: [WorldCatalogue](WORLD_CATALOGUE.md).
       der Query-Plan benötigt keinen temporären Sortierbaum.
 - [x] Vollständige und kompakte Verkehrssichten teilen je Repräsentation einen
       Runtime-Snapshot, statt pro verbundenem Client erneut SQL auszuführen.
-- [x] Preference-Schema und Traffic-Index werden explizit initialisiert;
+- [x] Sämtliche additiven Account-, Cache-, Routing-, Markt- und
+      Traffic-Schemata werden explizit und idempotent initialisiert;
       Adapterkonstruktion besitzt keine versteckte Schema-Seitenwirkung.
 - [x] Private Vertrags-, Erlös-, Kosten- und Guthabendaten werden nicht projiziert.
 - [x] Multiplayer-Traffic-Fehler werden in der UI sichtbar und nicht still verschluckt.
